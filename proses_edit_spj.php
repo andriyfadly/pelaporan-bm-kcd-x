@@ -7,10 +7,6 @@ if (session_status() === PHP_SESSION_NONE) {
 // Set header agar browser/JS tahu ini adalah JSON murni
 header('Content-Type: application/json; charset=utf-8');
 
-// Matikan display error sementara agar kotoran warning PHP tidak merusak format JSON
-error_reporting(0);
-ini_set('display_errors', 0);
-
 include "koneksi.php";
 
 // Array penampung respon awal

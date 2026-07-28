@@ -5,8 +5,6 @@ ob_start();
 // 1. FORCE PAKSA MEMORI DAN WAKTU MAKSIMAL SERVER (ANTI MASALAH TEKNIS)
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', '900'); // 15 Menit eksekusi aman
-ini_set('display_errors', 0);
-error_reporting(0);
 
 // === PROTEKSI & KEAMANAN SESSION ===
 ini_set('session.cookie_httponly', 1);

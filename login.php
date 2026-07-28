@@ -1,9 +1,8 @@
 <?php
 // =========================================================================
-// KEAMANAN 1: Pengaturan Pelapor Error & HTTP Security Headers Maksimal
+// KEAMANAN 1: HTTP Security Headers Maksimal
+// (Error reporting diatur terpusat via APP_DEBUG di env.php)
 // =========================================================================
-error_reporting(0);
-ini_set('display_errors', 0);
 
 // Header Keamanan HTTP
 header("X-Frame-Options: DENY"); // Cegah Clickjacking

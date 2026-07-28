@@ -4,6 +4,17 @@
 if (isset($GLOBALS['__ENV_LOADED'])) { return; }
 $GLOBALS['__ENV_LOADED'] = true;
 
+// === Error reporting via APP_DEBUG (default: sembunyikan dari layar, tetap ke log) ===
+// Tampil di layar hanya saat APP_DEBUG=true (dev). Production: display off, log tetap kaya.
+if (getenv('APP_DEBUG') === 'true') {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+} else {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '0');
+}
+ini_set('log_errors', '1'); // selalu catat ke server log
+
 $envFile = __DIR__ . '/.env';
 if (!is_readable($envFile)) { return; } // fallback getenv bawaan / default lokal
 

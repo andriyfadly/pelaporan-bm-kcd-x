@@ -1,16 +1,12 @@
 <?php
-// 1. Sembunyikan error mentah MySQL/PHP dari publik untuk mencegah Information Disclosure
-error_reporting(0);
-ini_set('display_errors', '0');
-
-// 2. Pasang Security Headers
+// 1. Pasang Security Headers
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
-// 3. Batasi hanya Method GET yang diizinkan
+// 2. Batasi hanya Method GET yang diizinkan
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
     echo json_encode([]);

@@ -1,10 +1,6 @@
 <?php
-// KEAMANAN 1: Matikan pelacak error di layar, tapi tetap catat ke log server
-ini_set('display_errors', '0');
-ini_set('log_errors', '1');
-error_reporting(E_ALL);
-
-// KEAMANAN 2: Proteksi Session & Security Headers
+// KEAMANAN 1: Proteksi Session & Security Headers
+// (Error reporting diatur terpusat via APP_DEBUG di env.php)
 ini_set('session.use_strict_mode', 1);
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
