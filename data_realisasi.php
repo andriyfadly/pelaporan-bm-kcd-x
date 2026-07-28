@@ -77,8 +77,8 @@ if (isset($_GET['get_progress'])) {
     exit;
 }
 
-// Inisialisasi awal progress hanya saat tombol cetak excel baru diklik
-if (isset($_GET['proses_cetak_excel'])) {
+// Inisialisasi awal progress hanya saat tombol cetak excel ditekan
+if (isset($_GET['proses_cetak_excel']) || isset($_GET['proses_cetak_template'])) {
     $_SESSION['progress_download'] = 0;
 }
 session_write_close(); 
@@ -88,12 +88,12 @@ include "koneksi.php";
 // Ambil ID Sekolah pengguna dari session
 $id_sekolah_session = $_SESSION['id_sekolah'] ?? '';
 
+
 // ==============================================================================
-// LOGIKA BACKEND EXCEL: AKAN DIEKSEKUSI HANYA JIKA USER KLIK TOMBOL CETAK EXCEL
+// 1. LOGIKA BACKEND EXCEL: EXPORT LAPORAN UTAMA (FORMAT LAMA - SEMUA DATA)
 // ==============================================================================
 if (isset($_GET['proses_cetak_excel'])) {
 
-    // Memuat vendor PhpSpreadsheet
     require 'vendor/autoload.php';
 
     $filter_bulan = isset($_GET['filter_bulan']) ? (int)$_GET['filter_bulan'] : 0;
@@ -105,9 +105,7 @@ if (isset($_GET['proses_cetak_excel'])) {
         5 => 'MEI', 6 => 'JUNI', 7 => 'JULI', 8 => 'AGUSTUS',
         9 => 'SEPTEMBER', 10 => 'OKTOBER', 11 => 'NOVEMBER', 12 => 'DESEMBER'
     ];
-    $teks_bulan_pilihan = $nama_bulan_indo[$filter_bulan] ?? '';
-
-    // Ambil nama sekolah pembawa session untuk Judul Dokumen (Secara Aman)
+    
     $nama_sekolah_user = 'SEKOLAH USER';
     $qSklh = "SELECT nama_sekolah FROM `kode_sekolah` WHERE `id_sekolah` = ? OR `id` = ? LIMIT 1";
     if ($stmtSklh = mysqli_prepare($conn, $qSklh)) {
@@ -120,7 +118,6 @@ if (isset($_GET['proses_cetak_excel'])) {
         mysqli_stmt_close($stmtSklh);
     }
 
-    // Dynamic Clause & Prepared Statement untuk Query Utama Excel
     $sql_excel = "SELECT r.*, k.nama_sekolah as nama_sekolah_db 
                   FROM `realisasi_barang_sekolah` r 
                   LEFT JOIN `kode_sekolah` k ON r.id_sekolah = k.id_sekolah OR r.id_sekolah = k.id 
@@ -155,42 +152,24 @@ if (isset($_GET['proses_cetak_excel'])) {
     $result = mysqli_stmt_get_result($stmtExcel);
     $totalRows = mysqli_num_rows($result);
 
-    // Jika data kosong, gagalkan download dengan respon bersih
     if ($totalRows === 0) {
         mysqli_stmt_close($stmtExcel);
         ob_end_clean();
-        
-        // === MODIFIKASI: Gunakan HTTP 204 agar halaman tidak reload, lalu set cookie empty
-        setcookie("download_status", "empty", [
-            'expires' => time() + 60,
-            'path' => '/',
-            'httponly' => false,
-            'samesite' => 'Lax',
-            'secure' => isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === '1')
-        ]);
+        setcookie("download_status", "empty", ['expires' => time() + 60, 'path' => '/']);
         header("HTTP/1.1 204 No Content");
         exit;
     }
 
-    // Inisialisasi Spreadsheet
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 
-    // ==============================================================================
-    // STEP 1: SHEET REFERENSI 'KODE BARANG'
-    // ==============================================================================
+    // -- SHEET REFERENSI 'KODE BARANG' --
     $sheetMaster = $spreadsheet->createSheet();
     $sheetMaster->setTitle('KODE BARANG');
-
-    $sheetMaster->setCellValue('A1', 'KODE BARANG');
-    $sheetMaster->setCellValue('B1', 'URAIAN');
-    $sheetMaster->setCellValue('C1', 'KODERING ASET');
-    $sheetMaster->setCellValue('D1', 'JENIS ASET');
+    $sheetMaster->setCellValue('A1', 'KODE BARANG'); $sheetMaster->setCellValue('B1', 'URAIAN');
+    $sheetMaster->setCellValue('C1', 'KODERING ASET'); $sheetMaster->setCellValue('D1', 'JENIS ASET');
     $sheetMaster->setCellValue('E1', 'UMUR EKONOMIS');
 
-    $query_master_inventaris = "SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis 
-                                FROM db_inventaris.kode_barang 
-                                WHERE kode_barang IS NOT NULL AND kode_barang != ''";
-                                
+    $query_master_inventaris = "SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis FROM db_inventaris.kode_barang WHERE kode_barang IS NOT NULL AND kode_barang != ''";
     $qMaster = mysqli_query($conn, $query_master_inventaris);
     $batasMaster = 2;
 
@@ -208,36 +187,26 @@ if (isset($_GET['proses_cetak_excel'])) {
     }
     if ($batasMaster < 2) { $batasMaster = 2; }
 
-    // ==============================================================================
-    // STEP 2: SET SHEET UTAMA
-    // ==============================================================================
+    // -- SHEET UTAMA --
     $spreadsheet->setActiveSheetIndex(0);
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Laporan Belanja Modal');
     $sheet->setShowGridlines(true);
-
-    // Kunci baris 1-9 dan kolom A-E saat di-scroll (Freeze Panes di F10)
     $sheet->freezePane('F10');
 
     $sheet->setCellValue('A1', 'DAFTAR PENGADAAN BARANG DARI BELANJA MODAL'); $sheet->mergeCells('A1:Y1');
     $sheet->setCellValue('A2', strtoupper(safeExcelVal($nama_sekolah_user))); $sheet->mergeCells('A2:Y2');
     $sheet->setCellValue('A3', 'PERIODE TAHUN ' . ($filter_tahun > 0 ? $filter_tahun : '2026')); $sheet->mergeCells('A3:Y3');
 
-    $styleJudul = [
-        'font' => ['bold' => true, 'color' => ['rgb' => '000000'], 'size' => 11, 'name' => 'Calibri'],
-        'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
-    ];
+    $styleJudul = ['font' => ['bold' => true, 'color' => ['rgb' => '000000'], 'size' => 11, 'name' => 'Calibri'], 'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER]];
     $sheet->getStyle('A1:A3')->applyFromArray($styleJudul);
     $sheet->getStyle('A2')->getFont()->getColor()->setRGB('FF0000');
 
     $sheet->setCellValue('A5', '*CATATAN HURUF KOLOM:');
-    $sheet->setCellValue('D5', ': Wajib Diisi secara Manual');
-    $sheet->setCellValue('D6', ': Terisi Otomatis');
-
+    $sheet->setCellValue('D5', ': Wajib Diisi secara Manual'); $sheet->setCellValue('D6', ': Terisi Otomatis');
     $sheet->getStyle('C5')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('FF0000');
     $sheet->getStyle('C6')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('000000');
 
-    // Header Tabel
     $sheet->setCellValue('A8', 'No'); $sheet->mergeCells('A8:A9');
     $sheet->setCellValue('B8', 'No. SP2D'); $sheet->mergeCells('B8:B9');
     $sheet->setCellValue('C8', 'Sumber Perolehan'); $sheet->mergeCells('C8:C9');
@@ -252,38 +221,26 @@ if (isset($_GET['proses_cetak_excel'])) {
     $sheet->setCellValue('V8', 'Intrakomptabel'); $sheet->mergeCells('V8:W8');
     $sheet->setCellValue('X8', 'Ekstrakomptabel'); $sheet->mergeCells('X8:X9');
     $sheet->setCellValue('Y8', 'Nama Sekolah'); $sheet->mergeCells('Y8:Y9');
-
     $sheet->setCellValue('F9', 'No'); $sheet->setCellValue('G9', 'Tgl'); $sheet->setCellValue('H9', 'Bln'); $sheet->setCellValue('I9', 'Thn');
     $sheet->setCellValue('K9', 'Nama Barang'); $sheet->setCellValue('L9', 'Merk/Tipe'); $sheet->setCellValue('M9', 'No. Sertifikat/ No. Rangka/ No. Mesin');
     $sheet->setCellValue('N9', 'Ukuran (Gedung/ Bangunan)'); $sheet->setCellValue('O9', 'Satuan'); $sheet->setCellValue('P9', 'Volume');
     $sheet->setCellValue('Q9', 'Harga Satuan'); $sheet->setCellValue('R9', 'Nilai Perolehan');
     $sheet->setCellValue('V9', 'Nilai Perolehan'); $sheet->setCellValue('W9', 'Beban Penyusutan');
 
-    $styleHeaderTable = [
-        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DDEBF7']],
-        'font' => ['bold' => false, 'size' => 11, 'name' => 'Calibri'],
-        'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'wrapText' => true],
-        'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => '000000']]]
-    ];
+    $styleHeaderTable = ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DDEBF7']], 'font' => ['bold' => false, 'size' => 11, 'name' => 'Calibri'], 'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'wrapText' => true], 'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => '000000']]]];
     $sheet->getStyle('A8:Y9')->applyFromArray($styleHeaderTable);
 
     $kolomMerah = ['C8', 'D8', 'E8', 'F8', 'F9', 'G9', 'H9', 'I9', 'J8', 'L9', 'M9', 'N9', 'O9', 'P9', 'Q9', 'R9', 'S8', 'T8', 'U8', 'W9', 'X8', 'Y8'];
     foreach ($kolomMerah as $cell) { $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FF0000'); }
 
-    // Format Code Tipe Data "Accounting" tanpa simbol Rp
     $formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
-
-    // Populasi Data Row
     $rowNum = 10; $noIdx = 1; $currentCount = 0;
 
     while ($row = mysqli_fetch_assoc($result)) {
         $currentCount++;
-        
-        // MODIFIKASI SINKRONISASI: Hitung persentase real 1-100% dimasukkan ke Session
         if ($currentCount === 1 || $currentCount % 50 === 0 || $currentCount === $totalRows) {
             if (session_status() === PHP_SESSION_NONE) { session_start(); }
-            $persen_hitung = round(($currentCount / $totalRows) * 100);
-            $_SESSION['progress_download'] = $persen_hitung; 
+            $_SESSION['progress_download'] = round(($currentCount / $totalRows) * 100); 
             session_write_close(); 
         }
 
@@ -294,120 +251,180 @@ if (isset($_GET['proses_cetak_excel'])) {
         }
 
         $nama_sekolah_tampil = !empty($row['nama_sekolah_db']) ? $row['nama_sekolah_db'] : $nama_sekolah_user;
-
-        $sheet->setCellValue('A' . $rowNum, $noIdx);
-        $sheet->setCellValue('B' . $rowNum, safeExcelVal($row['no_sp2d']));
-        $sheet->setCellValue('C' . $rowNum, safeExcelVal($row['sumber_perolehan']));
-        $sheet->setCellValue('D' . $rowNum, safeExcelVal($row['kodering_belanja']));
-        $sheet->setCellValue('E' . $rowNum, safeExcelVal($row['no_spk']));
-        $sheet->setCellValue('F' . $rowNum, safeExcelVal($row['ba_no']));
-        $sheet->setCellValue('G' . $rowNum, $tg);
-        $sheet->setCellValue('H' . $rowNum, $bl);
-        $sheet->setCellValue('I' . $rowNum, $thn);
-        
+        $sheet->setCellValue('A' . $rowNum, $noIdx); $sheet->setCellValue('B' . $rowNum, safeExcelVal($row['no_sp2d']));
+        $sheet->setCellValue('C' . $rowNum, safeExcelVal($row['sumber_perolehan'])); $sheet->setCellValue('D' . $rowNum, safeExcelVal($row['kodering_belanja']));
+        $sheet->setCellValue('E' . $rowNum, safeExcelVal($row['no_spk'])); $sheet->setCellValue('F' . $rowNum, safeExcelVal($row['ba_no']));
+        $sheet->setCellValue('G' . $rowNum, $tg); $sheet->setCellValue('H' . $rowNum, $bl); $sheet->setCellValue('I' . $rowNum, $thn);
         $sheet->setCellValueExplicit('J' . $rowNum, trim($row['kode_barang']), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
         $sheet->setCellValue('K' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',2,FALSE),"")');
-        $sheet->setCellValue('L' . $rowNum, safeExcelVal($row['merk_tipe']));
-        $sheet->setCellValue('M' . $rowNum, safeExcelVal($row['no_sertifikat']));
-        $sheet->setCellValue('N' . $rowNum, safeExcelVal($row['ukuran_bangunan']));
-        $sheet->setCellValue('O' . $rowNum, safeExcelVal($row['satuan']));
+        $sheet->setCellValue('L' . $rowNum, safeExcelVal($row['merk_tipe'])); $sheet->setCellValue('M' . $rowNum, safeExcelVal($row['no_sertifikat']));
+        $sheet->setCellValue('N' . $rowNum, safeExcelVal($row['ukuran_bangunan'])); $sheet->setCellValue('O' . $rowNum, safeExcelVal($row['satuan']));
         
-        $volume_clean = isset($row['volume']) ? (int)$row['volume'] : 0;
-        $harga_clean = isset($row['harga_satuan']) ? (float)$row['harga_satuan'] : 0.0;
-        $nilai_clean = isset($row['nilai_perolehan']) ? (float)$row['nilai_perolehan'] : 0.0;
-
-        $sheet->setCellValueExplicit('P' . $rowNum, $volume_clean, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-        $sheet->setCellValueExplicit('Q' . $rowNum, $harga_clean, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-        $sheet->setCellValueExplicit('R' . $rowNum, $nilai_clean, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC); 
+        $sheet->setCellValueExplicit('P' . $rowNum, (int)($row['volume'] ?? 0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
+        $sheet->setCellValueExplicit('Q' . $rowNum, (float)($row['harga_satuan'] ?? 0.0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
+        $sheet->setCellValueExplicit('R' . $rowNum, (float)($row['nilai_perolehan'] ?? 0.0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC); 
         
         $sheet->setCellValue('S' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',3,FALSE),"")'); 
         $sheet->setCellValue('T' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',4,FALSE),"")');
         $sheet->setCellValue('U' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',5,FALSE),0)'); 
-        
         $sheet->setCellValue('V' . $rowNum, '=R' . $rowNum);
         $sheet->setCellValue('W' . $rowNum, '=IF(AND($V' . $rowNum . '=0)," ",(($V' . $rowNum . '/$U' . $rowNum . ')*(13-H' . $rowNum . ')/12))'); 
         $sheet->setCellValue('X' . $rowNum, '=IF(Q' . $rowNum . '<=1000000,R' . $rowNum . ',0)'); 
-        
         $sheet->setCellValue('Y' . $rowNum, safeExcelVal($nama_sekolah_tampil));
 
-        // Styling
         $sheet->getStyle('A' . $rowNum . ':Y' . $rowNum)->getFont()->setSize(11)->setName('Calibri');
         $sheet->getStyle('A' . $rowNum . ':Y' . $rowNum)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
-        
         $sheet->getStyle('A' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('G' . $rowNum . ':I' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('O' . $rowNum . ':P' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('U' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        
         $sheet->getStyle('Q' . $rowNum . ':R' . $rowNum)->getNumberFormat()->setFormatCode($formatAccountingNone);
         $sheet->getStyle('V' . $rowNum . ':X' . $rowNum)->getNumberFormat()->setFormatCode($formatAccountingNone);
 
         $rowNum++; $noIdx++;
     }
-
     mysqli_stmt_close($stmtExcel);
 
-    // Total Box Hijau Row 7
-    $lastDataRow = $rowNum - 1;
-    if ($lastDataRow < 10) { $lastDataRow = 10; }
+    $lastDataRow = $rowNum - 1; if ($lastDataRow < 10) { $lastDataRow = 10; }
     $sheet->setCellValue('R7', '=SUM(R10:R' . $lastDataRow . ')');
     $sheet->getStyle('R7')->getNumberFormat()->setFormatCode($formatAccountingNone); 
     $sheet->getStyle('R7')->getFont()->setSize(11)->setName('Calibri')->setBold(true)->getColor()->setRGB('000000');
     $sheet->getStyle('R7')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('92D050');
     $sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
 
-    // ==============================================================================
-    // LOGIKA SQUEEZE/OPTIMALISASI LEBAR TABEL MENGIKUTI ISINYA (HEMAT RUANG)
-    // ==============================================================================
     foreach (range('A', 'Y') as $col) {
-        if ($col === 'A') {
-            $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth(5);
-            continue;
-        }
-
+        if ($col === 'A') { $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth(5); continue; }
         $maxLen = 0;
-        // Cek isi data aslinya (Baris 10 ke bawah)
         for ($r = 10; $r <= $lastDataRow; $r++) {
             $cellValue = (string)$sheet->getCell($col . $r)->getValue();
-            // Deteksi jika isinya formula, beri nilai panjang default rasional
             $len = (strpos($cellValue, '=') === 0) ? 14 : strlen($cellValue);
             if ($len > $maxLen) { $maxLen = $len; }
         }
-
-        $finalWidth = $maxLen + 4; // Beri margin aman agar angka tidak berubah jadi ###
-
-        // Buat batasan minimal rasional agar judul kolom atas tidak tergulung terlalu ekstrem
-        $minWidth = 11;
-        if (in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y'])) { 
-            $minWidth = 16; 
-        }
-
+        $finalWidth = $maxLen + 4;
+        $minWidth = in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y']) ? 16 : 11;
         if ($finalWidth < $minWidth) { $finalWidth = $minWidth; }
-
-        $sheet->getColumnDimension($col)->setAutoSize(false);
-        $sheet->getColumnDimension($col)->setWidth($finalWidth);
+        $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth($finalWidth);
     }
 
-    // MEMBERSIHKAN SELURUH BUFFER SEBELUM OUTPUT FILE DIKIRIM (KUNCI UTAMA ANTI ERROR SERVER)
-    if (ob_get_length()) {
-        ob_end_clean();
-    }
-
+    if (ob_get_length()) { ob_end_clean(); }
+    setcookie("download_status", "complete", ['expires' => time() + 60, 'path' => '/']);
     $filename = "Daftar_Pengadaan_Belanja_Modal_Bulan_" . ($filter_bulan > 0 ? $filter_bulan : 'All') . "_" . ($filter_tahun > 0 ? $filter_tahun : '2026') . ".xlsx";
-    
-    // === FITUR BARU: Set Cookie untuk memberi sinyal ke JavaScript bahwa browser telah menerima file ===
-    setcookie("download_status", "complete", [
-        'expires' => time() + 60,
-        'path' => '/',
-        'httponly' => false,
-        'samesite' => 'Lax',
-        'secure' => isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === '1')
-    ]);
-
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment;filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
 
+// ==============================================================================
+// 2. LOGIKA BACKEND EXCEL: EXPORT KE TEMPLATE IMPORT INVENTARIS (HANYA PERALATAN MESIN)
+// ==============================================================================
+if (isset($_GET['proses_cetak_template'])) {
+
+    require 'vendor/autoload.php';
+
+    $template_file = 'template_import_inventaris.xlsx';
+    if (!file_exists($template_file)) {
+        ob_end_clean();
+        header("HTTP/1.1 500 Internal Server Error");
+        echo "File template ('$template_file') tidak ditemukan di direktori server.";
+        exit;
+    }
+
+    $filter_bulan = isset($_GET['filter_bulan']) ? (int)$_GET['filter_bulan'] : 0;
+    $filter_tahun = isset($_GET['filter_tahun']) ? (int)$_GET['filter_tahun'] : 0;
+    $filter_barang = isset($_GET['filter_barang']) ? trim($_GET['filter_barang']) : '';
+
+    // === UPDATE FILTER: INNER JOIN dengan master_barang_sekolah untuk memfilter Buku ===
+    $sql_excel = "SELECT r.* 
+                  FROM `realisasi_barang_sekolah` r 
+                  INNER JOIN `master_barang_sekolah` m ON r.id_master_barang = m.id 
+                  WHERE r.`id_sekolah` = ? AND m.kategori = 'Peralatan & Mesin'";
+                  
+    $params_excel = [$id_sekolah_session];
+    $types_excel = "s";
+
+    if ($filter_bulan > 0) {
+        $sql_excel .= " AND r.`bulan_realisasi` = ?";
+        $params_excel[] = $filter_bulan;
+        $types_excel .= "i";
+    }
+    if ($filter_tahun > 0) {
+        $sql_excel .= " AND YEAR(r.`ba_tgl`) = ?";
+        $params_excel[] = $filter_tahun;
+        $types_excel .= "i";
+    }
+    if (!empty($filter_barang)) {
+        $sql_excel .= " AND (r.`nama_barang` LIKE ? OR r.`kode_barang` LIKE ?)";
+        $search_param = "%" . $filter_barang . "%";
+        $params_excel[] = $search_param;
+        $params_excel[] = $search_param;
+        $types_excel .= "ss";
+    }
+    $sql_excel .= " ORDER BY r.`ba_tgl` ASC, r.`id` ASC";
+
+    $stmtExcel = mysqli_prepare($conn, $sql_excel);
+    mysqli_stmt_bind_param($stmtExcel, $types_excel, ...$params_excel);
+    mysqli_stmt_execute($stmtExcel);
+    $result = mysqli_stmt_get_result($stmtExcel);
+    $totalRows = mysqli_num_rows($result);
+
+    if ($totalRows === 0) {
+        mysqli_stmt_close($stmtExcel);
+        ob_end_clean();
+        setcookie("download_status", "empty", ['expires' => time() + 60, 'path' => '/']);
+        header("HTTP/1.1 204 No Content");
+        exit;
+    }
+
+    $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
+    $spreadsheet = $reader->load($template_file);
+    $sheet = $spreadsheet->getActiveSheet();
+
+    $rowNum = 2; 
+    $currentCount = 0;
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $currentCount++;
+        
+        if ($currentCount === 1 || $currentCount % 50 === 0 || $currentCount === $totalRows) {
+            if (session_status() === PHP_SESSION_NONE) { session_start(); }
+            $_SESSION['progress_download'] = round(($currentCount / $totalRows) * 100); 
+            session_write_close(); 
+        }
+
+        $tg = ''; $bl = ''; $thn = '';
+        if (!empty($row['ba_tgl']) && $row['ba_tgl'] != '0000-00-00') {
+            $time = strtotime($row['ba_tgl']);
+            $tg = (int)date('d', $time); 
+            $bl = (int)date('m', $time); 
+            $thn = date('Y', $time);
+        }
+
+        $sheet->setCellValueExplicit('A' . $rowNum, trim($row['kode_barang']), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('B' . $rowNum, safeExcelVal($row['nama_barang']));
+        $sheet->setCellValue('C' . $rowNum, safeExcelVal($row['merk_tipe']));
+        $sheet->setCellValue('D' . $rowNum, $tg);
+        $sheet->setCellValue('E' . $rowNum, $bl);
+        $sheet->setCellValue('F' . $rowNum, $thn);
+        $sheet->setCellValue('G' . $rowNum, safeExcelVal($row['satuan']));
+        
+        $sheet->setCellValueExplicit('H' . $rowNum, (int)($row['volume'] ?? 0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
+        $sheet->setCellValueExplicit('I' . $rowNum, (float)($row['harga_satuan'] ?? 0.0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
+
+        $rowNum++;
+    }
+    mysqli_stmt_close($stmtExcel);
+
+    if (ob_get_length()) { ob_end_clean(); }
+    setcookie("download_status", "complete", ['expires' => time() + 60, 'path' => '/']);
+    $filename = "Format_Isian_Inventaris_Bulan_" . ($filter_bulan > 0 ? $filter_bulan : 'All') . "_" . ($filter_tahun > 0 ? $filter_tahun : '2026') . ".xlsx";
+    
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+    
     $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
     $writer->save('php://output');
     exit;
@@ -418,7 +435,6 @@ $filter_barang = trim($_GET['filter_barang'] ?? '');
 $filter_bulan  = isset($_GET['filter_bulan']) ? (int)$_GET['filter_bulan'] : 0;
 $filter_tahun  = isset($_GET['filter_tahun']) ? (int)$_GET['filter_tahun'] : 0;
 
-// Dynamic Prepared Statement untuk Total Summary Card & Main Table
 $sql_base = "FROM `realisasi_barang_sekolah` WHERE `id_sekolah` = ?";
 $params_view = [$id_sekolah_session];
 $types_view = "s";
@@ -426,26 +442,20 @@ $types_view = "s";
 if (!empty($filter_barang)) {
     $sql_base .= " AND (`nama_barang` LIKE ? OR `kode_barang` LIKE ?)";
     $search_view = "%" . $filter_barang . "%";
-    $params_view[] = $search_view;
-    $params_view[] = $search_view;
+    $params_view[] = $search_view; $params_view[] = $search_view;
     $types_view .= "ss";
 }
 if ($filter_bulan > 0) {
     $sql_base .= " AND `bulan_realisasi` = ?";
-    $params_view[] = $filter_bulan;
-    $types_view .= "i";
+    $params_view[] = $filter_bulan; $types_view .= "i";
 }
 if ($filter_tahun > 0) {
     $sql_base .= " AND YEAR(`ba_tgl`) = ?";
-    $params_view[] = $filter_tahun;
-    $types_view .= "i";
+    $params_view[] = $filter_tahun; $types_view .= "i";
 }
 
-// 1. Fetch Total Akumulasi
-$akumulasi_biaya = 0;
-$akumulasi_volume = 0;
+$akumulasi_biaya = 0; $akumulasi_volume = 0;
 $sql_total = "SELECT SUM(`nilai_perolehan`) as total_all, SUM(`volume`) as total_vol " . $sql_base;
-
 if ($stmtTotal = mysqli_prepare($conn, $sql_total)) {
     mysqli_stmt_bind_param($stmtTotal, $types_view, ...$params_view);
     mysqli_stmt_execute($stmtTotal);
@@ -457,14 +467,12 @@ if ($stmtTotal = mysqli_prepare($conn, $sql_total)) {
     mysqli_stmt_close($stmtTotal);
 }
 
-// 2. Fetch Data Realisasi Utama
 $sql_data = "SELECT * " . $sql_base . " ORDER BY `ba_tgl` DESC, `id` DESC";
 $stmtData = mysqli_prepare($conn, $sql_data);
 mysqli_stmt_bind_param($stmtData, $types_view, ...$params_view);
 mysqli_stmt_execute($stmtData);
 $result = mysqli_stmt_get_result($stmtData);
 
-// 3. Fetch Distinct Tahun untuk Select Filter Dropdown
 $qTahun_sql = "SELECT DISTINCT YEAR(`ba_tgl`) as thn FROM `realisasi_barang_sekolah` WHERE `id_sekolah` = ? AND `ba_tgl` IS NOT NULL ORDER BY thn DESC";
 $stmtTahun = mysqli_prepare($conn, $qTahun_sql);
 mysqli_stmt_bind_param($stmtTahun, "s", $id_sekolah_session);
@@ -500,41 +508,38 @@ $bulan_list = [
         
         <form id="form-filter-realisasi" method="GET" action="data_realisasi.php">
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label small fw-semibold text-secondary">Nama / Kode Barang</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                        <input type="text" name="filter_barang" value="<?= htmlspecialchars($filter_barang, ENT_QUOTES, 'UTF-8'); ?>" class="form-control bg-light border-start-0 ps-0" placeholder="Ketik nama atau kode aset...">
+                        <input type="text" name="filter_barang" value="<?= htmlspecialchars($filter_barang, ENT_QUOTES, 'UTF-8'); ?>" class="form-control bg-light border-start-0 ps-0" placeholder="Ketik nama...">
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label small fw-semibold text-secondary">Bulan Realisasi</label>
                     <select name="filter_bulan" class="form-select bg-light">
-                        <option value="">-- Semua Bulan --</option>
-                        <?php
-                        foreach ($bulan_list as $num => $nama) {
+                        <option value="">-- Semua --</option>
+                        <?php foreach ($bulan_list as $num => $nama) {
                             $selected = ($filter_bulan == $num) ? 'selected' : '';
                             echo "<option value='" . htmlspecialchars($num, ENT_QUOTES, 'UTF-8') . "' $selected>" . htmlspecialchars($nama, ENT_QUOTES, 'UTF-8') . "</option>";
-                        }
-                        ?>
+                        } ?>
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small fw-semibold text-secondary">Tahun</label>
                     <select name="filter_tahun" class="form-select bg-light">
                         <option value="">-- Semua --</option>
-                        <?php
-                        while ($t = mysqli_fetch_assoc($qTahun)) {
+                        <?php while ($t = mysqli_fetch_assoc($qTahun)) {
                             $selected = ($filter_tahun == $t['thn']) ? 'selected' : '';
                             echo "<option value='" . htmlspecialchars($t['thn'], ENT_QUOTES, 'UTF-8') . "' $selected>" . htmlspecialchars($t['thn'], ENT_QUOTES, 'UTF-8') . "</option>";
-                        }
-                        mysqli_stmt_close($stmtTahun);
-                        ?>
+                        } mysqli_stmt_close($stmtTahun); ?>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-primary fw-semibold flex-fill"><i class="bi bi-filter"></i> Cari</button>
-                    <button type="button" id="btn-download-excel" class="btn btn-success fw-semibold" title="Download Excel Sesuai Filter"><i class="bi bi-file-earmark-excel-fill"></i> Excel</button>
+                <div class="col-md-5 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary fw-semibold"><i class="bi bi-filter"></i> Cari</button>
+                    <!-- TOMBOL DOWNLOAD -->
+                    <button type="button" id="btn-download-excel" class="btn btn-success fw-semibold" title="Download Excel Sesuai Filter"><i class="bi bi-file-earmark-excel-fill"></i> Laporan</button>
+                    <button type="button" id="btn-download-template" class="btn btn-info text-white fw-semibold" title="Download Format Template"><i class="bi bi-cloud-arrow-down-fill"></i> Template Isian</button>
                     <button type="button" id="btn-reset-filter" class="btn btn-light border" title="Reset Filter"><i class="bi bi-arrow-clockwise"></i></button>
                 </div>
             </div>
@@ -594,8 +599,6 @@ $bulan_list = [
                                 $bl  = date('m', $time_stamp);
                                 $thn = date('Y', $time_stamp);
                             }
-                            
-                            // Konversi angka bulan_realisasi ke Nama Bulan Indo
                             $bln_realisasi_id = isset($row['bulan_realisasi']) ? (int)$row['bulan_realisasi'] : 0;
                             $nama_bulan_realisasi = $bulan_list[$bln_realisasi_id] ?? '-';
                     ?>
@@ -620,9 +623,7 @@ $bulan_list = [
                             <td class="text-end text-secondary">Rp <?= number_format($row['harga_satuan'], 0, ',', '.'); ?></td>
                             <td class="text-end fw-bold text-primary" style="background-color: #f8fafc;">Rp <?= number_format($row['nilai_perolehan'], 0, ',', '.'); ?></td>
                         </tr>
-                    <?php endwhile; 
-                    mysqli_stmt_close($stmtData);
-                    endif; ?>
+                    <?php endwhile; mysqli_stmt_close($stmtData); endif; ?>
                 </tbody>
             </table>
         </div>
@@ -638,7 +639,6 @@ $bulan_list = [
                 </div>
                 <h5 class="fw-bold text-dark mb-1" id="titleProgressExcel">Mengolah Data Realisasi</h5>
                 <p class="text-muted small mb-4">Mohon tunggu, server sedang merender file Excel Anda.</p>
-                
                 <div class="progress mb-3" style="height: 22px; border-radius: 30px; background-color: #e2e8f0; overflow: hidden;">
                     <div id="barProgressExcel" class="progress-bar progress-bar-striped progress-bar-animated bg-success fw-bold" role="progressbar" style="width: 0%; transition: width 0.2s ease;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                 </div>
@@ -648,7 +648,6 @@ $bulan_list = [
     </div>
 </div>
 
-<!-- === FITUR BARU: MODAL DATA KOSONG === -->
 <div class="modal fade" id="modalEmptyExcel" tabindex="-1" aria-labelledby="modalEmptyExcelLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -667,15 +666,14 @@ $bulan_list = [
         const filterForm = document.getElementById('form-filter-realisasi');
         const resetBtn = document.getElementById('btn-reset-filter');
         const excelBtn = document.getElementById('btn-download-excel');
+        const templateBtn = document.getElementById('btn-download-template');
         
         if (filterForm) {
             filterForm.addEventListener('submit', function(e) {
                 e.preventDefault(); 
-                
                 const bng = filterForm.querySelector('[name="filter_barang"]').value;
                 const bln = filterForm.querySelector('[name="filter_bulan"]').value;
                 const thn = filterForm.querySelector('[name="filter_tahun"]').value;
-                
                 const targetUrl = `data_realisasi.php?filter_barang=${encodeURIComponent(bng)}&filter_bulan=${bln}&filter_tahun=${thn}`;
                 
                 if (typeof loadPage === 'function') {
@@ -684,80 +682,81 @@ $bulan_list = [
             });
         }
 
-        // === LOGIKA BARU: PROSES PROGRESS BAR 1-100% & AUTOMATIC DOWNLOAD CLOSING ===
+        function jalankanProsesDownload(urlParameter) {
+            document.cookie = "download_status=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+            const barProgress = document.getElementById('barProgressExcel');
+            const textStatus = document.getElementById('textStatusExcel');
+            const titleProgress = document.getElementById('titleProgressExcel');
+            
+            barProgress.style.width = '0%';
+            barProgress.setAttribute('aria-valuenow', 0);
+            barProgress.innerText = '0%';
+            textStatus.innerText = 'Menghubungkan ke server...';
+            titleProgress.innerText = 'Mengolah Dokumen Excel';
+
+            const targetModalElement = document.getElementById('modalProgressExcel');
+            const bsModalInstance = new bootstrap.Modal(targetModalElement);
+            bsModalInstance.show();
+
+            window.location.href = `data_realisasi.php?${urlParameter}`;
+            
+            let intervalCekProgress = setInterval(function() {
+                fetch('data_realisasi.php?get_progress=true')
+                    .then(res => res.json())
+                    .then(data => {
+                        let persenVal = parseInt(data.progress) || 0;
+                        if (persenVal > 100) persenVal = 100;
+                        
+                        barProgress.style.width = persenVal + '%';
+                        barProgress.setAttribute('aria-valuenow', persenVal);
+                        barProgress.innerText = persenVal + '%';
+                        
+                        if (persenVal < 100) {
+                            textStatus.innerText = `Memproses: ${persenVal}% baris data`;
+                        } else {
+                            textStatus.innerText = 'Selesai 100%! Menunggu browser mengunduh...';
+                        }
+                    })
+                    .catch(err => console.error('Gagal mengambil status progress:', err));
+
+                let cekCookieComplete = document.cookie.split(';').filter((item) => item.trim().startsWith('download_status=complete')).length;
+                let cekCookieEmpty = document.cookie.split(';').filter((item) => item.trim().startsWith('download_status=empty')).length;
+                
+                if (cekCookieComplete > 0 || cekCookieEmpty > 0) {
+                    clearInterval(intervalCekProgress);
+                    setTimeout(function() {
+                        bsModalInstance.hide();
+                        if (cekCookieEmpty > 0) {
+                            const emptyModalElement = document.getElementById('modalEmptyExcel');
+                            const bsEmptyModal = new bootstrap.Modal(emptyModalElement);
+                            bsEmptyModal.show();
+                        }
+                        document.cookie = "download_status=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    }, 1000);
+                }
+            }, 400);
+        }
+
         if (excelBtn) {
             excelBtn.addEventListener('click', function() {
                 const bng = filterForm.querySelector('[name="filter_barang"]').value;
                 const bln = filterForm.querySelector('[name="filter_bulan"]').value;
                 const thn = filterForm.querySelector('[name="filter_tahun"]').value;
                 
-                // 1. Bersihkan cookie token download lama jika tersisa
-                document.cookie = "download_status=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                const param = `proses_cetak_excel=true&filter_barang=${encodeURIComponent(bng)}&filter_bulan=${bln}&filter_tahun=${thn}`;
+                jalankanProsesDownload(param);
+            });
+        }
 
-                // 2. Siapkan Objek Elemen Modal Progress
-                const barProgress = document.getElementById('barProgressExcel');
-                const textStatus = document.getElementById('textStatusExcel');
-                const titleProgress = document.getElementById('titleProgressExcel');
+        if (templateBtn) {
+            templateBtn.addEventListener('click', function() {
+                const bng = filterForm.querySelector('[name="filter_barang"]').value;
+                const bln = filterForm.querySelector('[name="filter_bulan"]').value;
+                const thn = filterForm.querySelector('[name="filter_tahun"]').value;
                 
-                barProgress.style.width = '0%';
-                barProgress.setAttribute('aria-valuenow', 0);
-                barProgress.innerText = '0%';
-                textStatus.innerText = 'Menghubungkan ke server...';
-                titleProgress.innerText = 'Mengolah Data Realisasi';
-
-                // 3. Munculkan Modal secara paksa (Anti-Close Klik Luar)
-                const targetModalElement = document.getElementById('modalProgressExcel');
-                const bsModalInstance = new bootstrap.Modal(targetModalElement);
-                bsModalInstance.show();
-
-                // 4. Tembak request cetak file Excel melalui window location browser
-                window.location.href = `data_realisasi.php?proses_cetak_excel=true&filter_barang=${encodeURIComponent(bng)}&filter_bulan=${bln}&filter_tahun=${thn}`;
-                
-                // 5. Jalankan Polling Interval ke server untuk membaca kemajuan session
-                let intervalCekProgress = setInterval(function() {
-                    fetch('data_realisasi.php?get_progress=true')
-                        .then(res => res.json())
-                        .then(data => {
-                            let persenVal = parseInt(data.progress) || 0;
-                            if (persenVal > 100) persenVal = 100;
-                            
-                            barProgress.style.width = persenVal + '%';
-                            barProgress.setAttribute('aria-valuenow', persenVal);
-                            barProgress.innerText = persenVal + '%';
-                            
-                            if (persenVal < 100) {
-                                textStatus.innerText = `Memproses: ${persenVal}% baris data`;
-                            } else {
-                                titleProgress.innerText = 'Menyusun Dokumen Spreadsheet';
-                                textStatus.innerText = 'Selesai 100%! Menunggu browser mengunduh...';
-                            }
-                        })
-                        .catch(err => console.error('Gagal mengambil status progress:', err));
-
-                    // 6. DETEKSI UTAMA: Cek jika Cookie dari backend telah tiba di browser client
-                    let cekCookieComplete = document.cookie.split(';').filter((item) => item.trim().startsWith('download_status=complete')).length;
-                    let cekCookieEmpty = document.cookie.split(';').filter((item) => item.trim().startsWith('download_status=empty')).length;
-                    
-                    if (cekCookieComplete > 0 || cekCookieEmpty > 0) {
-                        // Hentikan interval loop polling agar tidak membebani server
-                        clearInterval(intervalCekProgress);
-                        
-                        // Beri jeda visual 1 detik agar user tahu proses telah rampung sempurna
-                        setTimeout(function() {
-                            bsModalInstance.hide();
-
-                            // === FITUR BARU: Jika statusnya empty, munculkan modal data kosong ===
-                            if (cekCookieEmpty > 0) {
-                                const emptyModalElement = document.getElementById('modalEmptyExcel');
-                                const bsEmptyModal = new bootstrap.Modal(emptyModalElement);
-                                bsEmptyModal.show();
-                            }
-
-                            // Hapus kembali cookie download token agar steril
-                            document.cookie = "download_status=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                        }, 1000);
-                    }
-                }, 400); // Polling dieksekusi berkala setiap 400ms
+                const param = `proses_cetak_template=true&filter_barang=${encodeURIComponent(bng)}&filter_bulan=${bln}&filter_tahun=${thn}`;
+                jalankanProsesDownload(param);
             });
         }
 
