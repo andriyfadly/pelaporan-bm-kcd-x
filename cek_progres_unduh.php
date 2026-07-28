@@ -14,14 +14,17 @@ if (isset($_GET['init']) && isset($_GET['bulan']) && isset($_GET['tahun'])) {
     $b = (int)$_GET['bulan'];
     $t = (int)$_GET['tahun'];
     
-    // Perbaikan Query: Tambahkan validasi tanggal agar SQL tidak crash/error jika ada tanggal '0000-00-00' atau NULL
-    $queryStr = "SELECT COUNT(*) as total FROM `realisasi_barang_sekolah` 
-                 WHERE `bulan_realisasi` = $b 
-                 AND `ba_tgl` IS NOT NULL 
-                 AND `ba_tgl` != '0000-00-00' 
-                 AND YEAR(`ba_tgl`) = $t";
-                 
-    $qTotal = mysqli_query($conn, $queryStr);
+    // Perbaikan Query: validasi tanggal tanpa banding literal '0000-00-00' (strict mode MySQL menolak)
+    $queryStr = "SELECT COUNT(*) as total FROM `realisasi_barang_sekolah`
+                 WHERE `bulan_realisasi` = ?
+                 AND `ba_tgl` IS NOT NULL
+                 AND YEAR(`ba_tgl`) = ?";
+
+    $stmtProg = mysqli_prepare($conn, $queryStr);
+    mysqli_stmt_bind_param($stmtProg, "ii", $b, $t);
+    mysqli_stmt_execute($stmtProg);
+    $resProg = mysqli_stmt_get_result($stmtProg);
+    $qTotal = $resProg;
     
     if ($qTotal) {
         $resTotal = mysqli_fetch_assoc($qTotal);

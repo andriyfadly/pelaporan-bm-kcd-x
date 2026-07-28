@@ -1,8 +1,7 @@
 <?php
-// KEAMANAN 1: Matikan pelacak error di layar
-// SEMENTARA: tampilkan error agar 500 tidak blank (debug VPS). Kembalikan ke 0 setelah fix.
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
+// KEAMANAN 1: Matikan pelacak error di layar, tapi tetap catat ke log server
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
 // KEAMANAN 2: Proteksi Session & Security Headers
@@ -99,8 +98,8 @@ $list_sekolah_acuan = [];
 $q_acuan = "SELECT DISTINCT CAST(a.id_sekolah AS CHAR) AS id_sch, k.nama_sekolah 
             FROM data_barang_acuan a
             JOIN kode_sekolah k ON k.id = a.id_sekolah
-            WHERE a.bulan = ? 
-              AND (YEAR(a.created_at) = ? OR (a.tanggal != '0000-00-00' AND YEAR(a.tanggal) = ?))
+            WHERE a.bulan = ?
+              AND (YEAR(a.created_at) = ? OR (a.tanggal IS NOT NULL AND YEAR(a.tanggal) = ?))
             ORDER BY k.nama_sekolah ASC";
 
 if ($stmt_acuan = mysqli_prepare($conn, $q_acuan)) {

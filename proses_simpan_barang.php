@@ -70,7 +70,7 @@ $ba_tgl_raw       = trim($_POST['ba_tgl'] ?? '');
 if (!empty($ba_tgl_raw) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $ba_tgl_raw)) {
     $ba_tgl = $ba_tgl_raw;
 } else {
-    $ba_tgl = "0000-00-00"; 
+    $ba_tgl = null; // NULL, bukan '0000-00-00' (strict mode MySQL menolak literal invalid)
 }
 
 // Ambil array items barang dari form

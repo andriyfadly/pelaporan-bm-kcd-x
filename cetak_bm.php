@@ -68,7 +68,7 @@ function e($string) {
 $qTahunOtomatis = false;
 if (isset($conn) && $conn instanceof mysqli) {
     try {
-        $qTahunOtomatis = mysqli_query($conn, "SELECT DISTINCT YEAR(`ba_tgl`) as thn FROM `realisasi_barang_sekolah` WHERE `ba_tgl` IS NOT NULL AND `ba_tgl` != '0000-00-00' ORDER BY thn DESC");
+        $qTahunOtomatis = mysqli_query($conn, "SELECT DISTINCT YEAR(`ba_tgl`) as thn FROM `realisasi_barang_sekolah` WHERE `ba_tgl` IS NOT NULL ORDER BY thn DESC");
     } catch (Throwable $t) {
         error_log("Database Query Error: " . $t->getMessage());
         $qTahunOtomatis = false;
