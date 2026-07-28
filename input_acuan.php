@@ -142,6 +142,22 @@ if (isset($_SESSION['last_filter_bulan'])) {
 // ==========================================
 // LOGIKA 1: PROSES IMPORT VIA AJAX POST
 // ==========================================
+
+// ponytail: cell Excel (terutama .xls / cell berformat/berwarna) bisa berisi byte
+// Latin-1/CP1252 seperti NBSP (\xA0) yang bukan UTF-8 valid -> MySQL utf8mb4
+// reject saat bind_param ("Cannot convert string ... from binary to utf8mb4").
+// Normalisasi sekali di sini: konversi dari CP1252, lalu buang byte non-UTF-8.
+if (!function_exists('cellToUtf8')) {
+    function cellToUtf8($value) {
+        $value = (string)($value ?? '');
+        if ($value === '' || preg_match('//u', $value)) {
+            return $value; // sudah UTF-8 valid
+        }
+        $converted = @mb_convert_encoding($value, 'UTF-8', 'CP1252');
+        return preg_replace('//u', '', $converted);
+    }
+}
+
 if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
     header('Content-Type: application/json; charset=utf-8');
     verifyCsrfToken();
@@ -198,8 +214,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
                 $stmtCadangan = $conn->prepare("SELECT id FROM kode_sekolah WHERE LOWER(REPLACE(REPLACE(nama_sekolah, ' ', ''), CHAR(160), '')) LIKE ? LIMIT 1");
 
                 for ($row = 2; $row <= $highestRow; $row++) {
-                    $satuan_pendidikan = htmlspecialchars(trim(strip_tags((string)($worksheet->getCellByColumnAndRow(1, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
-                    $npsn              = htmlspecialchars(trim(strip_tags((string)($worksheet->getCellByColumnAndRow(2, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
+                    $satuan_pendidikan = htmlspecialchars(trim(strip_tags(cellToUtf8($worksheet->getCellByColumnAndRow(1, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
+                    $npsn              = htmlspecialchars(trim(strip_tags(cellToUtf8($worksheet->getCellByColumnAndRow(2, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
                     
                     if(empty($npsn) && empty($satuan_pendidikan)) continue;
 
@@ -239,16 +255,16 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
                             $dateTimeObj = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($valTanggal);
                             $tanggal     = $dateTimeObj->format('Y-m-d');
                         } else {
-                            $tanggal = trim($valTanggal);
+                            $tanggal = trim(cellToUtf8($valTanggal));
                         }
                     }
-                    $tanggal = htmlspecialchars(trim(strip_tags($tanggal)), ENT_QUOTES, 'UTF-8');
+                    $tanggal = htmlspecialchars(trim(strip_tags(cellToUtf8($tanggal))), ENT_QUOTES, 'UTF-8');
 
-                    $kodering = htmlspecialchars(trim(strip_tags((string)($worksheet->getCellByColumnAndRow(4, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
-                    $bku      = htmlspecialchars(trim(strip_tags((string)($worksheet->getCellByColumnAndRow(5, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
-                    $uraian   = htmlspecialchars(trim(strip_tags((string)($worksheet->getCellByColumnAndRow(6, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
-                    $nominal  = htmlspecialchars(trim(strip_tags((string)($worksheet->getCellByColumnAndRow(7, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
-                    $bulan    = htmlspecialchars(trim(strip_tags((string)($worksheet->getCellByColumnAndRow(8, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
+                    $kodering = htmlspecialchars(trim(strip_tags(cellToUtf8($worksheet->getCellByColumnAndRow(4, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
+                    $bku      = htmlspecialchars(trim(strip_tags(cellToUtf8($worksheet->getCellByColumnAndRow(5, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
+                    $uraian   = htmlspecialchars(trim(strip_tags(cellToUtf8($worksheet->getCellByColumnAndRow(6, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
+                    $nominal  = htmlspecialchars(trim(strip_tags(cellToUtf8($worksheet->getCellByColumnAndRow(7, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
+                    $bulan    = htmlspecialchars(trim(strip_tags(cellToUtf8($worksheet->getCellByColumnAndRow(8, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
 
                     if(empty($uraian)) continue;
 
