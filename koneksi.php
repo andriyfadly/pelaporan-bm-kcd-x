@@ -3,11 +3,14 @@
 // Memaksa mysqli untuk melemparkan Exception daripada memunculkan Warning di layar
 mysqli_report(MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR);
 
-// Konfigurasi Database
-$host = "localhost";
-$user = "root";
-$pass = ""; // PERINGATAN: Di server asli/hosting, JANGAN PERNAH biarkan password kosong!
-$db   = "belanja_modal";
+// Load .env manual (host/user/pass). Database tetap hardcode di sini.
+require __DIR__ . '/env.php';
+
+// Konfigurasi Database: host/user/pass + nama DB dari env, fallback lokal
+$host = getenv('DB_HOST') ?: 'localhost';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') ?: '';
+$db   = getenv('DB_MAIN') ?: 'belanja_modal';
 
 try {
     // Menjalankan Koneksi
@@ -32,4 +35,3 @@ try {
     error_log("Error Sistem: " . $e->getMessage());
     die("Pemberitahuan: Sistem sedang dalam perbaikan.");
 }
-?>

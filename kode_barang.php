@@ -37,10 +37,11 @@ header("X-XSS-Protection: 1; mode=block");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
 // ===================== KONEKSI DB =====================
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "db_inventaris";
+require __DIR__ . '/env.php';
+$host = getenv('DB_HOST') ?: 'localhost';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') ?: '';
+$db   = getenv('DB_INV') ?: 'db_inventaris';
 
 // Sembunyikan Detail Error Database dari Publik
 mysqli_report(MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR);

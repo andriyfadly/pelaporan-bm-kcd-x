@@ -517,9 +517,9 @@ if ($mode === 'register') {
 
 <div class="auth-card shadow">
     <div class="auth-header">
-        <img src="logolog.JPEG" alt="Logo" class="img-top" onerror="this.style.display='none'">
+        <img src="logolog.jpeg" alt="Logo" class="img-top" onerror="this.style.display='none'">
         <h3 class="fw-bold text-dark mb-0 fs-4"><?= ($mode=='login') ? 'Selamat Datang' : 'Buat Akun' ?></h3>
-        <img src="diptanew.JPEG" alt="Banner" class="img-banner" onerror="this.style.display='none'">
+        <img src="diptanew.jpeg" alt="Banner" class="img-banner" onerror="this.style.display='none'">
     </div>
 
     <div class="auth-body">

@@ -17,11 +17,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
-// 4. Kredensial Database (Mendukung Environment Variables dengan fallback default)
-$host = getenv('DB_HOST') ?: "localhost"; 
-$user = getenv('DB_USER') ?: "root"; 
-$pass = getenv('DB_PASS') ?: ""; 
-$db   = getenv('DB_NAME') ?: "db_inventaris"; 
+// 4. Kredensial Database: host/user/pass dari .env, database hardcode (db_inventaris)
+require __DIR__ . '/env.php';
+$host = getenv('DB_HOST') ?: "localhost";
+$user = getenv('DB_USER') ?: "root";
+$pass = getenv('DB_PASS') ?: "";
+$db   = getenv('DB_INV') ?: "db_inventaris";
 
 // Matikan exception otomatis MySQLi agar pesan error tidak bocor saat koneksi gagal
 mysqli_report(MYSQLI_REPORT_OFF);

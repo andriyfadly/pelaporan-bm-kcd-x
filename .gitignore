@@ -1,0 +1,9 @@
+# Kredensial sensitif - jangan commit
+.env
+
+# Editor/OS
+.DS_Store
+*.log
+
+# Test temp
+_test_env.php

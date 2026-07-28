@@ -1,4 +1,7 @@
 <?php
+// Load .env manual (host/user/pass) untuk koneksi DB
+require __DIR__ . '/env.php';
+
 // ========================================================
 // KEAMANAN 1: HTTP SECURITY HEADERS (STANDAR BSSN / SPBE)
 // ========================================================
@@ -7,7 +10,7 @@ header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net https://cloudflareinsights.com https://static.cloudflareinsights.com;");
 
 // ========================================================
 // KEAMANAN 2: SESSION HARDENING & COOKIE PROTECTION
@@ -36,14 +39,10 @@ if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'user') {
     exit;
 }
 
-// Regenerasi Session ID secara berkala untuk mencegah Session Hijacking
-if (!isset($_SESSION['last_regeneration'])) {
-    session_regenerate_id(true);
-    $_SESSION['last_regeneration'] = time();
-} else if (time() - $_SESSION['last_regeneration'] > 1800) { // 30 Menit
-    session_regenerate_id(true);
-    $_SESSION['last_regeneration'] = time();
-}
+// Session Fixation dicegah saat login (session_regenerate_id di login.php).
+// Regenerate per-load DILARANG: use_strict_mode=1 + AJAX concurrent bikin race condition
+// -> cookie lama jadi stale -> PHP issue session kosong baru -> Set-Cookie AJAX nge-timpa
+// cookie asli -> bounce balik ke login. Sebelum tambah regenerate di sini, baca root cause login-bounce.
 
 // ========================================================
 // KEAMANAN 3: GENERATE CSRF TOKEN PER SESI
@@ -65,11 +64,11 @@ mysqli_report(MYSQLI_REPORT_OFF);
 // ========================================================
 if (isset($_GET['search_barang'])) {
     header('Content-Type: application/json');
-    $host = "localhost";
-    $user = "root";
-    $pass = ""; 
-    
-    $conn_inv = @new mysqli($host, $user, $pass, "db_inventaris");
+    $host = getenv('DB_HOST') ?: 'localhost';
+    $user = getenv('DB_USER') ?: 'root';
+    $pass = getenv('DB_PASS') ?: '';
+
+    $conn_inv = @new mysqli($host, $user, $pass, getenv('DB_INV') ?: 'db_inventaris');
     if ($conn_inv->connect_error) {
         error_log("DB Connection Error (db_inventaris): " . $conn_inv->connect_error);
         echo json_encode(['status' => 'error', 'message' => 'Layanan database pencarian barang sedang tidak tersedia.']);
