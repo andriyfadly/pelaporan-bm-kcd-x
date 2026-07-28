@@ -6,11 +6,11 @@ mysqli_report(MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR);
 // Load .env manual (host/user/pass). Database tetap hardcode di sini.
 require __DIR__ . '/env.php';
 
-// Konfigurasi Database: host/user/pass dari env, database hardcode (belanja_modal)
+// Konfigurasi Database: host/user/pass + nama DB dari env, fallback lokal
 $host = getenv('DB_HOST') ?: 'localhost';
 $user = getenv('DB_USER') ?: 'root';
 $pass = getenv('DB_PASS') ?: '';
-$db   = "belanja_modal";
+$db   = getenv('DB_MAIN') ?: 'belanja_modal';
 
 try {
     // Menjalankan Koneksi

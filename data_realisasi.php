@@ -190,8 +190,9 @@ if (isset($_GET['proses_cetak_excel'])) {
     $sheetMaster->setCellValue('D1', 'JENIS ASET');
     $sheetMaster->setCellValue('E1', 'UMUR EKONOMIS');
 
-    $query_master_inventaris = "SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis 
-                                FROM db_inventaris.kode_barang 
+    $db_inv = getenv('DB_INV') ?: 'db_inventaris';
+    $query_master_inventaris = "SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis
+                                FROM `" . $db_inv . "`.kode_barang
                                 WHERE kode_barang IS NOT NULL AND kode_barang != ''";
                                 
     $qMaster = mysqli_query($conn, $query_master_inventaris);

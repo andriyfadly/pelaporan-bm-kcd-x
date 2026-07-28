@@ -22,7 +22,7 @@ require __DIR__ . '/env.php';
 $host = getenv('DB_HOST') ?: "localhost";
 $user = getenv('DB_USER') ?: "root";
 $pass = getenv('DB_PASS') ?: "";
-$db   = "db_inventaris";
+$db   = getenv('DB_INV') ?: "db_inventaris";
 
 // Matikan exception otomatis MySQLi agar pesan error tidak bocor saat koneksi gagal
 mysqli_report(MYSQLI_REPORT_OFF);

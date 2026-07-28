@@ -72,7 +72,7 @@ if (isset($_GET['search_barang'])) {
     $user = getenv('DB_USER') ?: 'root';
     $pass = getenv('DB_PASS') ?: '';
 
-    $conn_inv = @new mysqli($host, $user, $pass, "db_inventaris");
+    $conn_inv = @new mysqli($host, $user, $pass, getenv('DB_INV') ?: 'db_inventaris');
     if ($conn_inv->connect_error) {
         error_log("DB Connection Error (db_inventaris): " . $conn_inv->connect_error);
         echo json_encode(['status' => 'error', 'message' => 'Layanan database pencarian barang sedang tidak tersedia.']);

@@ -41,7 +41,7 @@ require __DIR__ . '/env.php';
 $host = getenv('DB_HOST') ?: 'localhost';
 $user = getenv('DB_USER') ?: 'root';
 $pass = getenv('DB_PASS') ?: '';
-$db   = "db_inventaris"; // hardcode: database tetap di sini
+$db   = getenv('DB_INV') ?: 'db_inventaris';
 
 // Sembunyikan Detail Error Database dari Publik
 mysqli_report(MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR);
