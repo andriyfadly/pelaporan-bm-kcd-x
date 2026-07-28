@@ -207,6 +207,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
                 $highestRow = $worksheet->getHighestRow();
                 $sukses = 0;
                 $gagal = 0;
+                $import_debug_badfields = []; // sementara: tangkap field non-UTF-8
 
                 $stmtInsert = $conn->prepare("INSERT INTO data_barang_acuan (id_sekolah, satuan_pendidikan, npsn, tanggal, kodering, bku, uraian, nominal, bulan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 
@@ -268,18 +269,17 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
 
                     if(empty($uraian)) continue;
 
-                    // DEBUG (APP_DEBUG): deteksi field non-UTF-8 sebelum bind, log hex + row
-                    if (getenv('APP_DEBUG') === 'true') {
-                        foreach ([
-                            'id_sekolah' => (string)$id_sekolah_insert,
-                            'satuan' => $satuan_pendidikan, 'npsn' => $npsn,
-                            'tanggal' => $tanggal, 'kodering' => $kodering,
-                            'bku' => $bku, 'uraian' => $uraian,
-                            'nominal' => $nominal, 'bulan' => $bulan,
-                        ] as $namaField => $valField) {
-                            if (!preg_match('//u', (string)$valField)) {
-                                error_log("[DEBUG import_acuan] NON-UTF8 row=$row field=$namaField hex=" . bin2hex((string)$valField));
-                            }
+                    // DEBUG: deteksi field non-UTF-8 sebelum bind, simpan hex + row (ungated, sementara)
+                    foreach ([
+                        'id_sekolah' => (string)$id_sekolah_insert,
+                        'satuan' => $satuan_pendidikan, 'npsn' => $npsn,
+                        'tanggal' => $tanggal, 'kodering' => $kodering,
+                        'bku' => $bku, 'uraian' => $uraian,
+                        'nominal' => $nominal, 'bulan' => $bulan,
+                    ] as $namaField => $valField) {
+                        if (!preg_match('//u', (string)$valField)) {
+                            $import_debug_badfields[] = "row=$row field=$namaField hex=" . bin2hex((string)$valField);
+                            error_log("[DEBUG import_acuan] NON-UTF8 row=$row field=$namaField hex=" . bin2hex((string)$valField));
                         }
                     }
 
@@ -300,9 +300,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
                 exit;
             } catch (Exception $e) {
                 error_log("Import acuan gagal: " . $e->getMessage() . " | file=" . $e->getFile() . ":" . $e->getLine());
+                $debugHex = !empty($import_debug_badfields) ? " | NON-UTF8: " . implode("; ", $import_debug_badfields) : "";
                 $userMsg = (getenv('APP_DEBUG') === 'true')
-                    ? 'Error membaca file: ' . $e->getMessage()
-                    : 'Error membaca file: Gagal memproses data. Silakan coba file lain atau hubungi admin.';
+                    ? 'Error membaca file: ' . $e->getMessage() . $debugHex
+                    : 'Error membaca file: Gagal memproses data. Silakan coba file lain atau hubungi admin.' . $debugHex;
                 echo json_encode(['status' => 'error', 'message' => $userMsg]);
                 exit;
             }
