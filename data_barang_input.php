@@ -730,7 +730,10 @@ function cariKatalogPaguAjax(inputElement, idx) {
     }
 
     fetch(`ajax_cari_barang.php?q=${encodeURIComponent(keyword)}&kategori=${encodeURIComponent(kategoriBelanjaUtama)}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
         .then(data => {
             saranBox.innerHTML = '';
             if (data.length > 0) {
@@ -745,18 +748,18 @@ function cariKatalogPaguAjax(inputElement, idx) {
                             <span class="saran-jenis-aset-badge">${item.jenis_aset}</span>
                         </div>
                     `;
-                    
+
                     itemDiv.onclick = function() {
                         document.getElementById(`kode_barang_${idx}`).value = item.kode_barang;
                         document.getElementById(`nama_barang_${idx}`).value = item.nama_barang;
                         document.getElementById(`jenis_aset_${idx}`).value = item.jenis_aset;
-                        
+
                         let parentCard = document.getElementById(`item_card_${idx}`);
                         parentCard.querySelector('.head-label-nama').innerText = `ITEM: ${item.nama_barang}`;
-                        
+
                         saranBox.classList.add('d-none');
                         inputElement.value = '';
-                        
+
                         simpanKeLocalStorage();
                     };
                     saranBox.appendChild(itemDiv);
@@ -765,7 +768,11 @@ function cariKatalogPaguAjax(inputElement, idx) {
                 saranBox.classList.add('d-none');
             }
         })
-        .catch(err => console.error("Error fetching data:", err));
+        .catch(() => {
+            saranBox.innerHTML = '';
+            saranBox.classList.add('d-none');
+            alert('Gagal memuat daftar barang. Periksa koneksi atau coba beberapa saat lagi.');
+        });
 }
 
 function kalkulasiOtomatisRow(idx) {

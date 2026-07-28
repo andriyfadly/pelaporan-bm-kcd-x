@@ -534,7 +534,10 @@ if (!empty($id_uraian)) {
             }
 
             fetch(`ajax_cari_barang.php?q=${encodeURIComponent(keyword)}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                })
                 .then(data => {
                     boxHasil.innerHTML = '';
                     if (data.length > 0) {
@@ -548,18 +551,23 @@ if (!empty($id_uraian)) {
                                 </div>
                             `;
                             div.addEventListener('click', function() {
-                                fKode.value = item.kode_barang; 
-                                fNama.value = item.nama_barang; 
-                                fJenis.value = item.jenis_aset; 
-                                inpSearch.value = item.nama_barang; 
-                                hTitle.innerText = item.nama_barang; 
-                                boxHasil.style.display = 'none'; 
+                                fKode.value = item.kode_barang;
+                                fNama.value = item.nama_barang;
+                                fJenis.value = item.jenis_aset;
+                                inpSearch.value = item.nama_barang;
+                                hTitle.innerText = item.nama_barang;
+                                boxHasil.style.display = 'none';
                                 saveDraft();
                             });
                             boxHasil.appendChild(div);
                         });
                         boxHasil.style.display = 'block';
                     }
+                })
+                .catch(() => {
+                    boxHasil.innerHTML = '';
+                    boxHasil.style.display = 'none';
+                    alert('Gagal memuat daftar barang. Periksa koneksi atau coba beberapa saat lagi.');
                 });
         });
 

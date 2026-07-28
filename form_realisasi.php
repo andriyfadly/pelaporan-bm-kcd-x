@@ -391,7 +391,10 @@ if (!empty($no_spk_edit)) {
         if (kw.length < 2) { box.style.display = 'none'; return; }
 
         fetch(`ajax_cari_barang.php?q=${encodeURIComponent(kw)}`)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
         .then(data => {
             box.innerHTML = '';
             if(data.length > 0) {
@@ -400,9 +403,9 @@ if (!empty($no_spk_edit)) {
                     let d = document.createElement('div');
                     d.className = 'search-item-spj';
                     let autoDetectedAset = item.jenis_aset ? item.jenis_aset : "Persediaan";
-                    
+
                     d.innerHTML = `<i class="bi bi-tag-fill text-secondary me-2"></i><strong>[${item.kode_barang}]</strong> ${item.nama_barang} <span class="badge bg-secondary ms-2" style="font-size:10px; background:#64748b !important;">${autoDetectedAset}</span>`;
-                    
+
                     d.onclick = function() {
                         document.getElementById(`id_uraian_${id}`).value = item.id || '';
                         document.getElementById(`kode_barang_${id}`).value = item.kode_barang || '';
@@ -419,6 +422,11 @@ if (!empty($no_spk_edit)) {
                 box.innerHTML = `<div class="p-3 text-muted text-center small">Barang tidak ditemukan.</div>`;
                 box.style.display = 'block';
             }
+        })
+        .catch(() => {
+            box.innerHTML = '';
+            box.style.display = 'none';
+            alert('Gagal memuat daftar barang. Periksa koneksi atau coba beberapa saat lagi.');
         });
     }
 
