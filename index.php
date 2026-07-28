@@ -39,14 +39,10 @@ if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'user') {
     exit;
 }
 
-// Regenerasi Session ID secara berkala untuk mencegah Session Hijacking
-if (!isset($_SESSION['last_regeneration'])) {
-    session_regenerate_id(true);
-    $_SESSION['last_regeneration'] = time();
-} else if (time() - $_SESSION['last_regeneration'] > 1800) { // 30 Menit
-    session_regenerate_id(true);
-    $_SESSION['last_regeneration'] = time();
-}
+// Session Fixation dicegah saat login (session_regenerate_id di login.php).
+// Regenerate per-load DILARANG: use_strict_mode=1 + AJAX concurrent bikin race condition
+// -> cookie lama jadi stale -> PHP issue session kosong baru -> Set-Cookie AJAX nge-timpa
+// cookie asli -> bounce balik ke login. Sebelum tambah regenerate di sini, baca root cause login-bounce.
 
 // ========================================================
 // KEAMANAN 3: GENERATE CSRF TOKEN PER SESI

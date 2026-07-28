@@ -17,14 +17,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Regenerasi ID sesi secara aman untuk mencegah Session Fixation
-if (!isset($_SESSION['initiated_excel'])) {
-    session_regenerate_id(true);
-    $_SESSION['initiated_excel'] = time();
-} elseif (time() - $_SESSION['initiated_excel'] > 1800) { // Rotasi berkala setiap 30 menit
-    session_regenerate_id(true);
-    $_SESSION['initiated_excel'] = time();
-}
+// Session Fixation dicegah saat login (session_regenerate_id di login.php).
+// Regenerate per-load DILARANG: use_strict_mode=1 + AJAX concurrent (cek_progres_unduh.php poll,
+// proses_unduh_bm.php) bikin race -> cookie lama jadi stale -> PHP issue session kosong baru ->
+// Set-Cookie AJAX nge-timpa cookie asli -> bounce balik ke login. Baca root cause login-bounce sebelum menambah regenerate.
 
 // === KEAMANAN LAPIS BAJA: HTTP SECURITY HEADERS ===
 header("X-Frame-Options: DENY"); // Mencegah Clickjacking

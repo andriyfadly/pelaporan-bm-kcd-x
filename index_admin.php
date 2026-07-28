@@ -40,11 +40,11 @@ if (!isset($_SESSION['user_agent'])) {
     exit;
 }
 
-// KEAMANAN 5: Mencegah Session Fixation
-if (!isset($_SESSION['initiated'])) {
-    session_regenerate_id(true);
-    $_SESSION['initiated'] = true;
-}
+// KEAMANAN 5: Session Fixation sudah dicegah saat login (session_regenerate_id di login.php).
+// Regenerate ID per-load DILARANG di sini: use_strict_mode=1 + AJAX concurrent bikin cookie
+// lama jadi stale -> PHP issue session kosong baru -> Set-Cookie nya nge-timpa cookie asli
+// saat AJAX response datang belakangan -> bounce balik ke login (race condition).
+// Lihat catatan root cause login-bounce sebelum menambah lagi regenerate di sini.
 
 // KEAMANAN 6: Proteksi Hak Akses Khusus Admin (Redirect ke index.php jika bukan admin)
 $role_user = $_SESSION['role'] ?? '';

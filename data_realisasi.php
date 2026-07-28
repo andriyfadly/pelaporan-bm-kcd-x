@@ -43,11 +43,10 @@ if (!isset($_SESSION['user_agent'])) {
     exit;
 }
 
-// === PROTEKSI 3: Mencegah Session Fixation ===
-if (!isset($_SESSION['initiated'])) {
-    session_regenerate_id(true);
-    $_SESSION['initiated'] = true;
-}
+// === PROTEKSI 3: Session Fixation dicegah saat login (session_regenerate_id di login.php) ===
+// Regenerate per-load DILARANG: use_strict_mode=1 + endpoint AJAX (?get_progress) concurrent bikin
+// race -> cookie lama jadi stale -> PHP issue session kosong baru -> Set-Cookie AJAX nge-timpa cookie
+// asli -> bounce balik ke login. Baca root cause login-bounce sebelum menambah regenerate.
 
 // === PROTEKSI 4: Hak Akses Khusus User (Jika Admin mengetik URL ini, kembalikan ke index_admin.php) ===
 $role_user = $_SESSION['role'] ?? '';
