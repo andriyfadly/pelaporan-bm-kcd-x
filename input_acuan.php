@@ -145,7 +145,24 @@ if (isset($_SESSION['last_filter_bulan'])) {
 if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
     header('Content-Type: application/json; charset=utf-8');
     verifyCsrfToken();
-    
+
+    // Cek kode error upload bawaan PHP (truncated / melebihi upload_max_filesize / dll)
+    if (isset($_FILES['file_template']) && $_FILES['file_template']['error'] !== UPLOAD_ERR_OK) {
+        $uploadErrMsg = [
+            UPLOAD_ERR_INI_SIZE   => 'Ukuran file melebihi batas server (upload_max_filesize).',
+            UPLOAD_ERR_FORM_SIZE  => 'Ukuran file melebihi batas form.',
+            UPLOAD_ERR_PARTIAL    => 'File ter-upload tidak lengkap (koneksi terputus). Coba lagi.',
+            UPLOAD_ERR_NO_FILE    => 'Silakan pilih file Excel yang valid terlebih dahulu!',
+            UPLOAD_ERR_NO_TMP_DIR => 'Folder temporary server tidak ditemukan.',
+            UPLOAD_ERR_CANT_WRITE => 'Server gagal menulis file temporary.',
+            UPLOAD_ERR_EXTENSION  => 'Upload diblokir ekstensi PHP server.',
+        ];
+        $code = $_FILES['file_template']['error'];
+        $msg = $uploadErrMsg[$code] ?? 'Gagal upload (kode error: ' . $code . ').';
+        echo json_encode(['status' => 'error', 'message' => $msg]);
+        exit;
+    }
+
     if (isset($_FILES['file_template']['tmp_name']) && is_uploaded_file($_FILES['file_template']['tmp_name'])) {
         
         // Pembatasan Ukuran File (Maksimal 10 MB)
@@ -251,7 +268,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
                 echo json_encode(['status' => 'success', 'message' => "Berhasil mengimpor data! (Sukses: $sukses, Gagal: $gagal)"]);
                 exit;
             } catch (Exception $e) {
-                echo json_encode(['status' => 'error', 'message' => 'Error membaca file: Gagal memproses data.']);
+                error_log("Import acuan gagal: " . $e->getMessage());
+                $userMsg = (getenv('APP_DEBUG') === 'true')
+                    ? 'Error membaca file: ' . $e->getMessage()
+                    : 'Error membaca file: Gagal memproses data. Silakan coba file lain atau hubungi admin.';
+                echo json_encode(['status' => 'error', 'message' => $userMsg]);
                 exit;
             }
         } else {
