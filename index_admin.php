@@ -262,7 +262,7 @@ $total_belum = count($list_belum);
 
 <div class="sidebar" id="sidebar">
     <div class="brand">
-        <img src="diptanew.JPEG" alt="SI DIPTA Beu!" class="brand-img img-fluid">
+        <img src="diptanew.jpeg" alt="SI DIPTA Beu!" class="brand-img img-fluid">
     </div>
 
     <div class="nav-wrapper">
