@@ -1,7 +1,9 @@
 <?php
 // KEAMANAN 1: Matikan pelacak error di layar
-error_reporting(0);
-ini_set('display_errors', 0);
+// SEMENTARA: tampilkan error agar 500 tidak blank (debug VPS). Kembalikan ke 0 setelah fix.
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
 // KEAMANAN 2: Proteksi Session & Security Headers
 ini_set('session.use_strict_mode', 1);
