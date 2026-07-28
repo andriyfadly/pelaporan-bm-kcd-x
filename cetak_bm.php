@@ -36,7 +36,7 @@ header("Strict-Transport-Security: max-age=31536000; includeSubDomains; preload"
 header("X-Permitted-Cross-Domain-Policies: none");
 
 // Content Security Policy (CSP) - Mengamankan inline script & CDN resmi yang digunakan
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; frame-ancestors 'none';");
 
 // Proteksi file halaman utama jika belum login
 if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
