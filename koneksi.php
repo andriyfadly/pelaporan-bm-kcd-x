@@ -32,4 +32,3 @@ try {
     error_log("Error Sistem: " . $e->getMessage());
     die("Pemberitahuan: Sistem sedang dalam perbaikan.");
 }
-// Tidak ada tag penutup ?> untuk mencegah output/whitespace tak terduga
