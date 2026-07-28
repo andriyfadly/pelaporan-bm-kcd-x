@@ -1,0 +1,6 @@
+# Kredensial sensitif - jangan commit
+.env
+
+# Editor/OS
+.DS_Store
+*.log

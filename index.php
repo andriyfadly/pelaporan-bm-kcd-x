@@ -1,4 +1,7 @@
 <?php
+// Load .env manual (host/user/pass) untuk koneksi DB
+require __DIR__ . '/env.php';
+
 // ========================================================
 // KEAMANAN 1: HTTP SECURITY HEADERS (STANDAR BSSN / SPBE)
 // ========================================================
@@ -65,10 +68,10 @@ mysqli_report(MYSQLI_REPORT_OFF);
 // ========================================================
 if (isset($_GET['search_barang'])) {
     header('Content-Type: application/json');
-    $host = "localhost";
-    $user = "root";
-    $pass = ""; 
-    
+    $host = getenv('DB_HOST') ?: 'localhost';
+    $user = getenv('DB_USER') ?: 'root';
+    $pass = getenv('DB_PASS') ?: '';
+
     $conn_inv = @new mysqli($host, $user, $pass, "db_inventaris");
     if ($conn_inv->connect_error) {
         error_log("DB Connection Error (db_inventaris): " . $conn_inv->connect_error);

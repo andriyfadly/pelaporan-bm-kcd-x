@@ -3,10 +3,13 @@
 // Memaksa mysqli untuk melemparkan Exception daripada memunculkan Warning di layar
 mysqli_report(MYSQLI_REPORT_STRICT | MYSQLI_REPORT_ERROR);
 
-// Konfigurasi Database
-$host = "localhost";
-$user = "root";
-$pass = ""; // PERINGATAN: Di server asli/hosting, JANGAN PERNAH biarkan password kosong!
+// Load .env manual (host/user/pass). Database tetap hardcode di sini.
+require __DIR__ . '/env.php';
+
+// Konfigurasi Database: host/user/pass dari env, database hardcode (belanja_modal)
+$host = getenv('DB_HOST') ?: 'localhost';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') ?: '';
 $db   = "belanja_modal";
 
 try {
