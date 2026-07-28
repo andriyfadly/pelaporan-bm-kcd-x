@@ -212,8 +212,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
 
                 $stmtInsert = $conn->prepare("INSERT INTO data_barang_acuan (id_sekolah, satuan_pendidikan, npsn, tanggal, kodering, bku, uraian, nominal, bulan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 
-                $stmtCariId = $conn->prepare("SELECT id FROM kode_sekolah WHERE LOWER(REPLACE(REPLACE(nama_sekolah, ' ', ''), CHAR(160), '')) = ? LIMIT 1");
-                $stmtCadangan = $conn->prepare("SELECT id FROM kode_sekolah WHERE LOWER(REPLACE(REPLACE(nama_sekolah, ' ', ''), CHAR(160), '')) LIKE ? LIMIT 1");
+                $stmtCariId = $conn->prepare("SELECT id FROM kode_sekolah WHERE LOWER(REPLACE(nama_sekolah, ' ', '')) = ? LIMIT 1");
+                $stmtCadangan = $conn->prepare("SELECT id FROM kode_sekolah WHERE LOWER(REPLACE(nama_sekolah, ' ', '')) LIKE ? LIMIT 1");
 
                 for ($row = 2; $row <= $highestRow; $row++) {
                     $satuan_pendidikan = htmlspecialchars(trim(strip_tags(cellToUtf8($worksheet->getCellByColumnAndRow(1, $row)->getValue() ?? ''))), ENT_QUOTES, 'UTF-8');
