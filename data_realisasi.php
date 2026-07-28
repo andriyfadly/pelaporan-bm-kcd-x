@@ -100,6 +100,9 @@ if (isset($_GET['proses_cetak_excel'])) {
     $filter_tahun = isset($_GET['filter_tahun']) ? (int)$_GET['filter_tahun'] : 0;
     $filter_barang = isset($_GET['filter_barang']) ? trim($_GET['filter_barang']) : '';
 
+    // Bungkus seluruh proses cetak: koneksi pakai MYSQLI_REPORT_STRICT, error lempar exception -> 500 blank tanpa ini
+    try {
+
     $nama_bulan_indo = [
         1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
         5 => 'MEI', 6 => 'JUNI', 7 => 'JULI', 8 => 'AGUSTUS',
@@ -389,12 +392,21 @@ if (isset($_GET['proses_cetak_excel'])) {
     }
 
     // MEMBERSIHKAN SELURUH BUFFER SEBELUM OUTPUT FILE DIKIRIM (KUNCI UTAMA ANTI ERROR SERVER)
-    if (ob_get_length()) {
+    // Bunuh SEMUA level output buffer agar tidak menumpuk xlsx di memori (penyebab 500/memory limit)
+    while (ob_get_level() > 0) {
         ob_end_clean();
     }
+    if (ob_get_length()) { ob_end_clean(); }
+
+    // Pastikan session sudah ditutup agar tidak mengunci file saat stream output besar
+    if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
+
+    // Bebaskan batas waktu saat menulis file besar (safe mode / php-fpm admin value mungkin override)
+    @set_time_limit(0);
+    @ini_set('memory_limit', '2048M');
 
     $filename = "Daftar_Pengadaan_Belanja_Modal_Bulan_" . ($filter_bulan > 0 ? $filter_bulan : 'All') . "_" . ($filter_tahun > 0 ? $filter_tahun : '2026') . ".xlsx";
-    
+
     // === FITUR BARU: Set Cookie untuk memberi sinyal ke JavaScript bahwa browser telah menerima file ===
     setcookie("download_status", "complete", [
         'expires' => time() + 60,
@@ -405,12 +417,38 @@ if (isset($_GET['proses_cetak_excel'])) {
     ]);
 
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
+    header('Pragma: public');
 
+    // Bunuh spreadsheet dari memori secepatnya setelah ditulis
     $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-    $writer->save('php://output');
+    try {
+        $writer->save('php://output');
+    } catch (\Throwable $e) {
+        // Catat ke log server, jangan bocorkan detail ke client
+        error_log("Export Excel data_realisasi gagal: " . $e->getMessage());
+        http_response_code(500);
+    }
+
+    $spreadsheet->disconnectWorksheets();
+    unset($writer, $spreadsheet);
     exit;
+    } catch (\Throwable $e) {
+        // Koneksi pakai MYSQLI_REPORT_STRICT; query/prepare gagal -> exception. Tangkap agar bukan 500 blank.
+        while (ob_get_level() > 0) { ob_end_clean(); }
+        error_log("Export Excel data_realisasi fatal: " . $e->getMessage() . " @ " . $e->getFile() . ":" . $e->getLine());
+        http_response_code(500);
+        // Sinyalkan client bahwa proses gagal agar modal progress berhenti, bukan menggantung
+        setcookie("download_status", "empty", [
+            'expires' => time() + 60,
+            'path' => '/',
+            'httponly' => false,
+            'samesite' => 'Lax',
+            'secure' => isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === '1')
+        ]);
+        exit;
+    }
 }
 
 // --- LOGIKA FILTERING DATA UNTUK VIEW HALAMAN ---
