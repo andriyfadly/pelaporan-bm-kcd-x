@@ -208,6 +208,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
                 $sukses = 0;
                 $gagal = 0;
                 $import_debug_badfields = []; // sementara: tangkap field non-UTF-8
+                $import_debug_last_op = 'belum mulai loop';
 
                 $stmtInsert = $conn->prepare("INSERT INTO data_barang_acuan (id_sekolah, satuan_pendidikan, npsn, tanggal, kodering, bku, uraian, nominal, bulan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 
@@ -222,17 +223,19 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
 
                     if ($role_user === 'admin') {
                         $clean_nama_excel = preg_replace('/[\s\x{00a0}]+/u', '', strtolower($satuan_pendidikan));
-                        
+
                         $stmtCariId->bind_param("s", $clean_nama_excel);
+                        $import_debug_last_op = "stmtCariId.execute row=$row hex=".bin2hex($clean_nama_excel);
                         $stmtCariId->execute();
                         $res_cari_id = $stmtCariId->get_result();
-                        
+
                         if ($res_cari_id && mysqli_num_rows($res_cari_id) > 0) {
                             $row_id = mysqli_fetch_assoc($res_cari_id);
                             $id_sekolah_insert = $row_id['id'];
                         } else {
                             $like_clean_nama = "%" . $clean_nama_excel . "%";
                             $stmtCadangan->bind_param("s", $like_clean_nama);
+                            $import_debug_last_op = "stmtCadangan.execute row=$row hex=".bin2hex($like_clean_nama);
                             $stmtCadangan->execute();
                             $res_cadangan = $stmtCadangan->get_result();
                             
@@ -270,13 +273,16 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
                     if(empty($uraian)) continue;
 
                     // DEBUG: deteksi field non-UTF-8 sebelum bind, simpan hex + row (ungated, sementara)
-                    foreach ([
+                    $import_debug_check = [
                         'id_sekolah' => (string)$id_sekolah_insert,
                         'satuan' => $satuan_pendidikan, 'npsn' => $npsn,
                         'tanggal' => $tanggal, 'kodering' => $kodering,
                         'bku' => $bku, 'uraian' => $uraian,
                         'nominal' => $nominal, 'bulan' => $bulan,
-                    ] as $namaField => $valField) {
+                        'clean_nama' => (string)($clean_nama_excel ?? ''),
+                        'like_clean_nama' => (string)($like_clean_nama ?? ''),
+                    ];
+                    foreach ($import_debug_check as $namaField => $valField) {
                         if (!preg_match('//u', (string)$valField)) {
                             $import_debug_badfields[] = "row=$row field=$namaField hex=" . bin2hex((string)$valField);
                             error_log("[DEBUG import_acuan] NON-UTF8 row=$row field=$namaField hex=" . bin2hex((string)$valField));
@@ -285,6 +291,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
 
                     $stmtInsert->bind_param("sssssssss", $id_sekolah_insert, $satuan_pendidikan, $npsn, $tanggal, $kodering, $bku, $uraian, $nominal, $bulan);
 
+                    $import_debug_last_op = "stmtInsert.execute row=$row";
                     if ($stmtInsert->execute()) {
                         $sukses++;
                     } else {
@@ -301,9 +308,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
             } catch (Exception $e) {
                 error_log("Import acuan gagal: " . $e->getMessage() . " | file=" . $e->getFile() . ":" . $e->getLine());
                 $debugHex = !empty($import_debug_badfields) ? " | NON-UTF8: " . implode("; ", $import_debug_badfields) : "";
+                $debugOp = " | LAST_OP: " . ($import_debug_last_op ?? '?');
                 $userMsg = (getenv('APP_DEBUG') === 'true')
-                    ? 'Error membaca file: ' . $e->getMessage() . $debugHex
-                    : 'Error membaca file: Gagal memproses data. Silakan coba file lain atau hubungi admin.' . $debugHex;
+                    ? 'Error membaca file: ' . $e->getMessage() . $debugHex . $debugOp
+                    : 'Error membaca file: Gagal memproses data. Silakan coba file lain atau hubungi admin.' . $debugHex . $debugOp;
                 echo json_encode(['status' => 'error', 'message' => $userMsg]);
                 exit;
             }
