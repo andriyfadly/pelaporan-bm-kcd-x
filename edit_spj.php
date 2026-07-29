@@ -46,12 +46,12 @@ $spk_groups = [];
 
 try {
     // =========================================================================
-    // 🌟 FITUR SINKRONISASI OTOMATIS (UPDATE & CLEAN) BERBASIS PREPARED STATEMENT
+    // 🔍 FITUR SINKRONISASI OTOMATIS (UPDATE & CLEAN) BERBASIS PREPARED STATEMENT
     // =========================================================================
 
     // 1. UPDATE: Sinkronisasi berdasarkan Dokumen SPK, Volume, dan Harga Satuan
-    $q_sync_upd = "UPDATE REALISASI_BARANG_SEKOLAH r
-                   INNER JOIN MASTER_BARANG_SEKOLAH m ON 
+    $q_sync_upd = "UPDATE realisasi_barang_sekolah r
+                   INNER JOIN master_barang_sekolah m ON 
                       r.id_sekolah = m.id_sekolah 
                       AND r.bulan_realisasi = m.bulan_realisasi
                       AND r.no_spk = m.no_spk
@@ -75,13 +75,13 @@ try {
     }
 
     // 2. DELETE (Auto-Clean): Jika nomor SPK tersebut sudah dihapus dari MASTER, bersihkan dari REALISASI
-    $q_sync_del = "DELETE FROM REALISASI_BARANG_SEKOLAH 
+    $q_sync_del = "DELETE FROM realisasi_barang_sekolah 
                    WHERE id_sekolah = ? 
                      AND kodering_belanja = ?
                      AND bulan_realisasi = ?
                      AND no_spk NOT IN (
                          SELECT no_spk COLLATE utf8mb4_general_ci
-                         FROM MASTER_BARANG_SEKOLAH 
+                         FROM master_barang_sekolah 
                          WHERE id_sekolah = ?
                            AND bulan_realisasi = ?
                      )";
@@ -94,9 +94,9 @@ try {
     }
 
 
-    // 🌟 1. AMBIL DATA ACUAN UTAMA: Menggunakan tabel DATA_BARANG_ACUAN & kolom nominal
+    // 🔍 1. AMBIL DATA ACUAN UTAMA: Menggunakan tabel data_barang_acuan & kolom nominal
     $q_acuan = "SELECT SUM(nominal) as total_acuan 
-                FROM DATA_BARANG_ACUAN 
+                FROM data_barang_acuan 
                 WHERE id_sekolah = ? 
                   AND kodering = ?";
 
@@ -112,9 +112,9 @@ try {
     }
 
 
-    // 🌟 2. AMBIL TOTAL REALISASI ASLI DARI DATABASE (BERDASARKAN KODERING & BULAN YANG DISINKRONKAN)
+    // 🔍 2. AMBIL TOTAL REALISASI ASLI DARI DATABASE (BERDASARKAN KODERING & BULAN YANG DISINKRONKAN)
     $q_realisasi = "SELECT SUM(nilai_perolehan) as total_realisasi_db 
-                    FROM REALISASI_BARANG_SEKOLAH 
+                    FROM realisasi_barang_sekolah 
                     WHERE id_sekolah = ? 
                       AND kodering_belanja = ? 
                       AND bulan_realisasi = ?
@@ -132,10 +132,10 @@ try {
     }
 
     // =========================================================================
-    // 🌟 3. QUERY UTAMA: AMBIL DATA REALISASI BARANG UNTUK LIST TABEL
+    // 🔍 3. QUERY UTAMA: AMBIL DATA REALISASI BARANG UNTUK LIST TABEL
     // =========================================================================
     $q_barang = "SELECT id, id_sekolah, id_uraian, no_sp2d, sumber_perolehan, kodering_belanja, bulan_realisasi, no_spk, ba_no, ba_tgl, kode_barang, nama_barang, jenis_aset, merk_tipe, satuan, volume, harga_satuan, nilai_perolehan, is_realisasi
-                 FROM REALISASI_BARANG_SEKOLAH 
+                 FROM realisasi_barang_sekolah 
                  WHERE id_sekolah = ? 
                    AND kodering_belanja = ?
                    AND bulan_realisasi = ?

@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Persiapkan query SEBELUM loop agar performa database maksimal & anti injeksi
             $stmt_find = mysqli_prepare($conn, "SELECT `id_master_barang` FROM `realisasi_barang_sekolah` WHERE `id` = ? AND `id_sekolah` = ? LIMIT 1");
             $stmt_del  = mysqli_prepare($conn, "DELETE FROM `realisasi_barang_sekolah` WHERE `id` = ? AND `id_sekolah` = ?");
-            $stmt_upd  = mysqli_prepare($conn, "UPDATE `MASTER_BARANG_SEKOLAH` SET `is_realisasi` = 0 WHERE `id` = ? AND `id_sekolah` = ?");
+            $stmt_upd  = mysqli_prepare($conn, "UPDATE `master_barang_sekolah` SET `is_realisasi` = 0 WHERE `id` = ? AND `id_sekolah` = ?");
             
             foreach ($arr_edit as $val) {
                 if (!is_array($val)) continue;
@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         mysqli_stmt_bind_param($stmt_del, "is", $id_realisasi, $id_sekolah);
                         if (mysqli_stmt_execute($stmt_del)) {
                             
-                            // 3. Tembak MASTER_BARANG_SEKOLAH menggunakan ID MASTER
+                            // 3. Tembak master_barang_sekolah menggunakan ID MASTER
                             if (!empty($id_master)) {
                                 mysqli_stmt_bind_param($stmt_upd, "is", $id_master, $id_sekolah);
                                 mysqli_stmt_execute($stmt_upd);
@@ -171,9 +171,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
             $stmt_insert = mysqli_prepare($conn, $query_insert);
-            $stmt_detail = mysqli_prepare($conn, "SELECT id_uraian, kode_barang, nama_barang, jenis_aset, merk_tipe, no_sertifikat, ukuran_bangunan, satuan, volume, harga_satuan FROM MASTER_BARANG_SEKOLAH WHERE id = ? AND id_sekolah = ?");
+            $stmt_detail = mysqli_prepare($conn, "SELECT id_uraian, kode_barang, nama_barang, jenis_aset, merk_tipe, no_sertifikat, ukuran_bangunan, satuan, volume, harga_satuan FROM master_barang_sekolah WHERE id = ? AND id_sekolah = ?");
             $stmt_check  = mysqli_prepare($conn, "SELECT id FROM realisasi_barang_sekolah WHERE id_sekolah = ? AND id_master_barang = ? AND kodering_belanja = ? LIMIT 1");
-            $stmt_upd_m  = mysqli_prepare($conn, "UPDATE MASTER_BARANG_SEKOLAH SET is_realisasi = 1 WHERE id = ? AND id_sekolah = ?");
+            $stmt_upd_m  = mysqli_prepare($conn, "UPDATE master_barang_sekolah SET is_realisasi = 1 WHERE id = ? AND id_sekolah = ?");
 
             if ($stmt_insert && $stmt_detail && $stmt_check && $stmt_upd_m) {
                 
