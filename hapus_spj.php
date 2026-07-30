@@ -1,6 +1,7 @@
 <?php
 session_start();
 include "koneksi.php";
+require_once __DIR__ . '/report_lock.php';
 
 header('Content-Type: application/json');
 
@@ -33,6 +34,15 @@ if (!isset($_POST['no_spk'])) {
 
 $no_spk = trim($_POST['no_spk']);
 $id_sekolah = $_SESSION['id_sekolah'];
+
+$stmtBulan = mysqli_prepare($conn, "SELECT DISTINCT `bulan_realisasi` FROM `realisasi_barang_sekolah` WHERE `no_spk` = ? AND `id_sekolah` = ?");
+mysqli_stmt_bind_param($stmtBulan, 'ss', $no_spk, $id_sekolah);
+mysqli_stmt_execute($stmtBulan);
+$resultBulan = mysqli_stmt_get_result($stmtBulan);
+while ($rowBulan = mysqli_fetch_assoc($resultBulan)) {
+    assert_report_unlocked($conn, (string)$id_sekolah, (int)$rowBulan['bulan_realisasi']);
+}
+mysqli_stmt_close($stmtBulan);
 
 $stmt = mysqli_prepare($conn, "
     DELETE FROM realisasi_barang_sekolah

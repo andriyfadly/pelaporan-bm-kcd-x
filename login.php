@@ -67,51 +67,66 @@ function catat_log($aksi, $user, $status) {
 // FUNGSI SISTEM ANTI BRUTE-FORCE BERBASIS USERNAME DAN IP
 // =========================================================================
 
-function get_login_attempt_file($username) {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    $key = hash('sha256', strtolower(trim((string)$username)) . "\0" . $ip);
-    return sys_get_temp_dir() . '/pelaporan_bm_login_' . $key . '.json';
+function get_login_attempt_file($scope, $value) {
+    $key = hash('sha256', $scope . "\0" . strtolower(trim((string)$value)));
+    return sys_get_temp_dir() . '/pelaporan_bm_login_' . $scope . '_' . $key . '.json';
+}
+
+function get_login_attempt_buckets($username) {
+    return [
+        'account' => [get_login_attempt_file('account', $username), 5],
+        'ip' => [get_login_attempt_file('ip', $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'), 20],
+    ];
 }
 
 function check_login_lockout($username) {
-    $file = get_login_attempt_file($username);
-    if (file_exists($file)) {
+    $remaining = 0;
+    foreach (get_login_attempt_buckets($username) as [$file]) {
+        if (!file_exists($file)) continue;
         $data = json_decode(@file_get_contents($file), true);
         if (isset($data['lockout_until']) && $data['lockout_until'] > time()) {
-            return ceil(($data['lockout_until'] - time()) / 60);
+            $remaining = max($remaining, (int)ceil(($data['lockout_until'] - time()) / 60));
         }
     }
-    return 0;
+    return $remaining;
 }
 
-function record_failed_login_attempt($username, $max_attempts = 3, $lockout_time = 900) {
-    $file = get_login_attempt_file($username);
-    $handle = fopen($file, 'c+');
-    if ($handle === false || !flock($handle, LOCK_EX)) return $max_attempts;
-    $fetched = json_decode(stream_get_contents($handle), true);
-    $data = is_array($fetched) ? $fetched : ['attempts' => 0, 'lockout_until' => 0];
-    
-    if (isset($data['lockout_until']) && $data['lockout_until'] > 0 && $data['lockout_until'] <= time()) {
-        $data['attempts'] = 0;
-        $data['lockout_until'] = 0;
+function record_failed_login_attempt($username, $lockout_time = 900) {
+    $accountAttempts = 0;
+    $now = time();
+    foreach (get_login_attempt_buckets($username) as $scope => [$file, $maxAttempts]) {
+        $handle = fopen($file, 'c+');
+        if ($handle === false || !flock($handle, LOCK_EX)) continue;
+        $fetched = json_decode(stream_get_contents($handle), true);
+        $data = is_array($fetched) ? $fetched : ['attempts' => 0, 'lockout_until' => 0, 'window_started_at' => $now];
+
+        $lockoutExpired = ($data['lockout_until'] ?? 0) > 0 && $data['lockout_until'] <= $now;
+        $windowExpired = ($data['window_started_at'] ?? 0) <= $now - $lockout_time;
+        if ($lockoutExpired || $windowExpired) {
+            $data['attempts'] = 0;
+            $data['lockout_until'] = 0;
+            $data['window_started_at'] = $now;
+        }
+
+        $data['attempts']++;
+        if ($data['attempts'] >= $maxAttempts) {
+            $data['lockout_until'] = $now + $lockout_time;
+        }
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, json_encode($data));
+        fflush($handle);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+
+        if ($scope === 'account') $accountAttempts = $data['attempts'];
     }
 
-    $data['attempts']++;
-    if ($data['attempts'] >= $max_attempts) {
-        $data['lockout_until'] = time() + $lockout_time;
-    }
-    ftruncate($handle, 0);
-    rewind($handle);
-    fwrite($handle, json_encode($data));
-    fflush($handle);
-    flock($handle, LOCK_UN);
-    fclose($handle);
-    
-    return $data['attempts'];
+    return $accountAttempts;
 }
 
 function reset_login_attempts($username) {
-    $file = get_login_attempt_file($username);
+    $file = get_login_attempt_file('account', $username);
     if (file_exists($file)) {
         @unlink($file);
     }
@@ -305,13 +320,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 catat_log("Login", $username, "SUKSES");
 
             } else {
-                $failed_count = record_failed_login_attempt($username, 3, 15 * 60);
-                $sisa_kesempatan = 3 - $failed_count;
+                $failed_count = record_failed_login_attempt($username, 15 * 60);
+                $sisa_kesempatan = max(0, 5 - $failed_count);
                 
                 if ($sisa_kesempatan > 0) {
                     $message = "Akun tidak ditemukan atau kombinasi salah! (Sisa percobaan: $sisa_kesempatan)";
                 } else {
-                    $message = "3 kali percobaan gagal! Akun dari alamat jaringan ini diblokir selama 15 menit.";
+                    $message = "Terlalu banyak percobaan gagal! Login diblokir selama 15 menit.";
                 }
                 
                 $status = "error";

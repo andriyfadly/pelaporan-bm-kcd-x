@@ -29,10 +29,12 @@ if (empty($csrf_token) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrf_toke
 }
 
 include "koneksi.php";
+require_once __DIR__ . '/report_lock.php';
 
 // Ambil data global dari form induk
 $id_sekolah       = $_SESSION['id_sekolah'] ?? '';
 $bulan_realisasi  = isset($_POST['bulan_realisasi']) ? (int)$_POST['bulan_realisasi'] : (int)date('n');
+assert_report_unlocked($conn, (string)$id_sekolah, $bulan_realisasi);
 $no_sp2d          = trim($_POST['no_sp2d'] ?? '');
 $sumber_perolehan = trim($_POST['sumber_perolehan'] ?? '');
 $no_spk           = trim($_POST['no_spk'] ?? '');

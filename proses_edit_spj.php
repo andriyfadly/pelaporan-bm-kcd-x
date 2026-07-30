@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 header('Content-Type: application/json; charset=utf-8');
 
 include "koneksi.php";
+require_once __DIR__ . '/report_lock.php';
 
 // Array penampung respon awal
 $response = [
@@ -57,6 +58,8 @@ if (empty($id_uraian) || $bulan_realisasi === 0 || empty($no_spk)) {
     echo json_encode($response);
     exit;
 }
+
+assert_report_unlocked($conn, (string)$id_sekolah, $bulan_realisasi);
 
 // 2. Tangkap Array Multi-Item Barang
 $arr_kode_barang     = $_POST['kode_barang'] ?? [];
