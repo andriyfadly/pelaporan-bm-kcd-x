@@ -391,7 +391,7 @@ if (isset($conn) && $conn instanceof mysqli) {
 
         // Polling Progress Baris
         let pollingInterval = setInterval(function() {
-            fetch(`cek_progres_unduh.php?t=${new Date().getTime()}`)
+            fetch(`cek_progres_unduh.php?csrf_token=${token}&t=${new Date().getTime()}`)
             .then(response => response.json())
             .then(data => {
                 let countData = parseInt(data.progress, 10) || 0;

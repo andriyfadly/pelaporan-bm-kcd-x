@@ -168,15 +168,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- LOGIKA REGISTER ---
     if ($mode === 'register') {
-        $sekolah_raw = isset($_POST['sekolah_pilihan']) ? $_POST['sekolah_pilihan'] : '';
-        
-        if (!empty($sekolah_raw) && strpos($sekolah_raw, '|') !== false) {
-            $sekolah_data = explode('|', $sekolah_raw);
-            $id_sekolah   = trim($sekolah_data[0]);
-            $nama_sekolah = trim($sekolah_data[1]);
-        } else {
-            $id_sekolah   = "";
-            $nama_sekolah = "";
+        $id_sekolah = filter_var($_POST['sekolah_pilihan'] ?? null, FILTER_VALIDATE_INT) ?: 0;
+        $nama_sekolah = '';
+        if ($id_sekolah > 0) {
+            $stmt_sekolah = mysqli_prepare($conn, "SELECT nama_sekolah FROM kode_sekolah WHERE id = ? LIMIT 1");
+            mysqli_stmt_bind_param($stmt_sekolah, "i", $id_sekolah);
+            mysqli_stmt_execute($stmt_sekolah);
+            $result_sekolah = mysqli_stmt_get_result($stmt_sekolah);
+            $row_sekolah = mysqli_fetch_assoc($result_sekolah);
+            $nama_sekolah = trim($row_sekolah['nama_sekolah'] ?? '');
+            mysqli_stmt_close($stmt_sekolah);
         }
 
         $password_raw = isset($_POST['password']) ? substr($_POST['password'], 0, 100) : '';
@@ -561,8 +562,7 @@ if ($mode === 'register') {
                                 $disabled_attr = $is_registered ? "disabled" : "";
                                 $display_name  = $is_registered ? $row_sekolah['nama_sekolah'] . " (Sudah Terdaftar)" : $row_sekolah['nama_sekolah'];
 
-                                $combined_value = $row_sekolah['id'] . "|" . $row_sekolah['nama_sekolah'];
-                                echo "<option value='". htmlspecialchars($combined_value, ENT_QUOTES, 'UTF-8') ."' " . $disabled_attr . ">" . htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8') . "</option>";
+                                echo "<option value='". (int)$row_sekolah['id'] ."' " . $disabled_attr . ">" . htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8') . "</option>";
                             }
                             echo "</optgroup>"; 
                         } else {

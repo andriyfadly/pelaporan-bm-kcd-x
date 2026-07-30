@@ -9,6 +9,19 @@ include "koneksi.php";
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header('Content-Type: application/json');
 
+if (!isset($_SESSION['login']) || ($_SESSION['role'] ?? '') !== 'admin') {
+    http_response_code(403);
+    echo json_encode(['error' => 'Akses ditolak.']);
+    exit;
+}
+
+$csrf_token = $_GET['csrf_token'] ?? '';
+if (empty($csrf_token) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrf_token)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Token keamanan tidak valid.']);
+    exit;
+}
+
 // 1. Deteksi jika javascript meminta inisialisasi total baris di awal klik
 if (isset($_GET['init']) && isset($_GET['bulan']) && isset($_GET['tahun'])) {
     $b = (int)$_GET['bulan'];

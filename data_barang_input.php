@@ -605,16 +605,17 @@ function tambahItemFormBaru(savedData = null, startOpen = false) {
     let defaultAset = (kategoriBelanjaUtama === 'Buku' ? 'Buku' : 'PERSONAL KOMPUTER');
     let isBuku = (kategoriBelanjaUtama === 'Buku');
 
-    let id_val = savedData ? savedData.id : '';
-    let kode_barang = savedData ? savedData.kode_barang : '';
-    let nama_barang = savedData ? savedData.nama_barang : '';
-    let jenis_aset = savedData ? savedData.jenis_aset : defaultAset;
-    let merk_tipe = savedData ? savedData.merk_tipe : '';
-    let no_sertifikat = savedData ? savedData.no_sertifikat : '';
-    let ukuran_bangunan = savedData ? savedData.ukuran_bangunan : '-';
-    let satuan = savedData ? savedData.satuan : ''; 
-    let volume = savedData ? savedData.volume : ''; 
-    let harga_satuan = savedData ? savedData.harga_satuan : '';
+    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));
+    let id_val = escapeHtml(savedData ? savedData.id : '');
+    let kode_barang = escapeHtml(savedData ? savedData.kode_barang : '');
+    let nama_barang = escapeHtml(savedData ? savedData.nama_barang : '');
+    let jenis_aset = escapeHtml(savedData ? savedData.jenis_aset : defaultAset);
+    let merk_tipe = escapeHtml(savedData ? savedData.merk_tipe : '');
+    let no_sertifikat = escapeHtml(savedData ? savedData.no_sertifikat : '');
+    let ukuran_bangunan = escapeHtml(savedData ? savedData.ukuran_bangunan : '-');
+    let satuan = escapeHtml(savedData ? savedData.satuan : '');
+    let volume = escapeHtml(savedData ? savedData.volume : '');
+    let harga_satuan = escapeHtml(savedData ? savedData.harga_satuan : '');
 
     let headLabel = nama_barang ? `ITEM: ${nama_barang}` : 'ITEM BARANG BARU';
     let collapseClass = startOpen ? "" : " is-collapsed";
@@ -741,13 +742,20 @@ function cariKatalogPaguAjax(inputElement, idx) {
                 data.forEach(item => {
                     let itemDiv = document.createElement('div');
                     itemDiv.className = 'saran-item';
-                    itemDiv.innerHTML = `
-                        <div class="saran-nama-barang">${item.nama_barang}</div>
-                        <div class="mt-2 d-flex align-items-center gap-2">
-                            <span class="badge bg-light text-dark border" style="font-size:11px;">${item.kode_barang}</span>
-                            <span class="saran-jenis-aset-badge">${item.jenis_aset}</span>
-                        </div>
-                    `;
+                    const name = document.createElement('div');
+                    name.className = 'saran-nama-barang';
+                    name.textContent = item.nama_barang;
+                    const meta = document.createElement('div');
+                    meta.className = 'mt-2 d-flex align-items-center gap-2';
+                    const code = document.createElement('span');
+                    code.className = 'badge bg-light text-dark border';
+                    code.style.fontSize = '11px';
+                    code.textContent = item.kode_barang;
+                    const type = document.createElement('span');
+                    type.className = 'saran-jenis-aset-badge';
+                    type.textContent = item.jenis_aset;
+                    meta.append(code, type);
+                    itemDiv.append(name, meta);
 
                     itemDiv.onclick = function() {
                         document.getElementById(`kode_barang_${idx}`).value = item.kode_barang;

@@ -58,7 +58,7 @@ $_SESSION['progress_download'] = 0;
 session_write_close(); 
 
 // Proteksi file
-if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
+if (!isset($_SESSION['login']) || $_SESSION['login'] !== true || ($_SESSION['role'] ?? '') !== 'admin') {
     ob_end_clean();
     http_response_code(401);
     header('Content-Type: application/json; charset=utf-8');

@@ -1,10 +1,20 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // 1. Pasang Security Headers
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+
+if (!isset($_SESSION['login']) || ($_SESSION['role'] ?? '') !== 'user') {
+    http_response_code(403);
+    echo json_encode([]);
+    exit;
+}
 
 // 2. Batasi hanya Method GET yang diizinkan
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
