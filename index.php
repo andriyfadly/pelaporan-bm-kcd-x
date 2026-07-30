@@ -1,6 +1,7 @@
 <?php
 // Load .env manual (host/user/pass) untuk koneksi DB
 require __DIR__ . '/env.php';
+$csp_nonce = base64_encode(random_bytes(18));
 
 // ========================================================
 // KEAMANAN 1: HTTP SECURITY HEADERS (STANDAR BSSN / SPBE)
@@ -10,7 +11,7 @@ header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net https://cloudflareinsights.com https://static.cloudflareinsights.com;");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; script-src-elem 'self' 'nonce-$csp_nonce' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net https://cloudflareinsights.com https://static.cloudflareinsights.com;");
 
 // ========================================================
 // KEAMANAN 2: SESSION HARDENING & COOKIE PROTECTION
@@ -757,9 +758,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['simpan_realisasi']) 
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script nonce="<?= htmlspecialchars($csp_nonce, ENT_QUOTES, 'UTF-8'); ?>" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
+<script nonce="<?= htmlspecialchars($csp_nonce, ENT_QUOTES, 'UTF-8'); ?>">
+    const SCRIPT_NONCE = <?= json_encode($csp_nonce); ?>;
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const mainContent = document.getElementById('ajax-container');
     const dashboardHtml = mainContent.innerHTML; 
@@ -828,6 +830,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['simpan_realisasi']) 
             const scripts = mainContent.querySelectorAll("script");
             scripts.forEach(s => {
                 const newScript = document.createElement("script");
+                newScript.nonce = SCRIPT_NONCE;
                 newScript.text = s.text;
                 document.body.appendChild(newScript).parentNode.removeChild(newScript);
             });

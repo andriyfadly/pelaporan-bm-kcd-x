@@ -9,13 +9,19 @@ include "koneksi.php";
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header('Content-Type: application/json');
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Metode request tidak valid.']);
+    exit;
+}
+
 if (!isset($_SESSION['login']) || ($_SESSION['role'] ?? '') !== 'admin') {
     http_response_code(403);
     echo json_encode(['error' => 'Akses ditolak.']);
     exit;
 }
 
-$csrf_token = $_GET['csrf_token'] ?? '';
+$csrf_token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
 if (empty($csrf_token) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrf_token)) {
     http_response_code(403);
     echo json_encode(['error' => 'Token keamanan tidak valid.']);
@@ -23,9 +29,9 @@ if (empty($csrf_token) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrf_toke
 }
 
 // 1. Deteksi jika javascript meminta inisialisasi total baris di awal klik
-if (isset($_GET['init']) && isset($_GET['bulan']) && isset($_GET['tahun'])) {
-    $b = (int)$_GET['bulan'];
-    $t = (int)$_GET['tahun'];
+if (isset($_POST['init'], $_POST['bulan'], $_POST['tahun'])) {
+    $b = (int)$_POST['bulan'];
+    $t = (int)$_POST['tahun'];
     
     // Perbaikan Query: validasi tanggal tanpa banding literal '0000-00-00' (strict mode MySQL menolak)
     $queryStr = "SELECT COUNT(*) as total FROM `realisasi_barang_sekolah`

@@ -330,11 +330,15 @@ if (isset($conn) && $conn instanceof mysqli) {
         // Sanitasi parameter di frontend sebelum dikirim
         const bulan = encodeURIComponent(bulanSelect.value);
         const tahun = encodeURIComponent(tahunSelect.value);
-        const token = encodeURIComponent(csrfToken);
+        const progressRequest = (body = null) => fetch('cek_progres_unduh.php', {
+            method: 'POST',
+            headers: {'X-CSRF-Token': csrfToken},
+            body
+        });
         const namaBulan = bulanSelect.options[bulanSelect.selectedIndex].text;
 
         // --- LANGKAH 1: PRE-FLIGHT CHECK (Cek Ketersediaan Data dengan CSRF) ---
-        fetch(`cek_progres_unduh.php?init=1&bulan=${bulan}&tahun=${tahun}&csrf_token=${token}&t=${new Date().getTime()}`)
+        progressRequest(new URLSearchParams({init: '1', bulan, tahun}))
         .then(res => {
             if (!res.ok) { throw new Error("BYPASS_TO_PROCESS"); }
             return res.json();
@@ -391,7 +395,7 @@ if (isset($conn) && $conn instanceof mysqli) {
 
         // Polling Progress Baris
         let pollingInterval = setInterval(function() {
-            fetch(`cek_progres_unduh.php?csrf_token=${token}&t=${new Date().getTime()}`)
+            progressRequest()
             .then(response => response.json())
             .then(data => {
                 let countData = parseInt(data.progress, 10) || 0;

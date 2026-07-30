@@ -64,35 +64,17 @@ function catat_log($aksi, $user, $status) {
 }
 
 // =========================================================================
-// FUNGSI SISTEM ANTI BRUTE-FORCE BERBASIS PERANGKAT (PER-DEVICE LOCKOUT)
+// FUNGSI SISTEM ANTI BRUTE-FORCE BERBASIS USERNAME DAN IP
 // =========================================================================
 
-function get_device_hash() {
+function get_login_attempt_file($username) {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    $agent = $_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN';
-    
-    if (!isset($_COOKIE['dev_sec_token'])) {
-        $device_token = bin2hex(random_bytes(16));
-        $is_secure = (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === '1'));
-        
-        setcookie('dev_sec_token', $device_token, [
-            'expires' => time() + (86400 * 365), 
-            'path' => '/',
-            'httponly' => true,
-            'samesite' => 'Strict',
-            'secure' => $is_secure
-        ]);
-        $_COOKIE['dev_sec_token'] = $device_token;
-    } else {
-        $device_token = $_COOKIE['dev_sec_token'];
-    }
-
-    return md5($ip . '_' . $agent . '_' . $device_token);
+    $key = hash('sha256', strtolower(trim((string)$username)) . "\0" . $ip);
+    return sys_get_temp_dir() . '/pelaporan_bm_login_' . $key . '.json';
 }
 
-function check_device_lockout($max_attempts = 3, $lockout_time = 900) {
-    $device_hash = get_device_hash();
-    $file = sys_get_temp_dir() . '/bf_dev_' . $device_hash . '.json';
+function check_login_lockout($username) {
+    $file = get_login_attempt_file($username);
     if (file_exists($file)) {
         $data = json_decode(@file_get_contents($file), true);
         if (isset($data['lockout_until']) && $data['lockout_until'] > time()) {
@@ -102,16 +84,12 @@ function check_device_lockout($max_attempts = 3, $lockout_time = 900) {
     return 0;
 }
 
-function record_failed_device_attempt($max_attempts = 3, $lockout_time = 900) {
-    $device_hash = get_device_hash();
-    $file = sys_get_temp_dir() . '/bf_dev_' . $device_hash . '.json';
-    $data = ['attempts' => 0, 'lockout_until' => 0];
-    if (file_exists($file)) {
-        $fetched = json_decode(@file_get_contents($file), true);
-        if (is_array($fetched)) {
-            $data = $fetched;
-        }
-    }
+function record_failed_login_attempt($username, $max_attempts = 3, $lockout_time = 900) {
+    $file = get_login_attempt_file($username);
+    $handle = fopen($file, 'c+');
+    if ($handle === false || !flock($handle, LOCK_EX)) return $max_attempts;
+    $fetched = json_decode(stream_get_contents($handle), true);
+    $data = is_array($fetched) ? $fetched : ['attempts' => 0, 'lockout_until' => 0];
     
     if (isset($data['lockout_until']) && $data['lockout_until'] > 0 && $data['lockout_until'] <= time()) {
         $data['attempts'] = 0;
@@ -122,14 +100,18 @@ function record_failed_device_attempt($max_attempts = 3, $lockout_time = 900) {
     if ($data['attempts'] >= $max_attempts) {
         $data['lockout_until'] = time() + $lockout_time;
     }
-    @file_put_contents($file, json_encode($data), LOCK_EX);
+    ftruncate($handle, 0);
+    rewind($handle);
+    fwrite($handle, json_encode($data));
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
     
     return $data['attempts'];
 }
 
-function reset_device_attempts() {
-    $device_hash = get_device_hash();
-    $file = sys_get_temp_dir() . '/bf_dev_' . $device_hash . '.json';
+function reset_login_attempts($username) {
+    $file = get_login_attempt_file($username);
     if (file_exists($file)) {
         @unlink($file);
     }
@@ -248,11 +230,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- LOGIKA LOGIN ---
     elseif ($mode === 'login') {
         
-        $sisa_menit = check_device_lockout(3, 15 * 60);
+        $sisa_menit = check_login_lockout($username);
         if ($sisa_menit > 0) {
-            $message = "Terlalu banyak percobaan gagal! Akses dari perangkat ini diblokir sementara. Coba lagi dalam $sisa_menit menit.";
+            $message = "Terlalu banyak percobaan gagal! Akun dari alamat jaringan ini diblokir sementara. Coba lagi dalam $sisa_menit menit.";
             $status = "error";
-            catat_log("Login Attempt", $username, "DIBLOKIR (Brute-Force Device)");
+            catat_log("Login Attempt", $username, "DIBLOKIR (Brute-Force)");
             goto skip_login;
         }
 
@@ -289,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                reset_device_attempts();
+                reset_login_attempts($username);
                 unset($_SESSION['login_attempts']);
                 unset($_SESSION['lockout']);
 
@@ -323,13 +305,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 catat_log("Login", $username, "SUKSES");
 
             } else {
-                $failed_count = record_failed_device_attempt(3, 15 * 60);
+                $failed_count = record_failed_login_attempt($username, 3, 15 * 60);
                 $sisa_kesempatan = 3 - $failed_count;
                 
                 if ($sisa_kesempatan > 0) {
-                    $message = "Akun tidak ditemukan atau kombinasi salah! (Sisa percobaan di perangkat ini: $sisa_kesempatan)";
+                    $message = "Akun tidak ditemukan atau kombinasi salah! (Sisa percobaan: $sisa_kesempatan)";
                 } else {
-                    $message = "3 kali percobaan gagal! Akses dari perangkat ini diblokir selama 15 menit.";
+                    $message = "3 kali percobaan gagal! Akun dari alamat jaringan ini diblokir selama 15 menit.";
                 }
                 
                 $status = "error";
