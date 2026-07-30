@@ -95,10 +95,10 @@ $is_readonly = ($status_laporan === 'Menunggu Approval' || $status_laporan === '
 // =========================================================================================
 // ✅ PROSES AKSI HAPUS SPJ PER ITEM BARANG (WITH CSRF & IDOR PROTECTION)
 // =========================================================================================
-if (isset($_GET['aksi']) && $_GET['aksi'] === 'hapus' && isset($_GET['id_spj'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus' && isset($_POST['id_spj'])) {
     
     // Validasi Token CSRF
-    if (!isset($_GET['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_GET['csrf_token'])) {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         echo "<script>alert('Akses Ditolak: Token Keamanan (CSRF) Tidak Valid!'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
         exit;
     }
@@ -109,7 +109,7 @@ if (isset($_GET['aksi']) && $_GET['aksi'] === 'hapus' && isset($_GET['id_spj']))
         exit;
     }
 
-    $id_hapus = (int)$_GET['id_spj'];
+    $id_hapus = (int)$_POST['id_spj'];
     
     // Mulai transaksi terisolasi
     mysqli_begin_transaction($conn);
@@ -147,10 +147,10 @@ if (isset($_GET['aksi']) && $_GET['aksi'] === 'hapus' && isset($_GET['id_spj']))
 // =========================================================================================
 // ✅ PROSES AKSI HAPUS MASSAL SATU DOKUMEN SPK LENGKAP (WITH CSRF & IDOR PROTECTION)
 // =========================================================================================
-if (isset($_GET['aksi']) && $_GET['aksi'] === 'hapus_spk' && isset($_GET['no_spk'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus_spk' && isset($_POST['no_spk'])) {
     
     // Validasi Token CSRF
-    if (!isset($_GET['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_GET['csrf_token'])) {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         echo "<script>alert('Akses Ditolak: Token Keamanan (CSRF) Tidak Valid!'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
         exit;
     }
@@ -161,7 +161,7 @@ if (isset($_GET['aksi']) && $_GET['aksi'] === 'hapus_spk' && isset($_GET['no_spk
         exit;
     }
 
-    $spk_hapus = $_GET['no_spk'];
+    $spk_hapus = trim($_POST['no_spk']);
     
     // Mulai transaksi terisolasi
     mysqli_begin_transaction($conn);
@@ -414,9 +414,14 @@ foreach ($list_barang_sekolah as $brg) {
                                                             <a href="index.php?p=data_barang_input.php&no_spk_edit=<?= urlencode($grup['no_spk']); ?>&bulan_realisasi=<?= $bulan_aktif; ?>" class="btn btn-xs btn-primary d-inline-flex align-items-center gap-1" title="Edit Dokumen SPK" style="border-radius:6px; padding: 4px 8px !important;">
                                                                 <i class="bi bi-pencil-square" style="font-size: 11px;"></i> Edit
                                                             </a>
-                                                            <a href="index.php?p=data_barang.php&bulan_realisasi=<?= $bulan_aktif; ?>&aksi=hapus_spk&no_spk=<?= urlencode($grup['no_spk']); ?>&csrf_token=<?= $_SESSION['csrf_token']; ?>" class="btn btn-xs btn-danger d-inline-flex align-items-center gap-1" title="Hapus Dokumen SPK" onclick="return confirm('Peringatan Keras! Apakah Anda yakin ingin menghapus SELURUH ITEM BARANG di dalam Dokumen SPK [<?= htmlspecialchars($grup['no_spk'], ENT_QUOTES, 'UTF-8'); ?>] ini?')" style="border-radius:6px; padding: 4px 8px !important;">
-                                                                <i class="bi bi-trash3-fill" style="font-size: 11px;"></i> Hapus
-                                                            </a>
+                                                            <form method="POST" action="index.php?p=data_barang.php&bulan_realisasi=<?= $bulan_aktif; ?>" class="d-inline" onsubmit="return confirm('Peringatan Keras! Apakah Anda yakin ingin menghapus SELURUH ITEM BARANG di dalam Dokumen SPK [<?= htmlspecialchars($grup['no_spk'], ENT_QUOTES, 'UTF-8'); ?>] ini?')">
+                                                                <input type="hidden" name="aksi" value="hapus_spk">
+                                                                <input type="hidden" name="no_spk" value="<?= htmlspecialchars($grup['no_spk'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                                <button type="submit" class="btn btn-xs btn-danger d-inline-flex align-items-center gap-1" title="Hapus Dokumen SPK" style="border-radius:6px; padding: 4px 8px !important;">
+                                                                    <i class="bi bi-trash3-fill" style="font-size: 11px;"></i> Hapus
+                                                                </button>
+                                                            </form>
                                                         <?php endif; ?>
                                                     </div>
                                                 </td>
@@ -442,9 +447,12 @@ foreach ($list_barang_sekolah as $brg) {
                                                         <i class="bi bi-lock-fill"></i>
                                                     </button>
                                                 <?php else: ?>
-                                                    <a href="index.php?p=data_barang.php&bulan_realisasi=<?= $bulan_aktif; ?>&aksi=hapus&id_spj=<?= (int)$item_brg['id']; ?>&csrf_token=<?= $_SESSION['csrf_token']; ?>" class="btn btn-sm btn-outline-danger p-1 border-0" onclick="return confirm('Apakah anda yakin ingin menghapus barang [<?= htmlspecialchars($item_brg['nama_barang'], ENT_QUOTES, 'UTF-8'); ?>] ini dari SPK?')">
-                                                        <i class="bi bi-trash3-fill"></i>
-                                                    </a>
+                                                    <form method="POST" action="index.php?p=data_barang.php&bulan_realisasi=<?= $bulan_aktif; ?>" class="d-inline" onsubmit="return confirm('Apakah anda yakin ingin menghapus barang [<?= htmlspecialchars($item_brg['nama_barang'], ENT_QUOTES, 'UTF-8'); ?>] ini dari SPK?')">
+                                                        <input type="hidden" name="aksi" value="hapus">
+                                                        <input type="hidden" name="id_spj" value="<?= (int)$item_brg['id']; ?>">
+                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger p-1 border-0"><i class="bi bi-trash3-fill"></i></button>
+                                                    </form>
                                                 <?php endif; ?>
                                             </td>
 

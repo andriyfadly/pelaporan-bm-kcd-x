@@ -150,6 +150,9 @@ $sheetMaster->setCellValue('D1', 'JENIS ASET');
 $sheetMaster->setCellValue('E1', 'UMUR EKONOMIS');
 
 $db_inv = getenv('DB_INV') ?: 'db_inventaris';
+if (!preg_match('/^[A-Za-z0-9_]+$/', $db_inv)) {
+    throw new RuntimeException('Nama database inventaris tidak valid.');
+}
 $query_master_inventaris = "SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis
                             FROM `" . $db_inv . "`.kode_barang
                             WHERE kode_barang IS NOT NULL AND kode_barang != ''";

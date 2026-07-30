@@ -135,8 +135,13 @@ if(isset($_POST['action']) && $_POST['action'] === 'import_excel_master'){
 
         $ext = strtolower(pathinfo($_FILES['file_excel']['name'], PATHINFO_EXTENSION));
         $allowed_ext = ['xlsx', 'xls'];
+        $allowed_mime = [
+            'xls' => ['application/vnd.ms-excel', 'application/x-ole-storage'],
+            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
+        ];
+        $file_mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['file_excel']['tmp_name']);
 
-        if(in_array($ext, $allowed_ext, true)){
+        if(in_array($ext, $allowed_ext, true) && in_array($file_mime, $allowed_mime[$ext], true)){
             try {
                 $file = $_FILES['file_excel']['tmp_name'];
                 $spreadsheet = IOFactory::load($file);

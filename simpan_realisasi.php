@@ -24,6 +24,12 @@ if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'user') {
 include "koneksi.php";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $csrf_token = $_POST['csrf_token'] ?? '';
+    if (empty($csrf_token) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrf_token)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Token keamanan tidak valid.']);
+        exit;
+    }
     
     // Ambil data session & parameter dasar utama + sanitasi awal
     $id_sekolah       = isset($_SESSION['id_sekolah']) ? trim((string)$_SESSION['id_sekolah']) : ''; 

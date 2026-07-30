@@ -454,6 +454,7 @@ function prosesKirim(event) {
     if (!form) return;
 
     let formData = new FormData(form);
+    formData.append('csrf_token', <?= json_encode($_SESSION['csrf_token']); ?>);
     let btnKirim = document.getElementById('btnKirimLaporan');
 
     if (!btnKirim) return;

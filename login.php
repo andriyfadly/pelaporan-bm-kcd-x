@@ -50,11 +50,6 @@ if (file_exists('koneksi.php')) {
     die("Error: File 'koneksi.php' tidak ditemukan. Pastikan file tersebut ada di folder yang sama.");
 }
 
-// Proteksi Tambahan: Amankan file log dari akses langsung via browser (.htaccess)
-if (!file_exists('.htaccess')) {
-    @file_put_contents('.htaccess', "<Files \"auth_security_log.txt\">\n    Order Allow,Deny\n    Deny from all\n</Files>\n");
-}
-
 // Fungsi Audit Log (Sanitasi CRLF Log Injection)
 function catat_log($aksi, $user, $status) {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
@@ -65,7 +60,7 @@ function catat_log($aksi, $user, $status) {
     $status_clean = str_replace(["\r", "\n"], '', $status);
 
     $log_pesan = "[$waktu] IP: $ip | USER: $user_clean | AKSI: $aksi_clean | STATUS: $status_clean" . PHP_EOL;
-    file_put_contents('auth_security_log.txt', $log_pesan, FILE_APPEND | LOCK_EX);
+    file_put_contents(sys_get_temp_dir() . '/pelaporan_bm_auth.log', $log_pesan, FILE_APPEND | LOCK_EX);
 }
 
 // =========================================================================
@@ -304,8 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['username'] = $row['username'];
                 $_SESSION['user_agent'] = md5($_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN');
                 
-                // Penentuan Role (Mendukung kolom database 'role' maupun pengecekan username)
-                $user_role = $row['role'] ?? ((strtolower($row['username']) === 'admin' || $row['id_sekolah'] == 0) ? 'admin' : 'user');
+                $user_role = $row['role'] ?? 'user';
 
                 if ($user_role === 'admin') {
                     $_SESSION['id_sekolah'] = '0'; 

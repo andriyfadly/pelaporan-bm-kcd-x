@@ -9,10 +9,14 @@ if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'user') {
     exit;
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 include "koneksi.php";
 
 // Tangkap parameter dari URL acuan belanja modal
-$id_uraian        = isset($_GET['id_uraian']) ? mysqli_real_escape_string($conn, $_GET['id_uraian']) : '';
+$id_uraian        = filter_var($_GET['id_uraian'] ?? null, FILTER_VALIDATE_INT) ?: 0;
 $kodering         = isset($_GET['kodering']) ? htmlspecialchars($_GET['kodering']) : '';
 $sisa_awal        = isset($_GET['sisa']) ? (float)$_GET['sisa'] : 0;
 $bulan_realisasi  = isset($_GET['bulan_realisasi']) ? (int)$_GET['bulan_realisasi'] : 0;
@@ -20,7 +24,10 @@ $bulan_realisasi  = isset($_GET['bulan_realisasi']) ? (int)$_GET['bulan_realisas
 // Cari judul acuan utama (Uraian Belanja) berdasarkan id_uraian
 $nama_uraian_kegiatan = "Uraian Belanja Tidak Diketahui";
 if (!empty($id_uraian)) {
-    $q_judul = mysqli_query($conn, "SELECT `uraian` FROM `data_barang_acuan` WHERE `id` = '$id_uraian' LIMIT 1");
+    $stmt_judul = mysqli_prepare($conn, "SELECT `uraian` FROM `data_barang_acuan` WHERE `id` = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmt_judul, "i", $id_uraian);
+    mysqli_stmt_execute($stmt_judul);
+    $q_judul = mysqli_stmt_get_result($stmt_judul);
     if ($q_judul && mysqli_num_rows($q_judul) > 0) {
         $r_judul = mysqli_fetch_assoc($q_judul);
         $nama_uraian_kegiatan = $r_judul['uraian'];
@@ -697,6 +704,7 @@ if (!empty($id_uraian)) {
         formData.append('id_uraian', document.getElementById('payload_id_uraian').value);
         formData.append('kodering_belanja', document.getElementById('payload_kodering').value);
         formData.append('bulan_realisasi', document.getElementById('payload_bulan').value);
+        formData.append('csrf_token', <?= json_encode($_SESSION['csrf_token']); ?>);
         formData.append('no_sp2ds', document.getElementById('no_sp2ds').value);
         formData.append('sumber_perolehan', fSumber);
         formData.append('no_spk', fNoSpk);
