@@ -88,7 +88,7 @@ $id_sekolah_session = $_SESSION['id_sekolah'] ?? '';
 
 
 // ==============================================================================
-// 1. LOGIKA BACKEND EXCEL: EXPORT LAPORAN UTAMA (FORMAT LAMA - SEMUA DATA)
+// 1. LOGIKA BACKEND EXCEL: EXPORT LAPORAN UTAMA (SUPER FAST BATCH INJECTION)
 // ==============================================================================
 if (isset($_GET['proses_cetak_excel'])) {
 
@@ -160,7 +160,7 @@ if (isset($_GET['proses_cetak_excel'])) {
 
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 
-    // -- SHEET REFERENSI 'KODE BARANG' --
+    // -- SHEET REFERENSI 'KODE BARANG' (BULK INJECTION) --
     $sheetMaster = $spreadsheet->createSheet();
     $sheetMaster->setTitle('KODE BARANG');
     $sheetMaster->setCellValue('A1', 'KODE BARANG'); $sheetMaster->setCellValue('B1', 'URAIAN');
@@ -168,20 +168,24 @@ if (isset($_GET['proses_cetak_excel'])) {
     $sheetMaster->setCellValue('E1', 'UMUR EKONOMIS');
 
     $query_master_inventaris = "SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis FROM db_inventaris.kode_barang WHERE kode_barang IS NOT NULL AND kode_barang != ''";
-    $qMaster = mysqli_query($conn, $query_master_inventaris);
+    $qMaster = @mysqli_query($conn, $query_master_inventaris);
     $batasMaster = 2;
 
     if ($qMaster) {
-        $mRow = 2;
+        $masterRows = [];
         while($m = mysqli_fetch_assoc($qMaster)) {
-            $sheetMaster->setCellValueExplicit('A' . $mRow, trim($m['kode_barang']), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheetMaster->setCellValue('B' . $mRow, safeExcelVal($m['uraian']));
-            $sheetMaster->setCellValueExplicit('C' . $mRow, trim($m['kodering_aset']), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheetMaster->setCellValue('D' . $mRow, safeExcelVal($m['jenis_aset']));
-            $sheetMaster->setCellValue('E' . $mRow, (int)$m['umur_ekonomis']);
-            $mRow++;
+            $masterRows[] = [
+                safeExcelVal(trim($m['kode_barang'])),
+                safeExcelVal($m['uraian']),
+                safeExcelVal(trim($m['kodering_aset'])),
+                safeExcelVal($m['jenis_aset']),
+                (int)$m['umur_ekonomis']
+            ];
         }
-        $batasMaster = $mRow - 1;
+        if (!empty($masterRows)) {
+            $sheetMaster->fromArray($masterRows, NULL, 'A2');
+            $batasMaster = count($masterRows) + 1;
+        }
     }
     if ($batasMaster < 2) { $batasMaster = 2; }
 
@@ -232,11 +236,17 @@ if (isset($_GET['proses_cetak_excel'])) {
     foreach ($kolomMerah as $cell) { $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FF0000'); }
 
     $formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
-    $rowNum = 10; $noIdx = 1; $currentCount = 0;
+    
+    // Tracking panjang string untuk Auto-width instan di PHP
+    $maxLenCol = array_fill_keys(range('A', 'Y'), 0);
+    $dataRows = [];
+    $rowNum = 10; 
+    $noIdx = 1; 
+    $currentCount = 0;
 
     while ($row = mysqli_fetch_assoc($result)) {
         $currentCount++;
-        if ($currentCount === 1 || $currentCount % 50 === 0 || $currentCount === $totalRows) {
+        if ($currentCount === 1 || $currentCount % 100 === 0 || $currentCount === $totalRows) {
             if (session_status() === PHP_SESSION_NONE) { session_start(); }
             $_SESSION['progress_download'] = round(($currentCount / $totalRows) * 100); 
             session_write_close(); 
@@ -249,57 +259,107 @@ if (isset($_GET['proses_cetak_excel'])) {
         }
 
         $nama_sekolah_tampil = !empty($row['nama_sekolah_db']) ? $row['nama_sekolah_db'] : $nama_sekolah_user;
-        $sheet->setCellValue('A' . $rowNum, $noIdx); $sheet->setCellValue('B' . $rowNum, safeExcelVal($row['no_sp2d']));
-        $sheet->setCellValue('C' . $rowNum, safeExcelVal($row['sumber_perolehan'])); $sheet->setCellValue('D' . $rowNum, safeExcelVal($row['kodering_belanja']));
-        $sheet->setCellValue('E' . $rowNum, safeExcelVal($row['no_spk'])); $sheet->setCellValue('F' . $rowNum, safeExcelVal($row['ba_no']));
-        $sheet->setCellValue('G' . $rowNum, $tg); $sheet->setCellValue('H' . $rowNum, $bl); $sheet->setCellValue('I' . $rowNum, $thn);
-        $sheet->setCellValueExplicit('J' . $rowNum, trim($row['kode_barang']), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-        $sheet->setCellValue('K' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',2,FALSE),"")');
-        $sheet->setCellValue('L' . $rowNum, safeExcelVal($row['merk_tipe'])); $sheet->setCellValue('M' . $rowNum, safeExcelVal($row['no_sertifikat']));
-        $sheet->setCellValue('N' . $rowNum, safeExcelVal($row['ukuran_bangunan'])); $sheet->setCellValue('O' . $rowNum, safeExcelVal($row['satuan']));
-        
-        $sheet->setCellValueExplicit('P' . $rowNum, (int)($row['volume'] ?? 0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-        $sheet->setCellValueExplicit('Q' . $rowNum, (float)($row['harga_satuan'] ?? 0.0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-        $sheet->setCellValueExplicit('R' . $rowNum, (float)($row['nilai_perolehan'] ?? 0.0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC); 
-        
-        $sheet->setCellValue('S' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',3,FALSE),"")'); 
-        $sheet->setCellValue('T' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',4,FALSE),"")');
-        $sheet->setCellValue('U' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',5,FALSE),0)'); 
-        $sheet->setCellValue('V' . $rowNum, '=R' . $rowNum);
-        $sheet->setCellValue('W' . $rowNum, '=IF(AND($V' . $rowNum . '=0)," ",(($V' . $rowNum . '/$U' . $rowNum . ')*(13-H' . $rowNum . ')/12))'); 
-        $sheet->setCellValue('X' . $rowNum, '=IF(Q' . $rowNum . '<=1000000,R' . $rowNum . ',0)'); 
-        $sheet->setCellValue('Y' . $rowNum, safeExcelVal($nama_sekolah_tampil));
 
-        $sheet->getStyle('A' . $rowNum . ':Y' . $rowNum)->getFont()->setSize(11)->setName('Calibri');
-        $sheet->getStyle('A' . $rowNum . ':Y' . $rowNum)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
-        $sheet->getStyle('A' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('G' . $rowNum . ':I' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('O' . $rowNum . ':P' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('U' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('Q' . $rowNum . ':R' . $rowNum)->getNumberFormat()->setFormatCode($formatAccountingNone);
-        $sheet->getStyle('V' . $rowNum . ':X' . $rowNum)->getNumberFormat()->setFormatCode($formatAccountingNone);
+        $valB = safeExcelVal($row['no_sp2d']);
+        $valC = safeExcelVal($row['sumber_perolehan']);
+        $valD = safeExcelVal($row['kodering_belanja']);
+        $valE = safeExcelVal($row['no_spk']);
+        $valF = safeExcelVal($row['ba_no']);
+        $valJ = safeExcelVal(trim($row['kode_barang']));
+        $valL = safeExcelVal($row['merk_tipe']);
+        $valM = safeExcelVal($row['no_sertifikat']);
+        $valN = safeExcelVal($row['ukuran_bangunan']);
+        $valO = safeExcelVal($row['satuan']);
 
-        $rowNum++; $noIdx++;
+        $volume_val = (int)($row['volume'] ?? 0);
+        $harga_val  = (float)($row['harga_satuan'] ?? 0.0);
+        $nilai_val  = (float)($row['nilai_perolehan'] ?? 0.0);
+
+        // Kumpulkan baris data ke Array PHP
+        $dataRows[] = [
+            $noIdx,                                                // A
+            $valB,                                                 // B
+            $valC,                                                 // C
+            $valD,                                                 // D
+            $valE,                                                 // E
+            $valF,                                                 // F
+            $tg,                                                   // G
+            $bl,                                                   // H
+            $thn,                                                  // I
+            $valJ,                                                 // J
+            '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',2,FALSE),"")', // K
+            $valL,                                                 // L
+            $valM,                                                 // M
+            $valN,                                                 // N
+            $valO,                                                 // O
+            $volume_val,                                           // P
+            $harga_val,                                            // Q
+            $nilai_val,                                            // R
+            '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',3,FALSE),"")', // S
+            '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',4,FALSE),"")', // T
+            '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',5,FALSE),0)',  // U
+            '=R' . $rowNum,                                        // V
+            '=IF(AND($V' . $rowNum . '=0)," ",(($V' . $rowNum . '/$U' . $rowNum . ')*(13-H' . $rowNum . ')/12))', // W
+            '=IF(Q' . $rowNum . '<=1000000,R' . $rowNum . ',0)',   // X
+            safeExcelVal($nama_sekolah_tampil)                     // Y
+        ];
+
+        // Hitung panjang karakter maksimum untuk auto-width
+        $maxLenCol['B'] = max($maxLenCol['B'], strlen($valB));
+        $maxLenCol['C'] = max($maxLenCol['C'], strlen($valC));
+        $maxLenCol['D'] = max($maxLenCol['D'], strlen($valD));
+        $maxLenCol['E'] = max($maxLenCol['E'], strlen($valE));
+        $maxLenCol['F'] = max($maxLenCol['F'], strlen($valF));
+        $maxLenCol['J'] = max($maxLenCol['J'], strlen($valJ));
+        $maxLenCol['L'] = max($maxLenCol['L'], strlen($valL));
+        $maxLenCol['M'] = max($maxLenCol['M'], strlen($valM));
+        $maxLenCol['N'] = max($maxLenCol['N'], strlen($valN));
+        $maxLenCol['O'] = max($maxLenCol['O'], strlen($valO));
+        $maxLenCol['Y'] = max($maxLenCol['Y'], strlen((string)$nama_sekolah_tampil));
+
+        $rowNum++; 
+        $noIdx++;
     }
     mysqli_stmt_close($stmtExcel);
 
-    $lastDataRow = $rowNum - 1; if ($lastDataRow < 10) { $lastDataRow = 10; }
+    // DUMP MASSAL SEMUA BARIS SEKANGLIKUS KE EXCEL
+    if (!empty($dataRows)) {
+        $sheet->fromArray($dataRows, NULL, 'A10');
+    }
+
+    $lastDataRow = $rowNum - 1; 
+    if ($lastDataRow < 10) { $lastDataRow = 10; }
+
+    // STYLING DAN FORMAT BATCH (MASSAL SEKALIGUS)
+    if ($lastDataRow >= 10) {
+        $rangeAll = 'A10:Y' . $lastDataRow;
+        $sheet->getStyle($rangeAll)->getFont()->setSize(11)->setName('Calibri');
+        $sheet->getStyle($rangeAll)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
+
+        $sheet->getStyle('A10:A' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('G10:I' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('O10:P' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('U10:U' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $sheet->getStyle('Q10:R' . $lastDataRow)->getNumberFormat()->setFormatCode($formatAccountingNone);
+        $sheet->getStyle('V10:X' . $lastDataRow)->getNumberFormat()->setFormatCode($formatAccountingNone);
+    }
+
+    // Total Box Hijau Row 7
     $sheet->setCellValue('R7', '=SUM(R10:R' . $lastDataRow . ')');
     $sheet->getStyle('R7')->getNumberFormat()->setFormatCode($formatAccountingNone); 
     $sheet->getStyle('R7')->getFont()->setSize(11)->setName('Calibri')->setBold(true)->getColor()->setRGB('000000');
     $sheet->getStyle('R7')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('92D050');
     $sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
 
+    // LEBAR KOLOM SERTTA OTOMATIS TANPA LOOPING SEL EXCEL
     foreach (range('A', 'Y') as $col) {
         if ($col === 'A') { $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth(5); continue; }
-        $maxLen = 0;
-        for ($r = 10; $r <= $lastDataRow; $r++) {
-            $cellValue = (string)$sheet->getCell($col . $r)->getValue();
-            $len = (strpos($cellValue, '=') === 0) ? 14 : strlen($cellValue);
-            if ($len > $maxLen) { $maxLen = $len; }
-        }
+        
+        $maxLen = in_array($col, ['K', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']) ? 14 : $maxLenCol[$col];
         $finalWidth = $maxLen + 4;
         $minWidth = in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y']) ? 16 : 11;
+        
         if ($finalWidth < $minWidth) { $finalWidth = $minWidth; }
         $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth($finalWidth);
     }
@@ -307,16 +367,19 @@ if (isset($_GET['proses_cetak_excel'])) {
     if (ob_get_length()) { ob_end_clean(); }
     setcookie("download_status", "complete", ['expires' => time() + 60, 'path' => '/']);
     $filename = "Daftar_Pengadaan_Belanja_Modal_Bulan_" . ($filter_bulan > 0 ? $filter_bulan : 'All') . "_" . ($filter_tahun > 0 ? $filter_tahun : '2026') . ".xlsx";
+    
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment;filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
+    
     $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->setPreCalculateFormulas(false); // MATIKAN PRE-CALCULATE SUPAYA EKSEKUSI KILAT
     $writer->save('php://output');
     exit;
 }
 
 // ==============================================================================
-// 2. LOGIKA BACKEND EXCEL: EXPORT KE TEMPLATE IMPORT INVENTARIS (HANYA PERALATAN MESIN)
+// 2. LOGIKA BACKEND EXCEL: EXPORT KE TEMPLATE IMPORT INVENTARIS (BULK INJECTION)
 // ==============================================================================
 if (isset($_GET['proses_cetak_template'])) {
 
@@ -334,7 +397,6 @@ if (isset($_GET['proses_cetak_template'])) {
     $filter_tahun = isset($_GET['filter_tahun']) ? (int)$_GET['filter_tahun'] : 0;
     $filter_barang = isset($_GET['filter_barang']) ? trim($_GET['filter_barang']) : '';
 
-    // === UPDATE FILTER: INNER JOIN dengan master_barang_sekolah untuk memfilter Buku ===
     $sql_excel = "SELECT r.* 
                   FROM `realisasi_barang_sekolah` r 
                   INNER JOIN `master_barang_sekolah` m ON r.id_master_barang = m.id 
@@ -380,13 +442,13 @@ if (isset($_GET['proses_cetak_template'])) {
     $spreadsheet = $reader->load($template_file);
     $sheet = $spreadsheet->getActiveSheet();
 
-    $rowNum = 2; 
+    $templateRows = []; 
     $currentCount = 0;
 
     while ($row = mysqli_fetch_assoc($result)) {
         $currentCount++;
         
-        if ($currentCount === 1 || $currentCount % 50 === 0 || $currentCount === $totalRows) {
+        if ($currentCount === 1 || $currentCount % 100 === 0 || $currentCount === $totalRows) {
             if (session_status() === PHP_SESSION_NONE) { session_start(); }
             $_SESSION['progress_download'] = round(($currentCount / $totalRows) * 100); 
             session_write_close(); 
@@ -400,20 +462,23 @@ if (isset($_GET['proses_cetak_template'])) {
             $thn = date('Y', $time);
         }
 
-        $sheet->setCellValueExplicit('A' . $rowNum, trim($row['kode_barang']), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-        $sheet->setCellValue('B' . $rowNum, safeExcelVal($row['nama_barang']));
-        $sheet->setCellValue('C' . $rowNum, safeExcelVal($row['merk_tipe']));
-        $sheet->setCellValue('D' . $rowNum, $tg);
-        $sheet->setCellValue('E' . $rowNum, $bl);
-        $sheet->setCellValue('F' . $rowNum, $thn);
-        $sheet->setCellValue('G' . $rowNum, safeExcelVal($row['satuan']));
-        
-        $sheet->setCellValueExplicit('H' . $rowNum, (int)($row['volume'] ?? 0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-        $sheet->setCellValueExplicit('I' . $rowNum, (float)($row['harga_satuan'] ?? 0.0), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-
-        $rowNum++;
+        $templateRows[] = [
+            safeExcelVal(trim($row['kode_barang'])),
+            safeExcelVal($row['nama_barang']),
+            safeExcelVal($row['merk_tipe']),
+            $tg,
+            $bl,
+            $thn,
+            safeExcelVal($row['satuan']),
+            (int)($row['volume'] ?? 0),
+            (float)($row['harga_satuan'] ?? 0.0)
+        ];
     }
     mysqli_stmt_close($stmtExcel);
+
+    if (!empty($templateRows)) {
+        $sheet->fromArray($templateRows, NULL, 'A2');
+    }
 
     if (ob_get_length()) { ob_end_clean(); }
     setcookie("download_status", "complete", ['expires' => time() + 60, 'path' => '/']);
@@ -424,6 +489,7 @@ if (isset($_GET['proses_cetak_template'])) {
     header('Cache-Control: max-age=0');
     
     $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->setPreCalculateFormulas(false);
     $writer->save('php://output');
     exit;
 }
