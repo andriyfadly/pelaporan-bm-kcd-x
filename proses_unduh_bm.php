@@ -51,11 +51,6 @@ if (empty($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equal
     echo json_encode(['status' => 'error', 'message' => 'Keamanan: Akses ditolak (CSRF Token tidak valid).']);
     exit;
 }
-// ==========================================================
-
-// Set counter awal data murni ke 0
-$_SESSION['progress_download'] = 0;
-session_write_close(); 
 
 // Proteksi file
 if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
@@ -65,6 +60,10 @@ if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
     echo json_encode(['status' => 'error', 'message' => 'Akses ditolak. Silakan login terlebih dahulu.']);
     exit;
 }
+
+// Set counter awal data murni ke 0 & Lepas Kunci Sesi
+$_SESSION['progress_download'] = 0;
+session_write_close(); 
 
 include "koneksi.php";
 require 'vendor/autoload.php';
@@ -82,6 +81,16 @@ if (!$filter_bulan || !$filter_tahun) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['status' => 'error', 'message' => 'Parameter bulan (1-12) dan tahun valid wajib dipilih!']);
     exit;
+}
+
+// === HELPER AMAN UNTUK UPDATE PROGRESS SESSION TANPA MERUSAK HEADER ===
+function updateProgressSafe($count) {
+    ini_set('session.use_cookies', 0);
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
+    $_SESSION['progress_download'] = (int)$count;
+    session_write_close();
 }
 
 // === HELPER SANITASI MENCEGAH FORMULA / EXCEL INJECTION ===
@@ -149,25 +158,29 @@ $sheetMaster->setCellValue('C1', 'KODERING ASET');
 $sheetMaster->setCellValue('D1', 'JENIS ASET');
 $sheetMaster->setCellValue('E1', 'UMUR EKONOMIS');
 
-$db_inv = getenv('DB_INV') ?: 'db_inventaris';
-$query_master_inventaris = "SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis
-                            FROM `" . $db_inv . "`.kode_barang
-                            WHERE kode_barang IS NOT NULL AND kode_barang != ''";
-                            
-$qMaster = mysqli_query($conn, $query_master_inventaris);
 $batasMaster = 2;
+try {
+    $db_inv = getenv('DB_INV') ?: 'db_inventaris';
+    $query_master_inventaris = "SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis
+                                FROM `" . $db_inv . "`.kode_barang
+                                WHERE kode_barang IS NOT NULL AND kode_barang != ''";
+                                
+    $qMaster = @mysqli_query($conn, $query_master_inventaris);
 
-if ($qMaster) {
-    $mRow = 2;
-    while($m = mysqli_fetch_assoc($qMaster)) {
-        $sheetMaster->setCellValueExplicit('A' . $mRow, safeCellString(trim($m['kode_barang'])), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-        $sheetMaster->setCellValue('B' . $mRow, safeCellString($m['uraian']));
-        $sheetMaster->setCellValueExplicit('C' . $mRow, safeCellString(trim($m['kodering_aset'])), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-        $sheetMaster->setCellValue('D' . $mRow, safeCellString($m['jenis_aset']));
-        $sheetMaster->setCellValue('E' . $mRow, (int)$m['umur_ekonomis']);
-        $mRow++;
+    if ($qMaster) {
+        $mRow = 2;
+        while($m = mysqli_fetch_assoc($qMaster)) {
+            $sheetMaster->setCellValueExplicit('A' . $mRow, safeCellString(trim($m['kode_barang'])), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheetMaster->setCellValue('B' . $mRow, safeCellString($m['uraian']));
+            $sheetMaster->setCellValueExplicit('C' . $mRow, safeCellString(trim($m['kodering_aset'])), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheetMaster->setCellValue('D' . $mRow, safeCellString($m['jenis_aset']));
+            $sheetMaster->setCellValue('E' . $mRow, (int)$m['umur_ekonomis']);
+            $mRow++;
+        }
+        $batasMaster = $mRow - 1;
     }
-    $batasMaster = $mRow - 1;
+} catch (Throwable $t) {
+    error_log("Master Inventaris Error: " . $t->getMessage());
 }
 if ($batasMaster < 2) { $batasMaster = 2; }
 
@@ -236,17 +249,18 @@ foreach ($kolomMerah as $cell) { $sheet->getStyle($cell)->getFont()->getColor()-
 // Format Code Tipe Data "Accounting" tanpa simbol Rp
 $formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
 
+// Tracking Panjang Maksimal Kolom (Optimasi Cepat tanpa Loop getCell)
+$maxLenCol = array_fill_keys(range('A', 'Y'), 0);
+
 // Populasi Data Row
 $rowNum = 10; $noIdx = 1; $currentCount = 0;
 
 while ($row = mysqli_fetch_assoc($result)) {
     $currentCount++;
     
-    // DIAKALI: Tembak session per 50 baris data agar server tidak tercekik request bertubi-tubi
+    // Update progress secara aman per 50 baris
     if ($currentCount === 1 || $currentCount % 50 === 0 || $currentCount === $totalRows) {
-        if (session_status() === PHP_SESSION_NONE) { session_start(); }
-        $_SESSION['progress_download'] = $currentCount; 
-        session_write_close(); 
+        updateProgressSafe($currentCount);
     }
 
     $tg = ''; $bl = ''; $thn = '';
@@ -257,22 +271,33 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     $nama_sekolah_tampil = !empty($row['nama_sekolah_db']) ? $row['nama_sekolah_db'] : "Sekolah ID: " . $row['id_sekolah'];
 
+    $valB = safeCellString($row['no_sp2d']);
+    $valC = safeCellString($row['sumber_perolehan']);
+    $valD = safeCellString($row['kodering_belanja']);
+    $valE = safeCellString($row['no_spk']);
+    $valF = safeCellString($row['ba_no']);
+    $valJ = safeCellString(trim($row['kode_barang']));
+    $valL = safeCellString($row['merk_tipe']);
+    $valM = safeCellString($row['no_sertifikat']);
+    $valN = safeCellString($row['ukuran_bangunan']);
+    $valO = safeCellString($row['satuan']);
+
     $sheet->setCellValue('A' . $rowNum, $noIdx);
-    $sheet->setCellValue('B' . $rowNum, safeCellString($row['no_sp2d']));
-    $sheet->setCellValue('C' . $rowNum, safeCellString($row['sumber_perolehan']));
-    $sheet->setCellValue('D' . $rowNum, safeCellString($row['kodering_belanja']));
-    $sheet->setCellValue('E' . $rowNum, safeCellString($row['no_spk']));
-    $sheet->setCellValue('F' . $rowNum, safeCellString($row['ba_no']));
+    $sheet->setCellValue('B' . $rowNum, $valB);
+    $sheet->setCellValue('C' . $rowNum, $valC);
+    $sheet->setCellValue('D' . $rowNum, $valD);
+    $sheet->setCellValue('E' . $rowNum, $valE);
+    $sheet->setCellValue('F' . $rowNum, $valF);
     $sheet->setCellValue('G' . $rowNum, $tg);
     $sheet->setCellValue('H' . $rowNum, $bl);
     $sheet->setCellValue('I' . $rowNum, $thn);
     
-    $sheet->setCellValueExplicit('J' . $rowNum, safeCellString(trim($row['kode_barang'])), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+    $sheet->setCellValueExplicit('J' . $rowNum, $valJ, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
     $sheet->setCellValue('K' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',2,FALSE),"")');
-    $sheet->setCellValue('L' . $rowNum, safeCellString($row['merk_tipe']));
-    $sheet->setCellValue('M' . $rowNum, safeCellString($row['no_sertifikat']));
-    $sheet->setCellValue('N' . $rowNum, safeCellString($row['ukuran_bangunan']));
-    $sheet->setCellValue('O' . $rowNum, safeCellString($row['satuan']));
+    $sheet->setCellValue('L' . $rowNum, $valL);
+    $sheet->setCellValue('M' . $rowNum, $valM);
+    $sheet->setCellValue('N' . $rowNum, $valN);
+    $sheet->setCellValue('O' . $rowNum, $valO);
     
     $volume_clean = isset($row['volume']) ? (int)$row['volume'] : 0;
     $harga_clean = isset($row['harga_satuan']) ? (float)$row['harga_satuan'] : 0.0;
@@ -291,6 +316,19 @@ while ($row = mysqli_fetch_assoc($result)) {
     $sheet->setCellValue('X' . $rowNum, '=IF(Q' . $rowNum . '<=1000000,R' . $rowNum . ',0)'); 
     
     $sheet->setCellValue('Y' . $rowNum, safeCellString($nama_sekolah_tampil));
+
+    // Recording Panjang Maksimal Nilai Sel Secara Real-Time (Cepat)
+    $maxLenCol['B'] = max($maxLenCol['B'], strlen($valB));
+    $maxLenCol['C'] = max($maxLenCol['C'], strlen($valC));
+    $maxLenCol['D'] = max($maxLenCol['D'], strlen($valD));
+    $maxLenCol['E'] = max($maxLenCol['E'], strlen($valE));
+    $maxLenCol['F'] = max($maxLenCol['F'], strlen($valF));
+    $maxLenCol['J'] = max($maxLenCol['J'], strlen($valJ));
+    $maxLenCol['L'] = max($maxLenCol['L'], strlen($valL));
+    $maxLenCol['M'] = max($maxLenCol['M'], strlen($valM));
+    $maxLenCol['N'] = max($maxLenCol['N'], strlen($valN));
+    $maxLenCol['O'] = max($maxLenCol['O'], strlen($valO));
+    $maxLenCol['Y'] = max($maxLenCol['Y'], strlen((string)$nama_sekolah_tampil));
 
     // Styling
     $sheet->getStyle('A' . $rowNum . ':Y' . $rowNum)->getFont()->setSize(11)->setName('Calibri');
@@ -320,7 +358,7 @@ $sheet->getStyle('R7')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\F
 $sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
 
 // ==============================================================================
-// LOGIKA SQUEEZE/OPTIMALISASI LEBAR TABEL MENGIKUTI ISINYA (HEMAT RUANG)
+// LOGIKA SQUEEZE/OPTIMALISASI LEBAR TABEL MENGIKUTI ISINYA (MENGGUNAKAN HASIL REKAM DATA)
 // ==============================================================================
 foreach (range('A', 'Y') as $col) {
     if ($col === 'A') {
@@ -328,18 +366,12 @@ foreach (range('A', 'Y') as $col) {
         continue;
     }
 
-    $maxLen = 0;
-    // Cek isi data aslinya (Baris 10 ke bawah)
-    for ($r = 10; $r <= $lastDataRow; $r++) {
-        $cellValue = (string)$sheet->getCell($col . $r)->getValue();
-        // Deteksi jika isinya formula, beri nilai panjang default rasional
-        $len = (strpos($cellValue, '=') === 0) ? 14 : strlen($cellValue);
-        if ($len > $maxLen) { $maxLen = $len; }
-    }
+    // Mengambil panjang data terbesar yang terekam (Untuk formula diisi default 14)
+    $maxLen = in_array($col, ['K', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']) ? 14 : $maxLenCol[$col];
 
     $finalWidth = $maxLen + 4; // Beri margin aman agar angka tidak berubah jadi ###
 
-    // Buat batasan minimal rasional agar judul kolom atas tidak tergulung terlalu ekstrem
+    // Batasan minimal rasional agar judul kolom atas tidak tergulung terlalu ekstrem
     $minWidth = 11;
     if (in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y'])) { 
         $minWidth = 16; 
