@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AcuanController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminReportExportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KodeBarangSearchController;
@@ -19,6 +20,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/realisasi', [ReportWorkflowController::class, 'storeRealisasi'])->middleware('role:user')->name('realisasi.store');
     Route::post('/laporan/{month}/submit', [ReportWorkflowController::class, 'submit'])->middleware('role:user')->name('laporan.submit');
     Route::get('/admin/dashboard', AdminDashboardController::class)->middleware('role:admin')->name('admin.dashboard');
+    Route::get('/admin/laporan/export', AdminReportExportController::class)->middleware('role:admin')->name('admin.laporan.export');
     Route::post('/admin/laporan/{schoolId}/{month}/approve', [ReportWorkflowController::class, 'approve'])->middleware('role:admin')->name('admin.laporan.approve');
     Route::post('/admin/laporan/{schoolId}/{month}/reject', [ReportWorkflowController::class, 'reject'])->middleware('role:admin')->name('admin.laporan.reject');
 });
