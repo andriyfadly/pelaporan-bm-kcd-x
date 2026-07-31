@@ -60,6 +60,18 @@ it('submits then admin approves report through valid transitions', function (): 
     $this->actingAs($admin)->postJson('/admin/laporan/1/6/reject')->assertStatus(409);
 });
 
+it('lets a rejected report reopen school edits and be resubmitted', function (): void {
+    $user = reportUser('operator', 'user', 1);
+    $admin = reportUser('admin', 'admin', null);
+
+    $this->actingAs($user)->postJson('/laporan/6/submit')->assertCreated();
+    $this->actingAs($admin)->postJson('/admin/laporan/1/6/reject')->assertOk()->assertJsonPath('data.status', 'Ditolak');
+    $this->actingAs($user)
+        ->postJson('/realisasi', ['bulan_realisasi' => 6, 'nama_barang' => 'Meja', 'volume' => 1, 'harga_satuan' => 1])
+        ->assertCreated();
+    $this->actingAs($user)->postJson('/laporan/6/submit')->assertCreated()->assertJsonPath('data.status', 'Menunggu Approval');
+});
+
 it('denies realization mutations after report submission', function (): void {
     DB::table('laporan_realisasi')->insert(['public_id' => '0197a5aa-0000-7000-8000-000000000003', 'id_sekolah' => '1', 'bulan' => 6, 'status' => 'Menunggu Approval']);
 
