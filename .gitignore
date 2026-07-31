@@ -1,10 +1,12 @@
 # Kredensial sensitif - jangan commit
 .env
+laravel/.env
 
 # Editor/OS
 .DS_Store
 *.log
 *.sql
+!laravel/database/schema/mysql-schema.sql
 logs_security/
 
 # Test temp
