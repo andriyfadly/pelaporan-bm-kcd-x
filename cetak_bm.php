@@ -20,7 +20,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Session Fixation dicegah saat login (session_regenerate_id di login.php).
 // Regenerate per-load DILARANG: use_strict_mode=1 + AJAX concurrent (cek_progres_unduh.php poll,
 // proses_unduh_bm.php) bikin race -> cookie lama jadi stale -> PHP issue session kosong baru ->
-// Set-Cookie AJAX nge-timpa cookie asli -> bounce balik ke login. Baca root cause login-bounce sebelum menambah regenerate.
+// Set-Cookie AJAX nge-timpa cookie asli -> bounce balik ke login.
 
 // === KEAMANAN LAPIS BAJA: HTTP SECURITY HEADERS ===
 header("X-Frame-Options: DENY"); // Mencegah Clickjacking
@@ -381,6 +381,13 @@ if (isset($conn) && $conn instanceof mysqli) {
         const loaderContentBody = document.getElementById('loaderContentBody');
         const spinnerCircleBox = overlay.querySelector('.spinner-circle');
 
+        const csrfToken = document.getElementById('csrf_token').value;
+        const progressRequest = (body = null) => fetch('cek_progres_unduh.php', {
+            method: 'POST',
+            headers: {'X-CSRF-Token': csrfToken},
+            body
+        });
+
         spinnerCircleBox.style.display = 'block';
         percentNumber.innerHTML = '0% <span id="barisNumber">0 Baris</span>';
         loaderTitle.innerText = "Sedang Memproses Data...";
@@ -421,15 +428,17 @@ if (isset($conn) && $conn instanceof mysqli) {
         })
         .then(response => {
             const contentType = response.headers.get("content-type");
+            // Tangkap response format JSON (biasanya pesan error dari PHP)
             if (contentType && contentType.indexOf("application/json") !== -1) {
                 return response.json().then(jsonResult => {
                     if (jsonResult.status === 'empty') {
                         throw new Error("EMPTY_DATA_FROM_PROCESS");
                     }
-                    throw new Error("SERVER_ERROR");
+                    // Tampilkan pesan error transparan dari backend PHP jika ada
+                    throw new Error(jsonResult.message || "Terjadi kesalahan server yang tidak diketahui.");
                 });
             }
-            if (!response.ok) throw new Error("SERVER_ERROR");
+            if (!response.ok) throw new Error("Terjadi kesalahan pada server (HTTP Status: " + response.status + ")");
             return response.blob();
         })
         .then(blob => {
@@ -464,7 +473,8 @@ if (isset($conn) && $conn instanceof mysqli) {
                 `;
             } else {
                 overlay.style.display = 'none';
-                alert("Terjadi masalah teknis pada server saat memproses file Excel.");
+                // Tampilkan pesan error spesifik ke pengguna
+                alert("Gagal Memproses: " + error.message);
             }
             console.error(error);
         });

@@ -33,6 +33,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// SIMPAN SESSION ID UTAMA (Mencegah Bug Ghost Session saat update progress)
+$main_session_id = session_id();
+
 // === KEAMANAN LAPIS BAJA: VALIDASI METHOD & CSRF TOKEN ===
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     ob_end_clean();
@@ -81,10 +84,13 @@ if (!$filter_bulan || !$filter_tahun) {
     exit;
 }
 
-// === HELPER AMAN UNTUK UPDATE PROGRESS SESSION ===
-function updateProgressSafe($count) {
-    ini_set('session.use_cookies', 0);
+// === HELPER AMAN UNTUK UPDATE PROGRESS SESSION (FIXED GHOST SESSION) ===
+function updateProgressSafe($count, $session_id) {
+    if (empty($session_id)) return;
+    
+    // Tetapkan Session ID asli pengguna agar tidak terbuat sesi baru
     if (session_status() === PHP_SESSION_NONE) {
+        session_id($session_id);
         @session_start();
     }
     $_SESSION['progress_download'] = (int)$count;
@@ -108,10 +114,10 @@ $nama_bulan_indo = [
 ];
 $teks_bulan_pilihan = $nama_bulan_indo[$filter_bulan] ?? '';
 
-// === KEAMANAN LAPIS BAJA: PREPARED STATEMENT UTAMA ===
+// === OPTIMASI QUERY DATABASE (Gunakan COALESCE menggantikan OR pada JOIN) ===
 $query = "SELECT r.*, k.nama_sekolah as nama_sekolah_db 
           FROM `realisasi_barang_sekolah` r 
-          LEFT JOIN `kode_sekolah` k ON r.id_sekolah = k.id_sekolah OR r.id_sekolah = k.id 
+          LEFT JOIN `kode_sekolah` k ON r.id_sekolah = COALESCE(k.id_sekolah, k.id)
           WHERE r.`bulan_realisasi` = ? AND YEAR(r.`ba_tgl`) = ? 
           ORDER BY k.nama_sekolah ASC, r.`ba_tgl` ASC, r.`id` ASC";
 
@@ -248,14 +254,14 @@ $formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
 // Tracking Panjang Maksimal Kolom
 $maxLenCol = array_fill_keys(range('A', 'Y'), 0);
 
-// Populasi Data Row (MURNI PENGISIAN DATA KECENPATAN TINGGI)
+// Populasi Data Row
 $rowNum = 10; $noIdx = 1; $currentCount = 0;
 
 while ($row = mysqli_fetch_assoc($result)) {
     $currentCount++;
     
     if ($currentCount === 1 || $currentCount % 100 === 0 || $currentCount === $totalRows) {
-        updateProgressSafe($currentCount);
+        updateProgressSafe($currentCount, $main_session_id);
     }
 
     $tg = ''; $bl = ''; $thn = '';
@@ -341,7 +347,7 @@ $sheet->getStyle('R7')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\F
 $sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
 
 // ==============================================================================
-// RAHASIA KECENPATAN: BATCH STYLING SEKALIGUS UNTUK SELURUH TABEL (HANYA 1X PROSES)
+// BATCH STYLING SEKALIGUS UNTUK SELURUH TABEL
 // ==============================================================================
 if ($lastDataRow >= 10) {
     $dataRange = 'A10:Y' . $lastDataRow;
@@ -362,7 +368,7 @@ if ($lastDataRow >= 10) {
 }
 
 // ==============================================================================
-// LOGIKA LEBAR KOLOM MASAL
+// LOGIKA LEBAR KOLOM MASSAL
 // ==============================================================================
 foreach (range('A', 'Y') as $col) {
     if ($col === 'A') {
