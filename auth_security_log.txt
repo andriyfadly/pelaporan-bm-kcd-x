@@ -128,3 +128,268 @@
 [2026-07-27 09:17:44] IP: ::1 | USER: admin | AKSI: Login | STATUS: SUKSES
 [2026-07-27 09:18:12] IP: ::1 | USER: admin | AKSI: Login | STATUS: SUKSES
 [2026-07-28 02:36:32] IP: ::1 | USER: pcb | AKSI: Login | STATUS: SUKSES
+[2026-07-30 04:15:02] IP: ::1 | USER: slbnkabcirebonaset@gmail.com | AKSI: Login | STATUS: SUKSES
+[2026-07-30 04:36:26] IP: ::1 | USER: admin | AKSI: Login | STATUS: SUKSES
+[2026-07-30 05:00:42] IP: ::1 | USER: pcb | AKSI: Login | STATUS: SUKSES
+[2026-07-30 06:00:51] IP: ::1 | USER: slbnkabcirebonaset@gmail.com | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:21:51] IP: ::1 | USER: admin | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:26:29] IP: ::1 | USER: NESKAR | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:26:35] IP: ::1 | USER: 20212956 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:26:40] IP: ::1 | USER: PCB | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:26:42] IP: ::1 | USER: 20212956 | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:26:55] IP: ::1 | USER: NESKAR | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:27:41] IP: ::1 | USER: SMKN1GUNUNGJATI | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:27:43] IP: ::1 | USER: NESKAR | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:27:53] IP: ::1 | USER: Sman1luragung | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:27:55] IP: ::1 | USER: sarpras_smande | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:27:59] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:28:09] IP: ::1 | USER: smkn3kngn | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:28:11] IP: ::1 | USER: sarpras_smande | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:28:13] IP: ::1 | USER: 20212958 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:28:18] IP: ::1 | USER: 20212960 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:28:21] IP: ::1 | USER: 20212956 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:28:25] IP: ::1 | USER: sarpras_smande | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:28:30] IP: ::1 | USER: SMAN 1 GARAWANGI | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:28:32] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:28:40] IP: ::1 | USER: NESKAR | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:28:45] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:28:46] IP: ::1 | USER: 20212956 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:28:58] IP: ::1 | USER: SMAN 1 GARAWANGI | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:29:07] IP: ::1 | USER: NESKAR | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:29:10] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:29:12] IP: ::1 | USER: Sman1luragung | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:29:14] IP: ::1 | USER: 20214996 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:29:18] IP: ::1 | USER: smanpasawahan | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:29:19] IP: ::1 | USER: slbnkabcirebonaset@gmail.com | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:29:22] IP: ::1 | USER: 20214996 | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:29:22] IP: ::1 | USER: NESKAR | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:29:23] IP: ::1 | USER: 20212958 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:29:30] IP: ::1 | USER: 20212960 | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:29:38] IP: ::1 | USER: SMAN1SURGA | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:29:41] IP: ::1 | USER: 20212957 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:29:42] IP: ::1 | USER: 20222366 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:29:43] IP: ::1 | USER: Opsaset5 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:29:48] IP: ::1 | USER: smkn3kngn | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:29:48] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:29:51] IP: ::1 | USER: SMAN9Crb | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:29:52] IP: ::1 | USER: 20212950 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:29:52] IP: ::1 | USER: 20212963 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:29:56] IP: ::1 | USER: 20214996 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:29:56] IP: ::1 | USER: bolank078 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:29:57] IP: ::1 | USER: sman7 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:01] IP: ::1 | USER: CIWARINGIN39 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:01] IP: ::1 | USER: Opsaset5 | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:30:02] IP: ::1 | USER: 20212953 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:04] IP: ::1 | USER: 20212958 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:05] IP: ::1 | USER: SMAN1SURGA | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:30:08] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:30:09] IP: ::1 | USER: 20212957 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:09] IP: ::1 | USER: smkn1jamblang | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:12] IP: ::1 | USER: SMAN9Crb | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:30:15] IP: ::1 | USER: Opsaset5 | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:30:17] IP: ::1 | USER: sman1kaliwedi | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:18] IP: ::1 | USER: Nebak | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:30:30] IP: ::1 | USER: 20212955 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:34] IP: ::1 | USER: smkn1jamblang | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:36] IP: ::1 | USER: SMAN_1_PABEDILAN | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:36] IP: ::1 | USER: sman7 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:40] IP: ::1 | USER: CIWARINGIN39 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:44] IP: ::1 | USER: 20214996 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:47] IP: ::1 | USER: 20212963 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:47] IP: ::1 | USER: 20212953 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:49] IP: ::1 | USER: 20212950 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:30:50] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:30:51] IP: ::1 | USER: SMKN1KUNINGAN | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:55] IP: ::1 | USER: sman1arjawinangun123 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:57] IP: ::1 | USER: SMAN1SURGA | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:59] IP: ::1 | USER: Sm4n6_Crb | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:30:59] IP: ::1 | USER: sman1ciniru | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:30:59] IP: ::1 | USER: Sm4n6_Crb | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:31:01] IP: ::1 | USER: 20212960 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:08] IP: ::1 | USER: SLBNKABCIREBON | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:10] IP: ::1 | USER: NEBAK | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:12] IP: ::1 | USER: Sman1luragung | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:13] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:31:19] IP: ::1 | USER: SMKN1KUNINGAN | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:25] IP: ::1 | USER: edijunaedi | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:31:28] IP: ::1 | USER: NESKAR | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:31:29] IP: ::1 | USER: SMA_NECIS | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:29] IP: ::1 | USER: 20222366 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:29] IP: ::1 | USER: slbnluragung | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:30] IP: ::1 | USER: smanci106 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:30] IP: ::1 | USER: 20212955 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:30] IP: ::1 | USER: 20212960 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:31] IP: ::1 | USER: smanpasawahan | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:31] IP: ::1 | USER: 20212912 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:31:32] IP: ::1 | USER: SMAN1ASJAP | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:36] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:31:36] IP: ::1 | USER: IRFAN | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:31:36] IP: ::1 | USER: SMAN1SURGA | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:36] IP: ::1 | USER: SLBNKABCIREBON | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:37] IP: ::1 | USER: SMKN1GEBANG | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:31:37] IP: ::1 | USER: ASETNEPAL128 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:39] IP: ::1 | USER: SMAN_1_PABEDILAN | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:42] IP: ::1 | USER: bolank07 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:42] IP: ::1 | USER: sarprasbeber | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:45] IP: ::1 | USER: SMKN1CILIMUS | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:46] IP: ::1 | USER: Sman1luragung | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:47] IP: ::1 | USER: SMKN1KEDAWUNG | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:48] IP: ::1 | USER: sman1arjawinangun123 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:31:53] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:31:54] IP: ::1 | USER: SMAN1LEMAHABANG | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:56] IP: ::1 | USER: SMKN1JAPARA | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:58] IP: ::1 | USER: sman4cirebon | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:31:59] IP: ::1 | USER: sman1ciledug | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:32:02] IP: ::1 | USER: slbnluragung | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:03] IP: ::1 | USER: sman1ciniru | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:05] IP: ::1 | USER: ASETNEPAL128 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:07] IP: ::1 | USER: SMKN1KEDAWUNG | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:08] IP: ::1 | USER: sman1kaliwedi | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:09] IP: ::1 | USER: Asetsman1waled | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:32:10] IP: ::1 | USER: sman9crb | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:10] IP: ::1 | USER: Smansaku01 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:10] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:32:11] IP: ::1 | USER: Sm4n6_Crb | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:11] IP: ::1 | USER: Rahadi | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:32:12] IP: ::1 | USER: 20212912 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:13] IP: ::1 | USER: edijunaedi | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:13] IP: ::1 | USER: NEBAK | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:20] IP: ::1 | USER: edijunaedi | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:22] IP: ::1 | USER: Aset | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:23] IP: ::1 | USER: Opsaset5 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:23] IP: ::1 | USER: SMA_NECIS | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:23] IP: ::1 | USER: SMAN1Darma | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:24] IP: ::1 | USER: sman1cbb | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:27] IP: ::1 | USER: sarprasbeber | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:28] IP: ::1 | USER: IRFAN | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:28] IP: ::1 | USER: SMKN1CILIMUS | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:28] IP: ::1 | USER: Rahadi | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:32:31] IP: ::1 | USER: SMKN1JAPARA | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:32:31] IP: ::1 | USER: asetslbntarunamandiri | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:34] IP: ::1 | USER: SMKN1LEMAHABANG | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:34] IP: ::1 | USER: sman1ciledug | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:39] IP: ::1 | USER: SMKN 1 GEBANG | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:32:41] IP: ::1 | USER: Asetsman1waled | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:45] IP: ::1 | USER: 20212912 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:46] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:32:49] IP: ::1 | USER: SMKN1JAPARA | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:49] IP: ::1 | USER: SMAN2CRB | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:53] IP: ::1 | USER: SMAN1ASJAP | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:53] IP: ::1 | USER: SLBNCAKRABUANA | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:56] IP: ::1 | USER: Opsaset5 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:32:57] IP: ::1 | USER: smanci106 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:32:58] IP: ::1 | USER: SMKN1GUNUNGJATI | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:32:59] IP: ::1 | USER: sman9crb | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:00] IP: ::1 | USER: SMKN1GEBANG | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:33:03] IP: ::1 | USER: SMKN1MUNDU | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:33:04] IP: ::1 | USER: SLBbinainsani | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:33:05] IP: ::1 | USER: SMAN1Darma | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:08] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:33:09] IP: ::1 | USER: SMKN6KNG | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:33:11] IP: ::1 | USER: SMKN1GUNUNGJATI | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:13] IP: ::1 | USER: Ida.29 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:33:13] IP: ::1 | USER: SMKN 1 LEMAHABANG | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:33:14] IP: ::1 | USER: SMAN1LEMAHABANG | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:15] IP: ::1 | USER: Sm4n_Crb | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:33:15] IP: ::1 | USER: IRFAN | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:16] IP: ::1 | USER: Rahadi | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:33:17] IP: ::1 | USER: SMKN1GUNUNGJATI | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:19] IP: ::1 | USER: Asetsman1waled | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:22] IP: ::1 | USER: Smansaku01 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:22] IP: ::1 | USER: SMAN2CRB | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:27] IP: ::1 | USER: 20214980 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:33:30] IP: ::1 | USER: Aset | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:34] IP: ::1 | USER: SMKN1GEBANG | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:34] IP: ::1 | USER: SLBNCAKRABUANA | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:37] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:33:38] IP: ::1 | USER: SMKN6KNG | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:39] IP: ::1 | USER: asetslbntarunamandiri | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:33:41] IP: ::1 | USER: sman1ciledug | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:42] IP: ::1 | USER: Rahadi | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:33:53] IP: ::1 | USER: SMAN1CRB | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:33:56] IP: ::1 | USER: SLBbinainsani | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:33:57] IP: ::1 | USER: bolank07 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:34:01] IP: ::1 | USER: asetslbntarunamandiri | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:34:03] IP: ::1 | USER: SMKN1LA | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:34:04] IP: ::1 | USER: sarpras_smande | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:34:04] IP: ::1 | USER: SMA1KAPETAKAN | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:34:06] IP: ::1 | USER: Rahadi | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:34:07] IP: ::1 | USER: SMAN1SURGA | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:34:16] IP: ::1 | USER: 20214980 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:34:23] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:34:23] IP: ::1 | USER: Ida.29 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:34:25] IP: ::1 | USER: sarpras_smande | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:34:29] IP: ::1 | USER: smanpasawahan | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:34:33] IP: ::1 | USER: SMAN1CRB | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:34:43] IP: ::1 | USER: SMA1KAPETAKAN | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:34:44] IP: ::1 | USER: SMAN8CIREBON | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:34:45] IP: ::1 | USER: MUNDU | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:34:48] IP: ::1 | USER: sarpras_smande | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:34:48] IP: ::1 | USER: sman4cirebon | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:34:58] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:34:58] IP: ::1 | USER: SMKN1CIREBON | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:35:00] IP: ::1 | USER: Smkn4kng | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:35:05] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:35:05] IP: ::1 | USER: Rahadi | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:35:08] IP: ::1 | USER: SMA1KAPETAKAN | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:35:10] IP: ::1 | USER: Sm4n6_Crb | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:35:12] IP: ::1 | USER: 20214965 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:35:13] IP: ::1 | USER: 20212962 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:35:14] IP: ::1 | USER: MUNDU | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:35:18] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:35:31] IP: ::1 | USER: 20214565 | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:35:33] IP: ::1 | USER: sman1cbb | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:35:36] IP: ::1 | USER: Rahadi | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:35:37] IP: ::1 | USER: 20212962 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:35:46] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:35:51] IP: ::1 | USER: Opsaset5 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:35:57] IP: ::1 | USER: 20214965 | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:35:58] IP: ::1 | USER: SLBNBU123.-_ | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:36:01] IP: ::1 | USER: SMKN 1 CIREBON | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:36:01] IP: ::1 | USER: SMKN1LRG | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:36:13] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:36:16] IP: ::1 | USER: Smkn4kng | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:36:23] IP: ::1 | USER: SMKN 1 CIREBON | AKSI: Login | STATUS: GAGAL (Percobaan ke-2)
+[2026-07-30 09:36:24] IP: ::1 | USER: Rahadi | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:36:30] IP: ::1 | USER: 20214965 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:36:40] IP: ::1 | USER: SMKN1LRG | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:36:46] IP: ::1 | USER: smkn5kng | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:37:24] IP: ::1 | USER: smkn5kng | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:37:29] IP: ::1 | USER: SMKN 1 CIREBON | AKSI: Login | STATUS: GAGAL (Percobaan ke-3)
+[2026-07-30 09:37:31] IP: ::1 | USER: Sm4n6_Crb | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:37:36] IP: ::1 | USER: SMAN 8 CIREBON | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:37:47] IP: ::1 | USER: Opsaset5 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:37:51] IP: ::1 | USER: SLBNBU123.-_ | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:37:52] IP: ::1 | USER: 20214965 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:38:04] IP: ::1 | USER: SMKN1LA | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:38:05] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:38:09] IP: ::1 | USER: sarpras_smande | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:38:13] IP: ::1 | USER: 20214565 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:38:23] IP: ::1 | USER: 20212938 | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:38:47] IP: ::1 | USER: SMKN1LA | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:38:57] IP: ::1 | USER: CAKRABUANA | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:39:04] IP: ::1 | USER: 20212938 | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:39:21] IP: ::1 | USER: smantengahtani | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:39:22] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:40:04] IP: ::1 | USER: Rahadi | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:40:07] IP: ::1 | USER: smantengahtani | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:40:13] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:40:19] IP: ::1 | USER: 20212938 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:40:52] IP: ::1 | USER: Opsaset5 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:40:54] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:41:38] IP: ::1 | USER: sarpras_smande | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:41:44] IP: ::1 | USER: SMAN1CRB | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:41:48] IP: ::1 | USER: SARPRASNESKAPE01 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:42:10] IP: ::1 | USER: 20214565 | AKSI: Login Attempt | STATUS: DIBLOKIR (Brute-Force Device)
+[2026-07-30 09:50:21] IP: ::1 | USER: IRFAN | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:51:04] IP: ::1 | USER: SMAN_1_PABEDILAN | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:51:19] IP: ::1 | USER: sman1arjawinangun123 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:51:31] IP: ::1 | USER: SMKN2CRB | AKSI: Login | STATUS: GAGAL (Percobaan ke-1)
+[2026-07-30 09:52:00] IP: ::1 | USER: SMKN2CRB | AKSI: Registrasi | STATUS: SUKSES
+[2026-07-30 09:52:03] IP: ::1 | USER: NEBAK | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:52:07] IP: ::1 | USER: smanpasawahan | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:52:20] IP: ::1 | USER: bolank07 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:52:30] IP: ::1 | USER: MUNDU | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:52:57] IP: ::1 | USER: ASETNEPAL128 | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:53:15] IP: ::1 | USER: SMAN_1_PABEDILAN | AKSI: Login | STATUS: SUKSES
+[2026-07-30 09:56:10] IP: ::1 | USER: Rahadi | AKSI: Login | STATUS: SUKSES
