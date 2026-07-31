@@ -114,12 +114,13 @@ $nama_bulan_indo = [
 ];
 $teks_bulan_pilihan = $nama_bulan_indo[$filter_bulan] ?? '';
 
-// === OPTIMASI QUERY DATABASE (Gunakan COALESCE menggantikan OR pada JOIN) ===
-$query = "SELECT r.*, k.nama_sekolah as nama_sekolah_db 
+// === OPTIMASI SUPER KENCANG: DOUBLE LEFT JOIN UNTUK MEMANFAATKAN INDEX MYSQL ===
+$query = "SELECT r.*, COALESCE(k1.nama_sekolah, k2.nama_sekolah) as nama_sekolah_db 
           FROM `realisasi_barang_sekolah` r 
-          LEFT JOIN `kode_sekolah` k ON r.id_sekolah = COALESCE(k.id_sekolah, k.id)
+          LEFT JOIN `kode_sekolah` k1 ON r.id_sekolah = k1.id_sekolah 
+          LEFT JOIN `kode_sekolah` k2 ON r.id_sekolah = k2.id 
           WHERE r.`bulan_realisasi` = ? AND YEAR(r.`ba_tgl`) = ? 
-          ORDER BY k.nama_sekolah ASC, r.`ba_tgl` ASC, r.`id` ASC";
+          ORDER BY nama_sekolah_db ASC, r.`ba_tgl` ASC, r.`id` ASC";
 
 $stmt = mysqli_prepare($conn, $query);
 if (!$stmt) {
