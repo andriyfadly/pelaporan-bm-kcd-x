@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
-    foreach (['role_has_permissions', 'model_has_roles', 'model_has_permissions', 'roles', 'permissions', 'laporan_realisasi', 'realisasi_barang_sekolah', 'users'] as $table) {
+    foreach (['role_has_permissions', 'model_has_roles', 'model_has_permissions', 'roles', 'permissions', 'kode_sekolah', 'laporan_realisasi', 'realisasi_barang_sekolah', 'users'] as $table) {
         Schema::dropIfExists($table);
     }
 
@@ -36,6 +36,13 @@ beforeEach(function (): void {
         $table->decimal('volume', 10, 2);
         $table->decimal('harga_satuan', 15, 2);
         $table->decimal('nilai_perolehan', 15, 2);
+        $table->date('ba_tgl')->nullable();
+        $table->string('no_spk')->nullable();
+    });
+    Schema::create('kode_sekolah', function (Blueprint $table): void {
+        $table->id();
+        $table->unsignedInteger('id_sekolah')->nullable();
+        $table->string('nama_sekolah');
     });
 
     $migration = require database_path('migrations/2026_07_30_162859_create_permission_tables.php');
@@ -78,6 +85,38 @@ it('denies realization mutations after report submission', function (): void {
     $this->actingAs(reportUser('operator', 'user', 1))
         ->postJson('/realisasi', ['bulan_realisasi' => 6, 'nama_barang' => 'Meja', 'volume' => 1, 'harga_satuan' => 1])
         ->assertStatus(409);
+});
+
+it('exports formula-safe admin CSV for the selected reporting period', function (): void {
+    DB::table('kode_sekolah')->insert(['id_sekolah' => 1, 'nama_sekolah' => '=Sekolah A']);
+    DB::table('realisasi_barang_sekolah')->insert([
+        'public_id' => '0197a5aa-0000-7000-8000-000000000004',
+        'id_sekolah' => '1',
+        'bulan_realisasi' => 6,
+        'nama_barang' => '+Laptop',
+        'volume' => 2,
+        'harga_satuan' => 300000,
+        'nilai_perolehan' => 600000,
+        'ba_tgl' => '2026-06-01',
+        'no_spk' => '@SPK-1',
+    ]);
+
+    $response = $this->actingAs(reportUser('admin', 'admin', null))
+        ->get('/admin/laporan/export?bulan=6&tahun=2026')
+        ->assertSuccessful()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8')
+        ->assertHeader('content-disposition', 'attachment; filename=belanja-modal-2026-06.csv');
+
+    expect($response->streamedContent())
+        ->toContain("'=Sekolah A")
+        ->toContain("'+Laptop")
+        ->toContain("'@SPK-1");
+});
+
+it('denies report export to school users', function (): void {
+    $this->actingAs(reportUser('operator', 'user', 1))
+        ->get('/admin/laporan/export?bulan=6&tahun=2026')
+        ->assertForbidden();
 });
 
 function reportUser(string $username, string $role, ?int $schoolId): User
