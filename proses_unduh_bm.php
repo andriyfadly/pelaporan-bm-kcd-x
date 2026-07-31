@@ -178,7 +178,6 @@ try {
             ];
         }
         if (!empty($masterRows)) {
-            // Bulk insert massal jauh lebih cepat dibanding setCellValue dalam loop
             $sheetMaster->fromArray($masterRows, NULL, 'A2');
             $batasMaster = count($masterRows) + 1;
         }
@@ -256,8 +255,13 @@ $formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
 // Tracking Panjang Maksimal Kolom
 $maxLenCol = array_fill_keys(range('A', 'Y'), 0);
 
-// Populasi Data Row
-$rowNum = 10; $noIdx = 1; $currentCount = 0;
+// ==============================================================================
+// POPULASI DATA UTAMA (OPTIMASI HIGH SPEED WITH fromArray)
+// ==============================================================================
+$dataRows = [];
+$rowNum = 10; 
+$noIdx = 1; 
+$currentCount = 0;
 
 while ($row = mysqli_fetch_assoc($result)) {
     $currentCount++;
@@ -269,7 +273,9 @@ while ($row = mysqli_fetch_assoc($result)) {
     $tg = ''; $bl = ''; $thn = '';
     if (!empty($row['ba_tgl']) && $row['ba_tgl'] != '0000-00-00') {
         $time = strtotime($row['ba_tgl']);
-        $tg = (int)date('d', $time); $bl = (int)date('m', $time); $thn = date('Y', $time);
+        $tg = (int)date('d', $time); 
+        $bl = (int)date('m', $time); 
+        $thn = date('Y', $time);
     }
 
     $nama_sekolah_tampil = !empty($row['nama_sekolah_db']) ? $row['nama_sekolah_db'] : "Sekolah ID: " . $row['id_sekolah'];
@@ -285,40 +291,38 @@ while ($row = mysqli_fetch_assoc($result)) {
     $valN = safeCellString($row['ukuran_bangunan']);
     $valO = safeCellString($row['satuan']);
 
-    $sheet->setCellValue('A' . $rowNum, $noIdx);
-    $sheet->setCellValue('B' . $rowNum, $valB);
-    $sheet->setCellValue('C' . $rowNum, $valC);
-    $sheet->setCellValue('D' . $rowNum, $valD);
-    $sheet->setCellValue('E' . $rowNum, $valE);
-    $sheet->setCellValue('F' . $rowNum, $valF);
-    $sheet->setCellValue('G' . $rowNum, $tg);
-    $sheet->setCellValue('H' . $rowNum, $bl);
-    $sheet->setCellValue('I' . $rowNum, $thn);
-    
-    $sheet->setCellValueExplicit('J' . $rowNum, $valJ, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-    $sheet->setCellValue('K' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',2,FALSE),"")');
-    $sheet->setCellValue('L' . $rowNum, $valL);
-    $sheet->setCellValue('M' . $rowNum, $valM);
-    $sheet->setCellValue('N' . $rowNum, $valN);
-    $sheet->setCellValue('O' . $rowNum, $valO);
-    
     $volume_clean = isset($row['volume']) ? (int)$row['volume'] : 0;
     $harga_clean = isset($row['harga_satuan']) ? (float)$row['harga_satuan'] : 0.0;
     $nilai_clean = isset($row['nilai_perolehan']) ? (float)$row['nilai_perolehan'] : 0.0;
 
-    $sheet->setCellValueExplicit('P' . $rowNum, $volume_clean, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-    $sheet->setCellValueExplicit('Q' . $rowNum, $harga_clean, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-    $sheet->setCellValueExplicit('R' . $rowNum, $nilai_clean, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC); 
-    
-    $sheet->setCellValue('S' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',3,FALSE),"")'); 
-    $sheet->setCellValue('T' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',4,FALSE),"")');
-    $sheet->setCellValue('U' . $rowNum, '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',5,FALSE),0)'); 
-    
-    $sheet->setCellValue('V' . $rowNum, '=R' . $rowNum);
-    $sheet->setCellValue('W' . $rowNum, '=IF(AND($V' . $rowNum . '=0)," ",(($V' . $rowNum . '/$U' . $rowNum . ')*(13-H' . $rowNum . ')/12))'); 
-    $sheet->setCellValue('X' . $rowNum, '=IF(Q' . $rowNum . '<=1000000,R' . $rowNum . ',0)'); 
-    
-    $sheet->setCellValue('Y' . $rowNum, safeCellString($nama_sekolah_tampil));
+    // Susun baris ke array PHP
+    $dataRows[] = [
+        $noIdx,                                                // A
+        $valB,                                                 // B
+        $valC,                                                 // C
+        $valD,                                                 // D
+        $valE,                                                 // E
+        $valF,                                                 // F
+        $tg,                                                   // G
+        $bl,                                                   // H
+        $thn,                                                  // I
+        $valJ,                                                 // J
+        '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',2,FALSE),"")', // K
+        $valL,                                                 // L
+        $valM,                                                 // M
+        $valN,                                                 // N
+        $valO,                                                 // O
+        $volume_clean,                                         // P
+        $harga_clean,                                          // Q
+        $nilai_clean,                                          // R
+        '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',3,FALSE),"")', // S
+        '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',4,FALSE),"")', // T
+        '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',5,FALSE),0)',  // U
+        '=R' . $rowNum,                                        // V
+        '=IF(AND($V' . $rowNum . '=0)," ",(($V' . $rowNum . '/$U' . $rowNum . ')*(13-H' . $rowNum . ')/12))', // W
+        '=IF(Q' . $rowNum . '<=1000000,R' . $rowNum . ',0)',   // X
+        safeCellString($nama_sekolah_tampil)                   // Y
+    ];
 
     // Recording Panjang Maksimal Nilai Sel
     $maxLenCol['B'] = max($maxLenCol['B'], strlen($valB));
@@ -333,11 +337,17 @@ while ($row = mysqli_fetch_assoc($result)) {
     $maxLenCol['O'] = max($maxLenCol['O'], strlen($valO));
     $maxLenCol['Y'] = max($maxLenCol['Y'], strlen((string)$nama_sekolah_tampil));
 
-    $rowNum++; $noIdx++;
+    $rowNum++; 
+    $noIdx++;
 }
 
 // Tutup Prepared Statement
 mysqli_stmt_close($stmt);
+
+// INJEKSI MASSAL DATA UTAMA KE EXCEL DALAM 1 PERINTAH
+if (!empty($dataRows)) {
+    $sheet->fromArray($dataRows, NULL, 'A10');
+}
 
 // Total Box Hijau Row 7
 $lastDataRow = $rowNum - 1;
@@ -403,6 +413,8 @@ header('Content-Disposition: attachment;filename="' . $filename . '"');
 header('Cache-Control: max-age=0, no-cache, must-revalidate');
 header('Pragma: public');
 
+// INSTANSIASI WRITER & MATIKAN PRE-CALCULATE FORMULAS
 $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+$writer->setPreCalculateFormulas(false); // OPTIMASI KRUSIAL UNTUK KECEPATAN
 $writer->save('php://output');
 exit;
