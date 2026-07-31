@@ -46,6 +46,7 @@ beforeEach(function (): void {
         $table->decimal('volume', 10, 2);
         $table->decimal('harga_satuan', 15, 2);
         $table->decimal('nilai_perolehan', 15, 2);
+        $table->boolean('is_realisasi')->default(false);
     });
 
     $migration = require database_path('migrations/2026_07_30_162859_create_permission_tables.php');
@@ -85,7 +86,7 @@ it('batch updates owned items and deletes only owned items with server calculate
                 'volume' => '3',
                 'harga_satuan' => '200000.25',
             ]],
-            'delete_ids' => ['0197a5aa-0000-7000-8000-000000000002'],
+            'delete_ids' => [],
         ])
         ->assertOk();
 
@@ -100,6 +101,38 @@ it('refuses batch mutations when report is locked', function (): void {
     $this->actingAs(masterBarangUser('operator', 1))
         ->putJson('/master-barang/batch', ['bulan_realisasi' => 6, 'items' => [], 'delete_ids' => []])
         ->assertStatus(409);
+});
+
+it('refuses a batch when an item is foreign or has been realized', function (): void {
+    DB::table('master_barang_sekolah')->insert([
+        masterBarangPayload([
+            'id_sekolah' => '1',
+            'public_id' => '0197a5aa-0000-7000-8000-000000000004',
+            'is_realisasi' => true,
+            'nilai_perolehan' => 600000,
+        ]),
+        masterBarangPayload([
+            'id_sekolah' => '2',
+            'public_id' => '0197a5aa-0000-7000-8000-000000000005',
+            'is_realisasi' => false,
+            'nilai_perolehan' => 600000,
+        ]),
+    ]);
+
+    $this->actingAs(masterBarangUser('operator', 1))
+        ->putJson('/master-barang/batch', [
+            'bulan_realisasi' => 6,
+            'items' => [[
+                'public_id' => '0197a5aa-0000-7000-8000-000000000005',
+                'nama_barang' => 'Foreign item',
+                'volume' => 1,
+                'harga_satuan' => 1,
+            ]],
+            'delete_ids' => ['0197a5aa-0000-7000-8000-000000000004'],
+        ])
+        ->assertForbidden();
+
+    expect(DB::table('master_barang_sekolah')->count())->toBe(2);
 });
 
 function masterBarangUser(string $username, int $schoolId): User

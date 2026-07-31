@@ -61,6 +61,20 @@ class MasterBarangController extends Controller
         }
 
         DB::transaction(function () use ($data, $schoolId): void {
+            $publicIds = collect($data['items'])->pluck('public_id')
+                ->merge($data['delete_ids'])
+                ->unique()
+                ->values();
+
+            $items = MasterBarangSekolah::query()
+                ->forSchool($schoolId)
+                ->where('bulan_realisasi', $data['bulan_realisasi'])
+                ->whereIn('public_id', $publicIds)
+                ->get(['public_id', 'is_realisasi']);
+
+            abort_if($items->count() !== $publicIds->count(), 403);
+            abort_if($items->contains('is_realisasi', true), 403, 'Realized items cannot be changed.');
+
             foreach ($data['items'] as $item) {
                 MasterBarangSekolah::query()
                     ->forSchool($schoolId)
