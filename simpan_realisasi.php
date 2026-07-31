@@ -22,8 +22,15 @@ if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'user') {
 }
 
 include "koneksi.php";
+require_once __DIR__ . '/report_lock.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $csrf_token = $_POST['csrf_token'] ?? '';
+    if (empty($csrf_token) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrf_token)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Token keamanan tidak valid.']);
+        exit;
+    }
     
     // Ambil data session & parameter dasar utama + sanitasi awal
     $id_sekolah       = isset($_SESSION['id_sekolah']) ? trim((string)$_SESSION['id_sekolah']) : ''; 
@@ -33,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validasi range bulan realisasi (1 - 12)
     $bulan_realisasi_raw = isset($_POST['bulan_realisasi']) ? (int)$_POST['bulan_realisasi'] : 0;
     $bulan_realisasi     = ($bulan_realisasi_raw >= 1 && $bulan_realisasi_raw <= 12) ? $bulan_realisasi_raw : 0;
+    assert_report_unlocked($conn, $id_sekolah, $bulan_realisasi);
     
     // Tangkap data paket JSON dari client
     $paket_data_json      = isset($_POST['paket_data_json']) ? $_POST['paket_data_json'] : '';

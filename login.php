@@ -50,11 +50,6 @@ if (file_exists('koneksi.php')) {
     die("Error: File 'koneksi.php' tidak ditemukan. Pastikan file tersebut ada di folder yang sama.");
 }
 
-// Proteksi Tambahan: Amankan file log dari akses langsung via browser (.htaccess)
-if (!file_exists('.htaccess')) {
-    @file_put_contents('.htaccess', "<Files \"auth_security_log.txt\">\n    Order Allow,Deny\n    Deny from all\n</Files>\n");
-}
-
 // Fungsi Audit Log (Sanitasi CRLF Log Injection)
 function catat_log($aksi, $user, $status) {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
@@ -65,76 +60,73 @@ function catat_log($aksi, $user, $status) {
     $status_clean = str_replace(["\r", "\n"], '', $status);
 
     $log_pesan = "[$waktu] IP: $ip | USER: $user_clean | AKSI: $aksi_clean | STATUS: $status_clean" . PHP_EOL;
-    file_put_contents('auth_security_log.txt', $log_pesan, FILE_APPEND | LOCK_EX);
+    file_put_contents(sys_get_temp_dir() . '/pelaporan_bm_auth.log', $log_pesan, FILE_APPEND | LOCK_EX);
 }
 
 // =========================================================================
-// FUNGSI SISTEM ANTI BRUTE-FORCE BERBASIS PERANGKAT (PER-DEVICE LOCKOUT)
+// FUNGSI SISTEM ANTI BRUTE-FORCE BERBASIS USERNAME DAN IP
 // =========================================================================
 
-function get_device_hash() {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    $agent = $_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN';
-    
-    if (!isset($_COOKIE['dev_sec_token'])) {
-        $device_token = bin2hex(random_bytes(16));
-        $is_secure = (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === '1'));
-        
-        setcookie('dev_sec_token', $device_token, [
-            'expires' => time() + (86400 * 365), 
-            'path' => '/',
-            'httponly' => true,
-            'samesite' => 'Strict',
-            'secure' => $is_secure
-        ]);
-        $_COOKIE['dev_sec_token'] = $device_token;
-    } else {
-        $device_token = $_COOKIE['dev_sec_token'];
-    }
-
-    return md5($ip . '_' . $agent . '_' . $device_token);
+function get_login_attempt_file($scope, $value) {
+    $key = hash('sha256', $scope . "\0" . strtolower(trim((string)$value)));
+    return sys_get_temp_dir() . '/pelaporan_bm_login_' . $scope . '_' . $key . '.json';
 }
 
-function check_device_lockout($max_attempts = 3, $lockout_time = 900) {
-    $device_hash = get_device_hash();
-    $file = sys_get_temp_dir() . '/bf_dev_' . $device_hash . '.json';
-    if (file_exists($file)) {
+function get_login_attempt_buckets($username) {
+    return [
+        'account' => [get_login_attempt_file('account', $username), 5],
+        'ip' => [get_login_attempt_file('ip', $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'), 20],
+    ];
+}
+
+function check_login_lockout($username) {
+    $remaining = 0;
+    foreach (get_login_attempt_buckets($username) as [$file]) {
+        if (!file_exists($file)) continue;
         $data = json_decode(@file_get_contents($file), true);
         if (isset($data['lockout_until']) && $data['lockout_until'] > time()) {
-            return ceil(($data['lockout_until'] - time()) / 60);
+            $remaining = max($remaining, (int)ceil(($data['lockout_until'] - time()) / 60));
         }
     }
-    return 0;
+    return $remaining;
 }
 
-function record_failed_device_attempt($max_attempts = 3, $lockout_time = 900) {
-    $device_hash = get_device_hash();
-    $file = sys_get_temp_dir() . '/bf_dev_' . $device_hash . '.json';
-    $data = ['attempts' => 0, 'lockout_until' => 0];
-    if (file_exists($file)) {
-        $fetched = json_decode(@file_get_contents($file), true);
-        if (is_array($fetched)) {
-            $data = $fetched;
+function record_failed_login_attempt($username, $lockout_time = 900) {
+    $accountAttempts = 0;
+    $now = time();
+    foreach (get_login_attempt_buckets($username) as $scope => [$file, $maxAttempts]) {
+        $handle = fopen($file, 'c+');
+        if ($handle === false || !flock($handle, LOCK_EX)) continue;
+        $fetched = json_decode(stream_get_contents($handle), true);
+        $data = is_array($fetched) ? $fetched : ['attempts' => 0, 'lockout_until' => 0, 'window_started_at' => $now];
+
+        $lockoutExpired = ($data['lockout_until'] ?? 0) > 0 && $data['lockout_until'] <= $now;
+        $windowExpired = ($data['window_started_at'] ?? 0) <= $now - $lockout_time;
+        if ($lockoutExpired || $windowExpired) {
+            $data['attempts'] = 0;
+            $data['lockout_until'] = 0;
+            $data['window_started_at'] = $now;
         }
-    }
-    
-    if (isset($data['lockout_until']) && $data['lockout_until'] > 0 && $data['lockout_until'] <= time()) {
-        $data['attempts'] = 0;
-        $data['lockout_until'] = 0;
+
+        $data['attempts']++;
+        if ($data['attempts'] >= $maxAttempts) {
+            $data['lockout_until'] = $now + $lockout_time;
+        }
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, json_encode($data));
+        fflush($handle);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+
+        if ($scope === 'account') $accountAttempts = $data['attempts'];
     }
 
-    $data['attempts']++;
-    if ($data['attempts'] >= $max_attempts) {
-        $data['lockout_until'] = time() + $lockout_time;
-    }
-    @file_put_contents($file, json_encode($data), LOCK_EX);
-    
-    return $data['attempts'];
+    return $accountAttempts;
 }
 
-function reset_device_attempts() {
-    $device_hash = get_device_hash();
-    $file = sys_get_temp_dir() . '/bf_dev_' . $device_hash . '.json';
+function reset_login_attempts($username) {
+    $file = get_login_attempt_file('account', $username);
     if (file_exists($file)) {
         @unlink($file);
     }
@@ -173,15 +165,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- LOGIKA REGISTER ---
     if ($mode === 'register') {
-        $sekolah_raw = isset($_POST['sekolah_pilihan']) ? $_POST['sekolah_pilihan'] : '';
-        
-        if (!empty($sekolah_raw) && strpos($sekolah_raw, '|') !== false) {
-            $sekolah_data = explode('|', $sekolah_raw);
-            $id_sekolah   = trim($sekolah_data[0]);
-            $nama_sekolah = trim($sekolah_data[1]);
-        } else {
-            $id_sekolah   = "";
-            $nama_sekolah = "";
+        $id_sekolah = filter_var($_POST['sekolah_pilihan'] ?? null, FILTER_VALIDATE_INT) ?: 0;
+        $nama_sekolah = '';
+        if ($id_sekolah > 0) {
+            $stmt_sekolah = mysqli_prepare($conn, "SELECT nama_sekolah FROM kode_sekolah WHERE id = ? LIMIT 1");
+            mysqli_stmt_bind_param($stmt_sekolah, "i", $id_sekolah);
+            mysqli_stmt_execute($stmt_sekolah);
+            $result_sekolah = mysqli_stmt_get_result($stmt_sekolah);
+            $row_sekolah = mysqli_fetch_assoc($result_sekolah);
+            $nama_sekolah = trim($row_sekolah['nama_sekolah'] ?? '');
+            mysqli_stmt_close($stmt_sekolah);
         }
 
         $password_raw = isset($_POST['password']) ? substr($_POST['password'], 0, 100) : '';
@@ -252,11 +245,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- LOGIKA LOGIN ---
     elseif ($mode === 'login') {
         
-        $sisa_menit = check_device_lockout(3, 15 * 60);
+        $sisa_menit = check_login_lockout($username);
         if ($sisa_menit > 0) {
-            $message = "Terlalu banyak percobaan gagal! Akses dari perangkat ini diblokir sementara. Coba lagi dalam $sisa_menit menit.";
+            $message = "Terlalu banyak percobaan gagal! Akun dari alamat jaringan ini diblokir sementara. Coba lagi dalam $sisa_menit menit.";
             $status = "error";
-            catat_log("Login Attempt", $username, "DIBLOKIR (Brute-Force Device)");
+            catat_log("Login Attempt", $username, "DIBLOKIR (Brute-Force)");
             goto skip_login;
         }
 
@@ -293,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                reset_device_attempts();
+                reset_login_attempts($username);
                 unset($_SESSION['login_attempts']);
                 unset($_SESSION['lockout']);
 
@@ -304,8 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['username'] = $row['username'];
                 $_SESSION['user_agent'] = md5($_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN');
                 
-                // Penentuan Role (Mendukung kolom database 'role' maupun pengecekan username)
-                $user_role = $row['role'] ?? ((strtolower($row['username']) === 'admin' || $row['id_sekolah'] == 0) ? 'admin' : 'user');
+                $user_role = $row['role'] ?? 'user';
 
                 if ($user_role === 'admin') {
                     $_SESSION['id_sekolah'] = '0'; 
@@ -328,13 +320,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 catat_log("Login", $username, "SUKSES");
 
             } else {
-                $failed_count = record_failed_device_attempt(3, 15 * 60);
-                $sisa_kesempatan = 3 - $failed_count;
+                $failed_count = record_failed_login_attempt($username, 15 * 60);
+                $sisa_kesempatan = max(0, 5 - $failed_count);
                 
                 if ($sisa_kesempatan > 0) {
-                    $message = "Akun tidak ditemukan atau kombinasi salah! (Sisa percobaan di perangkat ini: $sisa_kesempatan)";
+                    $message = "Akun tidak ditemukan atau kombinasi salah! (Sisa percobaan: $sisa_kesempatan)";
                 } else {
-                    $message = "3 kali percobaan gagal! Akses dari perangkat ini diblokir selama 15 menit.";
+                    $message = "Terlalu banyak percobaan gagal! Login diblokir selama 15 menit.";
                 }
                 
                 $status = "error";
@@ -567,8 +559,7 @@ if ($mode === 'register') {
                                 $disabled_attr = $is_registered ? "disabled" : "";
                                 $display_name  = $is_registered ? $row_sekolah['nama_sekolah'] . " (Sudah Terdaftar)" : $row_sekolah['nama_sekolah'];
 
-                                $combined_value = $row_sekolah['id'] . "|" . $row_sekolah['nama_sekolah'];
-                                echo "<option value='". htmlspecialchars($combined_value, ENT_QUOTES, 'UTF-8') ."' " . $disabled_attr . ">" . htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8') . "</option>";
+                                echo "<option value='". (int)$row_sekolah['id'] ."' " . $disabled_attr . ">" . htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8') . "</option>";
                             }
                             echo "</optgroup>"; 
                         } else {

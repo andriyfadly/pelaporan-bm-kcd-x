@@ -302,12 +302,10 @@ try {
 } catch (Exception $e) {
     // Batalkan semua perubahan jika salah satu baris query gagal
     mysqli_rollback($conn);
-    
-    // [KEAMANAN BAJA]: Proteksi XSS (Cross-Site Scripting) pada Output Pesan Error
-    $pesan_error_aman = addslashes(htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'));
+    error_log('Simpan barang gagal: ' . $e->getMessage());
     
     echo "<script>
-            alert('Terjadi Kegagalan: " . $pesan_error_aman . "'); 
+            alert('Terjadi kegagalan saat menyimpan data. Silakan coba lagi.');
             window.history.back();
           </script>";
     exit;

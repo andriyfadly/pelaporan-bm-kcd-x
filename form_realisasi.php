@@ -8,6 +8,10 @@ if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'user') {
     exit;
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 include "koneksi.php";
 $id_sekolah = $_SESSION['id_sekolah'] ?? '';
 
@@ -32,9 +36,11 @@ $no_spk_edit = $_GET['no_spk_edit'] ?? '';
 // Blok logika penarikan data lama jika masuk mode EDIT
 $js_edit_data = '[]';
 if (!empty($no_spk_edit)) {
-    $spk_escaped = mysqli_real_escape_string($conn, $no_spk_edit);
     // Cari data murni berdasarkan NO_SPK & ID_SEKOLAH agar tidak bentrok antar instansi/bulan salah urus
-    $q_edit = mysqli_query($conn, "SELECT * FROM `master_barang_sekolah` WHERE `no_spk` = '$spk_escaped' AND `id_sekolah` = '$id_sekolah' ORDER BY `id` ASC");
+    $stmt_edit = mysqli_prepare($conn, "SELECT * FROM `master_barang_sekolah` WHERE `no_spk` = ? AND `id_sekolah` = ? ORDER BY `id` ASC");
+    mysqli_stmt_bind_param($stmt_edit, "ss", $no_spk_edit, $id_sekolah);
+    mysqli_stmt_execute($stmt_edit);
+    $q_edit = mysqli_stmt_get_result($stmt_edit);
     
     $data_edit_arr = [];
     while ($r = mysqli_fetch_assoc($q_edit)) {
@@ -465,6 +471,7 @@ if (!empty($no_spk_edit)) {
         btnSimpan.innerText = "Menyimpan Dokumen...";
 
         let formData = new FormData(form);
+        formData.append('csrf_token', <?= json_encode($_SESSION['csrf_token']); ?>);
         fetch("simpan_katalog_barang.php", { method: "POST", body: formData })
         .then(res => res.json())
         .then(data => {

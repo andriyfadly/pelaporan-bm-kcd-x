@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 header('Content-Type: application/json; charset=utf-8');
 
 include "koneksi.php";
+require_once __DIR__ . '/report_lock.php';
 
 // Array penampung respon awal
 $response = [
@@ -29,19 +30,26 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+$csrf_token = $_POST['csrf_token'] ?? '';
+if (empty($csrf_token) || !hash_equals($_SESSION['csrf_token'] ?? '', $csrf_token)) {
+    $response['message'] = 'Token keamanan tidak valid.';
+    echo json_encode($response);
+    exit;
+}
+
 // 1. Tangkap Parameter Utama Kontrol
-$id_uraian       = isset($_POST['id_uraian']) ? mysqli_real_escape_string($conn, trim($_POST['id_uraian'])) : '';
-$kodering        = isset($_POST['kodering_belanja']) ? mysqli_real_escape_string($conn, trim($_POST['kodering_belanja'])) : '';
+$id_uraian       = trim($_POST['id_uraian'] ?? '');
+$kodering        = trim($_POST['kodering_belanja'] ?? '');
 $bulan_realisasi = isset($_POST['bulan_realisasi']) ? (int)$_POST['bulan_realisasi'] : 0;
-$no_sp2d         = isset($_POST['no_sp2ds']) ? mysqli_real_escape_string($conn, trim($_POST['no_sp2ds'])) : '';
-$sumber_dana     = isset($_POST['sumber_perolehan']) ? mysqli_real_escape_string($conn, trim($_POST['sumber_perolehan'])) : '';
-$no_spk          = isset($_POST['no_spk']) ? mysqli_real_escape_string($conn, trim($_POST['no_spk'])) : '';
-$ba_no           = isset($_POST['ba_noba']) ? mysqli_real_escape_string($conn, trim($_POST['ba_noba'])) : '';
-$ba_tgl          = isset($_POST['ba_tgl']) ? mysqli_real_escape_string($conn, trim($_POST['ba_tgl'])) : '';
+$no_sp2d         = trim($_POST['no_sp2ds'] ?? '');
+$sumber_dana     = trim($_POST['sumber_perolehan'] ?? '');
+$no_spk          = trim($_POST['no_spk'] ?? '');
+$ba_no           = trim($_POST['ba_noba'] ?? '');
+$ba_tgl          = trim($_POST['ba_tgl'] ?? '');
 $id_sekolah      = $_SESSION['id_sekolah'] ?? '';
 
 // Tangkap penanda kunci unik SPK lama dari form interface workspace
-$old_spk_key     = isset($_POST['old_spk_key']) ? mysqli_real_escape_string($conn, trim($_POST['old_spk_key'])) : '';
+$old_spk_key     = trim($_POST['old_spk_key'] ?? '');
 
 $response['bulan_realisasi'] = $bulan_realisasi;
 
@@ -50,6 +58,8 @@ if (empty($id_uraian) || $bulan_realisasi === 0 || empty($no_spk)) {
     echo json_encode($response);
     exit;
 }
+
+assert_report_unlocked($conn, (string)$id_sekolah, $bulan_realisasi);
 
 // 2. Tangkap Array Multi-Item Barang
 $arr_kode_barang     = $_POST['kode_barang'] ?? [];
@@ -76,25 +86,25 @@ try {
     $target_delete_spk = !empty($old_spk_key) ? $old_spk_key : $no_spk;
 
     // LANGKAH A: Hapus hanya data realisasi lama yang memiliki kesamaan No SPK/Kuitansi ini saja
-    $delete_query = "DELETE FROM `realisasi_barang_sekolah` 
-                     WHERE `id_uraian` = '$id_uraian' 
-                     AND `bulan_realisasi` = '$bulan_realisasi' 
-                     AND `id_sekolah` = '$id_sekolah'
-                     AND `no_spk` = '$target_delete_spk'";
-    
-    if (!mysqli_query($conn, $delete_query)) {
+    $delete_query = "DELETE FROM `realisasi_barang_sekolah`
+                     WHERE `id_uraian` = ? AND `bulan_realisasi` = ?
+                     AND `id_sekolah` = ? AND `no_spk` = ?";
+    $stmt_delete = mysqli_prepare($conn, $delete_query);
+    mysqli_stmt_bind_param($stmt_delete, "siss", $id_uraian, $bulan_realisasi, $id_sekolah, $target_delete_spk);
+
+    if (!mysqli_stmt_execute($stmt_delete)) {
         throw new Exception("Gagal sinkronisasi: Pembersihan rekam data SPK lama ditolak database.");
     }
 
     // LANGKAH B: Re-insert data baru hasil editing dari form
     for ($i = 0; $i < count($arr_nama_barang); $i++) {
-        $kode_barang   = mysqli_real_escape_string($conn, trim($arr_kode_barang[$i]));
-        $nama_barang   = mysqli_real_escape_string($conn, trim($arr_nama_barang[$i]));
-        $jenis_aset    = mysqli_real_escape_string($conn, trim($arr_jenis_aset[$i]));
-        $merk          = mysqli_real_escape_string($conn, trim($arr_merk_tipe[$i]));
-        $no_sertif     = mysqli_real_escape_string($conn, trim($arr_no_sertifikat[$i]));
-        $ukuran        = mysqli_real_escape_string($conn, trim($arr_ukuran_bangunan[$i]));
-        $satuan        = mysqli_real_escape_string($conn, trim($arr_satuan[$i]));
+        $kode_barang   = trim($arr_kode_barang[$i]);
+        $nama_barang   = trim($arr_nama_barang[$i]);
+        $jenis_aset    = trim($arr_jenis_aset[$i]);
+        $merk          = trim($arr_merk_tipe[$i]);
+        $no_sertif     = trim($arr_no_sertifikat[$i]);
+        $ukuran        = trim($arr_ukuran_bangunan[$i]);
+        $satuan        = trim($arr_satuan[$i]);
         $volume        = (float)$arr_volume[$i];
         $harga_satuan  = (float)$arr_harga_satuan[$i];
         
@@ -113,15 +123,33 @@ try {
             `kode_barang`, `nama_barang`, `jenis_aset`, `merk_tipe`, 
             `no_sertifikat`, `ukuran_bangunan`, `satuan`, `volume`, 
             `harga_satuan`, `nilai_perolehan`
-        ) VALUES (
-            '$id_sekolah', '$id_uraian', '$kodering', '$bulan_realisasi', 
-            '$no_sp2d', '$sumber_dana', '$no_spk', '$ba_no', '$ba_tgl', 
-            '$kode_barang', '$nama_barang', '$jenis_aset', '$merk', 
-            '$no_sertif', '$ukuran', '$satuan', '$volume', 
-            '$harga_satuan', '$nilai_perolehan'
-        )";
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt_insert = mysqli_prepare($conn, $insert_query);
+        mysqli_stmt_bind_param(
+            $stmt_insert,
+            "sssissssssssssssddd",
+            $id_sekolah,
+            $id_uraian,
+            $kodering,
+            $bulan_realisasi,
+            $no_sp2d,
+            $sumber_dana,
+            $no_spk,
+            $ba_no,
+            $ba_tgl,
+            $kode_barang,
+            $nama_barang,
+            $jenis_aset,
+            $merk,
+            $no_sertif,
+            $ukuran,
+            $satuan,
+            $volume,
+            $harga_satuan,
+            $nilai_perolehan
+        );
 
-        if (!mysqli_query($conn, $insert_query)) {
+        if (!mysqli_stmt_execute($stmt_insert)) {
             throw new Exception("Gagal menyimpan data rincian komponen: " . $nama_barang);
         }
     }
@@ -135,8 +163,9 @@ try {
 } catch (Exception $e) {
     // Jika ada yang error ditengah jalan, batalkan semua perubahan kembali ke semula
     mysqli_rollback($conn);
+    error_log('Edit SPJ gagal: ' . $e->getMessage());
     $response['status'] = 'error';
-    $response['message'] = $e->getMessage();
+    $response['message'] = 'Gagal menyimpan perubahan. Silakan coba lagi.';
 }
 
 // Cetak respon dalam format JSON bersih

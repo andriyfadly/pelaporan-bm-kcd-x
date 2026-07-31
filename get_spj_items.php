@@ -19,7 +19,7 @@ include "koneksi.php";
 
 // Ambil parameter data
 $id_sekolah = $_SESSION['id_sekolah'] ?? '';
-$no_spk     = isset($_GET['no_spk']) ? mysqli_real_escape_string($conn, $_GET['no_spk']) : '';
+$no_spk     = trim($_GET['no_spk'] ?? '');
 
 if (empty($no_spk)) {
     echo json_encode([
@@ -30,17 +30,19 @@ if (empty($no_spk)) {
 }
 
 // Ambil SEMUA barang yang nomor SPK-nya sama dalam sekolah tersebut
-$query = "SELECT * FROM `master_barang_sekolah` 
-          WHERE `no_spk` = '$no_spk' 
-          AND `id_sekolah` = '$id_sekolah'
+$query = "SELECT * FROM `master_barang_sekolah`
+          WHERE `no_spk` = ? AND `id_sekolah` = ?
           ORDER BY `id` ASC";
-
-$result = mysqli_query($conn, $query);
+$stmt = mysqli_prepare($conn, $query);
+mysqli_stmt_bind_param($stmt, "ss", $no_spk, $id_sekolah);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 
 if (!$result) {
+    error_log('Gagal mengambil item SPJ: ' . mysqli_error($conn));
     echo json_encode([
         'status' => 'error',
-        'message' => 'Gagal mengambil data dari database: ' . mysqli_error($conn)
+        'message' => 'Gagal mengambil data. Silakan coba lagi.'
     ]);
     exit;
 }

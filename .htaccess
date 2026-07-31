@@ -1,4 +1,17 @@
-<Files "auth_security_log.txt">
-    Order Allow,Deny
-    Deny from all
-</Files>
+Options -Indexes
+
+<IfModule mod_authz_core.c>
+    <FilesMatch "(^\.env|^auth_security_log\.txt$|\.(sql|log|bak|old|ini)$|composer\.(json|lock)$)">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    <FilesMatch "(^\.env|^auth_security_log\.txt$|\.(sql|log|bak|old|ini)$|composer\.(json|lock)$)">
+        Order Allow,Deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+RewriteEngine On
+RewriteRule ^(?:vendor|logs_security)(?:/|$) - [F,L,NC]

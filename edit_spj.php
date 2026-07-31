@@ -21,6 +21,10 @@ if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'user') {
     exit;
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 include "koneksi.php";
 
 $id_sekolah = isset($_SESSION['id_sekolah']) ? trim((string)$_SESSION['id_sekolah']) : '';
@@ -419,6 +423,7 @@ $display_bulan = $nama_bulan_arr[$bulan_realisasi] ?? "Tidak Diketahui";
         formData.append('id_uraian', document.getElementById('payload_id_uraian').value);
         formData.append('kodering', document.getElementById('payload_kodering').value);
         formData.append('bulan_realisasi', document.getElementById('payload_bulan').value);
+        formData.append('csrf_token', <?= json_encode($_SESSION['csrf_token']); ?>);
         formData.append('paket_data_edit_json', JSON.stringify(listDaftarBarang));
 
         let btn = document.getElementById('btn_simpan_realisasi');

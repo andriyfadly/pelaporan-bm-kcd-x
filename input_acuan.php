@@ -190,8 +190,13 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
         $allowed_extension = array('xls', 'xlsx');
         $file_array = explode(".", $_FILES['file_template']['name']);
         $file_extension = strtolower(end($file_array));
+        $allowed_mime = [
+            'xls' => ['application/vnd.ms-excel', 'application/x-ole-storage'],
+            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
+        ];
+        $file_mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['file_template']['tmp_name']);
 
-        if (in_array($file_extension, $allowed_extension, true)) {
+        if (in_array($file_extension, $allowed_extension, true) && in_array($file_mime, $allowed_mime[$file_extension], true)) {
             if (file_exists('vendor/autoload.php')) {
                 require 'vendor/autoload.php';
             } else {
@@ -285,10 +290,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_excel_ajax') {
                 exit;
             } catch (Exception $e) {
                 error_log("Import acuan gagal: " . $e->getMessage() . " | file=" . $e->getFile() . ":" . $e->getLine());
-                $userMsg = (getenv('APP_DEBUG') === 'true')
-                    ? 'Error membaca file: ' . $e->getMessage()
-                    : 'Error membaca file: Gagal memproses data. Silakan coba file lain atau hubungi admin.';
-                echo json_encode(['status' => 'error', 'message' => $userMsg]);
+                echo json_encode(['status' => 'error', 'message' => 'Error membaca file: Gagal memproses data. Silakan coba file lain atau hubungi admin.']);
                 exit;
             }
         } else {
@@ -779,8 +781,8 @@ $total_pages_init = ceil($total_records_init / 50);
             
             tbody.innerHTML = result.table;
             pagContainer.innerHTML = result.pagination;
-            totalHeader.innerHTML = result.total_nominal; 
-            sekolahHeader.innerHTML = result.total_sekolah; 
+            totalHeader.textContent = result.total_nominal;
+            sekolahHeader.textContent = result.total_sekolah;
         } catch (error) {
             console.error("Gagal memfilter data tabel: ", error);
         }
@@ -804,10 +806,12 @@ $total_pages_init = ceil($total_records_init / 50);
             const result = await response.json();
             
             if (result.status === 'success') {
-                alertContainer.innerHTML = `<div class='alert alert-success'><i class='bi bi-check-circle-fill me-2'></i>${result.message}</div>`;
+                alertContainer.className = 'alert alert-success';
+                alertContainer.textContent = result.message;
                 setTimeout(refreshInternalContainer, 1200);
             } else {
-                alertContainer.innerHTML = `<div class='alert alert-danger'><i class='bi bi-exclamation-triangle-fill me-2'></i>${result.message}</div>`;
+                alertContainer.className = 'alert alert-danger';
+                alertContainer.textContent = result.message;
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = '<i class="bi bi-box-arrow-in-down-left me-2"></i>Proses Import Data';
             }
@@ -831,10 +835,12 @@ $total_pages_init = ceil($total_records_init / 50);
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    alertContainer.innerHTML = `<div class='alert alert-success'><i class='bi bi-check-circle-fill me-2'></i>${result.message}</div>`;
+                    alertContainer.className = 'alert alert-success';
+                    alertContainer.textContent = result.message;
                     setTimeout(refreshInternalContainer, 1000);
                 } else {
-                    alertContainer.innerHTML = `<div class='alert alert-danger'><i class='bi bi-exclamation-triangle-fill me-2'></i>${result.message}</div>`;
+                    alertContainer.className = 'alert alert-danger';
+                    alertContainer.textContent = result.message;
                 }
             } catch (error) {
                 alertContainer.innerHTML = `<div class='alert alert-danger'><i class='bi bi-exclamation-triangle-fill me-2'></i>Gagal terhubung ke server saat menghapus data!</div>`;
@@ -861,10 +867,12 @@ $total_pages_init = ceil($total_records_init / 50);
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    alertContainer.innerHTML = `<div class='alert alert-success'><i class='bi bi-check-circle-fill me-2'></i>${result.message}</div>`;
+                    alertContainer.className = 'alert alert-success';
+                    alertContainer.textContent = result.message;
                     setTimeout(refreshInternalContainer, 1500);
                 } else {
-                    alertContainer.innerHTML = `<div class='alert alert-danger'><i class='bi bi-exclamation-triangle-fill me-2'></i>${result.message}</div>`;
+                    alertContainer.className = 'alert alert-danger';
+                    alertContainer.textContent = result.message;
                 }
             } catch (error) {
                 console.error(error);
