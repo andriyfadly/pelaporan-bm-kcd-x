@@ -18,6 +18,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/master-barang', [MasterBarangController::class, 'store'])->middleware('role:user')->name('master-barang.store');
     Route::put('/master-barang/batch', [MasterBarangController::class, 'batch'])->middleware('role:user')->name('master-barang.batch');
     Route::post('/realisasi', [ReportWorkflowController::class, 'storeRealisasi'])->middleware('role:user')->name('realisasi.store');
+    Route::delete('/realisasi/{noSpk}', [ReportWorkflowController::class, 'destroyRealisasi'])->middleware('role:user')->name('realisasi.destroy');
     Route::post('/laporan/{month}/submit', [ReportWorkflowController::class, 'submit'])->middleware('role:user')->name('laporan.submit');
     Route::get('/admin/dashboard', AdminDashboardController::class)->middleware('role:admin')->name('admin.dashboard');
     Route::get('/admin/laporan/export', AdminReportExportController::class)->middleware('role:admin')->name('admin.laporan.export');

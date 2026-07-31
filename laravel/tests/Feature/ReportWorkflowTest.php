@@ -119,6 +119,63 @@ it('denies report export to school users', function (): void {
         ->assertForbidden();
 });
 
+it('deletes only own unlocked realization document', function (): void {
+    DB::table('realisasi_barang_sekolah')->insert([
+        [
+            'public_id' => '0197a5aa-0000-7000-8000-000000000005',
+            'id_sekolah' => '1',
+            'bulan_realisasi' => 6,
+            'nama_barang' => 'Meja A',
+            'volume' => 1,
+            'harga_satuan' => 1,
+            'nilai_perolehan' => 1,
+            'no_spk' => 'SPK-1',
+        ],
+        [
+            'public_id' => '0197a5aa-0000-7000-8000-000000000006',
+            'id_sekolah' => '2',
+            'bulan_realisasi' => 6,
+            'nama_barang' => 'Meja B',
+            'volume' => 1,
+            'harga_satuan' => 1,
+            'nilai_perolehan' => 1,
+            'no_spk' => 'SPK-1',
+        ],
+    ]);
+
+    $this->actingAs(reportUser('operator', 'user', 1))
+        ->deleteJson('/realisasi/SPK-1')
+        ->assertOk();
+
+    expect(DB::table('realisasi_barang_sekolah')->where('id_sekolah', '1')->count())->toBe(0)
+        ->and(DB::table('realisasi_barang_sekolah')->where('id_sekolah', '2')->count())->toBe(1);
+});
+
+it('refuses realization deletion when its report is locked', function (): void {
+    DB::table('realisasi_barang_sekolah')->insert([
+        'public_id' => '0197a5aa-0000-7000-8000-000000000005',
+        'id_sekolah' => '1',
+        'bulan_realisasi' => 6,
+        'nama_barang' => 'Meja',
+        'volume' => 1,
+        'harga_satuan' => 1,
+        'nilai_perolehan' => 1,
+        'no_spk' => 'SPK-1',
+    ]);
+    DB::table('laporan_realisasi')->insert([
+        'public_id' => '0197a5aa-0000-7000-8000-000000000007',
+        'id_sekolah' => '1',
+        'bulan' => 6,
+        'status' => 'Menunggu Approval',
+    ]);
+
+    $this->actingAs(reportUser('operator', 'user', 1))
+        ->deleteJson('/realisasi/SPK-1')
+        ->assertStatus(409);
+
+    expect(DB::table('realisasi_barang_sekolah')->count())->toBe(1);
+});
+
 function reportUser(string $username, string $role, ?int $schoolId): User
 {
     Role::findOrCreate($role, 'web');

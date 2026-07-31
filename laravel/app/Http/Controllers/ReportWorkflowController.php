@@ -41,6 +41,31 @@ class ReportWorkflowController extends Controller
         return response()->json(['data' => $item], 201);
     }
 
+    public function destroyRealisasi(Request $request, string $noSpk): JsonResponse
+    {
+        abort_unless($request->user()?->hasRole('user'), 403);
+
+        $schoolId = (string) $request->user()->id_sekolah;
+
+        DB::transaction(function () use ($schoolId, $noSpk): void {
+            $items = RealisasiBarangSekolah::query()
+                ->where('id_sekolah', $schoolId)
+                ->where('no_spk', $noSpk)
+                ->lockForUpdate()
+                ->get(['id', 'bulan_realisasi']);
+
+            foreach ($items->pluck('bulan_realisasi')->unique() as $month) {
+                abort_if($this->reportLocked($schoolId, (int) $month), 409, 'Report is locked.');
+            }
+
+            RealisasiBarangSekolah::query()
+                ->whereKey($items->pluck('id'))
+                ->delete();
+        });
+
+        return response()->json(['message' => 'Realization document deleted.']);
+    }
+
     public function submit(Request $request, int $month): JsonResponse
     {
         abort_unless($request->user()?->hasRole('user'), 403);
