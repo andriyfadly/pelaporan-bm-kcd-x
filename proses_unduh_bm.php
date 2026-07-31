@@ -34,7 +34,6 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // === KEAMANAN LAPIS BAJA: VALIDASI METHOD & CSRF TOKEN ===
-// Tolak jika bukan request POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     ob_end_clean();
     http_response_code(405);
@@ -43,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Tolak jika CSRF token kosong atau tidak cocok
 if (empty($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
     ob_end_clean();
     http_response_code(403);
@@ -83,7 +81,7 @@ if (!$filter_bulan || !$filter_tahun) {
     exit;
 }
 
-// === HELPER AMAN UNTUK UPDATE PROGRESS SESSION TANPA MERUSAK HEADER ===
+// === HELPER AMAN UNTUK UPDATE PROGRESS SESSION ===
 function updateProgressSafe($count) {
     ini_set('session.use_cookies', 0);
     if (session_status() === PHP_SESSION_NONE) {
@@ -97,7 +95,6 @@ function updateProgressSafe($count) {
 function safeCellString($value) {
     if ($value === null || $value === '') return '';
     $str = (string)$value;
-    // Netralkan karakter berbahaya yang diawali =, +, -, @, Tab, CR
     if (preg_match('/^[\=\+\-\@\t\r]/', $str)) {
         return "'" . $str;
     }
@@ -111,7 +108,7 @@ $nama_bulan_indo = [
 ];
 $teks_bulan_pilihan = $nama_bulan_indo[$filter_bulan] ?? '';
 
-// === KEAMANAN LAPIS BAJA: PREPARED STATEMENT UTAMA (ANTI SQL INJECTION) ===
+// === KEAMANAN LAPIS BAJA: PREPARED STATEMENT UTAMA ===
 $query = "SELECT r.*, k.nama_sekolah as nama_sekolah_db 
           FROM `realisasi_barang_sekolah` r 
           LEFT JOIN `kode_sekolah` k ON r.id_sekolah = k.id_sekolah OR r.id_sekolah = k.id 
@@ -131,7 +128,6 @@ mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 $totalRows = mysqli_num_rows($result);
 
-// Jika data kosong, gagalkan download dengan respon bersih
 if ($totalRows === 0) {
     mysqli_stmt_close($stmt);
     ob_end_clean();
@@ -249,17 +245,16 @@ foreach ($kolomMerah as $cell) { $sheet->getStyle($cell)->getFont()->getColor()-
 // Format Code Tipe Data "Accounting" tanpa simbol Rp
 $formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
 
-// Tracking Panjang Maksimal Kolom (Optimasi Cepat tanpa Loop getCell)
+// Tracking Panjang Maksimal Kolom
 $maxLenCol = array_fill_keys(range('A', 'Y'), 0);
 
-// Populasi Data Row
+// Populasi Data Row (MURNI PENGISIAN DATA KECENPATAN TINGGI)
 $rowNum = 10; $noIdx = 1; $currentCount = 0;
 
 while ($row = mysqli_fetch_assoc($result)) {
     $currentCount++;
     
-    // Update progress secara aman per 50 baris
-    if ($currentCount === 1 || $currentCount % 50 === 0 || $currentCount === $totalRows) {
+    if ($currentCount === 1 || $currentCount % 100 === 0 || $currentCount === $totalRows) {
         updateProgressSafe($currentCount);
     }
 
@@ -317,7 +312,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     $sheet->setCellValue('Y' . $rowNum, safeCellString($nama_sekolah_tampil));
 
-    // Recording Panjang Maksimal Nilai Sel Secara Real-Time (Cepat)
+    // Recording Panjang Maksimal Nilai Sel
     $maxLenCol['B'] = max($maxLenCol['B'], strlen($valB));
     $maxLenCol['C'] = max($maxLenCol['C'], strlen($valC));
     $maxLenCol['D'] = max($maxLenCol['D'], strlen($valD));
@@ -329,18 +324,6 @@ while ($row = mysqli_fetch_assoc($result)) {
     $maxLenCol['N'] = max($maxLenCol['N'], strlen($valN));
     $maxLenCol['O'] = max($maxLenCol['O'], strlen($valO));
     $maxLenCol['Y'] = max($maxLenCol['Y'], strlen((string)$nama_sekolah_tampil));
-
-    // Styling
-    $sheet->getStyle('A' . $rowNum . ':Y' . $rowNum)->getFont()->setSize(11)->setName('Calibri');
-    $sheet->getStyle('A' . $rowNum . ':Y' . $rowNum)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
-    
-    $sheet->getStyle('A' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('G' . $rowNum . ':I' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('O' . $rowNum . ':P' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('U' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    
-    $sheet->getStyle('Q' . $rowNum . ':R' . $rowNum)->getNumberFormat()->setFormatCode($formatAccountingNone);
-    $sheet->getStyle('V' . $rowNum . ':X' . $rowNum)->getNumberFormat()->setFormatCode($formatAccountingNone);
 
     $rowNum++; $noIdx++;
 }
@@ -358,7 +341,28 @@ $sheet->getStyle('R7')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\F
 $sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
 
 // ==============================================================================
-// LOGIKA SQUEEZE/OPTIMALISASI LEBAR TABEL MENGIKUTI ISINYA (MENGGUNAKAN HASIL REKAM DATA)
+// RAHASIA KECENPATAN: BATCH STYLING SEKALIGUS UNTUK SELURUH TABEL (HANYA 1X PROSES)
+// ==============================================================================
+if ($lastDataRow >= 10) {
+    $dataRange = 'A10:Y' . $lastDataRow;
+    
+    // Font dan Border Massal
+    $sheet->getStyle($dataRange)->getFont()->setSize(11)->setName('Calibri');
+    $sheet->getStyle($dataRange)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
+
+    // Alignment Massal
+    $sheet->getStyle('A10:A' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('G10:I' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('O10:P' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('U10:U' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+    // Number Format Massal
+    $sheet->getStyle('Q10:R' . $lastDataRow)->getNumberFormat()->setFormatCode($formatAccountingNone);
+    $sheet->getStyle('V10:X' . $lastDataRow)->getNumberFormat()->setFormatCode($formatAccountingNone);
+}
+
+// ==============================================================================
+// LOGIKA LEBAR KOLOM MASAL
 // ==============================================================================
 foreach (range('A', 'Y') as $col) {
     if ($col === 'A') {
@@ -366,12 +370,9 @@ foreach (range('A', 'Y') as $col) {
         continue;
     }
 
-    // Mengambil panjang data terbesar yang terekam (Untuk formula diisi default 14)
     $maxLen = in_array($col, ['K', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']) ? 14 : $maxLenCol[$col];
+    $finalWidth = $maxLen + 4;
 
-    $finalWidth = $maxLen + 4; // Beri margin aman agar angka tidak berubah jadi ###
-
-    // Batasan minimal rasional agar judul kolom atas tidak tergulung terlalu ekstrem
     $minWidth = 11;
     if (in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y'])) { 
         $minWidth = 16; 
@@ -383,7 +384,7 @@ foreach (range('A', 'Y') as $col) {
     $sheet->getColumnDimension($col)->setWidth($finalWidth);
 }
 
-// MEMBERSIHKAN SELURUH BUFFER SEBELUM OUTPUT FILE DIKIRIM (KUNCI UTAMA ANTI ERROR SERVER)
+// MEMBERSIHKAN SELURUH BUFFER SEBELUM OUTPUT FILE DIKIRIM
 if (ob_get_length()) {
     ob_end_clean();
 }
