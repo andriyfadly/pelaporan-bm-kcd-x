@@ -1,13 +1,15 @@
 <?php
 
-it('does not recreate tables already owned by the legacy database', function (): void {
+it('does not recreate legacy-owned tables beyond explicit framework cache bootstrap', function (): void {
     $migrationSources = collect(glob(database_path('migrations/*.php')))
         ->map(fn (string $file): string => file_get_contents($file))
         ->implode("\n");
 
-    foreach (['users', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'passkeys'] as $table) {
+    foreach (['users', 'jobs', 'job_batches', 'failed_jobs', 'passkeys'] as $table) {
         expect($migrationSources)->not->toContain("Schema::create('{$table}'");
     }
+
+    expect(database_path('migrations/2026_07_30_100000_create_cache_table.php'))->toBeFile();
 });
 
 it('does not add schema for disabled Fortify features', function (): void {

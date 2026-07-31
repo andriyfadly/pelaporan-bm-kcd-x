@@ -2,6 +2,11 @@
 
 return [
 
+    'master' => [
+        'url' => env('MASTER_API_URL'),
+        'token' => env('MASTER_API_TOKEN'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services
