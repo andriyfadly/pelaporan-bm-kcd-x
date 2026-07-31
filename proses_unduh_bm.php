@@ -33,7 +33,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// SIMPAN SESSION ID UTAMA (Mencegah Bug Ghost Session saat update progress)
+// SIMPAN SESSION ID UTAMA (Mencegah Bug Ghost Session)
 $main_session_id = session_id();
 
 // === KEAMANAN LAPIS BAJA: VALIDASI METHOD & CSRF TOKEN ===
@@ -62,8 +62,7 @@ if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
     exit;
 }
 
-// Set counter awal data murni ke 0 & Lepas Kunci Sesi
-$_SESSION['progress_download'] = 0;
+// TUTUP KHUSUS KUNCI SESI PHP UNTUK MENCEGAH DEADLOCK (HTTP 524)
 session_write_close(); 
 
 include "koneksi.php";
@@ -84,18 +83,15 @@ if (!$filter_bulan || !$filter_tahun) {
     exit;
 }
 
-// === HELPER AMAN UNTUK UPDATE PROGRESS SESSION (FIXED GHOST SESSION) ===
+// === HELPER AMAN UNTUK UPDATE PROGRESS (TANPA SESSION LOCK / ANTI FREEZE 524) ===
 function updateProgressSafe($count, $session_id) {
     if (empty($session_id)) return;
-    
-    // Tetapkan Session ID asli pengguna agar tidak terbuat sesi baru
-    if (session_status() === PHP_SESSION_NONE) {
-        session_id($session_id);
-        @session_start();
-    }
-    $_SESSION['progress_download'] = (int)$count;
-    session_write_close();
+    $progressFile = sys_get_temp_dir() . '/progress_' . preg_replace('/[^a-zA-Z0-9]/', '', $session_id) . '.json';
+    @file_put_contents($progressFile, json_encode(['progress' => (int)$count, 'updated' => time()]));
 }
+
+// Inisialisasi awal progress 0
+updateProgressSafe(0, $main_session_id);
 
 // === HELPER SANITASI MENCEGAH FORMULA / EXCEL INJECTION ===
 function safeCellString($value) {
@@ -150,7 +146,7 @@ if ($totalRows === 0) {
 $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 
 // ==============================================================================
-// STEP 1: SHEET REFERENSI 'KODE BARANG'
+// STEP 1: SHEET REFERENSI 'KODE BARANG' (OPTIMASI FAST BULK INSERT)
 // ==============================================================================
 $sheetMaster = $spreadsheet->createSheet();
 $sheetMaster->setTitle('KODE BARANG');
@@ -171,16 +167,21 @@ try {
     $qMaster = @mysqli_query($conn, $query_master_inventaris);
 
     if ($qMaster) {
-        $mRow = 2;
+        $masterRows = [];
         while($m = mysqli_fetch_assoc($qMaster)) {
-            $sheetMaster->setCellValueExplicit('A' . $mRow, safeCellString(trim($m['kode_barang'])), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheetMaster->setCellValue('B' . $mRow, safeCellString($m['uraian']));
-            $sheetMaster->setCellValueExplicit('C' . $mRow, safeCellString(trim($m['kodering_aset'])), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheetMaster->setCellValue('D' . $mRow, safeCellString($m['jenis_aset']));
-            $sheetMaster->setCellValue('E' . $mRow, (int)$m['umur_ekonomis']);
-            $mRow++;
+            $masterRows[] = [
+                safeCellString(trim($m['kode_barang'])),
+                safeCellString($m['uraian']),
+                safeCellString(trim($m['kodering_aset'])),
+                safeCellString($m['jenis_aset']),
+                (int)$m['umur_ekonomis']
+            ];
         }
-        $batasMaster = $mRow - 1;
+        if (!empty($masterRows)) {
+            // Bulk insert massal jauh lebih cepat dibanding setCellValue dalam loop
+            $sheetMaster->fromArray($masterRows, NULL, 'A2');
+            $batasMaster = count($masterRows) + 1;
+        }
     }
 } catch (Throwable $t) {
     error_log("Master Inventaris Error: " . $t->getMessage());
