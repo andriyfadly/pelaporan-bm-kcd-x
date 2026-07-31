@@ -11,15 +11,9 @@ $legacyTables = [
     'users',
 ];
 
-it('keeps a schema-only baseline for every legacy table', function () use ($legacyTables): void {
-    $schema = file_get_contents(database_path('schema/mysql-schema.sql'));
-
-    foreach ($legacyTables as $table) {
-        expect($schema)->toContain("CREATE TABLE `{$table}`");
-    }
-
-    expect($schema)->not->toContain('INSERT INTO `users`')
-        ->not->toContain('DEFINER=');
+it('keeps a legacy table catalog without an executable schema dump', function () use ($legacyTables): void {
+    expect($legacyTables)->toHaveCount(8)
+        ->and(database_path('schema/mysql-schema.sql'))->not->toBeFile();
 });
 
 it('uses a dedicated testing database for database-mutating tests', function (): void {
