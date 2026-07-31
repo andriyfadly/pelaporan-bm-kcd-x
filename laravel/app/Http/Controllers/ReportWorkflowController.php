@@ -66,6 +66,31 @@ class ReportWorkflowController extends Controller
         return response()->json(['message' => 'Realization document deleted.']);
     }
 
+    public function updateRealisasi(Request $request, RealisasiBarangSekolah $realisasi): JsonResponse
+    {
+        abort_unless($request->user()?->hasRole('user'), 403);
+
+        $data = $request->validate([
+            'nama_barang' => ['required', 'string', 'max:255'],
+            'volume' => ['required', 'numeric', 'gt:0'],
+            'harga_satuan' => ['required', 'numeric', 'gt:0'],
+        ]);
+        $schoolId = (string) $request->user()->id_sekolah;
+
+        abort_unless($realisasi->id_sekolah === $schoolId, 403);
+
+        if ($this->reportLocked($schoolId, (int) $realisasi->bulan_realisasi)) {
+            return response()->json(['message' => 'Report is locked.'], 409);
+        }
+
+        $realisasi->update([
+            ...$data,
+            'nilai_perolehan' => bcmul((string) $data['volume'], (string) $data['harga_satuan'], 2),
+        ]);
+
+        return response()->json(['data' => $realisasi->fresh()]);
+    }
+
     public function submit(Request $request, int $month): JsonResponse
     {
         abort_unless($request->user()?->hasRole('user'), 403);

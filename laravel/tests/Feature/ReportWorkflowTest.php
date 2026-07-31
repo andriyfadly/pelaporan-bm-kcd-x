@@ -176,6 +176,32 @@ it('refuses realization deletion when its report is locked', function (): void {
     expect(DB::table('realisasi_barang_sekolah')->count())->toBe(1);
 });
 
+it('updates only own unlocked realization and recalculates money server side', function (): void {
+    DB::table('realisasi_barang_sekolah')->insert([
+        'public_id' => '0197a5aa-0000-7000-8000-000000000008',
+        'id_sekolah' => '1',
+        'bulan_realisasi' => 6,
+        'nama_barang' => 'Meja Lama',
+        'volume' => 1,
+        'harga_satuan' => 1,
+        'nilai_perolehan' => 1,
+    ]);
+
+    $this->actingAs(reportUser('operator', 'user', 1))
+        ->putJson('/realisasi/0197a5aa-0000-7000-8000-000000000008', [
+            'nama_barang' => 'Meja Baru',
+            'volume' => '2.5',
+            'harga_satuan' => '100.20',
+            'id_sekolah' => 2,
+            'nilai_perolehan' => 1,
+        ])
+        ->assertOk();
+
+    expect(DB::table('realisasi_barang_sekolah')->first())
+        ->nama_barang->toBe('Meja Baru')
+        ->nilai_perolehan->toBe('250.50');
+});
+
 function reportUser(string $username, string $role, ?int $schoolId): User
 {
     Role::findOrCreate($role, 'web');
