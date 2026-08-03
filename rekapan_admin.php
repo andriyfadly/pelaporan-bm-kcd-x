@@ -23,7 +23,7 @@ if (!isset($_SESSION['login']) || ($_SESSION['role'] ?? '') !== 'admin') {
     if (isset($_POST['action']) || isset($_GET['ajax_id_sekolah'])) {
         header('HTTP/1.1 403 Forbidden');
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['success' => false, 'message' => '🔒 Akses ditolak! Halaman ini hanya dapat diakses oleh Admin.']);
+        echo json_encode(['success' => false, 'message' => '🚨 Akses ditolak! Halaman ini hanya dapat diakses oleh Admin.']);
         exit;
     }
     header("Location: login.php");
@@ -113,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $csrf_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrf_token)) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'message' => '🔒 Akses ditolak: Token Keamanan (CSRF) tidak valid.']);
+        echo json_encode(['success' => false, 'message' => '🚨 Akses ditolak: Token Keamanan (CSRF) tidak valid.']);
         exit;
     }
 
@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $host = $_SERVER['HTTP_HOST'] ?? '';
     if ($referer && parse_url($referer, PHP_URL_HOST) !== $host) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'message' => '🔒 Akses ditolak: Permintaan tidak sah (CSRF).']);
+        echo json_encode(['success' => false, 'message' => '🚨 Akses ditolak: Permintaan tidak sah (CSRF).']);
         exit;
     }
 
@@ -388,7 +388,7 @@ if (isset($_GET['ajax_id_sekolah']) && isset($_GET['ajax_bulan'])) {
                     <table class="table table-hover align-middle mb-0 text-dark" style="min-width:1400px; font-size:14px;">
                         <thead class="table-light text-secondary fw-bold" style="font-size: 13px;">
                             <tr>
-                                <th class="ps-3">ID</th><th>NO SP2D</th><th>KODERING</th><th>BULAN REALISASI</th><th>KODE & NAMA BARANG</th><th>SPESIFIKASI MERK</th><th>VOL</th><th>HARGA</th><th>TOTAL NILAI</th><th class="text-center">STATUS KUNCI</th>
+                                <th class="ps-3">ID</th><th>NO SP2D</th><th>TANGGAL</th><th>TAHUN</th><th>KODERING</th><th>BULAN REALISASI</th><th>KODE & NAMA BARANG</th><th>SPESIFIKASI MERK</th><th>VOL</th><th>HARGA</th><th>TOTAL NILAI</th><th class="text-center">STATUS KUNCI</th>
                             </tr>
                         </thead>
                         <tbody class="fw-bold">
@@ -406,6 +406,8 @@ if (isset($_GET['ajax_id_sekolah']) && isset($_GET['ajax_bulan'])) {
                                 <tr>
                                     <td class="ps-3 text-muted font-monospace font-normal">#<?= e($rl['id']); ?></td>
                                     <td><?= e($rl['no_sp2d']); ?></td>
+                                    <td><?= !empty($rl['ba_tgl']) ? e(date('d-m-Y', strtotime($rl['ba_tgl']))) : '-'; ?></td>
+                                    <td><?= !empty($rl['ba_tgl']) ? e(date('Y', strtotime($rl['ba_tgl']))) : '-'; ?></td>
                                     <td class="text-dark fw-bold fs-14"><?= e($rl['kodering_belanja']); ?></td>
                                     <td class="text-uppercase"><?= e($rl['bulan_realisasi']); ?></td>
                                     <td><strong><?= e($rl['zip_kode_barang'] ?? $rl['kode_barang']); ?></strong><br><span class="text-secondary text-uppercase small style-label-sub"><?= e(strtoupper($rl['nama_barang'])); ?></span></td>
@@ -424,7 +426,7 @@ if (isset($_GET['ajax_id_sekolah']) && isset($_GET['ajax_bulan'])) {
                             <?php 
                                 endforeach;
                             else: 
-                                echo "<tr><td colspan='10' class='text-center text-secondary py-4'>Belum ada rincian log input fisik realisasi pada bulan acuan ini.</td></tr>";
+                                echo "<tr><td colspan='12' class='text-center text-secondary py-4'>Belum ada rincian log input fisik realisasi pada bulan acuan ini.</td></tr>";
                             endif; 
                             ?>
                         </tbody>
