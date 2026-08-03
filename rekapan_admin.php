@@ -388,7 +388,7 @@ if (isset($_GET['ajax_id_sekolah']) && isset($_GET['ajax_bulan'])) {
                     <table class="table table-hover align-middle mb-0 text-dark" style="min-width:1400px; font-size:14px;">
                         <thead class="table-light text-secondary fw-bold" style="font-size: 13px;">
                             <tr>
-                                <th class="ps-3">ID</th><th>NO SP2D</th><th>TANGGAL</th><th>TAHUN</th><th>KODERING</th><th>BULAN REALISASI</th><th>KODE & NAMA BARANG</th><th>SPESIFIKASI MERK</th><th>VOL</th><th>HARGA</th><th>TOTAL NILAI</th><th class="text-center">STATUS KUNCI</th>
+                                <th class="ps-3">ID</th><th>NO SP2D</th><th>TANGGAL</th><th>BULAN REALISASI</th><th>TAHUN</th><th>KODERING</th><th>KODE & NAMA BARANG</th><th>SPESIFIKASI MERK</th><th>VOL</th><th>HARGA</th><th>TOTAL NILAI</th><th class="text-center">STATUS KUNCI</th>
                             </tr>
                         </thead>
                         <tbody class="fw-bold">
@@ -407,9 +407,9 @@ if (isset($_GET['ajax_id_sekolah']) && isset($_GET['ajax_bulan'])) {
                                     <td class="ps-3 text-muted font-monospace font-normal">#<?= e($rl['id']); ?></td>
                                     <td><?= e($rl['no_sp2d']); ?></td>
                                     <td><?= !empty($rl['ba_tgl']) ? e(date('d-m-Y', strtotime($rl['ba_tgl']))) : '-'; ?></td>
+                                    <td class="text-uppercase"><?= e($rl['bulan_realisasi']); ?></td>
                                     <td><?= !empty($rl['ba_tgl']) ? e(date('Y', strtotime($rl['ba_tgl']))) : '-'; ?></td>
                                     <td class="text-dark fw-bold fs-14"><?= e($rl['kodering_belanja']); ?></td>
-                                    <td class="text-uppercase"><?= e($rl['bulan_realisasi']); ?></td>
                                     <td><strong><?= e($rl['zip_kode_barang'] ?? $rl['kode_barang']); ?></strong><br><span class="text-secondary text-uppercase small style-label-sub"><?= e(strtoupper($rl['nama_barang'])); ?></span></td>
                                     <td><?= e($rl['merk_tipe']); ?></td>
                                     <td><?= e($rl['volume'] . ' ' . $rl['satuan']); ?></td>
