@@ -279,6 +279,7 @@ $total_belum = count($list_belum);
             <a href="kode_barang.php" class="submenu-btn ajax-link" data-page="kode_barang.php" data-title="Kode Barang">Kode Barang</a>
             <a href="input_acuan.php" class="submenu-btn ajax-link" data-page="input_acuan.php" data-title="Input Acuan">Input Acuan</a>
             <a href="pilih_bulan_rekapan.php" class="submenu-btn ajax-link" data-page="pilih_bulan_rekapan.php" data-title="Rekapan Satuan Pendidikan">Data Kendali Realisasi</a>
+            <a href="kelola_user.php" class="submenu-btn ajax-link" data-page="kelola_user.php" data-title="Kelola Users">Kelola Users</a>
         </div>
 
         <div class="menu-label">Reports & Tools</div>
