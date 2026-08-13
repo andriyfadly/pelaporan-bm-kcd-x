@@ -503,6 +503,12 @@ if ($mode === 'register') {
             font-size: 0.8rem;
             padding: 10px;
         }
+        /* Tambahan style kursor untuk ikon toggle password */
+        .toggle-password {
+            cursor: pointer;
+            margin-left: 5px;
+            margin-right: 0 !important; /* Timpa margin bawaan dari .input-group-custom i */
+        }
     </style>
 </head>
 <body>
@@ -583,7 +589,10 @@ if ($mode === 'register') {
                 <label class="form-label">PASSWORD</label>
                 <div class="input-group-custom">
                     <i class="bi bi-key-fill"></i>
-                    <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+                    <!-- Menambahkan ID ke input password -->
+                    <input type="password" name="password" id="passwordInput" placeholder="••••••••" required autocomplete="current-password">
+                    <!-- Menambahkan Icon Mata untuk Toggle -->
+                    <i class="bi bi-eye-slash-fill toggle-password" id="togglePasswordIcon" title="Tampilkan/Sembunyikan Password"></i>
                 </div>
             </div>
 
@@ -626,6 +635,22 @@ document.addEventListener("DOMContentLoaded", function() {
         confirmButtonText: 'Coba Lagi'
     });
     <?php endif; ?>
+
+    // --- SCRIPT TAMBAHAN UNTUK TOGGLE PASSWORD ---
+    const togglePasswordIcon = document.querySelector('#togglePasswordIcon');
+    const passwordInput = document.querySelector('#passwordInput');
+
+    if (togglePasswordIcon && passwordInput) {
+        togglePasswordIcon.addEventListener('click', function (e) {
+            // Toggle atribut type antara 'password' dan 'text'
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // Toggle icon mata
+            this.classList.toggle('bi-eye-fill');
+            this.classList.toggle('bi-eye-slash-fill');
+        });
+    }
 });
 </script>
 

@@ -255,27 +255,35 @@ $total_users = count($users_list);
                         <label class="form-label fw-semibold text-secondary small">Username</label>
                         <input type="text" name="username" id="edit_username" class="form-control fw-semibold" style="border-radius: 10px;" required>
                     </div>
+                    
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-secondary small">Password Baru</label>
-                        <input type="password" name="password" id="edit_password" class="form-control" placeholder="Kosongkan jika tidak ingin mengubah password" style="border-radius: 10px;">
+                        <div class="input-group">
+                            <input type="password" name="password" id="edit_password" class="form-control" placeholder="Kosongkan jika tidak ingin mengubah password" style="border-radius: 10px 0 0 10px;">
+                            <button class="btn btn-outline-secondary" type="button" id="togglePasswordEdit" style="border-radius: 0 10px 10px 0;">
+                                <i class="bi bi-eye-slash-fill"></i>
+                            </button>
+                        </div>
                         <small class="text-muted d-block mt-1" style="font-size: 11px;">*Kosongkan kolom ini jika tidak ada perubahan password.</small>
                     </div>
+
+                    <!-- PENAMBAHAN READONLY & WARNA ABU (BG-LIGHT) DISINI -->
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold text-secondary small">Role / Hak Akses</label>
-                            <select name="role" id="edit_role" class="form-select fw-semibold" style="border-radius: 10px;" required>
+                            <select name="role" id="edit_role" class="form-select fw-semibold bg-light text-secondary" style="border-radius: 10px; pointer-events: none;" tabindex="-1" required>
                                 <option value="user">User (Sekolah)</option>
                                 <option value="admin">Admin (Dinas Pusat)</option>
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold text-secondary small">ID Sekolah</label>
-                            <input type="text" name="id_sekolah" id="edit_idsekolah" class="form-control fw-semibold" style="border-radius: 10px;" required>
+                            <input type="text" name="id_sekolah" id="edit_idsekolah" class="form-control fw-semibold bg-light text-secondary" style="border-radius: 10px;" readonly required>
                         </div>
                     </div>
                     <div class="mb-2">
                         <label class="form-label fw-semibold text-secondary small">Nama Sekolah / Instansi</label>
-                        <input type="text" name="nama_sekolah" id="edit_namasekolah" class="form-control fw-semibold" style="border-radius: 10px;" required>
+                        <input type="text" name="nama_sekolah" id="edit_namasekolah" class="form-control fw-semibold bg-light text-secondary" style="border-radius: 10px;" readonly required>
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0">
@@ -366,6 +374,13 @@ $total_users = count($users_list);
             document.getElementById('edit_idsekolah').value = this.dataset.idsekolah;
             document.getElementById('edit_namasekolah').value = this.dataset.namasekolah;
             document.getElementById('edit_password').value = ''; 
+            
+            // Reset ikon mata jika form diedit ulang
+            const passwordInput = document.getElementById('edit_password');
+            const toggleIcon = document.querySelector('#togglePasswordEdit i');
+            passwordInput.setAttribute('type', 'password');
+            toggleIcon.classList.remove('bi-eye-fill');
+            toggleIcon.classList.add('bi-eye-slash-fill');
         });
     });
 
@@ -418,5 +433,23 @@ $total_users = count($users_list);
             }
         });
     });
+
+    // 5. FITUR TOGGLE SHOW/HIDE PASSWORD
+    const togglePasswordBtn = document.getElementById('togglePasswordEdit');
+    const passwordInputEdit = document.getElementById('edit_password');
+    
+    if (togglePasswordBtn && passwordInputEdit) {
+        togglePasswordBtn.addEventListener('click', function() {
+            // Ubah tipe input text ke password atau sebaliknya
+            const type = passwordInputEdit.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInputEdit.setAttribute('type', type);
+            
+            // Toggle icon mata
+            const icon = this.querySelector('i');
+            icon.classList.toggle('bi-eye-fill');
+            icon.classList.toggle('bi-eye-slash-fill');
+        });
+    }
+
 })();
 </script>
