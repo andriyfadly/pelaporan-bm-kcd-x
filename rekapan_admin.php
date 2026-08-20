@@ -395,6 +395,7 @@ if (isset($_GET['ajax_id_sekolah']) && isset($_GET['ajax_bulan'])) {
                                 <th>TAHUN</th>
                                 <th>BULAN REALISASI</th>
                                 <th>KODERING</th>
+                                <th>JENIS ASET</th>
                                 <th>KODE & NAMA BARANG</th>
                                 <th>SPESIFIKASI MERK</th>
                                 <th>NO SERTIFIKAT/PENERBIT</th>
@@ -424,6 +425,7 @@ if (isset($_GET['ajax_id_sekolah']) && isset($_GET['ajax_bulan'])) {
                                     <td><?= !empty($rl['ba_tgl']) ? e(date('Y', strtotime($rl['ba_tgl']))) : '-'; ?></td>
                                     <td class="text-uppercase"><?= e($rl['bulan_realisasi']); ?></td>
                                     <td class="text-dark fw-bold fs-14"><?= e($rl['kodering_belanja']); ?></td>
+                                    <td><?= e($rl['jenis_aset'] ?? '-'); ?></td>
                                     <td><strong><?= e($rl['zip_kode_barang'] ?? $rl['kode_barang']); ?></strong><br><span class="text-secondary text-uppercase small style-label-sub"><?= e(strtoupper($rl['nama_barang'])); ?></span></td>
                                     <td><?= e($rl['merk_tipe']); ?></td>
                                     <td><?= e($rl['no_sertifikat'] ?? '-'); ?></td>
@@ -441,7 +443,7 @@ if (isset($_GET['ajax_id_sekolah']) && isset($_GET['ajax_bulan'])) {
                             <?php 
                                 endforeach;
                             else: 
-                                echo "<tr><td colspan='14' class='text-center text-secondary py-4'>Belum ada rincian log input fisik realisasi pada bulan acuan ini.</td></tr>";
+                                echo "<tr><td colspan='15' class='text-center text-secondary py-4'>Belum ada rincian log input fisik realisasi pada bulan acuan ini.</td></tr>";
                             endif; 
                             ?>
                         </tbody>
