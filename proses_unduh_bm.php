@@ -246,7 +246,8 @@ $styleHeaderTable = [
 ];
 $sheet->getStyle('A8:Y9')->applyFromArray($styleHeaderTable);
 
-$kolomMerah = ['C8', 'D8', 'E8', 'F8', 'F9', 'G9', 'H9', 'I9', 'J8', 'L9', 'M9', 'N9', 'O9', 'P9', 'Q9', 'R9', 'S8', 'T8', 'U8', 'W9', 'X8', 'Y8'];
+// Menghapus R9, S8, T8, U8, W9, X8 dari array kolom merah agar warnanya menjadi hitam
+$kolomMerah = ['C8', 'D8', 'E8', 'F8', 'F9', 'G9', 'H9', 'I9', 'J8', 'L9', 'M9', 'N9', 'O9', 'P9', 'Q9', 'Y8'];
 foreach ($kolomMerah as $cell) { $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FF0000'); }
 
 // Format Code Tipe Data "Accounting" tanpa simbol Rp
@@ -293,7 +294,6 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     $volume_clean = isset($row['volume']) ? (int)$row['volume'] : 0;
     $harga_clean = isset($row['harga_satuan']) ? (float)$row['harga_satuan'] : 0.0;
-    $nilai_clean = isset($row['nilai_perolehan']) ? (float)$row['nilai_perolehan'] : 0.0;
 
     // Susun baris ke array PHP
     $dataRows[] = [
@@ -314,7 +314,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         $valO,                                                 // O
         $volume_clean,                                         // P
         $harga_clean,                                          // Q
-        $nilai_clean,                                          // R
+        '=P' . $rowNum . '*Q' . $rowNum,                       // R (Nilai Perolehan = Volume * Harga Satuan)
         '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',3,FALSE),"")', // S
         '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',4,FALSE),"")', // T
         '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',5,FALSE),0)',  // U

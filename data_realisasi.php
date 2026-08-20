@@ -232,7 +232,8 @@ if (isset($_GET['proses_cetak_excel'])) {
     $styleHeaderTable = ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DDEBF7']], 'font' => ['bold' => false, 'size' => 11, 'name' => 'Calibri'], 'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'wrapText' => true], 'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => '000000']]]];
     $sheet->getStyle('A8:Y9')->applyFromArray($styleHeaderTable);
 
-    $kolomMerah = ['C8', 'D8', 'E8', 'F8', 'F9', 'G9', 'H9', 'I9', 'J8', 'L9', 'M9', 'N9', 'O9', 'P9', 'Q9', 'R9', 'S8', 'T8', 'U8', 'W9', 'X8', 'Y8'];
+    // Menghapus R9, S8, T8, U8, W9, X8 dari kolom merah agar teks header berwarna hitam
+    $kolomMerah = ['C8', 'D8', 'E8', 'F8', 'F9', 'G9', 'H9', 'I9', 'J8', 'L9', 'M9', 'N9', 'O9', 'P9', 'Q9', 'Y8'];
     foreach ($kolomMerah as $cell) { $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FF0000'); }
 
     $formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
@@ -273,7 +274,6 @@ if (isset($_GET['proses_cetak_excel'])) {
 
         $volume_val = (int)($row['volume'] ?? 0);
         $harga_val  = (float)($row['harga_satuan'] ?? 0.0);
-        $nilai_val  = (float)($row['nilai_perolehan'] ?? 0.0);
 
         // Kumpulkan baris data ke Array PHP
         $dataRows[] = [
@@ -294,7 +294,7 @@ if (isset($_GET['proses_cetak_excel'])) {
             $valO,                                                 // O
             $volume_val,                                           // P
             $harga_val,                                            // Q
-            $nilai_val,                                            // R
+            '=P' . $rowNum . '*Q' . $rowNum,                       // R (Nilai Perolehan = Volume * Harga Satuan)
             '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',3,FALSE),"")', // S
             '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',4,FALSE),"")', // T
             '=IFERROR(VLOOKUP(J' . $rowNum . ',\'KODE BARANG\'!$A$2:$E$' . $batasMaster . ',5,FALSE),0)',  // U
