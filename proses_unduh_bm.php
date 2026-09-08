@@ -103,6 +103,30 @@ function safeCellString($value) {
     return $str;
 }
 
+// === HELPER FORMAT NAMA KOTA / KABUPATEN ===
+function formatKotaKab($val) {
+    $val = trim(strtoupper((string)$val));
+    if (empty($val)) return '';
+    
+    // Jika sudah KOTA ..., biarkan
+    if (strpos($val, 'KOTA ') === 0) {
+        return $val;
+    }
+    
+    // Jika diawali KAB atau KAB. (contoh: KAB CIREBON -> KABUPATEN CIREBON)
+    if (preg_match('/^KAB\.?\s+(.+)$/i', $val, $matches)) {
+        return 'KABUPATEN ' . trim($matches[1]);
+    }
+    
+    // Jika sudah KABUPATEN ..., biarkan
+    if (strpos($val, 'KABUPATEN ') === 0) {
+        return $val;
+    }
+    
+    // Jika cuma nama wilayah saja (contoh: KUNINGAN -> KABUPATEN KUNINGAN)
+    return 'KABUPATEN ' . $val;
+}
+
 $nama_bulan_indo = [
     1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
     5 => 'MEI', 6 => 'JUNI', 7 => 'JULI', 8 => 'AGUSTUS',
@@ -111,7 +135,9 @@ $nama_bulan_indo = [
 $teks_bulan_pilihan = $nama_bulan_indo[$filter_bulan] ?? '';
 
 // === OPTIMASI SUPER KENCANG: DOUBLE LEFT JOIN UNTUK MEMANFAATKAN INDEX MYSQL ===
-$query = "SELECT r.*, COALESCE(k1.nama_sekolah, k2.nama_sekolah) as nama_sekolah_db 
+$query = "SELECT r.*, 
+                 COALESCE(k1.nama_sekolah, k2.nama_sekolah) as nama_sekolah_db,
+                 COALESCE(k1.kota_kab, k2.kota_kab) as kota_kab_db
           FROM `realisasi_barang_sekolah` r 
           LEFT JOIN `kode_sekolah` k1 ON r.id_sekolah = k1.id_sekolah 
           LEFT JOIN `kode_sekolah` k2 ON r.id_sekolah = k2.id 
@@ -198,9 +224,9 @@ $sheet->setShowGridlines(true);
 // Kunci baris 1-9 dan kolom A-E saat di-scroll (Freeze Panes di F10)
 $sheet->freezePane('F10');
 
-$sheet->setCellValue('A1', 'DAFTAR PENGADAAN BARANG DARI BELANJA MODAL'); $sheet->mergeCells('A1:Y1');
-$sheet->setCellValue('A2', 'SMAN/SMKN/SLBN'); $sheet->mergeCells('A2:Y2');
-$sheet->setCellValue('A3', 'DARI TANGGAL 1 JANUARI S.D 31 DESEMBER ' . $filter_tahun); $sheet->mergeCells('A3:Y3');
+$sheet->setCellValue('A1', 'DAFTAR PENGADAAN BARANG DARI BELANJA MODAL'); $sheet->mergeCells('A1:Z1');
+$sheet->setCellValue('A2', 'SMAN/SMKN/SLBN'); $sheet->mergeCells('A2:Z2');
+$sheet->setCellValue('A3', 'DARI TANGGAL 1 JANUARI S.D 31 DESEMBER ' . $filter_tahun); $sheet->mergeCells('A3:Z3');
 
 $styleJudul = [
     'font' => ['bold' => true, 'color' => ['rgb' => '000000'], 'size' => 11, 'name' => 'Calibri'],
@@ -231,6 +257,7 @@ $sheet->setCellValue('U8', 'Umur Ekonomis'); $sheet->mergeCells('U8:U9');
 $sheet->setCellValue('V8', 'Intrakomptabel'); $sheet->mergeCells('V8:W8');
 $sheet->setCellValue('X8', 'Ekstrakomptabel'); $sheet->mergeCells('X8:X9');
 $sheet->setCellValue('Y8', 'Nama Sekolah'); $sheet->mergeCells('Y8:Y9');
+$sheet->setCellValue('Z8', 'kab/kota'); $sheet->mergeCells('Z8:Z9');
 
 $sheet->setCellValue('F9', 'No'); $sheet->setCellValue('G9', 'Tgl'); $sheet->setCellValue('H9', 'Bln'); $sheet->setCellValue('I9', 'Thn');
 $sheet->setCellValue('K9', 'Nama Barang'); $sheet->setCellValue('L9', 'Merk/Tipe'); $sheet->setCellValue('M9', 'No. Sertifikat/ No. Rangka/ No. Mesin');
@@ -244,9 +271,15 @@ $styleHeaderTable = [
     'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'wrapText' => true],
     'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => '000000']]]
 ];
+// Apply border header hanya A8 sampai Y9
 $sheet->getStyle('A8:Y9')->applyFromArray($styleHeaderTable);
 
-// Menghapus R9, S8, T8, U8, W9, X8 dari array kolom merah agar warnanya menjadi hitam
+// Style Header Z8:Z9 tanpa border
+$styleHeaderTableZ = $styleHeaderTable;
+unset($styleHeaderTableZ['borders']);
+$sheet->getStyle('Z8:Z9')->applyFromArray($styleHeaderTableZ);
+
+// Warna teks header tertentu menjadi merah
 $kolomMerah = ['C8', 'D8', 'E8', 'F8', 'F9', 'G9', 'H9', 'I9', 'J8', 'L9', 'M9', 'N9', 'O9', 'P9', 'Q9', 'Y8'];
 foreach ($kolomMerah as $cell) { $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FF0000'); }
 
@@ -254,7 +287,7 @@ foreach ($kolomMerah as $cell) { $sheet->getStyle($cell)->getFont()->getColor()-
 $formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
 
 // Tracking Panjang Maksimal Kolom
-$maxLenCol = array_fill_keys(range('A', 'Y'), 0);
+$maxLenCol = array_fill_keys(range('A', 'Z'), 0);
 
 // ==============================================================================
 // POPULASI DATA UTAMA (OPTIMASI HIGH SPEED WITH fromArray)
@@ -280,6 +313,10 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
 
     $nama_sekolah_tampil = !empty($row['nama_sekolah_db']) ? $row['nama_sekolah_db'] : "Sekolah ID: " . $row['id_sekolah'];
+    
+    // Normalisasi Nama Kota / Kabupaten
+    $raw_kota_kab = !empty($row['kota_kab_db']) ? $row['kota_kab_db'] : '';
+    $kota_kab_tampil = formatKotaKab($raw_kota_kab);
 
     $valB = safeCellString($row['no_sp2d']);
     $valC = safeCellString($row['sumber_perolehan']);
@@ -321,7 +358,8 @@ while ($row = mysqli_fetch_assoc($result)) {
         '=R' . $rowNum,                                        // V
         '=IF(AND($V' . $rowNum . '=0)," ",(($V' . $rowNum . '/$U' . $rowNum . ')*(13-H' . $rowNum . ')/12))', // W
         '=IF(Q' . $rowNum . '<=1000000,R' . $rowNum . ',0)',   // X
-        safeCellString($nama_sekolah_tampil)                   // Y
+        safeCellString($nama_sekolah_tampil),                  // Y
+        safeCellString($kota_kab_tampil)                       // Z
     ];
 
     // Recording Panjang Maksimal Nilai Sel
@@ -336,6 +374,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     $maxLenCol['N'] = max($maxLenCol['N'], strlen($valN));
     $maxLenCol['O'] = max($maxLenCol['O'], strlen($valO));
     $maxLenCol['Y'] = max($maxLenCol['Y'], strlen((string)$nama_sekolah_tampil));
+    $maxLenCol['Z'] = max($maxLenCol['Z'], strlen((string)$kota_kab_tampil));
 
     $rowNum++; 
     $noIdx++;
@@ -362,11 +401,15 @@ $sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice
 // BATCH STYLING SEKALIGUS UNTUK SELURUH TABEL
 // ==============================================================================
 if ($lastDataRow >= 10) {
+    // Border hanya dipasang untuk kolom A sampai Y (kolom Z polos tanpa border)
     $dataRange = 'A10:Y' . $lastDataRow;
     
-    // Font dan Border Massal
+    // Font dan Border Massal (A-Y)
     $sheet->getStyle($dataRange)->getFont()->setSize(11)->setName('Calibri');
     $sheet->getStyle($dataRange)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('000000');
+
+    // Font Massal Kolom Z (Tanpa Border)
+    $sheet->getStyle('Z10:Z' . $lastDataRow)->getFont()->setSize(11)->setName('Calibri');
 
     // Alignment Massal
     $sheet->getStyle('A10:A' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
@@ -382,7 +425,7 @@ if ($lastDataRow >= 10) {
 // ==============================================================================
 // LOGIKA LEBAR KOLOM MASSAL
 // ==============================================================================
-foreach (range('A', 'Y') as $col) {
+foreach (range('A', 'Z') as $col) {
     if ($col === 'A') {
         $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth(5);
         continue;
@@ -392,7 +435,7 @@ foreach (range('A', 'Y') as $col) {
     $finalWidth = $maxLen + 4;
 
     $minWidth = 11;
-    if (in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y'])) { 
+    if (in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y', 'Z'])) { 
         $minWidth = 16; 
     }
 

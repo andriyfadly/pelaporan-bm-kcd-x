@@ -216,6 +216,7 @@ foreach ($list_barang_sekolah as $brg) {
     if (!isset($grouped_spj[$spk_key])) {
         $grouped_spj[$spk_key] = [
             'no_spk' => $brg['no_spk'],
+            'tgl_spk' => $brg['tgl_spk'] ?? $brg['spk_tgl'] ?? $brg['tanggal_spk'] ?? $brg['ba_tgl'] ?? '',
             'sumber_perolehan' => $brg['sumber_perolehan'],
             'total_nilai_spk' => 0,
             'items' => []
@@ -403,6 +404,9 @@ foreach ($list_barang_sekolah as $brg) {
                                                     <div class="text-dark font-monospace mb-2" style="font-size:13px; line-height: 1.3; font-weight: bold;">
                                                         <i class="bi bi-file-earmark-text me-1"></i> SPK:<br>
                                                         <span class="text-secondary" style="font-size:11.5px;"><?= htmlspecialchars($grup['no_spk'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <?php if (!empty($grup['tgl_spk']) && $grup['tgl_spk'] !== '0000-00-00'): ?>
+                                                            <br><span class="text-muted fw-normal" style="font-size:11px;"><i class="bi bi-calendar-event me-1"></i>Tgl: <?= (strtotime($grup['tgl_spk']) !== false) ? date('d/m/Y', strtotime($grup['tgl_spk'])) : htmlspecialchars($grup['tgl_spk'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <?php endif; ?>
                                                     </div>
 
                                                     <div class="d-flex justify-content-center gap-1 mt-2">
