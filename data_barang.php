@@ -79,18 +79,36 @@ $bulan_teks = $nama_bulan[$bulan_aktif] ?? date('F');
 $status_laporan = 'Belum Dikirim';
 $query_status = "SELECT `status` FROM `laporan_realisasi` WHERE `id_sekolah` = ? AND `bulan` = ? LIMIT 1";
 $stmt_status = mysqli_prepare($conn, $query_status);
-mysqli_stmt_bind_param($stmt_status, "si", $id_sekolah, $bulan_aktif);
-mysqli_stmt_execute($stmt_status);
-$res_status = mysqli_stmt_get_result($stmt_status);
+if ($stmt_status) {
+    mysqli_stmt_bind_param($stmt_status, "si", $id_sekolah, $bulan_aktif);
+    mysqli_stmt_execute($stmt_status);
+    $res_status = mysqli_stmt_get_result($stmt_status);
 
-if ($res_status && mysqli_num_rows($res_status) > 0) {
-    $row_status = mysqli_fetch_assoc($res_status);
-    $status_laporan = $row_status['status'];
+    if ($res_status && mysqli_num_rows($res_status) > 0) {
+        $row_status = mysqli_fetch_assoc($res_status);
+        $status_laporan = $row_status['status'];
+    }
+    mysqli_stmt_close($stmt_status);
 }
-mysqli_stmt_close($stmt_status);
 
 // Flag Gembok: Bernilai true jika laporan sedang diproses/disetujui admin
 $is_readonly = ($status_laporan === 'Menunggu Approval' || $status_laporan === 'Disetujui');
+
+// Deteksi Request AJAX / Fetch
+$is_ajax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+           (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+function respond_hasil($is_ajax, $status, $message, $bulan_aktif) {
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        echo json_encode(['status' => $status, 'message' => $message]);
+        exit;
+    } else {
+        $msg_escaped = addslashes($message);
+        echo "<script>alert('{$msg_escaped}'); window.location.href='index.php?p=data_barang.php&bulan_realisasi={$bulan_aktif}';</script>";
+        exit;
+    }
+}
 
 // =========================================================================================
 // ✅ PROSES AKSI HAPUS SPJ PER ITEM BARANG (WITH CSRF & IDOR PROTECTION)
@@ -98,49 +116,72 @@ $is_readonly = ($status_laporan === 'Menunggu Approval' || $status_laporan === '
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus' && isset($_POST['id_spj'])) {
     
     // Validasi Token CSRF
-    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        echo "<script>alert('Akses Ditolak: Token Keamanan (CSRF) Tidak Valid!'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
-        exit;
+    $posted_token = $_POST['csrf_token'] ?? '';
+    if (empty($posted_token) || !hash_equals($_SESSION['csrf_token'], $posted_token)) {
+        respond_hasil($is_ajax, 'error', 'Akses Ditolak: Token Keamanan (CSRF) Tidak Valid!', $bulan_aktif);
     }
 
     // Proteksi Backend: Jika laporan dikirim, batalkan eksekusi hapus
     if ($is_readonly) {
-        echo "<script>alert('Akses Ditolak! Laporan bulan ini sudah dikirim/disetujui, data terkunci.'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
-        exit;
+        respond_hasil($is_ajax, 'error', 'Akses Ditolak! Laporan bulan ini sudah dikirim/disetujui, data terkunci.', $bulan_aktif);
     }
 
     $id_hapus = (int)$_POST['id_spj'];
     
+    // Cari detail item terlebih dahulu
+    $stmt_find = mysqli_prepare($conn, "SELECT `no_spk`, `kode_barang` FROM `master_barang_sekolah` WHERE `id` = ? AND `id_sekolah` = ? LIMIT 1");
+    $no_spk_item = '';
+    $kode_barang_item = '';
+    if ($stmt_find) {
+        mysqli_stmt_bind_param($stmt_find, "is", $id_hapus, $id_sekolah);
+        mysqli_stmt_execute($stmt_find);
+        $res_find = mysqli_stmt_get_result($stmt_find);
+        if ($row_f = mysqli_fetch_assoc($res_find)) {
+            $no_spk_item = $row_f['no_spk'];
+            $kode_barang_item = $row_f['kode_barang'];
+        }
+        mysqli_stmt_close($stmt_find);
+    }
+
     // Mulai transaksi terisolasi
     mysqli_begin_transaction($conn);
     try {
-        // Matikan pengecekan Foreign Key khusus untuk sesi koneksi ini
-        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0");
+        @mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0");
 
-        // Hapus data turunan di realisasi_barang_sekolah (Gunakan IDOR Check via Subquery)
-        $stmt_del_rel = mysqli_prepare($conn, "DELETE FROM `realisasi_barang_sekolah` WHERE `id_master_barang` IN (SELECT `id` FROM `master_barang_sekolah` WHERE `id` = ? AND `id_sekolah` = ?)");
-        mysqli_stmt_bind_param($stmt_del_rel, "is", $id_hapus, $id_sekolah);
-        mysqli_stmt_execute($stmt_del_rel);
-        mysqli_stmt_close($stmt_del_rel);
+        // 1. Coba hapus di realisasi_barang_sekolah via id_master_barang (jika ada)
+        $stmt_del_rel1 = mysqli_prepare($conn, "DELETE FROM `realisasi_barang_sekolah` WHERE `id_master_barang` = ? AND `id_sekolah` = ?");
+        if ($stmt_del_rel1) {
+            mysqli_stmt_bind_param($stmt_del_rel1, "is", $id_hapus, $id_sekolah);
+            mysqli_stmt_execute($stmt_del_rel1);
+            mysqli_stmt_close($stmt_del_rel1);
+        }
 
-        // Hapus data utama di master_barang_sekolah
+        // 2. Fallback hapus di realisasi_barang_sekolah via kombinasi no_spk + kode_barang
+        if (!empty($no_spk_item)) {
+            $stmt_del_rel2 = mysqli_prepare($conn, "DELETE FROM `realisasi_barang_sekolah` WHERE `no_spk` = ? AND `kode_barang` = ? AND `id_sekolah` = ? AND `bulan_realisasi` = ?");
+            if ($stmt_del_rel2) {
+                mysqli_stmt_bind_param($stmt_del_rel2, "sssi", $no_spk_item, $kode_barang_item, $id_sekolah, $bulan_aktif);
+                mysqli_stmt_execute($stmt_del_rel2);
+                mysqli_stmt_close($stmt_del_rel2);
+            }
+        }
+
+        // 3. Hapus data utama di master_barang_sekolah
         $stmt_del_mas = mysqli_prepare($conn, "DELETE FROM `master_barang_sekolah` WHERE `id` = ? AND `id_sekolah` = ?");
-        mysqli_stmt_bind_param($stmt_del_mas, "is", $id_hapus, $id_sekolah);
-        mysqli_stmt_execute($stmt_del_mas);
-        mysqli_stmt_close($stmt_del_mas);
+        if ($stmt_del_mas) {
+            mysqli_stmt_bind_param($stmt_del_mas, "is", $id_hapus, $id_sekolah);
+            mysqli_stmt_execute($stmt_del_mas);
+            mysqli_stmt_close($stmt_del_mas);
+        }
 
-        // Hidupkan kembali pengecekan Foreign Key
-        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1");
-
-        // Commit transaksi
+        @mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1");
         mysqli_commit($conn);
 
-        echo "<script>alert('Item Barang Berhasil Dihapus dari SPK!'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
-        exit;
+        respond_hasil($is_ajax, 'success', 'Item Barang Berhasil Dihapus dari SPK!', $bulan_aktif);
     } catch (Exception $e) {
         mysqli_rollback($conn);
-        echo "<script>alert('Gagal menghapus data. Terjadi kesalahan pada sistem.'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
-        exit;
+        error_log("Error Hapus Item Barang: " . $e->getMessage());
+        respond_hasil($is_ajax, 'error', 'Gagal menghapus data item barang.', $bulan_aktif);
     }
 }
 
@@ -150,15 +191,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus' 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus_spk' && isset($_POST['no_spk'])) {
     
     // Validasi Token CSRF
-    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        echo "<script>alert('Akses Ditolak: Token Keamanan (CSRF) Tidak Valid!'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
-        exit;
+    $posted_token = $_POST['csrf_token'] ?? '';
+    if (empty($posted_token) || !hash_equals($_SESSION['csrf_token'], $posted_token)) {
+        respond_hasil($is_ajax, 'error', 'Akses Ditolak: Token Keamanan (CSRF) Tidak Valid!', $bulan_aktif);
     }
 
     // Proteksi Backend: Jika laporan dikirim, batalkan eksekusi hapus
     if ($is_readonly) {
-        echo "<script>alert('Akses Ditolak! Laporan bulan ini sudah dikirim/disetujui, data terkunci.'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
-        exit;
+        respond_hasil($is_ajax, 'error', 'Akses Ditolak! Laporan bulan ini sudah dikirim/disetujui, data terkunci.', $bulan_aktif);
     }
 
     $spk_hapus = trim($_POST['no_spk']);
@@ -166,47 +206,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus_s
     // Mulai transaksi terisolasi
     mysqli_begin_transaction($conn);
     try {
-        // Matikan pengecekan Foreign Key khusus untuk sesi koneksi ini
-        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0");
+        @mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0");
 
-        // Hapus seluruh data anak/turunan terkait SPK ini
-        $stmt_del_spk_rel = mysqli_prepare($conn, "DELETE FROM `realisasi_barang_sekolah` WHERE `id_master_barang` IN (SELECT `id` FROM `master_barang_sekolah` WHERE `no_spk` = ? AND `id_sekolah` = ? AND `bulan_realisasi` = ?)");
-        mysqli_stmt_bind_param($stmt_del_spk_rel, "ssi", $spk_hapus, $id_sekolah, $bulan_aktif);
-        mysqli_stmt_execute($stmt_del_spk_rel);
-        mysqli_stmt_close($stmt_del_spk_rel);
+        // 1. Coba hapus relasi via subquery jika id_master_barang ada
+        $stmt_del_spk_rel1 = mysqli_prepare($conn, "DELETE FROM `realisasi_barang_sekolah` WHERE `id_master_barang` IN (SELECT `id` FROM `master_barang_sekolah` WHERE `no_spk` = ? AND `id_sekolah` = ? AND `bulan_realisasi` = ?)");
+        if ($stmt_del_spk_rel1) {
+            mysqli_stmt_bind_param($stmt_del_spk_rel1, "ssi", $spk_hapus, $id_sekolah, $bulan_aktif);
+            mysqli_stmt_execute($stmt_del_spk_rel1);
+            mysqli_stmt_close($stmt_del_spk_rel1);
+        }
 
-        // Hapus data dokumen di master_barang_sekolah
+        // 2. Hapus langsung di realisasi_barang_sekolah berdasarkan no_spk
+        $stmt_del_spk_rel2 = mysqli_prepare($conn, "DELETE FROM `realisasi_barang_sekolah` WHERE `no_spk` = ? AND `id_sekolah` = ? AND `bulan_realisasi` = ?");
+        if ($stmt_del_spk_rel2) {
+            mysqli_stmt_bind_param($stmt_del_spk_rel2, "ssi", $spk_hapus, $id_sekolah, $bulan_aktif);
+            mysqli_stmt_execute($stmt_del_spk_rel2);
+            mysqli_stmt_close($stmt_del_spk_rel2);
+        }
+
+        // 3. Hapus data dokumen di master_barang_sekolah
         $stmt_del_spk_mas = mysqli_prepare($conn, "DELETE FROM `master_barang_sekolah` WHERE `no_spk` = ? AND `id_sekolah` = ? AND `bulan_realisasi` = ?");
-        mysqli_stmt_bind_param($stmt_del_spk_mas, "ssi", $spk_hapus, $id_sekolah, $bulan_aktif);
-        mysqli_stmt_execute($stmt_del_spk_mas);
-        mysqli_stmt_close($stmt_del_spk_mas);
+        if ($stmt_del_spk_mas) {
+            mysqli_stmt_bind_param($stmt_del_spk_mas, "ssi", $spk_hapus, $id_sekolah, $bulan_aktif);
+            mysqli_stmt_execute($stmt_del_spk_mas);
+            mysqli_stmt_close($stmt_del_spk_mas);
+        }
 
-        // Hidupkan kembali pengecekan Foreign Key
-        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1");
-
-        // Commit transaksi
+        @mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1");
         mysqli_commit($conn);
 
-        echo "<script>alert('Seluruh Data Dokumen SPK Berhasil Dihapus!'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
-        exit;
+        respond_hasil($is_ajax, 'success', 'Seluruh Data Dokumen SPK Berhasil Dihapus!', $bulan_aktif);
     } catch (Exception $e) {
         mysqli_rollback($conn);
-        echo "<script>alert('Gagal menghapus dokumen SPK. Terjadi kesalahan pada sistem.'); window.location.href='index.php?p=data_barang.php&bulan_realisasi=$bulan_aktif';</script>";
-        exit;
+        error_log("Error Hapus Dokumen SPK: " . $e->getMessage());
+        respond_hasil($is_ajax, 'error', 'Gagal menghapus dokumen SPK.', $bulan_aktif);
     }
 }
 
-// KEAMANAN 5: Prepared Statement untuk Fetching Data Master Barang
+// Fetch Data Master Barang
 $list_barang_sekolah = [];
 $stmt_get_master = mysqli_prepare($conn, "SELECT * FROM `master_barang_sekolah` WHERE `id_sekolah` = ? AND `bulan_realisasi` = ? ORDER BY `id` DESC");
-mysqli_stmt_bind_param($stmt_get_master, "si", $id_sekolah, $bulan_aktif);
-mysqli_stmt_execute($stmt_get_master);
-$query_master = mysqli_stmt_get_result($stmt_get_master);
+if ($stmt_get_master) {
+    mysqli_stmt_bind_param($stmt_get_master, "si", $id_sekolah, $bulan_aktif);
+    mysqli_stmt_execute($stmt_get_master);
+    $query_master = mysqli_stmt_get_result($stmt_get_master);
 
-while ($row = mysqli_fetch_assoc($query_master)) {
-    $list_barang_sekolah[] = $row;
+    while ($row = mysqli_fetch_assoc($query_master)) {
+        $list_barang_sekolah[] = $row;
+    }
+    mysqli_stmt_close($stmt_get_master);
 }
-mysqli_stmt_close($stmt_get_master);
 
 $grouped_spj = [];
 $grand_total_seluruh_spj = 0; 
@@ -248,14 +297,10 @@ foreach ($list_barang_sekolah as $brg) {
     box-shadow:0 8px 30px rgba(0,0,0,.08); border:1px solid #e2e8f0;
 }
 .spk-row-group-master { border-bottom: 1px solid #e2e8f0 !important; }
-
-/* Class Pembatas Tebal Antar Dokumen SPK */
-.spk-group-separator {
-    border-bottom: 3px solid #94a3b8 !important;
-}
-
+.spk-group-separator { border-bottom: 3px solid #94a3b8 !important; }
 .spk-group-header { border-left: 5px solid #1e3a8a !important; }
 .live-search-box-main { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 12px; }
+
 .modal-kategori-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
@@ -273,16 +318,14 @@ foreach ($list_barang_sekolah as $brg) {
 .btn-select-kategori:hover { border-color: #1e3a8a; background: #f0f9ff; }
 .footer-grand-total { background: #f1f5f9 !important; font-size: 14px; font-weight: 800; color: #1e3a8a !important; border-top: 3px solid #cbd5e1 !important; }
 
-/* Class untuk memperkecil tombol aksi di SPK */
 .btn-xs {
     padding: 2px 6px !important;
     font-size: 11px !important;
     line-height: 1.2 !important;
 }
 
-/* ── PERBAIKAN TIMING & SCROLL FREEZE HEADER ── */
 .table-wrapper-scroll {
-    max-height: 70vh; /* Menggunakan 70% dari tinggi layar user agar auto menyesuaikan monitor */
+    max-height: 70vh;
     overflow-y: auto;
     overflow-x: auto;
     position: relative;
@@ -290,7 +333,7 @@ foreach ($list_barang_sekolah as $brg) {
 #tabel_master_spj_grouped thead th {
     position: sticky;
     top: 0;
-    z-index: 99; /* Menaikkan z-index agar tidak tertutup row body */
+    z-index: 99;
     box-shadow: inset 0 -2px 0 #cbd5e1;
 }
 </style>
@@ -385,8 +428,6 @@ foreach ($list_barang_sekolah as $brg) {
                             
                             <tbody>
                                 <?php foreach($grouped_spj as $spk_id => $grup): 
-                                    $all_nama_barang_in_group = '';
-                                    foreach($grup['items'] as $it) { $all_nama_barang_in_group .= strtolower($it['nama_barang']).' '; }
                                     $jumlah_item = count($grup['items']);
                                 ?>
                                     <?php foreach($grup['items'] as $index_item => $item_brg): 
@@ -418,14 +459,9 @@ foreach ($list_barang_sekolah as $brg) {
                                                             <a href="index.php?p=data_barang_input.php&no_spk_edit=<?= urlencode($grup['no_spk']); ?>&bulan_realisasi=<?= $bulan_aktif; ?>" class="btn btn-xs btn-primary d-inline-flex align-items-center gap-1" title="Edit Dokumen SPK" style="border-radius:6px; padding: 4px 8px !important;">
                                                                 <i class="bi bi-pencil-square" style="font-size: 11px;"></i> Edit
                                                             </a>
-                                                            <form method="POST" action="index.php?p=data_barang.php&bulan_realisasi=<?= $bulan_aktif; ?>" class="d-inline" onsubmit="return confirm('Peringatan Keras! Apakah Anda yakin ingin menghapus SELURUH ITEM BARANG di dalam Dokumen SPK [<?= htmlspecialchars($grup['no_spk'], ENT_QUOTES, 'UTF-8'); ?>] ini?')">
-                                                                <input type="hidden" name="aksi" value="hapus_spk">
-                                                                <input type="hidden" name="no_spk" value="<?= htmlspecialchars($grup['no_spk'], ENT_QUOTES, 'UTF-8'); ?>">
-                                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
-                                                                <button type="submit" class="btn btn-xs btn-danger d-inline-flex align-items-center gap-1" title="Hapus Dokumen SPK" style="border-radius:6px; padding: 4px 8px !important;">
-                                                                    <i class="bi bi-trash3-fill" style="font-size: 11px;"></i> Hapus
-                                                                </button>
-                                                            </form>
+                                                            <button type="button" class="btn btn-xs btn-danger d-inline-flex align-items-center gap-1" title="Hapus Dokumen SPK" style="border-radius:6px; padding: 4px 8px !important;" onclick="hapusDokumenSPK('<?= htmlspecialchars(addslashes($grup['no_spk']), ENT_QUOTES, 'UTF-8'); ?>')">
+                                                                <i class="bi bi-trash3-fill" style="font-size: 11px;"></i> Hapus
+                                                            </button>
                                                         <?php endif; ?>
                                                     </div>
                                                 </td>
@@ -451,12 +487,9 @@ foreach ($list_barang_sekolah as $brg) {
                                                         <i class="bi bi-lock-fill"></i>
                                                     </button>
                                                 <?php else: ?>
-                                                    <form method="POST" action="index.php?p=data_barang.php&bulan_realisasi=<?= $bulan_aktif; ?>" class="d-inline" onsubmit="return confirm('Apakah anda yakin ingin menghapus barang [<?= htmlspecialchars($item_brg['nama_barang'], ENT_QUOTES, 'UTF-8'); ?>] ini dari SPK?')">
-                                                        <input type="hidden" name="aksi" value="hapus">
-                                                        <input type="hidden" name="id_spj" value="<?= (int)$item_brg['id']; ?>">
-                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger p-1 border-0"><i class="bi bi-trash3-fill"></i></button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger p-1 border-0" title="Hapus Item Barang" onclick="hapusItemBarang(<?= (int)$item_brg['id']; ?>, '<?= htmlspecialchars(addslashes($item_brg['nama_barang']), ENT_QUOTES, 'UTF-8'); ?>')">
+                                                        <i class="bi bi-trash3-fill"></i>
+                                                    </button>
                                                 <?php endif; ?>
                                             </td>
 
@@ -492,15 +525,76 @@ foreach ($list_barang_sekolah as $brg) {
 
     function pilihKategoriDanBukaForm(kategori) {
         tutupModalKategori();
-        window.location.href = `index.php?p=data_barang_input.php&kategori=${encodeURIComponent(kategori)}`;
+        if (typeof loadPage === 'function') {
+            loadPage(`data_barang_input.php?kategori=${encodeURIComponent(kategori)}`, 'Data Barang');
+        } else {
+            window.location.href = `index.php?p=data_barang_input.php&kategori=${encodeURIComponent(kategori)}`;
+        }
+    }
+
+    // Handler Eksekusi Hapus via AJAX Fetch
+    async function eksekusiHapus(formData) {
+        if (typeof loader !== 'undefined' && loader) {
+            loader.style.display = 'block';
+            if (typeof loaderBar !== 'undefined' && loaderBar) loaderBar.style.width = '50%';
+        }
+
+        try {
+            const response = await fetch('data_barang.php?bulan_realisasi=<?= $bulan_aktif; ?>', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+
+            const res = await response.json();
+            if (res.status === 'success') {
+                alert(res.message);
+                if (typeof loadPage === 'function') {
+                    loadPage('data_barang.php?bulan_realisasi=<?= $bulan_aktif; ?>', 'Data Barang', false);
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                alert(res.message || 'Gagal menghapus data.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Terjadi kesalahan sistem saat memproses penghapusan.');
+        } finally {
+            if (typeof loader !== 'undefined' && loader) {
+                if (typeof loaderBar !== 'undefined' && loaderBar) loaderBar.style.width = '100%';
+                setTimeout(() => { 
+                    loader.style.display = 'none'; 
+                    if (typeof loaderBar !== 'undefined' && loaderBar) loaderBar.style.width = '0'; 
+                }, 300);
+            }
+        }
+    }
+
+    function hapusItemBarang(idItem, namaBarang) {
+        if (!confirm(`Apakah Anda yakin ingin menghapus barang [${namaBarang}] ini dari SPK?`)) return;
+        const fd = new FormData();
+        fd.append('aksi', 'hapus');
+        fd.append('id_spj', idItem);
+        fd.append('csrf_token', CSRF_TOKEN);
+        eksekusiHapus(fd);
+    }
+
+    function hapusDokumenSPK(noSpk) {
+        if (!confirm(`Peringatan Keras! Apakah Anda yakin ingin menghapus SELURUH ITEM BARANG di dalam Dokumen SPK [${noSpk}] ini?`)) return;
+        const fd = new FormData();
+        fd.append('aksi', 'hapus_spk');
+        fd.append('no_spk', noSpk);
+        fd.append('csrf_token', CSRF_TOKEN);
+        eksekusiHapus(fd);
     }
 
     function jalankanLiveSearchTabelMaster() {
         let inputKeyword = document.getElementById('main_live_filter_input').value.toLowerCase().trim();
         let barisGrupSpk = document.querySelectorAll('#tabel_master_spj_grouped tbody .spk-row-group-master');
-        
-        let allMasterCells = document.querySelectorAll('.master-dokumen-td');
-        let allTotalCells = document.querySelectorAll('.master-total-td');
         
         if (inputKeyword === "") {
             barisGrupSpk.forEach(row => {
