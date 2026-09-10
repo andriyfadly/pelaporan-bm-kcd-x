@@ -11,6 +11,7 @@ logs_security/
 
 # Test temp
 _test_env.php
+.phpunit.result.cache
 
 # Dependencies
 /vendor/
