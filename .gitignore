@@ -11,3 +11,8 @@ logs_security/
 
 # Test temp
 _test_env.php
+
+# Dependencies
+/vendor/
+/legacy/vendor/
+/node_modules/
