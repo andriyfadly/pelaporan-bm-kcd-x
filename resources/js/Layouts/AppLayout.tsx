@@ -1,5 +1,6 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, router } from '@inertiajs/react';
 import React, { useState, ReactNode } from 'react';
+import ConfirmDialog from '@/Components/ConfirmDialog';
 import {
     LayoutDashboard,
     Database,
@@ -21,11 +22,11 @@ interface Props {
 export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const { auth } = usePage<any>().props;
 
     const user = auth?.user;
     const sekolah = user?.sekolah;
-    const idSekolahTampil = sekolah?.id ? sekolah.id.substring(0, 8).toUpperCase() : 'ADMIN';
     const namaSekolahTampil = sekolah?.nama_sekolah || 'Dinas / Administrator';
 
     const currentPath = window.location.pathname;
@@ -55,9 +56,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-0 left-0 h-screen bg-white border-r border-slate-200 z-50 flex flex-col transition-all duration-300 ${
-                    collapsed ? 'w-20' : 'w-72'
-                } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+                className={`fixed top-0 left-0 h-screen bg-white border-r border-slate-200 z-50 flex flex-col transition-all duration-300 ${collapsed ? 'w-20' : 'w-72'
+                    } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
             >
                 <div className="pt-8 pb-5 px-5 flex flex-col items-center justify-center text-center border-b border-slate-100">
                     {!collapsed ? (
@@ -92,11 +92,10 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                             )}
                             <Link
                                 href="/dashboard"
-                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${
-                                    currentPath === '/dashboard'
+                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath === '/dashboard'
                                         ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
                                         : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
-                                }`}
+                                    }`}
                                 title={collapsed ? 'Dashboard' : undefined}
                             >
                                 <LayoutDashboard className="w-5 h-5 shrink-0" />
@@ -108,11 +107,10 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setOpenMaster(!openMaster)}
-                                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${
-                                        isMasterActive
+                                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${isMasterActive
                                             ? 'text-[#2563eb] bg-blue-50/30'
                                             : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
-                                    }`}
+                                        }`}
                                     title={collapsed ? 'Master Data' : undefined}
                                 >
                                     <div className="flex items-center gap-3">
@@ -121,9 +119,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                     </div>
                                     {!collapsed && (
                                         <ChevronDown
-                                            className={`w-4 h-4 transition-transform duration-200 ${
-                                                openMaster ? 'rotate-180' : ''
-                                            }`}
+                                            className={`w-4 h-4 transition-transform duration-200 ${openMaster ? 'rotate-180' : ''
+                                                }`}
                                         />
                                     )}
                                 </button>
@@ -132,41 +129,37 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                     <div className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
                                         <Link
                                             href="/admin/kode-barang"
-                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${
-                                                currentPath.startsWith('/admin/kode-barang')
+                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/admin/kode-barang')
                                                     ? 'text-[#2563eb] font-bold bg-blue-50/50'
                                                     : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                            }`}
+                                                }`}
                                         >
                                             Kode Barang
                                         </Link>
                                         <Link
                                             href="/pelaporan-bm/acuan"
-                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${
-                                                currentPath.startsWith('/pelaporan-bm/acuan')
+                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pelaporan-bm/acuan')
                                                     ? 'text-[#2563eb] font-bold bg-blue-50/50'
                                                     : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                            }`}
+                                                }`}
                                         >
                                             Input Acuan
                                         </Link>
                                         <Link
                                             href="/pelaporan-bm/rekapan"
-                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${
-                                                currentPath.startsWith('/pelaporan-bm/rekapan')
+                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pelaporan-bm/rekapan')
                                                     ? 'text-[#2563eb] font-bold bg-blue-50/50'
                                                     : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                            }`}
+                                                }`}
                                         >
                                             Data Kendali Realisasi
                                         </Link>
                                         <Link
                                             href="/admin/user"
-                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${
-                                                currentPath.startsWith('/admin/user')
+                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/admin/user')
                                                     ? 'text-[#2563eb] font-bold bg-blue-50/50'
                                                     : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                            }`}
+                                                }`}
                                         >
                                             Kelola Users
                                         </Link>
@@ -185,11 +178,10 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setOpenLaporan(!openLaporan)}
-                                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${
-                                        isLaporanActive
+                                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${isLaporanActive
                                             ? 'text-[#2563eb] bg-blue-50/30'
                                             : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
-                                    }`}
+                                        }`}
                                     title={collapsed ? 'Laporan' : undefined}
                                 >
                                     <div className="flex items-center gap-3">
@@ -198,9 +190,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                     </div>
                                     {!collapsed && (
                                         <ChevronDown
-                                            className={`w-4 h-4 transition-transform duration-200 ${
-                                                openLaporan ? 'rotate-180' : ''
-                                            }`}
+                                            className={`w-4 h-4 transition-transform duration-200 ${openLaporan ? 'rotate-180' : ''
+                                                }`}
                                         />
                                     )}
                                 </button>
@@ -209,11 +200,10 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                     <div className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
                                         <Link
                                             href="/pelaporan-bm/cetak"
-                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${
-                                                currentPath.startsWith('/pelaporan-bm/cetak')
+                                            className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pelaporan-bm/cetak')
                                                     ? 'text-[#2563eb] font-bold bg-blue-50/50'
                                                     : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                            }`}
+                                                }`}
                                         >
                                             Cetak Laporan
                                         </Link>
@@ -230,11 +220,10 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                             )}
                             <Link
                                 href="/dashboard"
-                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${
-                                    currentPath === '/dashboard'
+                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath === '/dashboard'
                                         ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
                                         : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
-                                }`}
+                                    }`}
                                 title={collapsed ? 'Dashboard' : undefined}
                             >
                                 <LayoutDashboard className="w-5 h-5 shrink-0" />
@@ -243,11 +232,10 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
                             <Link
                                 href="/pelaporan-bm/spj"
-                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${
-                                    currentPath === '/pelaporan-bm/spj' && (typeof window === 'undefined' || !window.location.search.includes('realisasi'))
+                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath === '/pelaporan-bm/spj' && (typeof window === 'undefined' || !window.location.search.includes('realisasi'))
                                         ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
                                         : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
-                                }`}
+                                    }`}
                                 title={collapsed ? 'Data Barang' : undefined}
                             >
                                 <FileSpreadsheet className="w-5 h-5 shrink-0" />
@@ -256,11 +244,10 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
                             <Link
                                 href="/pelaporan-bm/spj?mode=realisasi"
-                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${
-                                    currentPath === '/pelaporan-bm/spj' && typeof window !== 'undefined' && window.location.search.includes('realisasi')
+                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath === '/pelaporan-bm/spj' && typeof window !== 'undefined' && window.location.search.includes('realisasi')
                                         ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
                                         : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
-                                }`}
+                                    }`}
                                 title={collapsed ? 'Input Realisasi' : undefined}
                             >
                                 <ClipboardList className="w-5 h-5 shrink-0" />
@@ -269,11 +256,10 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
                             <Link
                                 href="/pelaporan-bm/realisasi"
-                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${
-                                    currentPath.startsWith('/pelaporan-bm/realisasi')
+                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath.startsWith('/pelaporan-bm/realisasi')
                                         ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
                                         : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
-                                }`}
+                                    }`}
                                 title={collapsed ? 'Data Realisasi' : undefined}
                             >
                                 <FileSpreadsheet className="w-5 h-5 shrink-0" />
@@ -284,24 +270,22 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                 </div>
 
                 <div className="p-3 border-t border-slate-100">
-                    <Link
-                        href="/logout"
-                        method="post"
-                        as="button"
+                    <button
+                        type="button"
+                        onClick={() => setShowLogoutConfirm(true)}
                         className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
                         title={collapsed ? 'Logout' : undefined}
                     >
                         <LogOut className="w-5 h-5 shrink-0" />
                         {!collapsed && <span>Logout</span>}
-                    </Link>
+                    </button>
                 </div>
             </aside>
 
             {/* Main Content Area */}
             <div
-                className={`flex-1 flex flex-col transition-all duration-300 ${
-                    collapsed ? 'lg:ml-20' : 'lg:ml-72'
-                }`}
+                className={`flex-1 flex flex-col transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-72'
+                    }`}
             >
                 <header className="sticky top-0 h-20 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 lg:px-10 flex items-center justify-between z-30">
                     <div className="flex items-center gap-4">
@@ -322,9 +306,6 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
                         <div>
                             <h2 className="font-bold text-base text-slate-800 leading-tight">{title}</h2>
-                            <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
-                                ID SEKOLAH: {idSekolahTampil}
-                            </span>
                         </div>
                     </div>
 
@@ -348,6 +329,16 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                     {children}
                 </main>
             </div>
+
+            <ConfirmDialog
+                isOpen={showLogoutConfirm}
+                onClose={() => setShowLogoutConfirm(false)}
+                onConfirm={() => router.post('/logout')}
+                title="Konfirmasi Keluar"
+                message="Apakah Anda yakin ingin keluar dari sistem?"
+                confirmText="Ya, Keluar"
+                isDestructive={true}
+            />
         </div>
     );
 }
