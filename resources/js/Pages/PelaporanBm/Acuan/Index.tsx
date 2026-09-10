@@ -1,6 +1,8 @@
 import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
 import React, { useState, useRef } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import Pagination from '@/Components/Pagination';
+import { formatRupiah } from '@/Utils/format';
 import {
     Plus,
     Trash2,
@@ -440,36 +442,9 @@ export default function Index({
                     </div>
 
                     {/* Pagination */}
-                    {items.links && items.links.length > 3 && (
-                        <div className="flex justify-between items-center gap-2 mt-4 pt-4 border-t border-slate-100">
-                            <span className="text-xs text-slate-500">
-                                Total: <strong>{items.total}</strong> baris data
-                            </span>
-                            <div className="flex items-center gap-1">
-                                {items.links.map((link, i) => {
-                                    if (!link.url) {
-                                        return (
-                                            <span
-                                                key={i}
-                                                className="px-2.5 py-1 text-xs text-slate-400 bg-slate-50 rounded border border-slate-100"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        );
-                                    }
-                                    return (
-                                        <Link
-                                            key={i}
-                                            href={link.url}
-                                            className={`px-2.5 py-1 text-xs font-semibold rounded border transition ${
-                                                link.active
-                                                    ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                            }`}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    );
-                                })}
-                            </div>
+                    {items.links && (
+                        <div className="mt-4 pt-4 border-t border-slate-100">
+                            <Pagination links={items.links} total={items.total} />
                         </div>
                     )}
                 </div>

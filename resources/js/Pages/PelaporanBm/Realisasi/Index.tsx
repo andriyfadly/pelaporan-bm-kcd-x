@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import Pagination from '@/Components/Pagination';
 import {
     Table as TableIcon,
     Filter,
@@ -325,28 +326,9 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                 </div>
 
                 {/* Pagination */}
-                {items.links && items.links.length > 3 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                        <div className="text-xs text-slate-500">
-                            Menampilkan {items.from || 0} - {items.to || 0} dari {items.total} data
-                        </div>
-                        <div className="flex items-center gap-1">
-                            {items.links.map((link, i) => (
-                                <Link
-                                    key={i}
-                                    href={link.url || '#'}
-                                    preserveScroll
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                                        link.active
-                                            ? 'bg-blue-600 text-white'
-                                            : !link.url
-                                            ? 'text-slate-300 pointer-events-none'
-                                            : 'text-slate-600 hover:bg-slate-100'
-                                    }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ))}
-                        </div>
+                {items.links && (
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                        <Pagination links={items.links} total={items.total} />
                     </div>
                 )}
             </div>

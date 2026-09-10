@@ -1,6 +1,7 @@
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import React, { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import Pagination from '@/Components/Pagination';
 import { Database, Plus, Trash2, Search, Upload, Download, ArrowLeft, X, Info, AlertCircle } from 'lucide-react';
 
 interface KodeBarangItem {
@@ -318,21 +319,9 @@ export default function Index({ items, search }: Props) {
                             </div>
 
                             {/* Pagination Controls */}
-                            {items.links && items.links.length > 3 && (
-                                <div className="p-3 border-t border-slate-100 flex justify-center gap-1 bg-white">
-                                    {items.links.map((l, i) => (
-                                        <button
-                                            key={i}
-                                            disabled={!l.url}
-                                            onClick={() => l.url && router.get(l.url, {}, { preserveState: true })}
-                                            dangerouslySetInnerHTML={{ __html: l.label }}
-                                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition cursor-pointer disabled:opacity-30 ${
-                                                l.active
-                                                    ? 'bg-blue-600 text-white border-blue-600'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                            }`}
-                                        />
-                                    ))}
+                            {items.links && (
+                                <div className="p-3 border-t border-slate-100 bg-white">
+                                    <Pagination links={items.links} total={items.total} />
                                 </div>
                             )}
                         </div>

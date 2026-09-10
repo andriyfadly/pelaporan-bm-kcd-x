@@ -15,7 +15,25 @@ Before relying on a package's API, confirm its installed version:
 
 ## Skills Activation
 
-This project has domain-specific skills available in `**/skills/**`. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
+This project has domain-specific skills available in `.agents/skills/`. You MUST activate the relevant skill whenever you work in that domain:
+- `ponytail`: The lazy senior dev ladder: YAGNI, utamakan native/stdlib, no over-engineering, diff minimal.
+- `ui-anti-slop`: Larangan micro-wrappers trivial (`<Button>`, `<TextInput>`), divitis, dan form dynamic engine.
+- `tenant-isolation`: Wajib isolasi scope `sekolah_id` dan periksa kepemilikan mutasi (IDOR protection).
+- `query-optimization`: Pencegahan N+1, eager loading relasi Eloquent, dan streaming data besar.
+- `csv-excel-export`: Standar ekspor 26 kolom (UTF-8 BOM, streaming output, pre-flight check).
+- `stop-ai-slop`: Larangan narasi basa-basi AI, code-first, dan maksimal 3 baris ringkasan.
+
+## Reusable Components & Utilities
+
+Gunakan komponen bersama yang telah tersedia sebelum membuat kode UI baru:
+- `resources/js/Utils/format.ts`: `formatRupiah()`, `BULAN_LIST`, `getNamaBulan()`.
+- `resources/js/Components/Pagination.tsx`: Kontrol navigasi tabel Inertia.
+- `resources/js/Components/Modal.tsx`: Dialog modal accessible (ESC key, scroll lock, backdrop).
+- `resources/js/Components/StatusBadge.tsx`: Badge status laporan dinas (disetujui, menunggu approval, draft, selesai).
+- `resources/js/Components/CardStat.tsx`: Kartu ringkasan metrik statistik.
+- `resources/js/Components/EmptyState.tsx`: Tampilan seragam saat tabel kosong.
+- `resources/js/Components/SearchInput.tsx`: Input pencarian live dengan tombol clear.
+- `resources/js/Components/ConfirmDialog.tsx`: Modal konfirmasi aksi destruktif pengganti `window.confirm()`.
 
 ## Conventions & Clean Architecture
 
