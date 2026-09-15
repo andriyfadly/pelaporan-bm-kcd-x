@@ -52,5 +52,6 @@ php artisan serve
 ```bash
 vendor/bin/pint --format agent
 npx tsc --noEmit
-php artisan test --compact
+composer test          # test cepat tanpa coverage
+composer test-coverage # gate coverage (gagal bila < 80%)
 ```

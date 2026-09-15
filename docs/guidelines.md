@@ -56,16 +56,24 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
 
 ## 3. Standar Pengujian (Testing & Code Coverage)
 
-- **Target Coverage**: Kode baru atau perubahan pada modul inti Pelaporan BM wajib mempertahankan line coverage &ge; 80%.
+- **Target Coverage**: Line coverage &ge; 80% per file dan total, di-enforce via gate `composer test-coverage` (gagal bila di bawah minimum).
 - **Menjalankan Tes**:
   ```bash
-  php artisan test --compact
+  # Cepat (tanpa coverage) — pakai ini saat iterasi harian
+  composer test
+
+  # Gate coverage penuh (Xdebug coverage + --min=80) — wajib lulus sebelum merge
+  composer test-coverage
   ```
-  atau menjalankan direktori spesifik:
+  atau menjalankan file spesifik:
   ```bash
-  vendor/bin/phpunit tests/Feature/PelaporanBm
+  php artisan test tests/Feature/PelaporanBmTest.php
+  php artisan test --filter=test_multi_item_spk_and_input_realisasi_workflow
   ```
-- **Prinsip**: Gunakan database SQLite in-memory atau database testing khusus, dan manfaatkan Model Factory untuk pembuatan fixture data.
+- **Struktur Test**:
+  - `tests/Feature/`: alur HTTP end-to-end per modul (SPJ & Input Realisasi, Kode Barang + import CSV/xlsx, User Management, Password Expiry, Rekapan & Kunci).
+  - `tests/Unit/`: Fortify actions, relasi model, Gate super_admin & rate limiter.
+- **Prinsip**: Gunakan database SQLite in-memory (sudah disetel di `phpunit.xml`). Untuk test feature, seed `PeranDanHakAksesSeeder` lalu buat user via `User::create` + `assignRole` mengikuti pola test existing. Gunakan `UploadedFile::fake()->createWithContent()` untuk import CSV; xlsx dibuat in-test via `ZipArchive` (tanpa paket tambahan).
 
 ---
 

@@ -76,6 +76,24 @@ class UserManagementTest extends TestCase
             'id' => $admin->id,
         ]);
 
+        // Guards: super_admin cannot be updated or deleted
+        $super = User::create([
+            'name' => 'Developer',
+            'username' => 'dev_guard',
+            'password' => bcrypt('password'),
+        ]);
+        $super->assignRole('super_admin');
+
+        $this->actingAs($admin)
+            ->put(route('admin.user.update', $super), ['username' => 'dev_guard'])
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->delete(route('admin.user.destroy', $super))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('users', ['id' => $super->id]);
+
         // Destroy
         $this->actingAs($admin)
             ->delete(route('admin.user.destroy', $user))

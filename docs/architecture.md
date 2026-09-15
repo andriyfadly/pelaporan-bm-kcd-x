@@ -24,10 +24,11 @@ app/
         AcuanController.php         # Master target kodering acuan
         CetakController.php         # Pre-flight check & export CSV 26 kolom
         DashboardController.php     # Logic dashboard Admin KCD vs Sekolah
+        InputRealisasiController.php # Alokasi item SPJ ke kodering realisasi (simpan/edit/uncheck)
         KunciLaporanController.php  # Toggle kunci & status approval
         RealisasiController.php     # Data realisasi (is_realisasi = 1)
         RekapanController.php       # Rekapan kodering per sekolah
-        SpjController.php           # Buku SPJ dokumen & item barang
+        SpjController.php           # Buku SPJ dokumen, form SPK multi-item, & item barang
   Models/
     Master/
       KodeBarang.php
@@ -51,9 +52,13 @@ resources/
         Acuan/Index.tsx
         Cetak/Index.tsx
         Dashboard.tsx
+        InputRealisasi/Index.tsx
+        InputRealisasi/Tambah.tsx
+        InputRealisasi/Edit.tsx
         Realisasi/Index.tsx
         Rekapan/Index.tsx
         Spj/Index.tsx
+        Spj/FormSpk.tsx
 routes/
   web.php                           # Route definitions & middleware
 ```

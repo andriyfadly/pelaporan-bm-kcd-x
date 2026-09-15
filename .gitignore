@@ -19,3 +19,6 @@ _test_env.php
 /node_modules/
 /public/hot
 /public/build
+
+# OMC runtime state
+.omc/

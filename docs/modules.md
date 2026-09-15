@@ -30,7 +30,16 @@ Khusus role Operator Sekolah dengan dua tab terintegrasi:
    - Fitur Live Search instan (SPK, Nama Barang, Merk/Tipe).
    - Aksi Tambah SPJ (modal pilihan kategori: Peralatan & Mesin vs Buku), Edit, dan Hapus Item/SPK.
    - Tombol Kirim Laporan ke KCD Wilayah X (mengubah status ke `menunggu_approval`).
-2. **Target Acuan Kerja Realisasi (`/pelaporan-bm/spj?mode=realisasi`)**:
+2. **Form Dokumen SPK Multi-Item (`/pelaporan-bm/spj/create` & `/pelaporan-bm/spj/edit-spk/{no_spk}`)**:
+   - Satu dokumen SPK dapat memuat beberapa item barang sekaligus (No SPK, No SP2D, Sumber Perolehan bersama).
+   - Pencarian kode barang live saat menambah item; volume × harga satuan dihitung otomatis per item.
+   - Edit memuat ulang seluruh item SPK; penyimpanan atomik dalam satu transaksi DB.
+3. **Input Realisasi per Kodering (`/pelaporan-bm/input-realisasi`)**:
+   - Rekap target acuan vs realisasi per kode rekening (nominal acuan, realisasi, kekurangan).
+   - Tombol `+ Alokasikan` membuka daftar item SPJ bulan terkait yang belum dialokasikan; pilih item lalu simpan → item ditandai `is_realisasi` dan tersalin ke `pelaporan_bm_realisasi`.
+   - Edit alokasi untuk melepas item (`uncheck`) — realisasi dihapus dan status SPJ asal dikembalikan.
+   - Seluruh aksi diblokir bila bulan telah dikunci atau berstatus `menunggu_approval`/`disetujui`.
+4. **Target Acuan Kerja Realisasi (`/pelaporan-bm/spj?mode=realisasi`)**:
    - Tabel ringkasan kodering anggaran belanja modal periode bulan aktif.
    - Menampilkan Kode Rekening (accordion daftar uraian pekerjaan), Nilai Acuan, Realisasi, dan Kekurangan.
    - Indikator status: Badge `Selesai` jika target terpenuhi (&le; 0), atau tombol `+ Input` yang otomatis membuka form input SPJ dengan kodering acuan tersebut terpilih.

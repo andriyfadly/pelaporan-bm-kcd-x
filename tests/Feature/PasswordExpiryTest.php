@@ -126,6 +126,21 @@ class PasswordExpiryTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_change_password_page_renders(): void
+    {
+        $user = User::create([
+            'name' => 'Operator Form',
+            'username' => 'form-op',
+            'password' => Hash::make('#SidiptaKCD10'),
+            'password_changed_at' => now(),
+        ]);
+        $user->assignRole('operator_sekolah');
+
+        $this->actingAs($user)
+            ->get(route('password.change'))
+            ->assertOk();
+    }
+
     public function test_user_seeder_creates_operator_accounts_with_npsn_admin_username(): void
     {
         Sekolah::create([

@@ -62,8 +62,11 @@ vendor/bin/pint --format agent
 # Type-check TypeScript
 npx tsc --noEmit
 
-# Pengujian unit & fitur (target line coverage >= 80%)
-php artisan test --compact
+# Pengujian unit & fitur (cepat, tanpa coverage)
+composer test
+
+# Gate coverage penuh: gagal bila line coverage < 80%
+composer test-coverage
 ```
 
 ---

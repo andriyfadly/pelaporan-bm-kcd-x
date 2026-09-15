@@ -443,4 +443,100 @@ class PelaporanBmTest extends TestCase
         $content = $response->streamedContent();
         $this->assertStringContainsString('Monitor LED 24 Inch', $content);
     }
+
+    public function test_multi_item_spk_and_input_realisasi_workflow(): void
+    {
+        $sekolah = Sekolah::create([
+            'nama_sekolah' => 'SMKN 2 Alur',
+            'kota_kab' => 'Kota Bandung',
+        ]);
+
+        $user = User::create([
+            'name' => 'Operator 2',
+            'username' => 'operator2',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolah->id,
+        ]);
+
+        $acuan = Acuan::create([
+            'sekolah_id' => $sekolah->id,
+            'kodering' => '5.2.02.05.01.0001',
+            'nominal' => 20000000,
+            'bulan' => 8,
+            'uraian' => 'Pengadaan Laptop Sekolah',
+        ]);
+
+        // 1. Akses form create SPK
+        $this->actingAs($user)
+            ->get(route('pelaporan-bm.spj.create', ['kategori' => 'Peralatan & Mesin', 'bulan' => 8]))
+            ->assertOk();
+
+        // 2. Simpan Dokumen SPK dengan multiple items
+        $storeResponse = $this->actingAs($user)
+            ->post(route('pelaporan-bm.spj.store-spk'), [
+                'no_spk' => 'SPK/MULTI/01',
+                'no_sp2d' => '001/SP2D/2026',
+                'sumber_perolehan' => 'BOS Reguler',
+                'bulan_realisasi' => 8,
+                'kategori' => 'Peralatan & Mesin',
+                'items' => [
+                    [
+                        'kode_barang' => '1.3.2.05',
+                        'nama_barang' => 'Laptop A',
+                        'jenis_aset' => 'Peralatan dan Mesin',
+                        'volume' => 1,
+                        'harga_satuan' => 10000000,
+                    ],
+                    [
+                        'kode_barang' => '1.3.2.05',
+                        'nama_barang' => 'Laptop B',
+                        'jenis_aset' => 'Peralatan dan Mesin',
+                        'volume' => 1,
+                        'harga_satuan' => 10000000,
+                    ],
+                ],
+            ]);
+
+        $storeResponse->assertRedirect(route('pelaporan-bm.spj.index', ['bulan' => 8]));
+        $this->assertDatabaseCount('pelaporan_bm_spj', 2);
+
+        // 3. Akses form edit SPK
+        $this->actingAs($user)
+            ->get(route('pelaporan-bm.spj.edit-spk', ['no_spk' => 'SPK/MULTI/01', 'bulan' => 8]))
+            ->assertOk();
+
+        // 4. Akses Input Realisasi index & tambah
+        $this->actingAs($user)
+            ->get(route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => 8]))
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('pelaporan-bm.input-realisasi.tambah', ['kodering' => '5.2.02.05.01.0001', 'bulan_realisasi' => 8]))
+            ->assertOk();
+
+        // 5. Alokasikan barang SPJ ke Kodering Realisasi
+        $spjList = Spj::where('sekolah_id', $sekolah->id)->pluck('id')->all();
+        $simpanRealResponse = $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.simpan'), [
+                'kodering' => '5.2.02.05.01.0001',
+                'bulan_realisasi' => 8,
+                'item_ids' => $spjList,
+            ]);
+
+        $simpanRealResponse->assertRedirect(route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => 8]));
+        $this->assertDatabaseCount('pelaporan_bm_realisasi', 2);
+
+        // 6. Akses Edit Realisasi & Batalkan uncheck 1 item
+        $realisasiItem = Realisasi::where('sekolah_id', $sekolah->id)->first();
+        $updateRealResponse = $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.update'), [
+                'kodering' => '5.2.02.05.01.0001',
+                'bulan_realisasi' => 8,
+                'uncheck_ids' => [$realisasiItem->id],
+            ]);
+
+        $updateRealResponse->assertRedirect(route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => 8]));
+        $this->assertDatabaseCount('pelaporan_bm_realisasi', 1);
+        $this->assertFalse(Spj::where('id', $realisasiItem->spj_id)->value('is_realisasi'));
+    }
 }
