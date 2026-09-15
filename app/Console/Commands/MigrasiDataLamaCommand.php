@@ -7,7 +7,6 @@ use App\Models\PelaporanBm\Acuan;
 use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PelaporanBm\Spj;
-use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
@@ -52,24 +51,6 @@ class MigrasiDataLamaCommand extends Command
             $petaSekolah[(string) $s['id']] = $baru->id;
         }
         $this->info('Sekolah dimigrasi: '.count($sekolahLama));
-
-        // 2. Migrasi Users
-        $usersLama = $this->parseTable($sql, 'users');
-        foreach ($usersLama as $u) {
-            $sekolahUuid = $petaSekolah[(int) ($u['id_sekolah'] ?? 0)] ?? null;
-            $userBaru = User::updateOrCreate(
-                ['username' => $u['username']],
-                [
-                    'name' => $u['nama_sekolah'] ?? $u['username'],
-                    'password' => $u['password'],
-                    'sekolah_id' => $sekolahUuid,
-                    'is_active' => true,
-                ]
-            );
-            $roleName = ($u['role'] === 'admin') ? 'admin_kcd' : 'operator_sekolah';
-            $userBaru->syncRoles([$roleName]);
-        }
-        $this->info('Users dimigrasi: '.count($usersLama));
 
         // 3. Migrasi Acuan
         $petaAcuan = []; // id_lama => uuid_baru
