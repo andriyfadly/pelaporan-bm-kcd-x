@@ -28,9 +28,10 @@ class RealisasiController extends Controller
         }
 
         if (! empty($filterBarang)) {
-            $query->where(function ($q) use ($filterBarang) {
-                $q->where('nama_barang', 'like', "%{$filterBarang}%")
-                    ->orWhere('kode_barang', 'like', "%{$filterBarang}%");
+            $escapedBarang = addcslashes($filterBarang, '%_\\');
+            $query->where(function ($q) use ($escapedBarang) {
+                $q->where('nama_barang', 'like', "%{$escapedBarang}%")
+                    ->orWhere('kode_barang', 'like', "%{$escapedBarang}%");
             });
         }
 

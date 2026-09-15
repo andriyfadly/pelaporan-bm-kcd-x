@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Acuan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AcuanController extends Controller
 {
+    use ResolvesSekolah;
+
     public function index(Request $request): Response
     {
         $defaultBulan = (int) date('n') - 1;
@@ -21,7 +26,7 @@ class AcuanController extends Controller
 
         $filterBulan = $request->has('bulan') ? $request->input('bulan') : $defaultBulan;
         $searchSatuan = trim((string) $request->input('search_satuan', ''));
-        $sekolahId = $request->user()->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
 
         $query = Acuan::with('sekolah');
 
@@ -34,9 +39,10 @@ class AcuanController extends Controller
         }
 
         if (! empty($searchSatuan)) {
-            $query->whereHas('sekolah', function ($s) use ($searchSatuan) {
-                $s->where('nama_sekolah', 'like', "%{$searchSatuan}%")
-                    ->orWhere('npsn', 'like', "%{$searchSatuan}%");
+            $escapedSatuan = addcslashes($searchSatuan, '%_\\');
+            $query->whereHas('sekolah', function ($s) use ($escapedSatuan) {
+                $s->where('nama_sekolah', 'like', "%{$escapedSatuan}%")
+                    ->orWhere('npsn', 'like', "%{$escapedSatuan}%");
             });
         }
 
@@ -87,8 +93,13 @@ class AcuanController extends Controller
         return back()->with('success', 'Data acuan berhasil ditambahkan.');
     }
 
-    public function destroy(Acuan $acuan): RedirectResponse
+    public function destroy(Acuan $acuan, Request $request): RedirectResponse
     {
+        $sekolahId = $this->resolveSekolahId($request);
+        if ($sekolahId && $acuan->sekolah_id !== $sekolahId) {
+            abort(403, 'Tidak memiliki akses');
+        }
+
         $acuan->delete();
 
         return back()->with('success', 'Data acuan berhasil dihapus.');
@@ -98,13 +109,22 @@ class AcuanController extends Controller
     {
         $bulan = $request->input('bulan');
         $query = Acuan::query();
-        if ($request->user()->sekolah_id) {
-            $query->where('sekolah_id', $request->user()->sekolah_id);
+        $sekolahId = $this->resolveSekolahId($request);
+        if ($sekolahId) {
+            $query->where('sekolah_id', $sekolahId);
         }
         if ($bulan !== '' && $bulan !== null) {
             $query->where('bulan', (int) $bulan);
         }
+        $jumlah = (int) (clone $query)->count();
         $query->delete();
+
+        Log::warning('acuan.destroy_all', [
+            'aktor' => $request->user()->id,
+            'sekolah_id' => $request->user()->sekolah_id,
+            'bulan' => $bulan,
+            'jumlah' => $jumlah,
+        ]);
 
         $pesan = $bulan ? "Data acuan untuk bulan {$bulan} berhasil dikosongkan." : 'Semua data acuan berhasil dikosongkan.';
 
@@ -114,24 +134,43 @@ class AcuanController extends Controller
     public function import(Request $request): RedirectResponse
     {
         $request->validate([
-            'file' => 'required|file|max:10240',
+            'file' => 'required|file|max:10240|mimes:csv,txt',
             'bulan' => 'nullable|integer|between:1,12',
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
         ]);
 
-        $sekolahId = $request->user()->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $file = $request->file('file');
         $extension = strtolower($file->getClientOriginalExtension());
         $bulanInput = $request->input('bulan');
 
         $count = 0;
+        $skipped = 0;
         // ponytail: parser CSV/TXT native; format template legacy:
         // [0: Satuan Pendidikan, 1: NPSN, 2: Tanggal, 3: Kodering, 4: BKU, 5: Uraian, 6: Nominal, 7: Bulan]
         if (in_array($extension, ['csv', 'txt'])) {
             $handle = fopen($file->getRealPath(), 'r');
             fgetcsv($handle); // lewati baris header
+
+            $rows = [];
             while (($row = fgetcsv($handle, 2000, ',')) !== false) {
-                if (count($row) >= 4) {
+                $rows[] = $row;
+            }
+            fclose($handle);
+
+            // ponytail: batas 5000 baris per import, naikkan jika kebutuhan riil melebihi
+            if (count($rows) > 5000) {
+                return back()->with('error', 'Berkas terlalu besar: maksimal 5000 baris data per impor.');
+            }
+
+            DB::transaction(function () use ($rows, $sekolahId, $bulanInput, &$count, &$skipped) {
+                foreach ($rows as $row) {
+                    if (count($row) < 4) {
+                        $skipped++;
+
+                        continue;
+                    }
+
                     if (count($row) >= 7) {
                         // Template Lengkap Vendor: Satuan Pendidikan, NPSN, Tanggal, Kodering, BKU, Uraian, Nominal, Bulan
                         $satuanPendidikan = trim($row[0] ?? '');
@@ -154,12 +193,17 @@ class AcuanController extends Controller
                         $bulan = ! empty($row[5]) ? (int) $row[5] : ((int) $bulanInput ?: (int) date('n'));
                     }
 
+                    // Validasi per-baris: bulan & tanggal wajib valid, nominal tidak negatif
+                    if ($bulan < 1 || $bulan > 12 || $nominal < 0 || ! strtotime($tanggal)) {
+                        $skipped++;
+
+                        continue;
+                    }
+
                     $targetSekolahId = $sekolahId;
                     if (! $targetSekolahId && ! empty($npsn)) {
+                        // Hanya NPSN exact — tanpa fuzzy match nama (risiko salah atribusi)
                         $targetSekolahId = Sekolah::where('npsn', $npsn)->value('id');
-                    }
-                    if (! $targetSekolahId && ! empty($satuanPendidikan)) {
-                        $targetSekolahId = Sekolah::where('nama_sekolah', 'like', "%{$satuanPendidikan}%")->value('id');
                     }
 
                     Acuan::create([
@@ -173,12 +217,24 @@ class AcuanController extends Controller
                     ]);
                     $count++;
                 }
-            }
-            fclose($handle);
+            });
         } else {
             return back()->with('error', 'Silakan gunakan berkas CSV yang diekspor dari template Excel resmi.');
         }
 
-        return back()->with('success', "Berhasil mengimpor {$count} data acuan.");
+        $pesan = "Berhasil mengimpor {$count} data acuan.";
+        if ($skipped > 0) {
+            $pesan .= " {$skipped} baris dilewati karena tidak valid.";
+        }
+
+        Log::info('acuan.import', [
+            'aktor' => $request->user()->id,
+            'sekolah_id' => $sekolahId,
+            'bulan' => $bulanInput,
+            'berhasil' => $count,
+            'dilewati' => $skipped,
+        ]);
+
+        return back()->with('success', $pesan);
     }
 }

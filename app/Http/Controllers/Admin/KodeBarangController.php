@@ -7,6 +7,7 @@ use App\Models\Master\KodeBarang;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,10 +19,11 @@ class KodeBarangController extends Controller
 
         $query = KodeBarang::query()
             ->when($search, function ($q) use ($search) {
-                $q->where('kode_barang', 'like', "%{$search}%")
-                    ->orWhere('uraian', 'like', "%{$search}%")
-                    ->orWhere('kodering_aset', 'like', "%{$search}%")
-                    ->orWhere('jenis_aset', 'like', "%{$search}%");
+                $escaped = addcslashes($search, '%_\\');
+                $q->where('kode_barang', 'like', "%{$escaped}%")
+                    ->orWhere('uraian', 'like', "%{$escaped}%")
+                    ->orWhere('kodering_aset', 'like', "%{$escaped}%")
+                    ->orWhere('jenis_aset', 'like', "%{$escaped}%");
             })
             ->orderBy('kode_barang', 'asc');
 
@@ -78,27 +80,35 @@ class KodeBarangController extends Controller
             : $this->parseCsv($file->getRealPath());
 
         $dataRows = array_slice($rows, 1);
+
+        // ponytail: batas 20000 baris per import (katalog legacy 12.938 kode), naikkan jika perlu
+        if (count($dataRows) > 20000) {
+            return back()->with('error', 'Berkas terlalu besar: maksimal 20000 baris data per impor.');
+        }
+
         $count = 0;
 
-        foreach ($dataRows as $row) {
-            $kode = trim((string) ($row[0] ?? ''));
-            if ($kode === '') {
-                continue;
-            }
+        DB::transaction(function () use ($dataRows, &$count) {
+            foreach ($dataRows as $row) {
+                $kode = trim((string) ($row[0] ?? ''));
+                if ($kode === '') {
+                    continue;
+                }
 
-            KodeBarang::updateOrCreate(
-                ['kode_barang' => $kode],
-                [
-                    'uraian' => trim((string) ($row[1] ?? 'Tanpa Nama')),
-                    'kodering_aset' => trim((string) ($row[2] ?? '')) ?: null,
-                    'jenis_aset' => trim((string) ($row[3] ?? '')) ?: 'Peralatan dan Mesin',
-                    'umur_ekonomis' => (int) ($row[4] ?? 0),
-                    'satuan' => trim((string) ($row[5] ?? 'Unit')) ?: 'Unit',
-                    'harga_standar' => (float) str_replace([',', ' '], '', (string) ($row[6] ?? 0)),
-                ]
-            );
-            $count++;
-        }
+                KodeBarang::updateOrCreate(
+                    ['kode_barang' => $kode],
+                    [
+                        'uraian' => trim((string) ($row[1] ?? 'Tanpa Nama')),
+                        'kodering_aset' => trim((string) ($row[2] ?? '')) ?: null,
+                        'jenis_aset' => trim((string) ($row[3] ?? '')) ?: 'Peralatan dan Mesin',
+                        'umur_ekonomis' => (int) ($row[4] ?? 0),
+                        'satuan' => trim((string) ($row[5] ?? 'Unit')) ?: 'Unit',
+                        'harga_standar' => (float) str_replace([',', ' '], '', (string) ($row[6] ?? 0)),
+                    ]
+                );
+                $count++;
+            }
+        });
 
         return back()->with('success', "Berhasil mengimpor {$count} data ke database!");
     }

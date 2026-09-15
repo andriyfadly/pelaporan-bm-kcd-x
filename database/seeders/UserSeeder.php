@@ -10,6 +10,17 @@ use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
+    /**
+     * CATATAN KEAMANAN (disetujui, risiko diterima sementara):
+     * Password default di bawah sengaja plaintext karena merupakan kredensial
+     * awal distribusi. Wajib diganti operator saat login pertama: user dengan
+     * password_changed_at = null dipaksa middleware EnsurePasswordNotExpired
+     * ke halaman /ubah-password sebelum bisa mengakses data.
+     *
+     * JANGAN jalankan seeder ini di produksi setelah go-live — updateOrCreate
+     * akan menimpa password yang sudah diganti user. Gunakan hanya untuk
+     * inisialisasi awal atau reset paksa.
+     */
     public function run(): void
     {
         Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);

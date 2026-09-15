@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Realisasi;
@@ -14,10 +15,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CetakController extends Controller
 {
+    use ResolvesSekolah;
+
     public function show(Request $request): Response
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
         $years = Realisasi::whereNotNull('ba_tgl')
@@ -67,12 +70,17 @@ class CetakController extends Controller
         $bulan = (int) $request->input('bulan', date('n'));
         $tahun = (int) $request->input('tahun', date('Y'));
 
-        $count = Realisasi::where('bulan_realisasi', $bulan)
+        $query = Realisasi::where('bulan_realisasi', $bulan)
             ->where(function ($q) use ($tahun) {
                 $q->whereYear('ba_tgl', $tahun)
                     ->orWhereNull('ba_tgl');
-            })
-            ->count();
+            });
+
+        if ($request->user()->sekolah_id) {
+            $query->where('sekolah_id', $request->user()->sekolah_id);
+        }
+
+        $count = $query->count();
 
         return response()->json(['total_rows' => $count]);
     }
@@ -84,13 +92,18 @@ class CetakController extends Controller
 
         $filename = "Daftar_Pengadaan_Belanja_Modal_Bulan_{$bulan}_{$tahun}.csv";
 
-        $items = Realisasi::with(['sekolah', 'acuan'])
+        $query = Realisasi::with(['sekolah', 'acuan'])
             ->where('bulan_realisasi', $bulan)
             ->where(function ($q) use ($tahun) {
                 $q->whereYear('ba_tgl', $tahun)
                     ->orWhereNull('ba_tgl');
-            })
-            ->orderBy('sekolah_id')
+            });
+
+        if ($request->user()->sekolah_id) {
+            $query->where('sekolah_id', $request->user()->sekolah_id);
+        }
+
+        $items = $query->orderBy('sekolah_id')
             ->orderBy('ba_tgl')
             ->get();
 

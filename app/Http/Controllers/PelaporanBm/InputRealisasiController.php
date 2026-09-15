@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\PelaporanBm\Acuan;
 use App\Models\PelaporanBm\KunciLaporan;
@@ -15,6 +16,8 @@ use Inertia\Response;
 
 class InputRealisasiController extends Controller
 {
+    use ResolvesSekolah;
+
     public function pilihBulan(Request $request): Response
     {
         $bulan = (int) ($request->input('bulan_realisasi') ?: ($request->input('bulan') ?: date('n')));
@@ -30,7 +33,7 @@ class InputRealisasiController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $bulan = (int) ($request->input('bulan_realisasi') ?: ($request->input('bulan') ?: date('n')));
         if ($bulan < 1 || $bulan > 12) {
             $bulan = (int) date('n');
@@ -106,7 +109,7 @@ class InputRealisasiController extends Controller
     public function tambah(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $kodering = trim($request->input('kodering', ''));
         $bulan = (int) $request->input('bulan_realisasi', date('n'));
 
@@ -184,7 +187,7 @@ class InputRealisasiController extends Controller
     public function simpan(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $kodering = trim($request->input('kodering', ''));
         $bulan = (int) $request->input('bulan_realisasi', 0);
         $itemIds = $request->input('item_ids', []);
@@ -268,7 +271,7 @@ class InputRealisasiController extends Controller
     public function edit(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $kodering = trim($request->input('kodering', ''));
         $bulan = (int) $request->input('bulan_realisasi', date('n'));
 
@@ -305,7 +308,7 @@ class InputRealisasiController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $kodering = trim($request->input('kodering', ''));
         $bulan = (int) $request->input('bulan_realisasi', 0);
         // IDs di pelaporan_bm_realisasi yang DIHAPUS (uncheck)
@@ -333,7 +336,7 @@ class InputRealisasiController extends Controller
     public function kirimLaporan(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $bulan = (int) $request->input('bulan_realisasi', 0);
 
         if (! $sekolahId || $bulan < 1 || $bulan > 12) {

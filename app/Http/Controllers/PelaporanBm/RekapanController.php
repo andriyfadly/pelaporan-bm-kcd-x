@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Acuan;
@@ -13,14 +14,18 @@ use Inertia\Response;
 
 class RekapanController extends Controller
 {
+    use ResolvesSekolah;
+
     public function index(Request $request): Response
     {
         $bulan = (int) ($request->input('bulan') ?: date('n'));
         $search = trim((string) $request->input('search', ''));
 
         $sekolahs = Sekolah::query()
+            ->when($request->user()->sekolah_id, fn ($q) => $q->where('id', $request->user()->sekolah_id))
             ->when($search, function ($q) use ($search) {
-                $q->where('nama_sekolah', 'like', "%{$search}%");
+                $escaped = addcslashes($search, '%_\\');
+                $q->where('nama_sekolah', 'like', "%{$escaped}%");
             })
             ->orderBy('nama_sekolah')
             ->get();

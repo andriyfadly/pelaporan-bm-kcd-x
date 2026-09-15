@@ -7,6 +7,8 @@ use App\Models\Master\Sekolah;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,7 +32,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:150',
             'username' => 'required|string|max:50|unique:users,username',
-            'password' => 'required|string|min:6',
+            'password' => ['required', 'string', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
             'role' => 'required|string|in:admin_kcd,operator_sekolah,bendahara_sekolah',
         ]);
@@ -44,6 +46,8 @@ class UserController extends Controller
 
         $user->assignRole($validated['role']);
 
+        Log::info('user.created', ['aktor' => $request->user()->id, 'target' => $user->id, 'role' => $validated['role']]);
+
         return back()->with('success', 'User berhasil ditambahkan.');
     }
 
@@ -56,9 +60,9 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'nullable|string|max:150',
             'username' => "required|string|max:50|unique:users,username,{$user->id}",
-            'password' => 'nullable|string|min:6',
+            'password' => ['nullable', 'string', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
-            'role' => 'nullable|string|in:admin_kcd,operator_sekolah,bendahara_sekolah,admin,user',
+            'role' => 'nullable|string|in:admin_kcd,operator_sekolah,bendahara_sekolah',
         ]);
 
         $data = [
@@ -88,6 +92,8 @@ class UserController extends Controller
             $user->syncRoles([$roleName]);
         }
 
+        Log::info('user.updated', ['aktor' => $request->user()->id, 'target' => $user->id, 'role' => $validated['role'] ?? null]);
+
         return back()->with('success', 'Data user berhasil diperbarui!');
     }
 
@@ -102,6 +108,8 @@ class UserController extends Controller
         }
 
         $user->delete();
+
+        Log::warning('user.deleted', ['aktor' => auth()->id(), 'target' => $user->id, 'username' => $user->username]);
 
         return back()->with('success', 'User berhasil dihapus!');
     }

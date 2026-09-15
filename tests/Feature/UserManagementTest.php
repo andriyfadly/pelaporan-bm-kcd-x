@@ -42,7 +42,7 @@ class UserManagementTest extends TestCase
             ->post(route('admin.user.store'), [
                 'name' => 'Operator Baru',
                 'username' => 'operator_baru',
-                'password' => 'secret123',
+                'password' => 'Secret123!',
                 'role' => 'operator_sekolah',
                 'sekolah_id' => $sekolah->id,
             ])
@@ -56,7 +56,7 @@ class UserManagementTest extends TestCase
             ->put(route('admin.user.update', $user), [
                 'name' => 'Operator Baru Diedit',
                 'username' => 'operator_baru',
-                'password' => 'newpassword123',
+                'password' => 'Newpassword123!',
                 'role' => 'operator_sekolah',
                 'sekolah_id' => $sekolah->id,
             ])

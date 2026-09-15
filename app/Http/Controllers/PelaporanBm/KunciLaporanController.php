@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PelaporanBm\KunciLaporan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class KunciLaporanController extends Controller
 {
@@ -27,6 +28,13 @@ class KunciLaporanController extends Controller
         $kunci->save();
 
         $statusText = $kunci->status_kunci ? 'dikunci' : 'dibuka kuncinya';
+
+        Log::info('kunci_laporan.toggle', [
+            'aktor' => $request->user()->id,
+            'sekolah_id' => $request->input('sekolah_id'),
+            'bulan' => $request->input('bulan'),
+            'status_kunci' => $kunci->status_kunci,
+        ]);
 
         return back()->with('success', "Laporan bulan {$request->input('bulan')} berhasil {$statusText}.");
     }
@@ -54,6 +62,13 @@ class KunciLaporanController extends Controller
             $kunci->status_kunci = false;
         }
         $kunci->save();
+
+        Log::info('kunci_laporan.update_status', [
+            'aktor' => $request->user()->id,
+            'sekolah_id' => $request->input('sekolah_id'),
+            'bulan' => $request->input('bulan'),
+            'status_kirim' => $statusKirim,
+        ]);
 
         return back()->with('success', "Status laporan berhasil diperbarui menjadi {$statusKirim}.");
     }

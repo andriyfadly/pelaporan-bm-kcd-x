@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\Master\KodeBarang;
 use App\Models\PelaporanBm\Acuan;
@@ -18,6 +19,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SpjController extends Controller
 {
+    use ResolvesSekolah;
+
     public function pilihBulan(Request $request): Response
     {
         $bulan = (int) ($request->input('bulan') ?: date('n'));
@@ -34,7 +37,7 @@ class SpjController extends Controller
     {
         $user = $request->user();
         $bulan = (int) ($request->input('bulan') ?: date('n'));
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $mode = $request->input('mode', '');
 
         $query = Spj::with(['acuan', 'sekolah'])
@@ -82,7 +85,7 @@ class SpjController extends Controller
     public function create(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $kategori = $request->input('kategori', 'Peralatan & Mesin');
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
@@ -103,7 +106,7 @@ class SpjController extends Controller
     public function editSpk(Request $request, string $no_spk): Response|RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
         $items = Spj::where('sekolah_id', $sekolahId)
@@ -157,7 +160,7 @@ class SpjController extends Controller
     public function storeSpk(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
 
         $validated = $request->validate([
             'is_edit' => 'nullable|boolean',
@@ -274,7 +277,7 @@ class SpjController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
 
         $validated = $request->validate([
             'no_spk' => 'required|string|max:150',
@@ -299,6 +302,16 @@ class SpjController extends Controller
         // Check lock status
         if ($this->isLaporanTerkunci($sekolahId, (int) $validated['bulan_realisasi'])) {
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
+
+        // acuan_id harus milik sekolah yang sama (anti cross-tenant link)
+        if (! empty($validated['acuan_id'])) {
+            $acuanMilikSekolah = Acuan::where('id', $validated['acuan_id'])
+                ->where('sekolah_id', $sekolahId)
+                ->exists();
+            if (! $acuanMilikSekolah) {
+                return back()->with('error', 'Acuan tidak valid untuk sekolah ini.');
+            }
         }
 
         $validated['sekolah_id'] = $sekolahId;
@@ -345,7 +358,7 @@ class SpjController extends Controller
     public function destroySpk(Request $request, string $no_spk): RedirectResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
         if ($this->isLaporanTerkunci($sekolahId, $bulan)) {
@@ -405,6 +418,16 @@ class SpjController extends Controller
         ]);
 
         $validated['nilai_perolehan'] = $validated['volume'] * $validated['harga_satuan'];
+
+        if (! empty($validated['acuan_id'])) {
+            $acuanMilikSekolah = Acuan::where('id', $validated['acuan_id'])
+                ->where('sekolah_id', $spj->sekolah_id)
+                ->exists();
+            if (! $acuanMilikSekolah) {
+                return back()->with('error', 'Acuan tidak valid untuk sekolah ini.');
+            }
+        }
+
         $spj->update($validated);
 
         return back()->with('success', 'Data SPJ berhasil diperbarui.');
@@ -413,7 +436,7 @@ class SpjController extends Controller
     public function unduh(Request $request): StreamedResponse
     {
         $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $sekolahId = $this->resolveSekolahId($request);
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
         $query = Spj::with('sekolah')->where('bulan_realisasi', $bulan);
