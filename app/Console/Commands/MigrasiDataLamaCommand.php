@@ -21,12 +21,15 @@ class MigrasiDataLamaCommand extends Command
     {
         $sqlPath = storage_path('bm-kcd-x.sql');
         if (! File::exists($sqlPath)) {
-            $this->error("File {$sqlPath} tidak ditemukan.");
+            $sqlPath = storage_path('bm_kcd_x.sql');
+        }
+        if (! File::exists($sqlPath)) {
+            $this->error('File dump SQL (storage/bm-kcd-x.sql atau storage/bm_kcd_x.sql) tidak ditemukan.');
 
             return Command::FAILURE;
         }
 
-        $this->info('Membaca dan memproses storage/bm-kcd-x.sql...');
+        $this->info("Membaca dan memproses {$sqlPath}...");
         $sql = File::get($sqlPath);
 
         // 1. Migrasi Sekolah
