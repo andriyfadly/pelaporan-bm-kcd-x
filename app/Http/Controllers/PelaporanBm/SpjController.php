@@ -17,6 +17,18 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SpjController extends Controller
 {
+    public function pilihBulan(Request $request): Response
+    {
+        $bulan = (int) ($request->input('bulan') ?: date('n'));
+        if ($bulan < 1 || $bulan > 12) {
+            $bulan = (int) date('n');
+        }
+
+        return Inertia::render('PelaporanBm/Spj/PilihBulan', [
+            'bulanAwal' => $bulan,
+        ]);
+    }
+
     public function index(Request $request): Response
     {
         $user = $request->user();

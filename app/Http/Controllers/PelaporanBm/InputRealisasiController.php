@@ -15,6 +15,18 @@ use Inertia\Response;
 
 class InputRealisasiController extends Controller
 {
+    public function pilihBulan(Request $request): Response
+    {
+        $bulan = (int) ($request->input('bulan_realisasi') ?: ($request->input('bulan') ?: date('n')));
+        if ($bulan < 1 || $bulan > 12) {
+            $bulan = (int) date('n');
+        }
+
+        return Inertia::render('PelaporanBm/InputRealisasi/PilihBulan', [
+            'bulanAwal' => $bulan,
+        ]);
+    }
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -312,5 +324,41 @@ class InputRealisasiController extends Controller
 
         return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
             ->with('success', 'Perubahan alokasi realisasi berhasil disimpan.');
+    }
+
+    public function kirimLaporan(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
+        $bulan = (int) $request->input('bulan_realisasi', 0);
+
+        if (! $sekolahId || $bulan < 1 || $bulan > 12) {
+            return back()->with('error', 'Parameter tidak valid.');
+        }
+
+        $acuanList = Acuan::where('bulan', $bulan)
+            ->where('sekolah_id', $sekolahId)
+            ->get();
+
+        if ($acuanList->isEmpty()) {
+            return back()->with('error', 'Tidak ada target acuan untuk bulan ini.');
+        }
+
+        $totalAcuan = (float) $acuanList->sum('nominal');
+        $totalRealisasi = (float) Realisasi::where('sekolah_id', $sekolahId)
+            ->where('bulan_realisasi', (string) $bulan)
+            ->sum('nilai_perolehan');
+
+        if ($totalRealisasi < $totalAcuan) {
+            return back()->with('error', 'Belum bisa kirim! Seluruh target acuan realisasi harus terpenuhi (balance) terlebih dahulu.');
+        }
+
+        KunciLaporan::updateOrCreate(
+            ['sekolah_id' => $sekolahId, 'bulan' => (string) $bulan],
+            ['status_kirim' => 'menunggu_approval', 'status_kunci' => true]
+        );
+
+        return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
+            ->with('success', 'Laporan realisasi berhasil dikirim ke Admin KCD.');
     }
 }

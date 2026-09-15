@@ -28,6 +28,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::prefix('pelaporan-bm')->name('pelaporan-bm.')->group(function () {
+        Route::get('/spj/pilih-bulan', [SpjController::class, 'pilihBulan'])->name('spj.pilih-bulan');
         Route::get('/spj', [SpjController::class, 'index'])->name('spj.index');
         Route::get('/spj/create', [SpjController::class, 'create'])->name('spj.create');
         Route::get('/spj/edit-spk/{no_spk}', [SpjController::class, 'editSpk'])->name('spj.edit-spk')->where('no_spk', '.*');
@@ -41,11 +42,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/kirim-laporan', [SpjController::class, 'kirimLaporan'])->name('kirim-laporan');
         Route::get('/unduh', [SpjController::class, 'unduh'])->name('unduh');
 
+        Route::get('/input-realisasi/pilih-bulan', [InputRealisasiController::class, 'pilihBulan'])->name('input-realisasi.pilih-bulan');
         Route::get('/input-realisasi', [InputRealisasiController::class, 'index'])->name('input-realisasi.index');
         Route::get('/input-realisasi/tambah', [InputRealisasiController::class, 'tambah'])->name('input-realisasi.tambah');
         Route::post('/input-realisasi/simpan', [InputRealisasiController::class, 'simpan'])->name('input-realisasi.simpan');
         Route::get('/input-realisasi/edit', [InputRealisasiController::class, 'edit'])->name('input-realisasi.edit');
         Route::post('/input-realisasi/update', [InputRealisasiController::class, 'update'])->name('input-realisasi.update');
+        Route::post('/input-realisasi/kirim-laporan', [InputRealisasiController::class, 'kirimLaporan'])->name('input-realisasi.kirim-laporan');
 
         Route::get('/realisasi', [RealisasiController::class, 'index'])->name('realisasi.index');
         Route::get('/realisasi/unduh', [RealisasiController::class, 'unduh'])->name('realisasi.unduh');

@@ -18,31 +18,29 @@ Sistem Pelaporan Belanja Modal KCD Wilayah X membagi akses ke dalam 2 peran utam
 
 ---
 
-## 2. Modul Data Barang & Buku SPJ (`/pelaporan-bm/spj`)
+## 2. Modul Data Barang & SPJ (`/pelaporan-bm/spj`)
 
-Khusus role Operator Sekolah dengan dua tab terintegrasi:
+Khusus role Operator Sekolah dengan alur yang identik dengan legacy:
 
-1. **Katalog Dokumen SPJ (`/pelaporan-bm/spj`)**:
-   - Grup dokumen berdasarkan Nomor SPK.
+1. **Pilih Bulan Data Barang (`/pelaporan-bm/spj/pilih-bulan`)**:
+   - Menu awal pemilihan bulan realisasi sebelum masuk katalog belanja (identik `legacy/pilih_bulan_data_barang.php`).
+2. **Katalog Dokumen SPJ (`/pelaporan-bm/spj?bulan={n}`)**:
+   - Grup dokumen berdasarkan Nomor SPK (identik `legacy/data_barang.php`).
    - Menampilkan No SPK, Sumber Dana (BOS Reguler/Kinerja), No BA & Tanggal BA.
    - Rincian item barang: Nama, Kode Barang, Merk/Tipe, Volume, Satuan, Harga Satuan, Sub Perolehan.
-   - Checkbox realisasi (`is_realisasi`) untuk memasukkan barang ke laporan resmi.
    - Fitur Live Search instan (SPK, Nama Barang, Merk/Tipe).
-   - Aksi Tambah SPJ (modal pilihan kategori: Peralatan & Mesin vs Buku), Edit, dan Hapus Item/SPK.
-   - Tombol Kirim Laporan ke KCD Wilayah X (mengubah status ke `menunggu_approval`).
-2. **Form Dokumen SPK Multi-Item (`/pelaporan-bm/spj/create` & `/pelaporan-bm/spj/edit-spk/{no_spk}`)**:
-   - Satu dokumen SPK dapat memuat beberapa item barang sekaligus (No SPK, No SP2D, Sumber Perolehan bersama).
-   - Pencarian kode barang live saat menambah item; volume × harga satuan dihitung otomatis per item.
-   - Edit memuat ulang seluruh item SPK; penyimpanan atomik dalam satu transaksi DB.
-3. **Input Realisasi per Kodering (`/pelaporan-bm/input-realisasi`)**:
-   - Rekap target acuan vs realisasi per kode rekening (nominal acuan, realisasi, kekurangan).
-   - Tombol `+ Alokasikan` membuka daftar item SPJ bulan terkait yang belum dialokasikan; pilih item lalu simpan → item ditandai `is_realisasi` dan tersalin ke `pelaporan_bm_realisasi`.
-   - Edit alokasi untuk melepas item (`uncheck`) — realisasi dihapus dan status SPJ asal dikembalikan.
-   - Seluruh aksi diblokir bila bulan telah dikunci atau berstatus `menunggu_approval`/`disetujui`.
-4. **Target Acuan Kerja Realisasi (`/pelaporan-bm/spj?mode=realisasi`)**:
-   - Tabel ringkasan kodering anggaran belanja modal periode bulan aktif.
-   - Menampilkan Kode Rekening (accordion daftar uraian pekerjaan), Nilai Acuan, Realisasi, dan Kekurangan.
-   - Indikator status: Badge `Selesai` jika target terpenuhi (&le; 0), atau tombol `+ Input` yang otomatis membuka form input SPJ dengan kodering acuan tersebut terpilih.
+   - Aksi Tambah SPJ (modal pilihan kategori: Peralatan & Mesin vs Buku), Edit SPK, dan Hapus Item/SPK.
+3. **Form Dokumen SPK Multi-Item (`/pelaporan-bm/spj/create` & `/pelaporan-bm/spj/edit-spk/{no_spk}`)**:
+   - Tampilan identik `legacy/data_barang_input.php`: sticky category badge (Peralatan & Mesin / Buku), seksi I Dokumen & Administrasi Keuangan (SP2D, Sumber Dana, SPK, BAST No & Tgl), seksi II & III Detail Item Barang dengan accordion dinamis.
+   - Pencarian kode barang live dari katalog pagu yang mengisi otomatis field readonly (Kode Barang, Nama Barang, Jenis Aset).
+   - Validasi ketat BAST, nomor sertifikat untuk kategori buku, dan total akumulasi realisasi.
+4. **Pilih Bulan Input Realisasi (`/pelaporan-bm/input-realisasi/pilih-bulan`)**:
+   - Pemilihan bulan untuk alokasi realisasi (identik `legacy/pilih_bulan.php`).
+5. **Input Realisasi Target Acuan (`/pelaporan-bm/input-realisasi?bulan_realisasi={n}`)**:
+   - Rekapitulasi target acuan vs realisasi per kode rekening (identik `legacy/input_realisasi.php`).
+   - Accordion daftar uraian belanja per kodering, nominal acuan, realisasi, dan kekurangan.
+   - Tombol alokasi SPJ ke kodering dan edit alokasi.
+   - Panel status pengajuan laporan di bagian bawah: tombol Kirim Laporan ke KCD Wilayah X yang hanya aktif jika seluruh kekurangan anggaran terpenuhi (= 0). Mengubah status menjadi `menunggu_approval`.
 
 ---
 
