@@ -17,3 +17,4 @@ _test_env.php
 /vendor/
 /legacy/vendor/
 /node_modules/
+/public/hot
