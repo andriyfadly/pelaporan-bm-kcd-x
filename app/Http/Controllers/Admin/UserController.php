@@ -14,7 +14,9 @@ class UserController extends Controller
 {
     public function index(): Response
     {
-        $users = User::with(['sekolah', 'roles'])->orderBy('name')->get();
+        $users = User::whereDoesntHave('roles', function ($q) {
+            $q->where('name', 'super_admin');
+        })->with(['sekolah', 'roles'])->orderBy('name')->get();
         $sekolahs = Sekolah::orderBy('nama_sekolah')->select('id', 'nama_sekolah', 'kota_kab')->get();
 
         return Inertia::render('Admin/User/Index', [
@@ -47,6 +49,10 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        if ($user->hasRole('super_admin')) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'name' => 'nullable|string|max:150',
             'username' => "required|string|max:50|unique:users,username,{$user->id}",
@@ -83,6 +89,10 @@ class UserController extends Controller
 
     public function destroy(User $user): RedirectResponse
     {
+        if ($user->hasRole('super_admin')) {
+            abort(403);
+        }
+
         if ($user->id === auth()->id()) {
             return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri yang sedang digunakan!');
         }
