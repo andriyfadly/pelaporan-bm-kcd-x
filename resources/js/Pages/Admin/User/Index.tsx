@@ -268,7 +268,7 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                     <th className="p-3.5 text-center w-16">ID</th>
                                     <th className="p-3.5">Username</th>
                                     <th className="p-3.5">Role</th>
-                                    <th className="p-3.5">ID Sekolah</th>
+                                    <th className="p-3.5">NPSN / ID</th>
                                     <th className="p-3.5">Nama Sekolah</th>
                                     <th className="p-3.5">Dibuat Pada</th>
                                     <th className="p-3.5 text-center w-28">Aksi</th>
@@ -314,7 +314,7 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                                     )}
                                                 </td>
                                                 <td className="p-3.5 font-mono text-slate-600">
-                                                    {u.sekolah_id ? u.sekolah_id.substring(0, 8) : '-'}
+                                                    {u.sekolah?.npsn || (u.sekolah_id ? u.sekolah_id.substring(0, 8) : '-')}
                                                 </td>
                                                 <td className="p-3.5 text-slate-900 font-semibold uppercase">
                                                     {u.sekolah?.nama_sekolah || 'Induk Dinas Pendidikan KCD X'}
