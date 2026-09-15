@@ -35,7 +35,7 @@ class RealisasiController extends Controller
         }
 
         if ($filterBulan >= 1 && $filterBulan <= 12) {
-            $query->where('bulan_realisasi', (string) $filterBulan);
+            $query->where('bulan_realisasi', $filterBulan);
         }
 
         if ($filterTahun > 0) {

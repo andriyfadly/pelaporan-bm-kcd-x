@@ -83,7 +83,7 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
    - Operator Sekolah (`user` terikat `sekolah_id`): Hanya dapat melihat dan memanipulasi data sekolahnya sendiri. Tidak diizinkan mengakses data sekolah lain.
    - Admin KCD (`admin` tanpa `sekolah_id`): Memiliki akses pemantauan wilayah, rekapitulasi, penguncian/approval laporan, dan manajemen master data.
 2. **Integritas Belanja Modal**:
-   - Item barang SPJ yang dimasukkan ke laporan cetak dan rekapitulasi realisasi adalah yang ditandai `is_realisasi = 1`.
+    - Item barang SPJ yang dimasukkan ke laporan cetak dan rekapitulasi realisasi adalah yang memiliki row di `pelaporan_bm_realisasi` (status realisasi di-derive, tanpa kolom flag).
    - Cetak laporan harus melalui validasi pre-flight (`/pelaporan-bm/cetak/check`) untuk memastikan tidak mencetak data kosong.
    - Perubahan data pada bulan yang telah berstatus `disetujui` atau dikunci oleh KCD harus diblokir demi akuntabilitas audit.
 3. **Standar Keamanan Autentikasi**:

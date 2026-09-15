@@ -38,11 +38,11 @@ interface SpjItem {
     volume: number;
     harga_satuan: number;
     nilai_perolehan: number;
-    is_realisasi: boolean;
 }
 
 interface Props {
     items: SpjItem[];
+    realisasiIds: string[];
     bulan: number;
     isLocked: boolean;
     statusKirim: string;
@@ -57,7 +57,7 @@ interface SpkGroup {
     total_nilai_spk: number;
 }
 
-export default function Index({ items, bulan, isLocked, statusKirim }: Props) {
+export default function Index({ items, realisasiIds = [], bulan, isLocked, statusKirim }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showKategoriModal, setShowKategoriModal] = useState(false);
     const [confirmDeleteSpk, setConfirmDeleteSpk] = useState<string | null>(null);
@@ -357,7 +357,7 @@ export default function Index({ items, bulan, isLocked, statusKirim }: Props) {
 
                                                     {/* Kolom Status Realisasi */}
                                                     <td className="py-2.5 px-3 text-center align-top">
-                                                        {item.is_realisasi ? (
+                                                        {realisasiIds.includes(item.id) ? (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10.5px] font-bold">
                                                                 <CheckCircle2 className="w-3 h-3" /> Sudah Realisasi
                                                             </span>

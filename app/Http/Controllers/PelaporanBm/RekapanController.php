@@ -27,7 +27,7 @@ class RekapanController extends Controller
 
         $allAcuan = Acuan::where('bulan', $bulan)->get()->groupBy('sekolah_id');
         $allSpj = Spj::where('bulan_realisasi', $bulan)->get()->groupBy('sekolah_id');
-        $kunciMap = KunciLaporan::where('bulan', (string) $bulan)->get()->keyBy('sekolah_id');
+        $kunciMap = KunciLaporan::where('bulan', $bulan)->get()->keyBy('sekolah_id');
 
         $counter = ['tuntas' => 0, 'belum' => 0];
 

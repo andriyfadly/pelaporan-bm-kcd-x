@@ -54,13 +54,13 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
   - Return: Inertia `PelaporanBm/InputRealisasi/Tambah` — daftar item SPJ bulan tersebut yang belum dialokasikan ke kodering.
 - **`POST /pelaporan-bm/input-realisasi/simpan`**
   - Payload: `kodering`, `bulan_realisasi`, `item_ids` (array id `pelaporan_bm_spj`).
-  - Result: Membuat row `pelaporan_bm_realisasi` per item + menandai SPJ asal `is_realisasi = true` (transaksi DB). Diblokir jika bulan dikunci/`menunggu_approval`/`disetujui`, atau bila total nilai item terpilih melebihi sisa anggaran kodering (acuan - realisasi berjalan).
+  - Result: Membuat row `pelaporan_bm_realisasi` per item (transaksi DB; status realisasi di-derive dari row ini). Diblokir jika bulan dikunci/`menunggu_approval`/`disetujui`, atau bila total nilai item terpilih melebihi sisa anggaran kodering (acuan - realisasi berjalan).
 - **`GET /pelaporan-bm/input-realisasi/edit`**
   - Parameter: `kodering`, `bulan_realisasi`.
   - Return: Inertia `PelaporanBm/InputRealisasi/Edit` — item yang sudah dialokasikan ke kodering tersebut.
 - **`POST /pelaporan-bm/input-realisasi/update`**
   - Payload: `kodering`, `bulan_realisasi`, `uncheck_ids` (array id `pelaporan_bm_realisasi` yang dilepas).
-  - Result: Menghapus realisasi terpilih dan mengembalikan `is_realisasi = false` pada SPJ asal (transaksi DB).
+  - Result: Menghapus row realisasi terpilih (status realisasi SPJ asal otomatis kembali belum-teralisasi karena derive).
 - **`POST /pelaporan-bm/input-realisasi/kirim-laporan`**
   - Payload: `bulan_realisasi` (1-12).
   - Result: Validasi server-side total realisasi &ge; total acuan (balance), lalu mengunci status laporan menjadi `menunggu_approval` + `status_kunci = true` (upsert `pelaporan_bm_kunci_laporan` per sekolah+bulan).

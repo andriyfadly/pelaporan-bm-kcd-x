@@ -40,7 +40,7 @@ class InputRealisasiController extends Controller
         $statusKirim = 'draft';
         if ($sekolahId) {
             $kunci = KunciLaporan::where('sekolah_id', $sekolahId)
-                ->where('bulan', (string) $bulan)
+                ->where('bulan', $bulan)
                 ->first();
             $isLocked = (bool) ($kunci?->status_kunci ?? false);
             $statusKirim = $kunci?->status_kirim ?? 'draft';
@@ -74,7 +74,7 @@ class InputRealisasiController extends Controller
         // Ambil data realisasi per kodering dari tabel pelaporan_bm_realisasi
         if ($sekolahId && ! empty($grouped)) {
             $realisasiSums = Realisasi::where('sekolah_id', $sekolahId)
-                ->where('bulan_realisasi', (string) $bulan)
+                ->where('bulan_realisasi', $bulan)
                 ->whereIn('kodering_belanja', array_keys($grouped))
                 ->groupBy('kodering_belanja')
                 ->selectRaw('kodering_belanja, SUM(nilai_perolehan) as total')
@@ -115,7 +115,7 @@ class InputRealisasiController extends Controller
         }
 
         // Cek lock
-        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', (string) $bulan)->first();
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
         if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
             return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
                 ->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
@@ -132,18 +132,23 @@ class InputRealisasiController extends Controller
 
         // Hitung realisasi yang sudah ada
         $totalRealisasiSaatIni = (float) Realisasi::where('sekolah_id', $sekolahId)
-            ->where('bulan_realisasi', (string) $bulan)
+            ->where('bulan_realisasi', $bulan)
             ->where('kodering_belanja', $kodering)
             ->sum('nilai_perolehan');
 
         $sisaAnggaran = $paguAcuan - $totalRealisasiSaatIni;
 
-        // Ambil data SPJ di Data Barang bulan ini
+        // Ambil data SPJ di Data Barang bulan ini + id yang sudah dialokasikan di kodering manapun
         $spjItems = Spj::where('sekolah_id', $sekolahId)
             ->where('bulan_realisasi', $bulan)
             ->orderBy('no_spk')
             ->orderBy('nama_barang')
             ->get();
+        $teralokasiIds = Realisasi::where('sekolah_id', $sekolahId)
+            ->where('bulan_realisasi', $bulan)
+            ->whereNotNull('spj_id')
+            ->pluck('spj_id')
+            ->all();
 
         // Kelompokkan per SPK
         $spkGroups = [];
@@ -172,6 +177,7 @@ class InputRealisasiController extends Controller
             'sisaAnggaran' => $sisaAnggaran,
             'listUraian' => $listUraian,
             'spkGroups' => array_values($spkGroups),
+            'teralokasiIds' => $teralokasiIds,
         ]);
     }
 
@@ -188,7 +194,7 @@ class InputRealisasiController extends Controller
         }
 
         // Cek kunci
-        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', (string) $bulan)->first();
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
         if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
@@ -218,7 +224,7 @@ class InputRealisasiController extends Controller
         // Proteksi batas anggaran: total item yang dipilih tidak boleh melebihi sisa anggaran kodering
         $totalPilihan = (float) $items->sum('nilai_perolehan');
         $totalRealisasiSaatIni = (float) Realisasi::where('sekolah_id', $sekolahId)
-            ->where('bulan_realisasi', (string) $bulan)
+            ->where('bulan_realisasi', $bulan)
             ->where('kodering_belanja', $kodering)
             ->sum('nilai_perolehan');
         $sisaAnggaran = (float) $acuanRows->sum('nominal') - $totalRealisasiSaatIni;
@@ -237,7 +243,7 @@ class InputRealisasiController extends Controller
                     'no_sp2d' => $item->no_sp2d,
                     'sumber_perolehan' => $item->sumber_perolehan,
                     'kodering_belanja' => $kodering,
-                    'bulan_realisasi' => (string) $bulan,
+                    'bulan_realisasi' => $bulan,
                     'no_spk' => $item->no_spk,
                     'ba_no' => $item->ba_no,
                     'ba_tgl' => $item->ba_tgl,
@@ -251,13 +257,6 @@ class InputRealisasiController extends Controller
                     'volume' => $item->volume,
                     'harga_satuan' => $item->harga_satuan,
                     'nilai_perolehan' => $item->nilai_perolehan,
-                    'is_realisasi' => true,
-                ]);
-
-                // Tandai SPJ asal sebagai terealisasi
-                $item->update([
-                    'is_realisasi' => true,
-                    'acuan_id' => $acuan->id,
                 ]);
             }
         });
@@ -277,7 +276,7 @@ class InputRealisasiController extends Controller
             return redirect()->route('pelaporan-bm.input-realisasi.index')->with('error', 'Parameter tidak valid.');
         }
 
-        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', (string) $bulan)->first();
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
         $isReadOnly = (bool) ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true));
 
         // Pagu acuan
@@ -288,7 +287,7 @@ class InputRealisasiController extends Controller
 
         // Realisasi aktif
         $items = Realisasi::where('sekolah_id', $sekolahId)
-            ->where('bulan_realisasi', (string) $bulan)
+            ->where('bulan_realisasi', $bulan)
             ->where('kodering_belanja', $kodering)
             ->orderBy('no_spk')
             ->orderBy('nama_barang')
@@ -316,24 +315,15 @@ class InputRealisasiController extends Controller
             return back()->with('error', 'Parameter tidak valid.');
         }
 
-        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', (string) $bulan)->first();
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
         if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
         if (! empty($uncheckIds) && is_array($uncheckIds)) {
-            DB::transaction(function () use ($uncheckIds, $sekolahId) {
-                $realisasiRows = Realisasi::where('sekolah_id', $sekolahId)
-                    ->whereIn('id', $uncheckIds)
-                    ->get();
-
-                foreach ($realisasiRows as $row) {
-                    if ($row->spj_id) {
-                        Spj::where('id', $row->spj_id)->update(['is_realisasi' => false]);
-                    }
-                    $row->delete();
-                }
-            });
+            Realisasi::where('sekolah_id', $sekolahId)
+                ->whereIn('id', $uncheckIds)
+                ->delete();
         }
 
         return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
@@ -360,7 +350,7 @@ class InputRealisasiController extends Controller
 
         $totalAcuan = (float) $acuanList->sum('nominal');
         $totalRealisasi = (float) Realisasi::where('sekolah_id', $sekolahId)
-            ->where('bulan_realisasi', (string) $bulan)
+            ->where('bulan_realisasi', $bulan)
             ->sum('nilai_perolehan');
 
         if ($totalRealisasi < $totalAcuan) {
@@ -368,7 +358,7 @@ class InputRealisasiController extends Controller
         }
 
         KunciLaporan::updateOrCreate(
-            ['sekolah_id' => $sekolahId, 'bulan' => (string) $bulan],
+            ['sekolah_id' => $sekolahId, 'bulan' => $bulan],
             ['status_kirim' => 'menunggu_approval', 'status_kunci' => true]
         );
 

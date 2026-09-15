@@ -407,7 +407,6 @@ class PelaporanBmTest extends TestCase
             'volume' => 3,
             'harga_satuan' => 2000000,
             'nilai_perolehan' => 6000000,
-            'is_realisasi' => true,
         ]);
 
         // Index with filters
@@ -526,6 +525,6 @@ class PelaporanBmTest extends TestCase
 
         $updateRealResponse->assertRedirect(route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => 8]));
         $this->assertDatabaseCount('pelaporan_bm_realisasi', 1);
-        $this->assertFalse(Spj::where('id', $realisasiItem->spj_id)->value('is_realisasi'));
+        $this->assertFalse(Realisasi::where('id', $realisasiItem->id)->exists());
     }
 }

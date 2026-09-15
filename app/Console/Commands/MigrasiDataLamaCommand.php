@@ -67,7 +67,7 @@ class MigrasiDataLamaCommand extends Command
                     'bku' => $a['bku'] ?? null,
                     'uraian' => $a['uraian'] ?? '-',
                     'nominal' => (float) ($a['nominal'] ?? 0),
-                    'bulan' => (string) ($a['bulan'] ?? date('n')),
+                    'bulan' => (int) ($a['bulan'] ?? date('n')),
                 ]
             );
             if ($sekolahUuid && ! empty($a['npsn'])) {
@@ -127,7 +127,7 @@ class MigrasiDataLamaCommand extends Command
                     'no_sp2d' => $r['no_sp2d'] ?? null,
                     'sumber_perolehan' => $r['sumber_perolehan'] ?? null,
                     'kodering_belanja' => $r['kodering_belanja'] ?? null,
-                    'bulan_realisasi' => (string) ($r['bulan_realisasi'] ?? date('n')),
+                    'bulan_realisasi' => (int) ($r['bulan_realisasi'] ?? date('n')),
                     'no_spk' => $r['no_spk'] ?? '-',
                     'ba_no' => $r['ba_no'] ?? null,
                     'ba_tgl' => ! empty($r['ba_tgl']) ? $r['ba_tgl'] : null,
@@ -141,7 +141,6 @@ class MigrasiDataLamaCommand extends Command
                     'volume' => $vol,
                     'harga_satuan' => $hrg,
                     'nilai_perolehan' => (float) ($r['nilai_perolehan'] ?? ($vol * $hrg)),
-                    'is_realisasi' => (bool) ($r['is_realisasi'] ?? true),
                 ]
             );
         }
@@ -156,7 +155,7 @@ class MigrasiDataLamaCommand extends Command
                 KunciLaporan::updateOrCreate(
                     [
                         'sekolah_id' => $sekolahUuid,
-                        'bulan' => (string) $l['bulan'],
+                        'bulan' => (int) $l['bulan'],
                     ],
                     [
                         'status_kunci' => $isLocked,

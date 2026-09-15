@@ -18,7 +18,7 @@ class KunciLaporanController extends Controller
 
         $kunci = KunciLaporan::firstOrNew([
             'sekolah_id' => $request->input('sekolah_id'),
-            'bulan' => (string) $request->input('bulan'),
+            'bulan' => (int) $request->input('bulan'),
         ]);
 
         $kunci->status_kunci = ! $kunci->status_kunci;
@@ -41,7 +41,7 @@ class KunciLaporanController extends Controller
 
         $kunci = KunciLaporan::firstOrNew([
             'sekolah_id' => $request->input('sekolah_id'),
-            'bulan' => (string) $request->input('bulan'),
+            'bulan' => (int) $request->input('bulan'),
         ]);
 
         $statusKirim = $request->input('status_kirim');

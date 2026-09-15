@@ -25,7 +25,6 @@ interface SpjItem {
     volume: number;
     harga_satuan: number;
     nilai_perolehan: number;
-    is_realisasi: boolean;
 }
 
 interface SpkGroup {
@@ -46,6 +45,7 @@ interface Props {
     sisaAnggaran: number;
     listUraian: string[];
     spkGroups: SpkGroup[];
+    teralokasiIds: string[];
 }
 
 export default function Tambah({
@@ -56,6 +56,7 @@ export default function Tambah({
     sisaAnggaran,
     listUraian = [],
     spkGroups = [],
+    teralokasiIds = [],
 }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showUraian, setShowUraian] = useState(false);
@@ -115,7 +116,7 @@ export default function Tambah({
     };
 
     const toggleGroup = (group: SpkGroup) => {
-        const selectableItemIds = group.items.filter((it) => !it.is_realisasi).map((it) => it.id);
+        const selectableItemIds = group.items.filter((it) => !teralokasiIds.includes(it.id)).map((it) => it.id);
         if (selectableItemIds.length === 0) return;
 
         const allSelected = selectableItemIds.every((id) => selectedItemIds.includes(id));
@@ -259,11 +260,11 @@ export default function Tambah({
                                     </tr>
                                 ) : (
                                     filteredGroups.map((group, gIdx) => {
-                                        const selectableItems = group.items.filter((it) => !it.is_realisasi);
+                                        const selectableItems = group.items.filter((it) => !teralokasiIds.includes(it.id));
                                         const allSelectableChosen =
                                             selectableItems.length > 0 &&
                                             selectableItems.every((it) => selectedItemIds.includes(it.id));
-                                        const isAllDone = group.items.every((it) => it.is_realisasi);
+                                        const isAllDone = group.items.every((it) => teralokasiIds.includes(it.id));
 
                                         return group.items.map((item, index) => {
                                             const isFirst = index === 0;
@@ -273,7 +274,7 @@ export default function Tambah({
                                                 <tr
                                                     key={item.id}
                                                     className={`transition ${
-                                                        item.is_realisasi
+                                                        teralokasiIds.includes(item.id)
                                                             ? 'bg-slate-50/70 text-slate-400'
                                                             : isChosen
                                                             ? 'bg-blue-50/60'
@@ -318,21 +319,21 @@ export default function Tambah({
                                                         <div className="flex items-start gap-2.5">
                                                             <input
                                                                 type="checkbox"
-                                                                checked={item.is_realisasi || isChosen}
-                                                                disabled={item.is_realisasi}
+                                                                checked={teralokasiIds.includes(item.id) || isChosen}
+                                                                disabled={teralokasiIds.includes(item.id)}
                                                                 onChange={() => toggleItem(item.id)}
                                                                 className="w-4 h-4 mt-0.5 rounded text-blue-600 cursor-pointer disabled:opacity-50"
                                                             />
                                                             <div>
                                                                 <div
                                                                     className={`font-semibold ${
-                                                                        item.is_realisasi
+                                                                        teralokasiIds.includes(item.id)
                                                                             ? 'line-through text-slate-400'
                                                                             : 'text-slate-900'
                                                                     }`}
                                                                 >
                                                                     {item.nama_barang}
-                                                                    {item.is_realisasi && (
+                                                                    {teralokasiIds.includes(item.id) && (
                                                                         <span className="ml-2 px-1.5 py-0.5 bg-slate-200 text-slate-600 text-[10px] rounded font-bold">
                                                                             Sudah Realisasi
                                                                         </span>

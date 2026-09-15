@@ -46,12 +46,17 @@ class SpjController extends Controller
 
         // Legacy data_barang.php: ORDER BY id DESC (terbaru dulu)
         $items = $query->orderByDesc('created_at')->get();
+        $realisasiIds = Realisasi::where('sekolah_id', $sekolahId)
+            ->where('bulan_realisasi', $bulan)
+            ->whereNotNull('spj_id')
+            ->pluck('spj_id')
+            ->all();
 
         $isLocked = false;
         $statusKirim = 'draft';
         if ($sekolahId) {
             $kunci = KunciLaporan::where('sekolah_id', $sekolahId)
-                ->where('bulan', (string) $bulan)
+                ->where('bulan', $bulan)
                 ->first();
             $isLocked = (bool) ($kunci?->status_kunci ?? false);
             $statusKirim = $kunci?->status_kirim ?? 'draft';
@@ -64,6 +69,7 @@ class SpjController extends Controller
 
         return Inertia::render('PelaporanBm/Spj/Index', [
             'items' => $items,
+            'realisasiIds' => $realisasiIds,
             'acuanList' => $acuanList,
             'totalAcuan' => $totalAcuan,
             'bulan' => $bulan,
@@ -80,7 +86,7 @@ class SpjController extends Controller
         $kategori = $request->input('kategori', 'Peralatan & Mesin');
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
-        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', (string) $bulan)->first();
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
         if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
             return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
                 ->with('error', 'Laporan bulan ini telah dikunci/dikirim.');
@@ -111,7 +117,7 @@ class SpjController extends Controller
                 ->with('error', 'Data Dokumen SPK tidak ditemukan.');
         }
 
-        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', (string) $bulan)->first();
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
         if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
             return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
                 ->with('error', 'Laporan bulan ini telah dikunci/dikirim.');
@@ -177,7 +183,7 @@ class SpjController extends Controller
         ]);
 
         $bulan = $validated['bulan_realisasi'];
-        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', (string) $bulan)->first();
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
         if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
@@ -289,7 +295,7 @@ class SpjController extends Controller
         }
 
         $kunci = KunciLaporan::where('sekolah_id', $sekolahId)
-            ->where('bulan', (string) $bulan)
+            ->where('bulan', $bulan)
             ->first();
 
         return (bool) ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true));

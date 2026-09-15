@@ -35,14 +35,12 @@ class Spj extends Model
         'volume',
         'harga_satuan',
         'nilai_perolehan',
-        'is_realisasi',
         'id_spj_lama',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_realisasi' => 'boolean',
             'volume' => 'float',
             'harga_satuan' => 'float',
             'nilai_perolehan' => 'float',
@@ -62,5 +60,12 @@ class Spj extends Model
     public function realisasi(): HasMany
     {
         return $this->hasMany(Realisasi::class, 'spj_id');
+    }
+
+    public function getIsRealisasiAttribute(): bool
+    {
+        return $this->relationLoaded('realisasi')
+            ? $this->realisasi->isNotEmpty()
+            : $this->realisasi()->exists();
     }
 }

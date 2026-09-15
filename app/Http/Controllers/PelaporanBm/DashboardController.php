@@ -52,7 +52,6 @@ class DashboardController extends Controller
 
             // 2. Ambil sekolah yang sudah realisasi di bulan terpilih
             $selesaiIds = Realisasi::where('bulan_realisasi', $filterBulan)
-                ->where('is_realisasi', 1)
                 ->distinct()
                 ->pluck('sekolah_id')
                 ->merge(
@@ -100,7 +99,7 @@ class DashboardController extends Controller
         $bulanLapor = ($bulanSekarang === 1) ? 12 : ($bulanSekarang - 1);
 
         $kunciLapor = KunciLaporan::where('sekolah_id', $sekolahId)
-            ->where('bulan', (string) $bulanLapor)
+            ->where('bulan', $bulanLapor)
             ->first();
 
         $statusRaw = strtolower(trim($kunciLapor?->status_kirim ?? ''));

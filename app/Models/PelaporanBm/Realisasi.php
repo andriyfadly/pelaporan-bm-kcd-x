@@ -35,7 +35,6 @@ class Realisasi extends Model
         'volume',
         'harga_satuan',
         'nilai_perolehan',
-        'is_realisasi',
         'id_realisasi_lama',
     ];
 
