@@ -43,5 +43,14 @@ class PeranDanHakAksesSeeder extends Seeder
             'hapus-spj-bm',
             'cetak-laporan-bm',
         ]);
+
+        $bendaharaSekolah = Role::firstOrCreate(['name' => 'bendahara_sekolah', 'guard_name' => 'web']);
+        $bendaharaSekolah->syncPermissions([
+            'lihat-laporan-bm',
+            'input-spj-bm',
+            'edit-spj-bm',
+            'hapus-spj-bm',
+            'cetak-laporan-bm',
+        ]);
     }
 }

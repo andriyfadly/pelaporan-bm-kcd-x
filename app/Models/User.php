@@ -56,7 +56,7 @@ class User extends Authenticatable
 
     public function isPasswordExpired(): bool
     {
-        if (! $this->hasRole('operator_sekolah')) {
+        if (! $this->hasRole(['operator_sekolah', 'bendahara_sekolah'])) {
             return false;
         }
 

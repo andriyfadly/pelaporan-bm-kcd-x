@@ -17,7 +17,7 @@ class UserController extends Controller
         $users = User::whereDoesntHave('roles', function ($q) {
             $q->where('name', 'super_admin');
         })->with(['sekolah', 'roles'])->orderBy('name')->get();
-        $sekolahs = Sekolah::orderBy('nama_sekolah')->select('id', 'nama_sekolah', 'kota_kab')->get();
+        $sekolahs = Sekolah::orderBy('nama_sekolah')->select('id', 'nama_sekolah', 'kota_kab', 'npsn')->get();
 
         return Inertia::render('Admin/User/Index', [
             'users' => $users,
@@ -32,7 +32,7 @@ class UserController extends Controller
             'username' => 'required|string|max:50|unique:users,username',
             'password' => 'required|string|min:6',
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
-            'role' => 'required|string|in:admin_kcd,operator_sekolah',
+            'role' => 'required|string|in:admin_kcd,operator_sekolah,bendahara_sekolah',
         ]);
 
         $user = User::create([
@@ -58,7 +58,7 @@ class UserController extends Controller
             'username' => "required|string|max:50|unique:users,username,{$user->id}",
             'password' => 'nullable|string|min:6',
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
-            'role' => 'nullable|string|in:admin_kcd,operator_sekolah,admin,user',
+            'role' => 'nullable|string|in:admin_kcd,operator_sekolah,bendahara_sekolah,admin,user',
         ]);
 
         $data = [
@@ -80,7 +80,11 @@ class UserController extends Controller
         $user->update($data);
 
         if (! empty($validated['role'])) {
-            $roleName = in_array($validated['role'], ['admin', 'admin_kcd'], true) ? 'admin_kcd' : 'operator_sekolah';
+            $roleName = match ($validated['role']) {
+                'admin', 'admin_kcd' => 'admin_kcd',
+                'bendahara_sekolah' => 'bendahara_sekolah',
+                default => 'operator_sekolah',
+            };
             $user->syncRoles([$roleName]);
         }
 

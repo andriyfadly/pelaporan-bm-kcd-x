@@ -20,6 +20,7 @@ interface Sekolah {
     id: string;
     nama_sekolah: string;
     kota_kab: string;
+    npsn?: string;
 }
 
 interface UserItem {
@@ -64,9 +65,8 @@ export default function Index({ users, sekolahs, auth }: Props) {
         name: '',
         username: '',
         password: '',
-        role: 'user',
-        id_sekolah: '-',
-        nama_sekolah: '-',
+        role: 'operator_sekolah',
+        sekolah_id: '',
     });
 
     // Form Tambah User Baru
@@ -85,6 +85,63 @@ export default function Index({ users, sekolahs, auth }: Props) {
         role: 'operator_sekolah',
     });
 
+    const applyNpsnPrefix = (username: string, npsn?: string, defaultSuffix = 'admin') => {
+        if (!npsn) return username;
+        const parts = username.split('-');
+        const suffix = parts.length > 1 ? parts.slice(1).join('-') : (username || defaultSuffix);
+        return `${npsn}-${suffix}`;
+    };
+
+    const handleCreateSekolahChange = (sekolahId: string) => {
+        const selected = sekolahs.find((s) => s.id === sekolahId);
+        const defaultSuffix = createData.role === 'bendahara_sekolah' ? 'bendahara' : 'admin';
+        setCreateData({
+            ...createData,
+            sekolah_id: sekolahId,
+            username: applyNpsnPrefix(createData.username, selected?.npsn, defaultSuffix),
+        });
+    };
+
+    const handleCreateRoleChange = (newRole: string) => {
+        const selected = sekolahs.find((s) => s.id === createData.sekolah_id);
+        let username = createData.username;
+        if (newRole !== 'admin_kcd' && selected?.npsn) {
+            const defaultSuffix = newRole === 'bendahara_sekolah' ? 'bendahara' : 'admin';
+            username = applyNpsnPrefix(username, selected.npsn, defaultSuffix);
+        }
+        setCreateData({
+            ...createData,
+            role: newRole,
+            sekolah_id: newRole === 'admin_kcd' ? '' : createData.sekolah_id,
+            username,
+        });
+    };
+
+    const handleEditSekolahChange = (sekolahId: string) => {
+        const selected = sekolahs.find((s) => s.id === sekolahId);
+        const defaultSuffix = editData.role === 'bendahara_sekolah' ? 'bendahara' : 'admin';
+        setEditData({
+            ...editData,
+            sekolah_id: sekolahId,
+            username: applyNpsnPrefix(editData.username, selected?.npsn, defaultSuffix),
+        });
+    };
+
+    const handleEditRoleChange = (newRole: string) => {
+        const selected = sekolahs.find((s) => s.id === editData.sekolah_id);
+        let username = editData.username;
+        if (newRole !== 'admin_kcd' && selected?.npsn) {
+            const defaultSuffix = newRole === 'bendahara_sekolah' ? 'bendahara' : 'admin';
+            username = applyNpsnPrefix(username, selected.npsn, defaultSuffix);
+        }
+        setEditData({
+            ...editData,
+            role: newRole,
+            sekolah_id: newRole === 'admin_kcd' ? '' : editData.sekolah_id,
+            username,
+        });
+    };
+
     const filteredUsers = useMemo(() => {
         const q = searchQuery.toLowerCase().trim();
         if (!q) return users;
@@ -97,15 +154,14 @@ export default function Index({ users, sekolahs, auth }: Props) {
     }, [users, searchQuery]);
 
     const handleOpenEdit = (user: UserItem) => {
-        const role = user.roles[0]?.name === 'admin_kcd' ? 'admin' : 'user';
+        const role = user.roles[0]?.name === 'admin' ? 'admin_kcd' : (user.roles[0]?.name || 'operator_sekolah');
         setEditData({
             id: user.id,
             name: user.name,
             username: user.username,
             password: '',
             role: role,
-            id_sekolah: user.sekolah_id ? user.sekolah_id.substring(0, 8) : '-',
-            nama_sekolah: user.sekolah?.nama_sekolah || 'Dinas Pendidikan KCD X',
+            sekolah_id: user.sekolah_id || '',
         });
         setShowPassword(false);
         setModalEditOpen(true);
@@ -247,9 +303,13 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-md text-[10px] font-bold">
                                                             <Shield className="w-3 h-3" /> Admin
                                                         </span>
+                                                    ) : u.roles.some((r) => r.name === 'bendahara_sekolah') ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-bold">
+                                                            <Building2 className="w-3 h-3" /> Bendahara Sekolah
+                                                        </span>
                                                     ) : (
                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-bold">
-                                                            <Building2 className="w-3 h-3" /> User Sekolah
+                                                            <Building2 className="w-3 h-3" /> Operator Sekolah
                                                         </span>
                                                     )}
                                                 </td>
@@ -370,36 +430,44 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                     <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                                         Role / Hak Akses
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={editData.role === 'admin' ? 'Admin (Dinas Pusat)' : 'User (Sekolah)'}
-                                        readOnly
-                                        className="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold cursor-not-allowed"
-                                    />
+                                    <select
+                                        value={editData.role}
+                                        onChange={(e) => handleEditRoleChange(e.target.value)}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+                                        required
+                                    >
+                                        <option value="operator_sekolah">Operator Sekolah</option>
+                                        <option value="bendahara_sekolah">Bendahara Sekolah</option>
+                                        <option value="admin_kcd">Admin (Dinas Pusat)</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                                        ID Sekolah
+                                        Satuan Pendidikan
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={editData.id_sekolah}
-                                        readOnly
-                                        className="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold cursor-not-allowed"
-                                    />
+                                    {editData.role === 'admin_kcd' ? (
+                                        <input
+                                            type="text"
+                                            value="Dinas Pendidikan KCD X"
+                                            readOnly
+                                            className="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold cursor-not-allowed"
+                                        />
+                                    ) : (
+                                        <select
+                                            value={editData.sekolah_id}
+                                            onChange={(e) => handleEditSekolahChange(e.target.value)}
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        >
+                                            <option value="" disabled>-- Pilih Sekolah --</option>
+                                            {sekolahs.map((s) => (
+                                                <option key={s.id} value={s.id}>
+                                                    {s.nama_sekolah} {s.npsn ? `(${s.npsn})` : `(${s.kota_kab})`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                                    Nama Sekolah / Instansi
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editData.nama_sekolah}
-                                    readOnly
-                                    className="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold cursor-not-allowed"
-                                />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-3">
@@ -528,23 +596,24 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                 </label>
                                 <select
                                     value={createData.role}
-                                    onChange={(e) => setCreateData('role', e.target.value)}
+                                    onChange={(e) => handleCreateRoleChange(e.target.value)}
                                     className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500"
                                     required
                                 >
-                                    <option value="operator_sekolah">User (Sekolah)</option>
+                                    <option value="operator_sekolah">Operator Sekolah</option>
+                                    <option value="bendahara_sekolah">Bendahara Sekolah</option>
                                     <option value="admin_kcd">Admin (Dinas Pusat)</option>
                                 </select>
                             </div>
 
-                            {createData.role === 'operator_sekolah' && (
+                            {createData.role !== 'admin_kcd' && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                                         Pilih Satuan Pendidikan
                                     </label>
                                     <select
                                         value={createData.sekolah_id}
-                                        onChange={(e) => setCreateData('sekolah_id', e.target.value)}
+                                        onChange={(e) => handleCreateSekolahChange(e.target.value)}
                                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500"
                                         required
                                     >
@@ -553,7 +622,7 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                         </option>
                                         {sekolahs.map((s) => (
                                             <option key={s.id} value={s.id}>
-                                                {s.nama_sekolah} ({s.kota_kab})
+                                                {s.nama_sekolah} {s.npsn ? `(${s.npsn})` : `(${s.kota_kab})`}
                                             </option>
                                         ))}
                                     </select>
