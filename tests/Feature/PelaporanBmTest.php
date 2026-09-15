@@ -527,4 +527,91 @@ class PelaporanBmTest extends TestCase
         $this->assertDatabaseCount('pelaporan_bm_realisasi', 1);
         $this->assertFalse(Realisasi::where('id', $realisasiItem->id)->exists());
     }
+
+    public function test_edit_spk_syncs_snapshot_realisasi(): void
+    {
+        $sekolah = Sekolah::create([
+            'nama_sekolah' => 'SMKN 3 Sync',
+            'kota_kab' => 'Kota Bandung',
+        ]);
+
+        $user = User::create([
+            'name' => 'Operator 3',
+            'username' => 'operator3',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolah->id,
+        ]);
+
+        $acuan = Acuan::create([
+            'sekolah_id' => $sekolah->id,
+            'kodering' => '5.2.02.05.01.0001',
+            'nominal' => 50000000,
+            'bulan' => 9,
+            'uraian' => 'Pengadaan PC',
+        ]);
+
+        $spj = Spj::create([
+            'sekolah_id' => $sekolah->id,
+            'no_spk' => 'SPK/SYNC/01',
+            'sumber_perolehan' => 'BOS Reguler',
+            'bulan_realisasi' => 9,
+            'kode_barang' => '1.3.2.05',
+            'nama_barang' => 'PC All in One',
+            'jenis_aset' => 'Peralatan dan Mesin',
+            'volume' => 2,
+            'harga_satuan' => 8000000,
+            'nilai_perolehan' => 16000000,
+            'ba_no' => 'BA/01',
+            'ba_tgl' => '2026-09-10',
+        ]);
+
+        Realisasi::create([
+            'spj_id' => $spj->id,
+            'sekolah_id' => $sekolah->id,
+            'acuan_id' => $acuan->id,
+            'kodering_belanja' => '5.2.02.05.01.0001',
+            'bulan_realisasi' => 9,
+            'no_spk' => 'SPK/SYNC/01',
+            'kode_barang' => '1.3.2.05',
+            'nama_barang' => 'PC All in One',
+            'jenis_aset' => 'Peralatan dan Mesin',
+            'volume' => 2,
+            'harga_satuan' => 8000000,
+            'nilai_perolehan' => 16000000,
+        ]);
+
+        // Edit SPJ: ubah nama, volume, harga
+        $this->actingAs($user)
+            ->post(route('pelaporan-bm.spj.store-spk'), [
+                'is_edit' => true,
+                'no_spk_lama' => 'SPK/SYNC/01',
+                'no_spk' => 'SPK/SYNC/01',
+                'sumber_perolehan' => 'BOS Reguler',
+                'bulan_realisasi' => 9,
+                'kategori' => 'Peralatan & Mesin',
+                'ba_no' => 'BA/01',
+                'ba_tgl' => '2026-09-10',
+                'items' => [
+                    [
+                        'id' => $spj->id,
+                        'kode_barang' => '1.3.2.05',
+                        'nama_barang' => 'PC All in One Updated',
+                        'jenis_aset' => 'Peralatan dan Mesin',
+                        'volume' => 3,
+                        'harga_satuan' => 9000000,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $realisasi = Realisasi::where('spj_id', $spj->id)->first();
+        $this->assertNotNull($realisasi);
+        $this->assertSame('PC All in One Updated', $realisasi->nama_barang);
+        $this->assertEquals(3, (float) $realisasi->volume);
+        $this->assertEquals(9000000, (float) $realisasi->harga_satuan);
+        $this->assertEquals(27000000, (float) $realisasi->nilai_perolehan);
+        // Alokasi tidak boleh bergeser
+        $this->assertSame('5.2.02.05.01.0001', $realisasi->kodering_belanja);
+        $this->assertEquals(9, (int) $realisasi->bulan_realisasi);
+    }
 }

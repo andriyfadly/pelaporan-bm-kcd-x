@@ -41,6 +41,7 @@ Khusus role Operator Sekolah dengan alur yang identik dengan legacy:
    - Datalist history autocomplete untuk Merk/Tipe, No Sertifikat, dan Satuan dari nilai unik yang sudah diketik (identik legacy `history_merk`/`history_sertifikat`/`history_satuan`).
    - Mode kategori **Buku**: default Jenis Aset = `Buku`, No Sertifikat wajib diisi (validasi client & server).
    - Validasi ketat BA No/BA Tgl, merk/tipe, satuan, volume &gt; 0, harga &gt; 0, dan total akumulasi realisasi.
+   - **Sync snapshot alokasi**: edit SPJ ikut memperbarui baris realisasi yang teralokasi dari item tersebut (nama, merk, volume, harga, nilai — identik `legacy/proses_simpan_barang.php`). Kolom milik alokasi (`kodering_belanja`, `acuan_id`, `bulan_realisasi`) tidak disentuh.
 4. **Pilih Bulan Input Realisasi (`/pelaporan-bm/input-realisasi/pilih-bulan`)**:
    - Pemilihan bulan untuk alokasi realisasi (identik `legacy/pilih_bulan.php`); pilihan terakhir diingat via localStorage.
 5. **Input Realisasi Target Acuan (`/pelaporan-bm/input-realisasi?bulan_realisasi={n}`)**:

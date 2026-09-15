@@ -223,6 +223,27 @@ class SpjController extends Controller
                         $existing->update($itemPayload);
                         $itemIdsKept[] = $existing->id;
 
+                        // Sync snapshot realisasi (identik legacy proses_simpan_barang.php:
+                        // edit SPJ ikut memperbarui baris realisasi yang teralokasi).
+                        // kodering_belanja/acuan_id/bulan alokasi TIDAK disentuh.
+                        Realisasi::where('spj_id', $existing->id)->update([
+                            'no_sp2d' => $itemPayload['no_sp2d'],
+                            'sumber_perolehan' => $itemPayload['sumber_perolehan'],
+                            'no_spk' => $itemPayload['no_spk'],
+                            'ba_no' => $itemPayload['ba_no'],
+                            'ba_tgl' => $itemPayload['ba_tgl'],
+                            'kode_barang' => $itemPayload['kode_barang'],
+                            'nama_barang' => $itemPayload['nama_barang'],
+                            'jenis_aset' => $itemPayload['jenis_aset'],
+                            'merk_tipe' => $itemPayload['merk_tipe'],
+                            'no_sertifikat' => $itemPayload['no_sertifikat'],
+                            'ukuran_bangunan' => $itemPayload['ukuran_bangunan'],
+                            'satuan' => $itemPayload['satuan'],
+                            'volume' => $itemPayload['volume'],
+                            'harga_satuan' => $itemPayload['harga_satuan'],
+                            'nilai_perolehan' => $nilaiPerolehan,
+                        ]);
+
                         continue;
                     }
                 }
