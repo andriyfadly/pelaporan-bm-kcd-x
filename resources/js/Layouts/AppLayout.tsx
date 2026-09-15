@@ -232,7 +232,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
                             <Link
                                 href="/pelaporan-bm/spj"
-                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath === '/pelaporan-bm/spj' && (typeof window === 'undefined' || !window.location.search.includes('realisasi'))
+                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath.startsWith('/pelaporan-bm/spj')
                                         ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
                                         : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
                                     }`}
@@ -243,8 +243,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                             </Link>
 
                             <Link
-                                href="/pelaporan-bm/spj?mode=realisasi"
-                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath === '/pelaporan-bm/spj' && typeof window !== 'undefined' && window.location.search.includes('realisasi')
+                                href="/pelaporan-bm/input-realisasi"
+                                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath.startsWith('/pelaporan-bm/input-realisasi')
                                         ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
                                         : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
                                     }`}

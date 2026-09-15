@@ -97,22 +97,7 @@ export default function Index({ items, acuanList, totalAcuan = 0, bulan, isLocke
 
     const openCreateWithKategori = (kategori: string) => {
         setShowKategoriModal(false);
-        setEditingItem(null);
-        reset();
-        setData((prev) => ({
-            ...prev,
-            bulan_realisasi: bulan,
-            kategori,
-            sumber_perolehan: 'BOS Reguler',
-            jenis_aset: kategori === 'Buku' ? 'Aset Tetap Lainnya' : 'Peralatan dan Mesin',
-            satuan: kategori === 'Buku' ? 'Eksemplar' : 'Unit',
-            volume: 1,
-            harga_satuan: 0,
-            no_sertifikat: '',
-            ukuran_bangunan: '',
-            acuan_id: acuanList.length > 0 ? acuanList[0].id : '',
-        }));
-        setShowModal(true);
+        router.visit(`/pelaporan-bm/spj/create?kategori=${encodeURIComponent(kategori)}&bulan=${bulan}`);
     };
 
     const openCreateForAcuan = (acuanId: string) => {
@@ -638,7 +623,15 @@ export default function Index({ items, acuanList, totalAcuan = 0, bulan, isLocke
                                                                 </div>
                                                             )}
                                                             {!isReadOnly && (
-                                                                <div className="mt-3">
+                                                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => router.visit(`/pelaporan-bm/spj/edit-spk/${encodeURIComponent(group.no_spk)}?bulan=${bulan}`)}
+                                                                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-bold px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 transition cursor-pointer"
+                                                                        title="Edit dokumen SPK dan rincian barangnya"
+                                                                    >
+                                                                        <Pencil className="w-3 h-3" /> Edit SPK
+                                                                    </button>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => handleDeleteSpk(group.no_spk)}

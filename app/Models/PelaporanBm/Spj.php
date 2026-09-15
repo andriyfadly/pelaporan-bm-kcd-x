@@ -39,6 +39,16 @@ class Spj extends Model
         'id_spj_lama',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'is_realisasi' => 'boolean',
+            'volume' => 'float',
+            'harga_satuan' => 'float',
+            'nilai_perolehan' => 'float',
+        ];
+    }
+
     public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
