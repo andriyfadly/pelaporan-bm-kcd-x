@@ -17,8 +17,6 @@ class Acuan extends Model
 
     protected $fillable = [
         'sekolah_id',
-        'satuan_pendidikan',
-        'npsn',
         'tanggal',
         'kodering',
         'bku',

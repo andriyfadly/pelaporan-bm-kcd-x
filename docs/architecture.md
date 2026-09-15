@@ -63,13 +63,17 @@ routes/
 ## 3. Skema Data & Relasi Penting
 
 1. **`User`**:
-   - `role`: `'admin'` (Admin KCD) atau `'user'` (Operator Sekolah).
-   - `sekolah_id`: Foreign key ke `master_data_sekolah.id` (khusus role user).
-2. **`Spj` (`pelaporan_bm_spj`)**:
+   - Autentikasi berbasis `username` (Operator Sekolah: `[npsn]-admin`, Admin: `admin_kcd`).
+   - `password_changed_at`: Timestamp perubahan password (wajib ganti saat pertama kali login dan tiap 3 bulan / 90 hari).
+   - `sekolah_id`: Foreign key ke `master_data_sekolah.id`.
+2. **`Sekolah` (`master_data_sekolah`)**:
+   - Master data identitas unit sekolah.
+   - Kolom: `nama_sekolah`, `npsn`, `kota_kab`, `kode_sub_pengguna`, `kode_wilayah`.
+3. **`Spj` (`pelaporan_bm_spj`)**:
    - Menyimpan transaksi dokumen SPK dan rincian belanja modal fisik.
    - Kolom: `no_spk`, `no_sp2d`, `sumber_perolehan`, `bulan_realisasi`, `kategori`, `ba_no`, `ba_tgl`, `kode_barang`, `nama_barang`, `jenis_aset`, `volume`, `harga_satuan`, `nilai_perolehan`, `is_realisasi`, `acuan_id`, `sekolah_id`.
-3. **`Acuan` (`pelaporan_bm_acuan`)**:
-   - Target pagu anggaran kodering acuan yang diupload admin KCD.
-   - Kolom: `kodering`, `uraian`, `nominal`, `bulan`, `sekolah_id`.
-4. **`KunciLaporan` (`pelaporan_bm_kunci_laporan`)**:
+4. **`Acuan` (`pelaporan_bm_acuan`)**:
+   - Target pagu anggaran kodering acuan yang diupload admin KCD (ternormalisasi via relasi sekolah).
+   - Kolom: `sekolah_id`, `tanggal`, `kodering`, `bku`, `uraian`, `nominal`, `bulan`.
+5. **`KunciLaporan` (`pelaporan_bm_kunci_laporan`)**:
    - Menyimpan status kunci laporan dan tahapan approval bulanan (`draft`, `menunggu_approval`, `disetujui`).

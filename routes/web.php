@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\KodeBarangController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\PasswordExpiredController;
 use App\Http\Controllers\PelaporanBm\AcuanController;
 use App\Http\Controllers\PelaporanBm\CetakController;
 use App\Http\Controllers\PelaporanBm\DashboardController;
@@ -20,6 +21,9 @@ Route::get('/home', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('/ubah-password', [PasswordExpiredController::class, 'edit'])->name('password.change');
+    Route::post('/ubah-password', [PasswordExpiredController::class, 'update'])->name('password.update');
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::prefix('pelaporan-bm')->name('pelaporan-bm.')->group(function () {

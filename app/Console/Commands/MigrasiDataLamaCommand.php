@@ -58,7 +58,6 @@ class MigrasiDataLamaCommand extends Command
                 ['username' => $u['username']],
                 [
                     'name' => $u['nama_sekolah'] ?? $u['username'],
-                    'email' => strtolower($u['username']).'@kcd10.local',
                     'password' => $u['password'],
                     'sekolah_id' => $sekolahUuid,
                     'is_active' => true,
@@ -78,8 +77,6 @@ class MigrasiDataLamaCommand extends Command
                 ['id_acuan_lama' => (int) $a['id']],
                 [
                     'sekolah_id' => $sekolahUuid,
-                    'satuan_pendidikan' => $a['satuan_pendidikan'] ?? null,
-                    'npsn' => $a['npsn'] ?? null,
                     'tanggal' => ! empty($a['tanggal']) ? $a['tanggal'] : null,
                     'kodering' => $a['kodering'] ?? null,
                     'bku' => $a['bku'] ?? null,
@@ -88,6 +85,9 @@ class MigrasiDataLamaCommand extends Command
                     'bulan' => (string) ($a['bulan'] ?? date('n')),
                 ]
             );
+            if ($sekolahUuid && ! empty($a['npsn'])) {
+                Sekolah::where('id', $sekolahUuid)->whereNull('npsn')->update(['npsn' => trim($a['npsn'])]);
+            }
             $petaAcuan[(int) $a['id']] = $baru->id;
         }
         $this->info('Acuan dimigrasi: '.count($acuanLama));

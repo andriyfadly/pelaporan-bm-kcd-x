@@ -43,12 +43,19 @@ Sekolah negeri (SMKN, SMAN, SLBN) di lingkungan Cabang Dinas Pendidikan Wilayah 
 ### F5: Master Data
 - Master Kode Barang (standar aset pemda, live search, import).
 - Master Target Kodering Acuan (input manual & import massal).
+- Master Data Sekolah (identitas unit sekolah dan NPSN resmi).
 - Kelola Pengguna (manajemen akses akun operator & admin).
+
+### F6: Autentikasi & Keamanan Akun
+- **Username-based Login**: Autentikasi murni berbasis `username` (tanpa kolom/fitur email).
+- **Akun Standar Operator**: Format username `[npsn]-admin` dengan password default `#SidiptaKCD10`.
+- **Rotasi Password & Dedicated Page**: Intersep otomatis via `EnsurePasswordNotExpired` mengarahkan akun ke dedicated page `/ubah-password` saat login perdana (`password_changed_at = null`) dan setiap 90 hari (3 bulan).
+- **Kompleksitas Password**: Validasi password baru wajib rumit (min. 8 karakter, kombinasi huruf besar/kecil, angka, dan simbol).
 
 ---
 
 ## 5. Kriteria Penerimaan Non-Fungsional
-- **Keamanan & Isolasi Data**: Sekolah dilarang keras mengakses atau memodifikasi data sekolah lain (enforced via scope `sekolah_id`).
+- **Keamanan & Isolasi Data**: Sekolah dilarang keras mengakses atau memodifikasi data sekolah lain (enforced via scope `sekolah_id`). Rotasi password wajib dipatuhi setiap 90 hari dengan standar password rumit.
 - **Integritas Data Kunci**: Data pada bulan yang terkunci (`disetujui`) tidak dapat diubah oleh operator.
 - **Kualitas Kode**: Formatter Pint lolos, TypeScript 0 error, dan PHPUnit line coverage &ge; 80%.
 - **Aturan Dokumentasi**: Seluruh dokumentasi dan tautan repo wajib menggunakan relative path.

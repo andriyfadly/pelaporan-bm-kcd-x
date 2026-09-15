@@ -27,5 +27,5 @@ Sistem aplikasi web modern berbasis Laravel 12 dan Inertia.js (React + TypeScrip
 
 | Role | Akses Utama | Tanggung Jawab |
 |---|---|---|
-| **Admin KCD** (`admin` / tanpa `sekolah_id`) | Dashboard KCD, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola User, Cetak Laporan | Mengelola master kode barang, upload target acuan sekolah, memantau kepatuhan lapor sekolah, verifikasi / approval, dan mengunci laporan bulanan. |
-| **Operator Sekolah** (`user` / terikat `sekolah_id`) | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi (Target Acuan Belanja), Data Realisasi, Cetak Laporan | Menginput dokumen SPK & barang belanja, memantau realisasi per kodering, mencentang barang terealisasi, kirim laporan bulanan ke dinas. |
+| **Admin KCD** (`admin_kcd` / tanpa `sekolah_id`) | Dashboard KCD, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola User, Cetak Laporan | Mengelola master kode barang, upload target acuan sekolah, memantau kepatuhan lapor sekolah, verifikasi / approval, dan mengunci laporan bulanan. |
+| **Operator Sekolah** (`[npsn]-admin` / terikat `sekolah_id`) | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi (Target Acuan Belanja), Data Realisasi, Cetak Laporan, Ubah Password | Menginput dokumen SPK & barang belanja, memantau realisasi per kodering, mencentang barang terealisasi, kirim laporan bulanan ke dinas. Wajib ubah password pada login perdana dan berkala tiap 3 bulan. |

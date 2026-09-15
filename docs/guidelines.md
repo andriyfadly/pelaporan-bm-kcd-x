@@ -78,3 +78,7 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
    - Item barang SPJ yang dimasukkan ke laporan cetak dan rekapitulasi realisasi adalah yang ditandai `is_realisasi = 1`.
    - Cetak laporan harus melalui validasi pre-flight (`/pelaporan-bm/cetak/check`) untuk memastikan tidak mencetak data kosong.
    - Perubahan data pada bulan yang telah berstatus `disetujui` atau dikunci oleh KCD harus diblokir demi akuntabilitas audit.
+3. **Standar Keamanan Autentikasi**:
+   - Autentikasi menggunakan `username` unik tanpa dependensi email.
+   - Password baru wajib rumit (`Password::min(8)->letters()->mixedCase()->numbers()->symbols()`).
+   - Rotasi password wajib dilakukan tiap 90 hari melalui dedicated page `/ubah-password` yang diproteksi middleware `EnsurePasswordNotExpired`.

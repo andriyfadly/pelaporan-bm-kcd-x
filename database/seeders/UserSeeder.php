@@ -15,28 +15,25 @@ class UserSeeder extends Seeder
             ['username' => 'admin_kcd'],
             [
                 'name' => 'Administrator KCD X',
-                'email' => 'admin.kcd@disdik.jabarprov.go.id',
                 'password' => Hash::make('password'),
                 'is_active' => true,
             ]
         );
-        $admin->assignRole('admin_kcd');
+        $admin->syncRoles(['admin_kcd']);
 
-        $sekolah = Sekolah::firstOrCreate(
-            ['nama_sekolah' => 'SMKN 1 Contoh'],
-            ['kota_kab' => 'Kota Bandung']
-        );
-
-        $operator = User::firstOrCreate(
-            ['username' => 'operator_smkn1'],
-            [
-                'name' => 'Operator SMKN 1 Contoh',
-                'email' => 'smkn1@sekolah.belajar.id',
-                'password' => Hash::make('password'),
-                'sekolah_id' => $sekolah->id,
-                'is_active' => true,
-            ]
-        );
-        $operator->assignRole('operator_sekolah');
+        $sekolahs = Sekolah::whereNotNull('npsn')->get();
+        foreach ($sekolahs as $sekolah) {
+            $user = User::updateOrCreate(
+                ['username' => "{$sekolah->npsn}-admin"],
+                [
+                    'name' => $sekolah->nama_sekolah,
+                    'password' => Hash::make('#SidiptaKCD10'),
+                    'sekolah_id' => $sekolah->id,
+                    'is_active' => true,
+                    'password_changed_at' => null,
+                ]
+            );
+            $user->syncRoles(['operator_sekolah']);
+        }
     }
 }

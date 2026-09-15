@@ -34,17 +34,14 @@ class AcuanController extends Controller
         }
 
         if (! empty($searchSatuan)) {
-            $query->where(function ($q) use ($searchSatuan) {
-                $q->where('satuan_pendidikan', 'like', "%{$searchSatuan}%")
-                    ->orWhereHas('sekolah', fn ($s) => $s->where('nama_sekolah', 'like', "%{$searchSatuan}%"));
+            $query->whereHas('sekolah', function ($s) use ($searchSatuan) {
+                $s->where('nama_sekolah', 'like', "%{$searchSatuan}%")
+                    ->orWhere('npsn', 'like', "%{$searchSatuan}%");
             });
         }
 
         $totalNominal = (float) (clone $query)->sum('nominal');
-        $totalSekolah = (int) (clone $query)->whereNotNull('npsn')->distinct('npsn')->count('npsn');
-        if ($totalSekolah === 0) {
-            $totalSekolah = (int) (clone $query)->whereNotNull('sekolah_id')->distinct('sekolah_id')->count('sekolah_id');
-        }
+        $totalSekolah = (int) (clone $query)->whereNotNull('sekolah_id')->distinct('sekolah_id')->count('sekolah_id');
 
         $listBulan = Acuan::query()
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
@@ -73,8 +70,6 @@ class AcuanController extends Controller
     {
         $validated = $request->validate([
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
-            'satuan_pendidikan' => 'nullable|string|max:150',
-            'npsn' => 'nullable|string|max:50',
             'tanggal' => 'required|date',
             'kodering' => 'nullable|string|max:100',
             'bku' => 'nullable|string|max:100',
@@ -169,8 +164,6 @@ class AcuanController extends Controller
 
                     Acuan::create([
                         'sekolah_id' => $targetSekolahId,
-                        'satuan_pendidikan' => $satuanPendidikan ?: null,
-                        'npsn' => $npsn ?: null,
                         'tanggal' => $tanggal,
                         'kodering' => $kodering,
                         'bku' => $bku,

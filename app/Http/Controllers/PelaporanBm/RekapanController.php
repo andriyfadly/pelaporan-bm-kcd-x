@@ -44,7 +44,7 @@ class RekapanController extends Controller
                 default => 'Belum Kirim',
             };
 
-            $npsn = $acuans->first()?->npsn ?? '-';
+            $npsn = $sek->npsn ?? '-';
 
             $realisasiPerAcuan = [];
             foreach ($spjs as $s) {

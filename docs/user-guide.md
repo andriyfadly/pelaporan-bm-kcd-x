@@ -8,12 +8,26 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 | Peran | Akses Halaman | Kredensial & Scope |
 |---|---|---|
-| **Operator Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Target Acuan Kerja (`?mode=realisasi`), Data Realisasi, Cetak Laporan | Akun `user` terikat satu sekolah (`sekolah_id`). Hanya dapat mengelola data sekolah sendiri. |
-| **Admin KCD** | Dashboard Wilayah, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola Pengguna, Cetak Laporan | Akun `admin` tanpa `sekolah_id`. Memiliki wewenang lintas sekolah dan kunci laporan. |
+| **Operator Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Target Acuan Kerja (`?mode=realisasi`), Data Realisasi, Cetak Laporan, Ubah Password | Username `[npsn]-admin`, default password `#SidiptaKCD10`. Terikat satu sekolah (`sekolah_id`). Wajib ganti password saat login pertama dan berkala tiap 3 bulan. |
+| **Admin KCD** | Dashboard Wilayah, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola Pengguna, Cetak Laporan | Username `admin_kcd`. Akun `admin` tanpa `sekolah_id`. Memiliki wewenang lintas sekolah dan kunci laporan. |
 
 ---
 
-## 2. Alur Kerja Operator Sekolah
+## 2. Alur Login & Keamanan Password
+
+1. **Login Perdana**:
+   - Masuk menggunakan username `[npsn]-admin` dan password default `#SidiptaKCD10`.
+   - Sistem secara otomatis mendeteksi akun baru (`password_changed_at = null`) dan langsung mengarahkan pengguna ke **Dedicated Page Ubah Password** (`/ubah-password`).
+2. **Aturan Password Baru**:
+   - Wajib memenuhi kriteria rumit: minimal 8 karakter, kombinasi huruf besar, huruf kecil, angka, dan karakter simbol/tanda baca.
+   - Tidak boleh sama dengan password saat ini.
+3. **Masa Berlaku Berkala**:
+   - Password kedaluwarsa setelah 90 hari (3 bulan).
+   - Pengguna wajib mengganti password sebelum dapat mengakses kembali modul operasional.
+
+---
+
+## 3. Alur Kerja Operator Sekolah
 
 ```text
 [1. Buat Dokumen SPK] ──> [2. Tambah Item Barang] ──> [3. Checklist Realisasi] ──> [4. Pantau Acuan] ──> [5. Kirim Laporan] ──> [6. Cetak 26 Kolom]

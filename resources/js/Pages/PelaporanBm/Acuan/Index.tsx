@@ -19,8 +19,6 @@ import {
 
 interface AcuanItem {
     id: string;
-    satuan_pendidikan: string | null;
-    npsn: string | null;
     tanggal: string;
     kodering: string | null;
     bku: string | null;
@@ -30,6 +28,7 @@ interface AcuanItem {
     sekolah?: {
         id: string;
         nama_sekolah: string;
+        npsn?: string | null;
     };
 }
 
@@ -104,8 +103,6 @@ export default function Index({
         errors,
     } = useForm({
         sekolah_id: '',
-        satuan_pendidikan: '',
-        npsn: '',
         tanggal: new Date().toISOString().split('T')[0],
         kodering: '',
         bku: '',
@@ -396,10 +393,10 @@ export default function Index({
                                                 {(items.from || 1) + index}
                                             </td>
                                             <td className="py-3 px-3 font-semibold text-slate-800">
-                                                {item.satuan_pendidikan || item.sekolah?.nama_sekolah || '-'}
+                                                {item.sekolah?.nama_sekolah || '-'}
                                             </td>
                                             <td className="py-3 px-3 text-center text-slate-600 font-mono">
-                                                {item.npsn || '-'}
+                                                {item.sekolah?.npsn || '-'}
                                             </td>
                                             <td className="py-3 px-3 text-center text-slate-600 font-mono whitespace-nowrap">
                                                 {item.tanggal}

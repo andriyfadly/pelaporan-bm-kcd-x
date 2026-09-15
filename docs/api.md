@@ -6,10 +6,10 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
 
 ## 1. Middleware & Guard Otentikasi
 - `auth`: Wajib sesi aktif (Laravel Fortify).
-- `verified`: Email terverifikasi (opsional/default aktif).
+- `EnsurePasswordNotExpired`: Memeriksa apakah password operator sekolah kedaluwarsa (login pertama / > 90 hari). Memaksa redirect ke `/ubah-password`.
 - Pembatasan Role:
-  - Admin: `auth()->user()->role === 'admin'`
-  - Operator: `auth()->user()->role === 'user' && !empty(auth()->user()->sekolah_id)`
+  - Admin KCD: `auth()->user()->hasRole('admin_kcd')`
+  - Operator Sekolah: `auth()->user()->hasRole('operator_sekolah') && !empty(auth()->user()->sekolah_id)`
 
 ---
 
@@ -57,3 +57,10 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
 - **`POST /pelaporan-bm/kunci-laporan/toggle`** (Admin only)
   - Payload: `sekolah_id`, `bulan`, `tahun`
   - Return JSON: `{ status: 'disetujui'|'draft' }`.
+
+### F. Otentikasi & Rotasi Password (`app/Http/Controllers/Auth/PasswordExpiredController.php`)
+- **`GET /ubah-password`**
+  - Return: Inertia `Auth/ChangePassword`.
+- **`POST /ubah-password`**
+  - Payload: `current_password` (string), `password` (string, min. 8 karakter, huruf besar/kecil, angka, simbol, beda dari password lama), `password_confirmation` (string).
+  - Result: Mengubah password akun dan memperbarui `password_changed_at = now()`.

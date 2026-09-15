@@ -25,8 +25,8 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'username',
-        'email',
         'password',
+        'password_changed_at',
         'sekolah_id',
         'is_active',
     ];
@@ -49,9 +49,22 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
+            'password_changed_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function isPasswordExpired(): bool
+    {
+        if (! $this->hasRole('operator_sekolah')) {
+            return false;
+        }
+
+        if ($this->password_changed_at === null) {
+            return true;
+        }
+
+        return $this->password_changed_at->diffInDays(now()) >= 90;
     }
 
     public function sekolah(): BelongsTo
