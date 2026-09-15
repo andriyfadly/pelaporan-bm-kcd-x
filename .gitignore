@@ -18,3 +18,4 @@ _test_env.php
 /legacy/vendor/
 /node_modules/
 /public/hot
+/public/build
