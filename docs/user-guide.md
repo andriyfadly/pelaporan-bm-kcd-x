@@ -8,7 +8,7 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 | Peran | Akses Halaman | Kredensial & Scope |
 |---|---|---|
-| **Operator Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Target Acuan Kerja (`?mode=realisasi`), Data Realisasi, Cetak Laporan, Ubah Password | Username `[npsn]-admin`, default password `#SidiptaKCD10`. Terikat satu sekolah (`sekolah_id`). Wajib ganti password saat login pertama dan berkala tiap 3 bulan. |
+| **Operator Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi (Target Acuan), Data Realisasi, Cetak Laporan, Ubah Password | Username `[npsn]-admin`, default password `#SidiptaKCD10`. Terikat satu sekolah (`sekolah_id`). Wajib ganti password saat login pertama dan berkala tiap 3 bulan. |
 | **Admin KCD** | Dashboard Wilayah, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola Pengguna, Cetak Laporan | Username `admin_kcd`. Akun `admin` tanpa `sekolah_id`. Memiliki wewenang lintas sekolah dan kunci laporan. |
 
 ---
@@ -30,28 +30,29 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 ## 3. Alur Kerja Operator Sekolah
 
 ```text
-[1. Buat Dokumen SPK] ──> [2. Tambah Item Barang] ──> [3. Checklist Realisasi] ──> [4. Pantau Acuan] ──> [5. Kirim Laporan] ──> [6. Cetak 26 Kolom]
+[1. Buat Dokumen SPK] ──> [2. Alokasikan Realisasi ke Kodering] ──> [3. Pantau Acuan] ──> [4. Kirim Laporan] ──> [5. Cetak 26 Kolom]
 ```
 
 ### Langkah 1: Input Dokumen SPK & Item Barang
-1. Masuk ke menu **Buku SPJ / Data Barang** (`/pelaporan-bm/spj`).
+1. Masuk ke menu **Buku SPJ / Data Barang** (`/pelaporan-bm/spj`), pilih bulan.
 2. Klik tombol **+ Tambah SPJ**, lalu pilih kategori (**Peralatan & Mesin** atau **Buku**).
-3. Isi informasi kontrak: No SPK, Sumber Dana (BOS Reguler / Kinerja), No Berita Acara (BA), dan Tanggal BA.
-4. Masukkan rincian barang: Nama Barang, Kode Barang (pilih dari master), Merk/Tipe, Volume, Satuan, dan Harga Satuan.
-5. Simpan data.
+3. Isi informasi kontrak: No SPK, No SP2D, Sumber Perolehan (BOS Reguler / Kinerja), No Berita Acara (BA) dan Tanggal BA (wajib).
+4. Masukkan rincian barang per accordion: cari dari **Katalog Pagu** (mengisi otomatis Kode Barang, Nama Barang, Jenis Aset), lalu lengkapi Merk/Tipe, Satuan, Volume, dan Harga Satuan. Untuk kategori **Buku**, No Sertifikat/Penerbit wajib diisi.
+5. Klik **Simpan Realisasi**. Isi form tersimpan otomatis sebagai draft di browser — aman jika halaman ter-refresh, draft hilang setelah tersimpan.
 
-### Langkah 2: Tandai Realisasi Fisik
-1. Pada daftar dokumen SPK, periksa item barang yang telah diterima fisik.
-2. Beri centang pada kotak **Realisasi**. Item yang dicentang otomatis tercatat ke dalam laporan resmi dinas dan menu **Data Realisasi** (`/pelaporan-bm/realisasi`).
+### Langkah 2: Alokasikan Realisasi ke Kodering
+1. Buka menu **Input Realisasi** (`/pelaporan-bm/input-realisasi`), pilih bulan.
+2. Pada kodering yang belum terpenuhi, klik tombol **+** lalu centang item SPJ yang masuk kodering tersebut.
+3. Simpan — item tercatat di tabel realisasi dan tampil di menu **Data Realisasi** (`/pelaporan-bm/realisasi`). Total alokasi tidak boleh melebihi sisa anggaran kodering.
 
 ### Langkah 3: Pantau Target Acuan Kodering
-1. Buka tab **Target Acuan Belanja** atau menu **Input Realisasi** (`/pelaporan-bm/spj?mode=realisasi`).
-2. Periksa kolom **Realisasi** dan **Kekurangan** pada masing-masing kodering rekening belanja modal.
-3. Gunakan tombol **+ Input** di sebelah kodering yang belum terpenuhi untuk langsung membuka form SPJ dengan kodering terkait.
+1. Pada halaman **Input Realisasi**, periksa kolom **Realisasi** dan **Kekurangan** per kodering rekening belanja modal (klik kode rekening untuk melihat daftar uraiannya).
+2. Kekurangan berwarna hijau berarti kodering sudah balance; gunakan tombol **Edit** untuk mengubah alokasi.
 
 ### Langkah 4: Kirim & Cetak Laporan Bulanan
-1. Klik tombol **Kirim Laporan** pada halaman SPJ untuk mengajukan verifikasi ke Admin KCD (status berubah menjadi `menunggu_approval`).
-2. Setelah disetujui, buka menu **Cetak Laporan** (`/pelaporan-bm/cetak`), pilih bulan, lalu unduh format resmi CSV 26 kolom.
+1. Ketika total kekurangan = Rp 0, klik **Kirim Laporan** di panel bawah Input Realisasi (konfirmasi lalu status berubah `menunggu_approval` dan data terkunci).
+2. Setelah disetujui Admin KCD, buka menu **Cetak Laporan** (`/pelaporan-bm/cetak`), pilih bulan, lalu unduh format resmi CSV 26 kolom.
+3. Menu **Data Realisasi** juga menyediakan unduhan **Laporan CSV** sesuai filter dan **Template Isian** Excel.
 
 ---
 

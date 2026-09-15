@@ -1,5 +1,5 @@
-import { Head, useForm, Link } from '@inertiajs/react';
-import React, { useState, useRef } from 'react';
+import { Head, useForm, Link, usePage } from '@inertiajs/react';
+import React, { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import { Plus, Trash2, ArrowLeft, Search, FileText, Box as BoxIcon } from 'lucide-react';
 import { formatRupiah } from '@/Utils/format';
@@ -36,6 +36,11 @@ interface Props {
 export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
     const isBuku = kategori.toLowerCase().includes('buku');
     const defaultJenisAset = isBuku ? 'Buku' : 'PERSONAL KOMPUTER';
+
+    // Legacy: draft autosave per sekolah+bulan (+suffix no_spk saat edit)
+    const { auth } = usePage<any>().props;
+    const sekolahKey = auth?.user?.sekolah_id ?? 'x';
+    const draftKey = `draft_spj_barang_${sekolahKey}_${bulan}${isEdit && spkData?.no_spk ? `_edit_${spkData.no_spk.replace(/[^a-zA-Z0-9]/g, '')}` : ''}`;
 
     const emptyItem: ItemBarang = {
         kode_barang: '',
@@ -80,6 +85,46 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
     const [searchKeywords, setSearchKeywords] = useState<Record<number, string>>({});
     const [suggestions, setSuggestions] = useState<{ kode_barang: string; nama_barang: string; jenis_aset: string; satuan: string | null }[]>([]);
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Legacy: pulihkan draft dari localStorage sekali saat mount
+    useEffect(() => {
+        const saved = localStorage.getItem(draftKey);
+        if (!saved) return;
+        try {
+            const d = JSON.parse(saved);
+            setData((prev: typeof data) => ({
+                ...prev,
+                no_sp2d: d.no_sp2d ?? prev.no_sp2d,
+                sumber_perolehan: d.sumber_perolehan ?? prev.sumber_perolehan,
+                no_spk: d.no_spk ?? prev.no_spk,
+                ba_no: d.ba_no ?? prev.ba_no,
+                ba_tgl: d.ba_tgl ?? prev.ba_tgl,
+                items: d.items?.length ? d.items : prev.items,
+            }));
+        } catch {
+            // draft rusak, abaikan
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Legacy: simpan draft setiap perubahan
+    useEffect(() => {
+        const t = setTimeout(() => {
+            localStorage.setItem(draftKey, JSON.stringify({
+                no_sp2d: data.no_sp2d,
+                sumber_perolehan: data.sumber_perolehan,
+                no_spk: data.no_spk,
+                ba_no: data.ba_no,
+                ba_tgl: data.ba_tgl,
+                items: data.items,
+            }));
+        }, 400);
+        return () => clearTimeout(t);
+    }, [data, draftKey]);
+
+    const hapusDraft = () => {
+        localStorage.removeItem(draftKey);
+    };
 
     const toggleAccordion = (idx: number) => {
         setCollapsed((prev) => ({ ...prev, [idx]: !prev[idx] }));
@@ -232,6 +277,19 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
 
     const grandTotal = data.items.reduce((acc, it) => acc + (Number(it.volume) * Number(it.harga_satuan) || 0), 0);
 
+    // Legacy: datalist history dari nilai unik yang sudah diketik di form
+    const uniqueValues = (field: keyof ItemBarang): string[] => {
+        const set = new Set<string>();
+        data.items.forEach((it) => {
+            const v = String(it[field] ?? '').trim();
+            if (v) set.add(v);
+        });
+        return [...set];
+    };
+    const historyMerk = uniqueValues('merk_tipe');
+    const historySertifikat = uniqueValues('no_sertifikat');
+    const historySatuan = uniqueValues('satuan');
+
     const bersihkanFormatSebelumSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -257,6 +315,7 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
             }
         }
 
+        hapusDraft();
         post('/pelaporan-bm/spj/store-spk');
     };
 
@@ -587,6 +646,8 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                     <input
                                                         type="text"
                                                         required
+                                                        list="history_merk"
+                                                        autoComplete="off"
                                                         value={item.merk_tipe}
                                                         onChange={(e) => handleItemChange(index, 'merk_tipe', e.target.value)}
                                                         placeholder="Contoh: Lenovo Core i3"
@@ -602,6 +663,8 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                     <input
                                                         type="text"
                                                         required={isBuku}
+                                                        list="history_sertifikat"
+                                                        autoComplete="off"
                                                         value={item.no_sertifikat}
                                                         onChange={(e) => handleItemChange(index, 'no_sertifikat', e.target.value)}
                                                         placeholder={isBuku ? 'Wajib Diisi (Kategori Buku)' : 'Wajib jika kategori Buku / Pabrik'}
@@ -633,6 +696,8 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                     <input
                                                         type="text"
                                                         required
+                                                        list="history_satuan"
+                                                        autoComplete="off"
                                                         value={item.satuan}
                                                         onChange={(e) => handleItemChange(index, 'satuan', e.target.value)}
                                                         placeholder="Pcs / Unit / Rim"
@@ -773,6 +838,17 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                         </button>
                     </div>
                 </form>
+
+                {/* Datalist history (legacy: history_merk, history_sertifikat, history_satuan) */}
+                <datalist id="history_merk">
+                    {historyMerk.map((v) => <option key={v} value={v} />)}
+                </datalist>
+                <datalist id="history_sertifikat">
+                    {historySertifikat.map((v) => <option key={v} value={v} />)}
+                </datalist>
+                <datalist id="history_satuan">
+                    {historySatuan.map((v) => <option key={v} value={v} />)}
+                </datalist>
             </div>
         </AppLayout>
     );

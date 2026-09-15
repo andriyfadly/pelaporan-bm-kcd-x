@@ -44,6 +44,10 @@ php artisan migrate --seed
 # - Akun Admin KCD: username `admin_kcd` (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
 # - Akun Operator Sekolah: username `[npsn]-admin` (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
 
+# 5b. (Opsional) Impor data legacy: dump transaksional + katalog kode barang
+# Letakkan file storage/bm-kcd-x.sql dan storage/db_inventaris.sql, lalu:
+php artisan app:migrasi-data-lama
+
 # 6. Jalankan build aset atau dev server
 npm run build
 # atau dev mode:

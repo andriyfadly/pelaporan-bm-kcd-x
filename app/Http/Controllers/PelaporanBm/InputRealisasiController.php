@@ -194,14 +194,16 @@ class InputRealisasiController extends Controller
         }
 
         // Ambil acuan
-        $acuan = Acuan::where('bulan', $bulan)
+        $acuanRows = Acuan::where('bulan', $bulan)
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
             ->where('kodering', $kodering)
-            ->first();
+            ->get();
 
-        if (! $acuan) {
+        if ($acuanRows->isEmpty()) {
             return back()->with('error', 'Target acuan dengan kodering tersebut tidak ditemukan.');
         }
+
+        $acuan = $acuanRows->first();
 
         // Ambil item SPJ yang dipilih
         $items = Spj::where('sekolah_id', $sekolahId)
@@ -211,6 +213,18 @@ class InputRealisasiController extends Controller
 
         if ($items->isEmpty()) {
             return back()->with('error', 'Data barang tidak valid.');
+        }
+
+        // Proteksi batas anggaran: total item yang dipilih tidak boleh melebihi sisa anggaran kodering
+        $totalPilihan = (float) $items->sum('nilai_perolehan');
+        $totalRealisasiSaatIni = (float) Realisasi::where('sekolah_id', $sekolahId)
+            ->where('bulan_realisasi', (string) $bulan)
+            ->where('kodering_belanja', $kodering)
+            ->sum('nilai_perolehan');
+        $sisaAnggaran = (float) $acuanRows->sum('nominal') - $totalRealisasiSaatIni;
+
+        if ($totalPilihan > $sisaAnggaran + 0.01) {
+            return back()->with('error', 'Gagal Simpan: Jumlah inputan Rekening '.$kodering.' (Rp '.number_format($totalPilihan, 0, ',', '.').') melebihi sisa anggaran acuan target (Rp '.number_format(max($sisaAnggaran, 0), 0, ',', '.').').');
         }
 
         DB::transaction(function () use ($items, $sekolahId, $kodering, $bulan, $acuan) {

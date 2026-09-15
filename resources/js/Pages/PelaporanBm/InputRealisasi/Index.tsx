@@ -1,6 +1,7 @@
 import { Head, router, Link, useForm } from '@inertiajs/react';
 import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import ConfirmDialog from '@/Components/ConfirmDialog';
 import {
     FileSpreadsheet,
     Plus,
@@ -45,6 +46,7 @@ export default function Index({
     statusKirim,
 }: Props) {
     const [expandedKodering, setExpandedKodering] = useState<string[]>([]);
+    const [showKirimConfirm, setShowKirimConfirm] = useState(false);
     const isReadOnly = isLocked || statusKirim === 'menunggu_approval' || statusKirim === 'disetujui';
 
     const { post, processing } = useForm({
@@ -62,9 +64,7 @@ export default function Index({
     const handleKirimLaporan = (e: React.FormEvent) => {
         e.preventDefault();
         if (!isAllCompleted) return;
-        if (confirm('Apakah Anda yakin ingin mengirimkan laporan realisasi bulan ini ke Admin KCD? Setelah dikirim data akan dikunci.')) {
-            post('/pelaporan-bm/input-realisasi/kirim-laporan');
-        }
+        setShowKirimConfirm(true);
     };
 
     return (
@@ -311,6 +311,16 @@ export default function Index({
                         )}
                     </div>
                 </div>
+
+                <ConfirmDialog
+                    isOpen={showKirimConfirm}
+                    onClose={() => setShowKirimConfirm(false)}
+                    onConfirm={() => post('/pelaporan-bm/input-realisasi/kirim-laporan')}
+                    title="Kirim Laporan"
+                    message="Apakah Anda yakin ingin mengirimkan laporan realisasi bulan ini ke Admin KCD? Setelah dikirim data akan dikunci."
+                    confirmText="Ya, Kirim"
+                    isDestructive={false}
+                />
             </div>
         </AppLayout>
     );

@@ -16,6 +16,7 @@ interface RealisasiItem {
     id: string;
     no_sp2d?: string;
     sumber_perolehan?: string;
+    kodering_belanja?: string;
     no_spk?: string;
     ba_no?: string;
     ba_tgl?: string;
@@ -32,9 +33,6 @@ interface RealisasiItem {
     nilai_perolehan: number;
     sekolah?: {
         nama_sekolah: string;
-    };
-    acuan?: {
-        kodering: string;
     };
 }
 
@@ -223,34 +221,36 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
                     <table className="w-full text-xs text-left text-slate-700 border-collapse">
                         <thead className="bg-[#f1f5f9] text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
-                            <tr>
-                                <th rowSpan={2} className="p-3 border-r border-slate-200 text-center w-10">No</th>
-                                <th rowSpan={2} className="p-3 border-r border-slate-200">No. SP2D</th>
-                                <th rowSpan={2} className="p-3 border-r border-slate-200">Sumber Perolehan</th>
-                                <th rowSpan={2} className="p-3 border-r border-slate-200">Kodering Belanja</th>
-                                <th rowSpan={2} className="p-3 border-r border-slate-200">No. SPK / Faktur</th>
-                                <th colSpan={4} className="p-2 border-r border-b border-slate-200 text-center">BA Penerimaan</th>
-                                <th rowSpan={2} className="p-3 border-r border-slate-200 text-center">Bln Realisasi</th>
-                                <th rowSpan={2} className="p-3 border-r border-slate-200">Kode Barang</th>
-                                <th colSpan={5} className="p-2 border-r border-b border-slate-200 text-center">Rincian Barang</th>
-                                <th rowSpan={2} className="p-3 text-right">Nilai Perolehan</th>
-                            </tr>
-                            <tr className="bg-[#e2e8f0]/60">
-                                <th className="p-2 border-r border-slate-200">No</th>
-                                <th className="p-2 border-r border-slate-200 text-center">Tgl</th>
-                                <th className="p-2 border-r border-slate-200 text-center">Bln</th>
-                                <th className="p-2 border-r border-slate-200 text-center">Thn</th>
-                                <th className="p-2 border-r border-slate-200">Nama Barang</th>
-                                <th className="p-2 border-r border-slate-200">Merk / Tipe</th>
-                                <th className="p-2 border-r border-slate-200 text-center">Satuan</th>
-                                <th className="p-2 border-r border-slate-200 text-center">Volume</th>
-                                <th className="p-2 border-r border-slate-200 text-right">Harga Satuan</th>
-                            </tr>
+                        <tr>
+                            <th rowSpan={2} className="p-3 border-r border-slate-200 text-center w-10">No</th>
+                            <th rowSpan={2} className="p-3 border-r border-slate-200">No. SP2D</th>
+                            <th rowSpan={2} className="p-3 border-r border-slate-200">Sumber Perolehan</th>
+                            <th rowSpan={2} className="p-3 border-r border-slate-200">Kodering Belanja</th>
+                            <th rowSpan={2} className="p-3 border-r border-slate-200">No. SPK / Faktur</th>
+                            <th colSpan={4} className="p-2 border-r border-b border-slate-200 text-center">BA Penerimaan</th>
+                            <th rowSpan={2} className="p-3 border-r border-slate-200 text-center">Bln Realisasi</th>
+                            <th rowSpan={2} className="p-3 border-r border-slate-200">Kode Barang</th>
+                            <th colSpan={7} className="p-2 border-r border-b border-slate-200 text-center">Rincian Barang</th>
+                            <th rowSpan={2} className="p-3 text-right">Nilai Perolehan</th>
+                        </tr>
+                        <tr className="bg-[#e2e8f0]/60">
+                            <th className="p-2 border-r border-slate-200">No</th>
+                            <th className="p-2 border-r border-slate-200 text-center">Tgl</th>
+                            <th className="p-2 border-r border-slate-200 text-center">Bln</th>
+                            <th className="p-2 border-r border-slate-200 text-center">Thn</th>
+                            <th className="p-2 border-r border-slate-200">Nama Barang</th>
+                            <th className="p-2 border-r border-slate-200">Merk / Tipe</th>
+                            <th className="p-2 border-r border-slate-200">No. Sertifikat</th>
+                            <th className="p-2 border-r border-slate-200">Ukuran</th>
+                            <th className="p-2 border-r border-slate-200 text-center">Satuan</th>
+                            <th className="p-2 border-r border-slate-200 text-center">Volume</th>
+                            <th className="p-2 border-r border-slate-200 text-right">Harga Satuan</th>
+                        </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {items.data.length === 0 ? (
                                 <tr>
-                                    <td colSpan={17} className="text-center py-12 text-slate-400">
+                                    <td colSpan={19} className="text-center py-12 text-slate-400">
                                         <FolderX className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                                         <p className="font-semibold text-slate-500">
                                             Tidak ditemukan data realisasi belanja modal.
@@ -276,7 +276,7 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                                                 {row.sumber_perolehan || '-'}
                                             </td>
                                             <td className="p-3 border-r border-slate-100 font-mono text-[11px]">
-                                                {row.acuan?.kodering || '-'}
+                                                {row.kodering_belanja || '-'}
                                             </td>
                                             <td className="p-3 border-r border-slate-100 font-mono text-[11px] text-blue-600 font-medium">
                                                 {row.no_spk || '-'}
@@ -304,6 +304,12 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                                             </td>
                                             <td className="p-3 border-r border-slate-100 text-slate-600">
                                                 {row.merk_tipe || '-'}
+                                            </td>
+                                            <td className="p-3 border-r border-slate-100 text-slate-600">
+                                                {row.no_sertifikat || '-'}
+                                            </td>
+                                            <td className="p-3 border-r border-slate-100 text-center text-slate-600">
+                                                {row.ukuran_bangunan || '-'}
                                             </td>
                                             <td className="p-3 border-r border-slate-100 text-center">
                                                 {row.satuan || '-'}

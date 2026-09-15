@@ -149,6 +149,9 @@ export default function Index({ items, bulan, isLocked, statusKirim }: Props) {
                             <span className="px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold font-mono">
                                 Total SPJ Bulan {bulanNames[bulan - 1]}: {groupedSpk.length} Berkas
                             </span>
+                            <span className="px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold font-mono">
+                                Total Barang: {items.length} Item
+                            </span>
                             {isReadOnly && (
                                 <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-bold border border-red-200">
                                     <Lock className="w-3.5 h-3.5" /> Terkunci
@@ -257,8 +260,13 @@ export default function Index({ items, bulan, isLocked, statusKirim }: Props) {
                                                             className="py-3 px-4 align-top border-r border-slate-200 bg-slate-50/50"
                                                         >
                                                             <div className="font-mono font-black text-slate-800 text-xs break-all">
-                                                                {group.no_spk}
+                                                                SPK:<br />{group.no_spk}
                                                             </div>
+                                                            {group.ba_tgl && (
+                                                                <div className="text-[11px] text-slate-500 mt-0.5">
+                                                                    Tgl: {new Date(group.ba_tgl).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                                </div>
+                                                            )}
                                                             <div className="text-[11px] text-slate-500 font-semibold mt-1">
                                                                 Sumber: <span className="text-blue-700 font-bold">{group.sumber_perolehan || '-'}</span>
                                                             </div>

@@ -17,7 +17,7 @@ Sekolah negeri (SMKN, SMAN, SLBN) di lingkungan Cabang Dinas Pendidikan Wilayah 
 
 | Role | Identifikasi | Kebutuhan Utama |
 |---|---|---|
-| **Operator Sekolah** | `user` (terikat `sekolah_id`) | Input SPK/barang, checklist barang realisasi, pantau progres target kodering acuan, ajukan approval bulanan ke KCD. |
+| **Operator Sekolah** | `user` (terikat `sekolah_id`) | Input SPK/barang, alokasi realisasi ke kodering acuan, pantau progres & kekurangan target kodering, ajukan approval bulanan ke KCD. |
 | **Admin KCD** | `admin` (tanpa `sekolah_id`) | Unggah pagu acuan sekolah, pantau kepatuhan lapor seluruh sekolah, verifikasi / kunci laporan, kelola master kode barang & pengguna. |
 
 ---
@@ -29,11 +29,12 @@ Sekolah negeri (SMKN, SMAN, SLBN) di lingkungan Cabang Dinas Pendidikan Wilayah 
 - **Sekolah**: Banner status laporan bulan sebelumnya, 4 kartu ringkasan belanja, dan tabel riwayat status lapor 12 bulan.
 
 ### F2: Manajemen SPJ & Input Realisasi
-- **Katalog SPJ**: Pengelompokan dokumen berdasarkan nomor SPK. Input item belanja fisik, penanda `is_realisasi`, dan tombol `Kirim Laporan`.
-- **Target Acuan Kerja (`?mode=realisasi`)**: Ringkasan per kodering, status selesai/kurang, dan tombol cepat `+ Input` yang otomatis memuat kodering terpilih.
+- **Katalog SPJ**: Pengelompokan dokumen berdasarkan nomor SPK, urut terbaru dulu, dengan pencarian instan.
+- **Form SPK Multi-Item**: Seksi dokumen (SP2D, SPK, BA) + accordion item barang dengan pencarian katalog pagu, draft autosave, dan datalist history.
+- **Input Realisasi (Target Acuan Kerja)**: Ringkasan per kodering (acuan vs realisasi vs kekurangan), tombol `+` alokasi item SPJ ke kodering (dibatasi sisa anggaran), dan tombol `Kirim Laporan` dengan validasi balance + kunci otomatis.
 
 ### F3: Data Realisasi & Cetak Laporan
-- **Data Realisasi**: Tabel agregasi seluruh barang dengan status `is_realisasi = 1`.
+- **Data Realisasi**: Tabel 19 kolom seluruh baris alokasi realisasi (sumber `pelaporan_bm_realisasi`) dengan filter barang/bulan/tahun dan ekspor CSV.
 - **Cetak 26 Kolom**: Pre-flight validation (mencegah unduh data kosong), modal progres simulasi unduh, dan ekspor CSV 26 kolom UTF-8 BOM.
 
 ### F4: Pengawasan & Penguncian (Admin KCD)

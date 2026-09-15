@@ -8,7 +8,12 @@ interface Props {
 }
 
 export default function PilihBulan({ bulanAwal }: Props) {
-    const defaultBulan = bulanAwal || new Date().getMonth() + 1;
+    // Legacy: ingat pilihan bulan terakhir via localStorage, fallback ke bulan berjalan
+    const bulanTersimpan = Number(localStorage.getItem('pilihan_bulan_user'));
+    const defaultBulan =
+        bulanTersimpan >= 1 && bulanTersimpan <= 12
+            ? bulanTersimpan
+            : (bulanAwal || new Date().getMonth() + 1);
     const [selectedBulan, setSelectedBulan] = useState(defaultBulan);
 
     const bulanList = [
@@ -18,6 +23,7 @@ export default function PilihBulan({ bulanAwal }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        localStorage.setItem('pilihan_bulan_user', String(selectedBulan));
         router.visit(`/pelaporan-bm/input-realisasi?bulan_realisasi=${selectedBulan}`);
     };
 

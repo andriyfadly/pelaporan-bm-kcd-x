@@ -26,7 +26,7 @@ app/
         DashboardController.php     # Logic dashboard Admin KCD vs Sekolah
         InputRealisasiController.php # Alokasi item SPJ ke kodering realisasi (simpan/edit/uncheck)
         KunciLaporanController.php  # Toggle kunci & status approval
-        RealisasiController.php     # Data realisasi (is_realisasi = 1)
+        RealisasiController.php     # Data realisasi (tabel pelaporan_bm_realisasi) + ekspor CSV
         RekapanController.php       # Rekapan kodering per sekolah
         SpjController.php           # Buku SPJ dokumen, form SPK multi-item, & item barang
   Models/
@@ -77,8 +77,18 @@ routes/
 3. **`Spj` (`pelaporan_bm_spj`)**:
    - Menyimpan transaksi dokumen SPK dan rincian belanja modal fisik.
    - Kolom: `no_spk`, `no_sp2d`, `sumber_perolehan`, `bulan_realisasi`, `kategori`, `ba_no`, `ba_tgl`, `kode_barang`, `nama_barang`, `jenis_aset`, `volume`, `harga_satuan`, `nilai_perolehan`, `is_realisasi`, `acuan_id`, `sekolah_id`.
-4. **`Acuan` (`pelaporan_bm_acuan`)**:
+   - `is_realisasi = true` + `acuan_id` terisi ketika item dialokasikan ke suatu kodering via Input Realisasi.
+4. **`Realisasi` (`pelaporan_bm_realisasi`)**:
+   - Snapshot baris realisasi per alokasi kodering (sumber data menu `/pelaporan-bm/realisasi`, identik legacy `realisasi_barang_sekolah`).
+   - Kolom: `spj_id`, `sekolah_id`, `acuan_id`, `kodering_belanja`, `bulan_realisasi`, salinan field dokumen & barang (SP2D, SPK, BA, kode/nama barang, merk, sertifikat, ukuran, satuan, volume, harga, nilai perolehan), `is_realisasi`, `id_realisasi_lama`.
+   - Baris dihapus otomatis (transaksi DB) ketika SPJ asalnya dihapus dari Buku SPJ.
+5. **`Acuan` (`pelaporan_bm_acuan`)**:
    - Target pagu anggaran kodering acuan yang diupload admin KCD (ternormalisasi via relasi sekolah).
    - Kolom: `sekolah_id`, `tanggal`, `kodering`, `bku`, `uraian`, `nominal`, `bulan`.
-5. **`KunciLaporan` (`pelaporan_bm_kunci_laporan`)**:
+6. **`KodeBarang` (`master_data_kode_barang`)**:
+   - Katalog kode barang standar pemerintah daerah (sumber pencarian form SPK).
+   - Kolom: `kode_barang` (unique), `uraian`, `kodering_aset`, `jenis_aset`, `umur_ekonomis`, `satuan`.
+   - Pencarian hanya mengembalikan kode leaf (kode tanpa turunan prefix), mereplikasi perilaku legacy.
+7. **`KunciLaporan` (`pelaporan_bm_kunci_laporan`)**:
    - Menyimpan status kunci laporan dan tahapan approval bulanan (`draft`, `menunggu_approval`, `disetujui`).
+   - `status_kunci = true` ATAU `status_kirim` ∈ {`menunggu_approval`, `disetujui`} ⇒ seluruh mutasi SPJ/realisasi bulan tsb diblokir (readonly).

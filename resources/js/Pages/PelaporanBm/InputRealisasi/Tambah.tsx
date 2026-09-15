@@ -1,6 +1,7 @@
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import React, { useState, useMemo } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import ConfirmDialog from '@/Components/ConfirmDialog';
 import {
     ArrowLeft,
     Search,
@@ -58,6 +59,7 @@ export default function Tambah({
 }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showUraian, setShowUraian] = useState(false);
+    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
     const { post, processing } = useForm({
@@ -127,10 +129,9 @@ export default function Tambah({
 
     const handleSubmit = () => {
         if (selectedItemIds.length === 0) {
-            alert('Pilih minimal satu item barang untuk direalisasikan.');
+            setShowEmptyAlert(true);
             return;
         }
-
         router.post(
             '/pelaporan-bm/input-realisasi/simpan',
             {
@@ -408,6 +409,16 @@ export default function Tambah({
                         </button>
                     </div>
                 </div>
+
+                <ConfirmDialog
+                    isOpen={showEmptyAlert}
+                    onClose={() => setShowEmptyAlert(false)}
+                    onConfirm={() => setShowEmptyAlert(false)}
+                    title="Belum Ada Item Dipilih"
+                    message="Pilih minimal satu item barang untuk direalisasikan."
+                    confirmText="Mengerti"
+                    isDestructive={false}
+                />
             </div>
         </AppLayout>
     );

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Master\KodeBarang;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Acuan;
 use App\Models\PelaporanBm\KunciLaporan;
@@ -94,7 +95,7 @@ class MigrasiDataLamaCommand extends Command
                     'bulan_realisasi' => (int) ($sp['bulan_realisasi'] ?? date('n')),
                     'no_spk' => $sp['no_spk'] ?? '-',
                     'ba_no' => $sp['ba_no'] ?? null,
-                    'ba_tgl' => ! empty($sp['ba_tgl']) ? $sp->ba_tgl ?? $sp['ba_tgl'] : null,
+                    'ba_tgl' => ! empty($sp['ba_tgl']) ? $sp['ba_tgl'] : null,
                     'kode_barang' => $sp['kode_barang'] ?? '-',
                     'nama_barang' => $sp['nama_barang'] ?? '-',
                     'jenis_aset' => $sp['jenis_aset'] ?? 'Peralatan dan Mesin',
@@ -166,9 +167,67 @@ class MigrasiDataLamaCommand extends Command
         }
         $this->info('Status Laporan dimigrasi: '.count($laporanLama));
 
+        // 7. Migrasi Katalog Kode Barang dari DB legacy MySQL (bukan dari dump SQL,
+        //    karena bm_kcd_x.sql hanya memuat DB transaksional belanja_modal)
+        $this->migrasiKodeBarang();
         $this->info('Semua data dari storage/bm-kcd-x.sql berhasil dimigrasikan!');
 
         return Command::SUCCESS;
+    }
+
+    private function migrasiKodeBarang(): void
+    {
+        $sqlPath = storage_path('db_inventaris.sql');
+        if (! File::exists($sqlPath)) {
+            $this->warn('File storage/db_inventaris.sql tidak ditemukan, katalog kode barang dilewati.');
+
+            return;
+        }
+
+        $this->info('Membaca katalog kode barang dari db_inventaris.sql...');
+        $sql = File::get($sqlPath);
+
+        // Kode barang di-dump dalam 27 batch INSERT terpisah; parse semuanya.
+        // Kolom: id, kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis
+        preg_match_all("/INSERT INTO `kode_barang`[^V]+VALUES\s*(.*?);\s*(?:\n|$)/s", $sql, $blokMatches);
+        if (empty($blokMatches[1])) {
+            $this->warn('Tabel kode_barang tidak ditemukan di db_inventaris.sql.');
+
+            return;
+        }
+
+        $payload = [];
+        $dilihat = [];
+        foreach ($blokMatches[1] as $blok) {
+            preg_match_all("/\((\d+),\s*'([^']*)',\s*'((?:[^'\\\\]|\\\\.)*)',\s*'([^']*)',\s*'([^']*)',\s*(\d+)\)/", $blok, $rows, PREG_SET_ORDER);
+
+            foreach ($rows as $r) {
+                $kode = trim($r[2]);
+                if ($kode === '' || str_starts_with($kode, '#') || isset($dilihat[$kode])) {
+                    continue;
+                }
+                $dilihat[$kode] = true;
+
+                $payload[] = [
+                    'kode_barang' => $kode,
+                    'uraian' => trim($r[3]) !== '' ? trim($r[3]) : '-',
+                    'kodering_aset' => trim($r[4]) !== '' ? trim($r[4]) : null,
+                    'jenis_aset' => trim($r[5]) !== '' ? trim($r[5]) : null,
+                    'umur_ekonomis' => (int) $r[6],
+                    'satuan' => null,
+                ];
+            }
+        }
+
+        foreach (array_chunk($payload, 500) as $chunk) {
+            KodeBarang::upsert(
+                $chunk,
+                ['kode_barang'],
+                ['uraian', 'kodering_aset', 'jenis_aset', 'umur_ekonomis', 'satuan']
+            );
+        }
+
+        $this->info('Katalog Kode Barang dimigrasi: '.KodeBarang::count());
     }
 
     /**

@@ -35,11 +35,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/spj/store-spk', [SpjController::class, 'storeSpk'])->name('spj.store-spk');
         Route::post('/spj', [SpjController::class, 'store'])->name('spj.store');
         Route::put('/spj/{spj}', [SpjController::class, 'update'])->name('spj.update');
-        Route::post('/spj/{spj}/toggle-realisasi', [SpjController::class, 'toggleRealisasi'])->name('spj.toggle-realisasi');
         Route::delete('/spj/{spj}', [SpjController::class, 'destroy'])->name('spj.destroy');
         Route::delete('/spj/spk/{no_spk}', [SpjController::class, 'destroySpk'])->name('spj.destroy-spk')->where('no_spk', '.*');
         Route::get('/cari-barang', [SpjController::class, 'cariBarang'])->name('cari-barang');
-        Route::post('/kirim-laporan', [SpjController::class, 'kirimLaporan'])->name('kirim-laporan');
         Route::get('/unduh', [SpjController::class, 'unduh'])->name('unduh');
 
         Route::get('/input-realisasi/pilih-bulan', [InputRealisasiController::class, 'pilihBulan'])->name('input-realisasi.pilih-bulan');

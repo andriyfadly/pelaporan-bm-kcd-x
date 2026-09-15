@@ -1,6 +1,6 @@
-import { useForm, Head, router } from '@inertiajs/react';
+import { useForm, Head } from '@inertiajs/react';
 import React, { useState, FormEventHandler } from 'react';
-import { KeyRound, Eye, EyeOff, ShieldAlert, LogOut } from 'lucide-react';
+import { KeyRound, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 
 export default function ChangePassword() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -15,10 +15,6 @@ export default function ChangePassword() {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post('/ubah-password');
-    };
-
-    const handleLogout = () => {
-        router.post('/logout');
     };
 
     return (
@@ -108,21 +104,13 @@ export default function ChangePassword() {
                         </div>
                     </div>
 
-                    <div className="pt-2 space-y-2">
+                    <div className="pt-2">
                         <button
                             type="submit"
                             disabled={processing}
                             className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl shadow-sm transition-all duration-200 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                         >
                             {processing ? 'Menyimpan...' : 'Simpan & Lanjutkan'}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={handleLogout}
-                            className="w-full py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                            <LogOut className="w-3.5 h-3.5" /> Keluar Akun
                         </button>
                     </div>
                 </form>

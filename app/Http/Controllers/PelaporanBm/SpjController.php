@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Master\KodeBarang;
 use App\Models\PelaporanBm\Acuan;
 use App\Models\PelaporanBm\KunciLaporan;
+use App\Models\PelaporanBm\Realisasi;
 use App\Models\PelaporanBm\Spj;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -43,7 +44,8 @@ class SpjController extends Controller
             $query->where('sekolah_id', $sekolahId);
         }
 
-        $items = $query->orderBy('no_spk')->get();
+        // Legacy data_barang.php: ORDER BY id DESC (terbaru dulu)
+        $items = $query->orderByDesc('created_at')->get();
 
         $isLocked = false;
         $statusKirim = 'draft';
@@ -224,11 +226,17 @@ class SpjController extends Controller
             }
 
             if ($isEdit) {
-                Spj::where('sekolah_id', $sekolahId)
+                $pruned = Spj::where('sekolah_id', $sekolahId)
                     ->where('no_spk', $noSpkLama)
                     ->where('bulan_realisasi', $bulan)
                     ->whereNotIn('id', $itemIdsKept)
-                    ->delete();
+                    ->get();
+
+                $prunedIds = $pruned->pluck('id')->all();
+                if ($prunedIds !== []) {
+                    Realisasi::whereIn('spj_id', $prunedIds)->delete();
+                    Spj::whereIn('id', $prunedIds)->delete();
+                }
             }
         });
 
@@ -262,12 +270,8 @@ class SpjController extends Controller
         ]);
 
         // Check lock status
-        $locked = KunciLaporan::where('sekolah_id', $sekolahId)
-            ->where('bulan', (string) $validated['bulan_realisasi'])
-            ->value('status_kunci');
-
-        if ($locked) {
-            return back()->with('error', 'Laporan bulan ini telah dikunci oleh dinas.');
+        if ($this->isLaporanTerkunci($sekolahId, (int) $validated['bulan_realisasi'])) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
         $validated['sekolah_id'] = $sekolahId;
@@ -278,6 +282,19 @@ class SpjController extends Controller
         return back()->with('success', 'Data SPJ berhasil disimpan.');
     }
 
+    private function isLaporanTerkunci(?string $sekolahId, int $bulan): bool
+    {
+        if (! $sekolahId) {
+            return false;
+        }
+
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)
+            ->where('bulan', (string) $bulan)
+            ->first();
+
+        return (bool) ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true));
+    }
+
     public function destroy(Spj $spj, Request $request): RedirectResponse
     {
         $user = $request->user();
@@ -286,15 +303,14 @@ class SpjController extends Controller
             abort(403, 'Tidak memiliki akses');
         }
 
-        $locked = KunciLaporan::where('sekolah_id', $spj->sekolah_id)
-            ->where('bulan', (string) $spj->bulan_realisasi)
-            ->value('status_kunci');
-
-        if ($locked) {
-            return back()->with('error', 'Laporan bulan ini terkunci.');
+        if ($this->isLaporanTerkunci($spj->sekolah_id, (int) $spj->bulan_realisasi)) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
-        $spj->delete();
+        DB::transaction(function () use ($spj) {
+            $spj->realisasi()->delete();
+            $spj->delete();
+        });
 
         return back()->with('success', 'Data item SPJ berhasil dihapus.');
     }
@@ -305,18 +321,26 @@ class SpjController extends Controller
         $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
-        $locked = KunciLaporan::where('sekolah_id', $sekolahId)
-            ->where('bulan', (string) $bulan)
-            ->value('status_kunci');
-
-        if ($locked) {
-            return back()->with('error', 'Laporan bulan ini terkunci.');
+        if ($this->isLaporanTerkunci($sekolahId, $bulan)) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
-        Spj::where('sekolah_id', $sekolahId)
-            ->where('bulan_realisasi', $bulan)
-            ->where('no_spk', $no_spk)
-            ->delete();
+        DB::transaction(function () use ($sekolahId, $bulan, $no_spk) {
+            $items = Spj::where('sekolah_id', $sekolahId)
+                ->where('bulan_realisasi', $bulan)
+                ->where('no_spk', $no_spk)
+                ->get();
+
+            $spjIds = $items->pluck('id')->all();
+            if ($spjIds !== []) {
+                Realisasi::whereIn('spj_id', $spjIds)->delete();
+            }
+
+            Spj::where('sekolah_id', $sekolahId)
+                ->where('bulan_realisasi', $bulan)
+                ->where('no_spk', $no_spk)
+                ->delete();
+        });
 
         return back()->with('success', 'Seluruh data dokumen SPK berhasil dihapus.');
     }
@@ -329,12 +353,8 @@ class SpjController extends Controller
             abort(403, 'Tidak memiliki akses');
         }
 
-        $locked = KunciLaporan::where('sekolah_id', $spj->sekolah_id)
-            ->where('bulan', (string) $spj->bulan_realisasi)
-            ->value('status_kunci');
-
-        if ($locked) {
-            return back()->with('error', 'Laporan bulan ini telah dikunci oleh dinas.');
+        if ($this->isLaporanTerkunci($spj->sekolah_id, (int) $spj->bulan_realisasi)) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
         $validated = $request->validate([
@@ -361,34 +381,6 @@ class SpjController extends Controller
         $spj->update($validated);
 
         return back()->with('success', 'Data SPJ berhasil diperbarui.');
-    }
-
-    public function toggleRealisasi(Spj $spj): RedirectResponse
-    {
-        $spj->update(['is_realisasi' => ! $spj->is_realisasi]);
-
-        return back()->with('success', 'Status realisasi berhasil diperbarui.');
-    }
-
-    public function kirimLaporan(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-        $sekolahId = $user->sekolah_id ?: $request->input('sekolah_id');
-        $bulan = (int) $request->input('bulan', date('n'));
-
-        if (! $sekolahId) {
-            return back()->with('error', 'Sekolah tidak ditemukan.');
-        }
-
-        KunciLaporan::updateOrCreate(
-            ['sekolah_id' => $sekolahId, 'bulan' => (string) $bulan],
-            [
-                'status_kirim' => 'menunggu_approval',
-                'dikirim_pada' => now(),
-            ]
-        );
-
-        return back()->with('success', 'Laporan bulan ini berhasil dikirim ke KCD untuk verifikasi.');
     }
 
     public function unduh(Request $request): StreamedResponse
@@ -436,26 +428,40 @@ class SpjController extends Controller
     public function cariBarang(Request $request): JsonResponse
     {
         $q = trim((string) $request->input('q', ''));
-        if (strlen($q) < 2) {
+        if ($q === '') {
             return response()->json([]);
         }
 
-        $masterResults = KodeBarang::select('kode_barang', 'uraian as nama_barang', 'jenis_aset', 'satuan')
-            ->where(function ($query) use ($q) {
-                $query->where('kode_barang', 'like', "%{$q}%")
-                    ->orWhere('uraian', 'like', "%{$q}%");
+        // Samakan perilaku legacy ajax_cari_barang.php:
+        // lowercase matching, escape wildcard LIKE, hanya kode leaf, limit 100
+        $keyword = mb_strtolower($q, 'UTF-8');
+        $escaped = addcslashes($keyword, '%_\\');
+        $searchParam = '%'.$escaped.'%';
+
+        $masterResults = KodeBarang::query()
+            ->where(function ($query) use ($searchParam) {
+                $query->whereRaw('LOWER(kode_barang) LIKE ?', [$searchParam])
+                    ->orWhereRaw('LOWER(uraian) LIKE ?', [$searchParam]);
             })
-            ->limit(10)
-            ->get();
+            ->whereNotExists(function ($sub) {
+                $sub->selectRaw(1)
+                    ->from('master_data_kode_barang as k2')
+                    ->whereColumn('k2.kode_barang', 'like', DB::raw("master_data_kode_barang.kode_barang || '%'"))
+                    ->whereColumn('k2.kode_barang', '!=', 'master_data_kode_barang.kode_barang');
+            })
+            ->orderBy('kode_barang')
+            ->limit(100)
+            ->get(['kode_barang', 'uraian as nama_barang', 'kodering_aset', 'jenis_aset', 'satuan']);
 
         if ($masterResults->isNotEmpty()) {
             return response()->json($masterResults);
         }
 
         $results = Spj::select('kode_barang', 'nama_barang', 'jenis_aset', 'satuan')
-            ->where(function ($query) use ($q) {
-                $query->where('kode_barang', 'like', "%{$q}%")
-                    ->orWhere('nama_barang', 'like', "%{$q}%");
+            ->when($request->user()->sekolah_id, fn ($q) => $q->where('sekolah_id', $request->user()->sekolah_id))
+            ->where(function ($query) use ($searchParam) {
+                $query->whereRaw('LOWER(kode_barang) LIKE ?', [$searchParam])
+                    ->orWhereRaw('LOWER(nama_barang) LIKE ?', [$searchParam]);
             })
             ->distinct()
             ->limit(10)

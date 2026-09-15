@@ -155,24 +155,12 @@ class PelaporanBmTest extends TestCase
             'nilai_perolehan' => 32000000,
         ]);
 
-        // Test toggle realisasi
+        // Test kirim laporan via input-realisasi (validasi balance: acuan belum terpenuhi)
         $this->actingAs($user)
-            ->post(route('pelaporan-bm.spj.toggle-realisasi', $spj))
-            ->assertRedirect();
-        $this->assertTrue((bool) $spj->fresh()->is_realisasi);
-
-        // Test kirim laporan
-        $this->actingAs($user)
-            ->post(route('pelaporan-bm.kirim-laporan'), [
-                'bulan' => 5,
+            ->post(route('pelaporan-bm.input-realisasi.kirim-laporan'), [
+                'bulan_realisasi' => 5,
             ])
-            ->assertRedirect();
-
-        $this->assertDatabaseHas('pelaporan_bm_kunci_laporan', [
-            'sekolah_id' => $sekolah->id,
-            'bulan' => '5',
-            'status_kirim' => 'menunggu_approval',
-        ]);
+            ->assertSessionHas('error');
 
         // Test unduh rekap
         $response = $this->actingAs($user)
@@ -407,10 +395,11 @@ class PelaporanBmTest extends TestCase
             'sekolah_id' => $sekolah->id,
         ]);
 
-        Spj::create([
+        Realisasi::create([
             'sekolah_id' => $sekolah->id,
+            'kodering_belanja' => '5.2.02.06.01.0001',
+            'bulan_realisasi' => '7',
             'no_spk' => 'SPK-REAL-01',
-            'bulan_realisasi' => 7,
             'kode_barang' => '1.3.2.05',
             'nama_barang' => 'Monitor LED 24 Inch',
             'jenis_aset' => 'Peralatan dan Mesin',
