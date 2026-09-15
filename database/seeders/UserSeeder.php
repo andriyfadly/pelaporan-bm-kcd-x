@@ -6,17 +6,34 @@ use App\Models\Master\Sekolah;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::firstOrCreate(
+        Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'admin_kcd', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'operator_sekolah', 'guard_name' => 'web']);
+
+        $dev = User::updateOrCreate(
+            ['username' => 'developer'],
+            [
+                'name' => 'Developer / Super Admin',
+                'password' => Hash::make('#SidiptaBeuKCD10'),
+                'is_active' => true,
+                'password_changed_at' => now(),
+            ]
+        );
+        $dev->syncRoles(['super_admin']);
+
+        $admin = User::updateOrCreate(
             ['username' => 'admin_kcd'],
             [
                 'name' => 'Administrator KCD X',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('#SidiptaBeuKCD10'),
                 'is_active' => true,
+                'password_changed_at' => now(),
             ]
         );
         $admin->syncRoles(['admin_kcd']);

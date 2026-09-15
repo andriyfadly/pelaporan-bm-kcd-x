@@ -40,8 +40,9 @@ php artisan key:generate
 # 5. Jalankan migrasi & seeder
 php artisan migrate --seed
 # Seeder otomatis menghasilkan:
-# - Akun Admin KCD: username `admin_kcd` (password: `password`)
-# - Akun Operator Sekolah: username `[npsn]-admin` (password: `#SidiptaKCD10`, wajib ubah password perdana)
+# - Akun Developer: username `developer` (password: `#SidiptaBeuKCD10`, role: `super_admin`)
+# - Akun Admin KCD: username `admin_kcd` (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
+# - Akun Operator Sekolah: username `[npsn]-admin` (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
 
 # 6. Jalankan build aset atau dev server
 npm run build

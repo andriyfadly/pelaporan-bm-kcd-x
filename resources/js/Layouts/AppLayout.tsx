@@ -32,7 +32,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const currentPath = window.location.pathname;
 
     const roles: string[] = user?.roles || [];
-    const isAdmin = roles.includes('admin_kcd') || !user?.sekolah_id;
+    const isAdmin = roles.includes('admin_kcd') || roles.includes('super_admin') || !user?.sekolah_id;
 
     const isMasterActive =
         currentPath.startsWith('/admin/kode-barang') ||

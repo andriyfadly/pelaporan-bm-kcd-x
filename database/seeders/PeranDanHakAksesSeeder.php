@@ -32,6 +32,9 @@ class PeranDanHakAksesSeeder extends Seeder
         $adminKcd = Role::firstOrCreate(['name' => 'admin_kcd', 'guard_name' => 'web']);
         $adminKcd->syncPermissions($hakAkses);
 
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        $superAdmin->syncPermissions(Permission::all());
+
         $operatorSekolah = Role::firstOrCreate(['name' => 'operator_sekolah', 'guard_name' => 'web']);
         $operatorSekolah->syncPermissions([
             'lihat-laporan-bm',

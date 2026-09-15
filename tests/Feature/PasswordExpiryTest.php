@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Master\Sekolah;
 use App\Models\User;
+use Database\Seeders\PeranDanHakAksesSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -19,6 +20,7 @@ class PasswordExpiryTest extends TestCase
         parent::setUp();
         Role::firstOrCreate(['name' => 'operator_sekolah']);
         Role::firstOrCreate(['name' => 'admin_kcd']);
+        Role::firstOrCreate(['name' => 'super_admin']);
     }
 
     public function test_operator_with_null_password_changed_at_is_redirected_to_change_password(): void
@@ -140,5 +142,23 @@ class PasswordExpiryTest extends TestCase
         $this->assertTrue(Hash::check('#SidiptaKCD10', $operator->password));
         $this->assertNull($operator->password_changed_at);
         $this->assertTrue($operator->isPasswordExpired());
+    }
+
+    public function test_user_seeder_creates_developer_and_admin_kcd_with_correct_passwords(): void
+    {
+        $this->seed(PeranDanHakAksesSeeder::class);
+        $this->seed(UserSeeder::class);
+
+        $admin = User::where('username', 'admin_kcd')->first();
+        $this->assertNotNull($admin);
+        $this->assertTrue(Hash::check('#SidiptaBeuKCD10', $admin->password));
+        $this->assertFalse($admin->isPasswordExpired());
+
+        $dev = User::where('username', 'developer')->first();
+        $this->assertNotNull($dev);
+        $this->assertTrue(Hash::check('#SidiptaBeuKCD10', $dev->password));
+        $this->assertTrue($dev->hasRole('super_admin'));
+        $this->assertFalse($dev->hasRole('admin_kcd'));
+        $this->assertFalse($dev->isPasswordExpired());
     }
 }
