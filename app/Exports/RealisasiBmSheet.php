@@ -5,7 +5,7 @@ namespace App\Exports;
 use App\Models\Master\KodeBarang;
 use App\Models\PelaporanBm\Realisasi;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -13,8 +13,14 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
+class RealisasiBmSheet implements Export, WithEvents, WithTitle
 {
+    /** @var array<int, array<int, mixed>> */
+    private array $dataRows = [];
+
+    /** @var array<string, int> */
+    private array $maxLen = [];
+
     /**
      * @param  Collection<int, Realisasi>  $records
      */
@@ -22,34 +28,23 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
         private Collection $records,
         private string $namaSekolah,
         private int $filterTahun,
-    ) {}
+    ) {
+        $this->buildData();
+    }
 
     public function title(): string
     {
         return 'Laporan Belanja Modal';
     }
 
-    public function collection(): Collection
+    private function buildData(): void
     {
-        $rows = collect([
-            ['DAFTAR PENGADAAN BARANG DARI BELANJA MODAL'],
-            [strtoupper($this->namaSekolah)],
-            ['PERIODE TAHUN '.($this->filterTahun > 0 ? $this->filterTahun : date('Y'))],
-            [],
-            ['*CATATAN HURUF KOLOM:', '', '', ': Wajib Diisi secara Manual'],
-            ['', '', '', ': Terisi Otomatis'],
-            [],
-            $this->headerBaris1(),
-            $this->headerBaris2(),
-        ]);
-
         $batasMaster = KodeBarang::count() + 1;
         if ($batasMaster < 2) {
             $batasMaster = 2;
         }
 
         $no = 1;
-        $maxLen = [];
         foreach ($this->records as $row) {
             $tg = $bl = $thn = '';
             if (! empty($row->ba_tgl) && $row->ba_tgl !== '0000-00-00') {
@@ -58,8 +53,7 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
                 $bl = (int) date('m', $time);
                 $thn = date('Y', $time);
             }
-            // ponytail: baris data mulai Excel row 10 (9 baris judul+header di atas)
-            $excelRow = $rows->count() + 1;
+            $excelRow = 9 + $no;
             $valB = $this->safeCell($row->no_sp2d);
             $valC = $this->safeCell($row->sumber_perolehan);
             $valD = $this->safeCell($row->kodering_belanja);
@@ -71,7 +65,7 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
             $valN = $this->safeCell($row->ukuran_bangunan);
             $valO = $this->safeCell($row->satuan);
             $valY = $this->safeCell($row->sekolah?->nama_sekolah ?? $this->namaSekolah);
-            $rows->push([
+            $this->dataRows[] = [
                 $no++,
                 $valB,
                 $valC,
@@ -97,63 +91,96 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
                 '=IF(AND($V'.$excelRow.'=0)," ",(($V'.$excelRow.'/$U'.$excelRow.')*(13-H'.$excelRow.')/12))',
                 '=IF(Q'.$excelRow.'<=1000000,R'.$excelRow.',0)',
                 $valY,
-            ]);
+            ];
             foreach (['B' => $valB, 'C' => $valC, 'D' => $valD, 'E' => $valE, 'F' => $valF, 'J' => $valJ, 'L' => $valL, 'M' => $valM, 'N' => $valN, 'O' => $valO, 'Y' => $valY] as $col => $val) {
-                $maxLen[$col] = max($maxLen[$col] ?? 0, strlen((string) $val));
+                $this->maxLen[$col] = max($this->maxLen[$col] ?? 0, strlen((string) $val));
             }
         }
-
-        $this->maxLen = $maxLen;
-
-        return $rows;
     }
-
-    /** @var array<string, int> */
-    private array $maxLen = [];
 
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $lastRow = max(10, $this->records->count() + 9);
+                $lastRow = max(10, count($this->dataRows) + 9);
 
                 $sheet->setShowGridlines(true);
 
+                $sheet->setCellValue('A1', 'DAFTAR PENGADAAN BARANG DARI BELANJA MODAL');
                 $sheet->mergeCells('A1:Y1');
+                $sheet->setCellValue('A2', strtoupper($this->safeCell($this->namaSekolah)));
                 $sheet->mergeCells('A2:Y2');
+                $sheet->setCellValue('A3', 'PERIODE TAHUN '.($this->filterTahun > 0 ? $this->filterTahun : date('Y')));
                 $sheet->mergeCells('A3:Y3');
-                $sheet->mergeCells('A8:A9');
-                $sheet->mergeCells('B8:B9');
-                $sheet->mergeCells('C8:C9');
-                $sheet->mergeCells('D8:D9');
-                $sheet->mergeCells('E8:E9');
-                $sheet->mergeCells('F8:I8');
-                $sheet->mergeCells('J8:J9');
-                $sheet->mergeCells('K8:R8');
-                $sheet->mergeCells('S8:S9');
-                $sheet->mergeCells('T8:T9');
-                $sheet->mergeCells('U8:U9');
-                $sheet->mergeCells('V8:W8');
-                $sheet->mergeCells('X8:X9');
-                $sheet->mergeCells('Y8:Y9');
 
                 $sheet->getStyle('A1:A3')->applyFromArray([
-                    'font' => ['bold' => true, 'size' => 11, 'name' => 'Calibri'],
+                    'font' => ['bold' => true, 'color' => ['rgb' => '000000'], 'size' => 11, 'name' => 'Calibri'],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 ]);
                 $sheet->getStyle('A2')->getFont()->getColor()->setRGB('FF0000');
+
+                $sheet->setCellValue('A5', '*CATATAN HURUF KOLOM:');
+                $sheet->setCellValue('D5', ': Wajib Diisi secara Manual');
+                $sheet->setCellValue('D6', ': Terisi Otomatis');
                 $sheet->getStyle('C5')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FF0000');
                 $sheet->getStyle('C6')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('000000');
 
+                $sheet->setCellValue('A8', 'No');
+                $sheet->mergeCells('A8:A9');
+                $sheet->setCellValue('B8', 'No. SP2D');
+                $sheet->mergeCells('B8:B9');
+                $sheet->setCellValue('C8', 'Sumber Perolehan');
+                $sheet->mergeCells('C8:C9');
+                $sheet->setCellValue('D8', 'Kodering Belanja');
+                $sheet->mergeCells('D8:D9');
+                $sheet->setCellValue('E8', 'No. SPK / Faktur / Kuitansi');
+                $sheet->mergeCells('E8:E9');
+                $sheet->setCellValue('F8', 'BA Penerimaan');
+                $sheet->mergeCells('F8:I8');
+                $sheet->setCellValue('J8', 'Kode Barang');
+                $sheet->mergeCells('J8:J9');
+                $sheet->setCellValue('K8', 'Rincian Barang');
+                $sheet->mergeCells('K8:R8');
+                $sheet->setCellValue('S8', 'Kodering Aset');
+                $sheet->mergeCells('S8:S9');
+                $sheet->setCellValue('T8', 'Nama Rekening Aset');
+                $sheet->mergeCells('T8:T9');
+                $sheet->setCellValue('U8', 'Umur Ekonomis');
+                $sheet->mergeCells('U8:U9');
+                $sheet->setCellValue('V8', 'Intrakomptabel');
+                $sheet->mergeCells('V8:W8');
+                $sheet->setCellValue('X8', 'Ekstrakomptabel');
+                $sheet->mergeCells('X8:X9');
+                $sheet->setCellValue('Y8', 'Nama Sekolah');
+                $sheet->mergeCells('Y8:Y9');
+                $sheet->setCellValue('F9', 'No');
+                $sheet->setCellValue('G9', 'Tgl');
+                $sheet->setCellValue('H9', 'Bln');
+                $sheet->setCellValue('I9', 'Thn');
+                $sheet->setCellValue('K9', 'Nama Barang');
+                $sheet->setCellValue('L9', 'Merk/Tipe');
+                $sheet->setCellValue('M9', 'No. Sertifikat/ No. Rangka/ No. Mesin');
+                $sheet->setCellValue('N9', 'Ukuran (Gedung/ Bangunan)');
+                $sheet->setCellValue('O9', 'Satuan');
+                $sheet->setCellValue('P9', 'Volume');
+                $sheet->setCellValue('Q9', 'Harga Satuan');
+                $sheet->setCellValue('R9', 'Nilai Perolehan');
+                $sheet->setCellValue('V9', 'Nilai Perolehan');
+                $sheet->setCellValue('W9', 'Beban Penyusutan');
+
                 $sheet->getStyle('A8:Y9')->applyFromArray([
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DDEBF7']],
-                    'font' => ['size' => 11, 'name' => 'Calibri'],
+                    'font' => ['bold' => false, 'size' => 11, 'name' => 'Calibri'],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
                 ]);
                 foreach (['C8', 'D8', 'E8', 'F8', 'F9', 'G9', 'H9', 'I9', 'J8', 'L9', 'M9', 'N9', 'O9', 'P9', 'Q9', 'Y8'] as $cell) {
                     $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FF0000');
+                }
+
+                if (! empty($this->dataRows)) {
+                    $sheet->fromArray($this->dataRows, null, 'A10');
                 }
 
                 if ($lastRow >= 10) {
@@ -170,7 +197,7 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
 
                 $sheet->setCellValue('R7', "=SUM(R10:R{$lastRow})");
                 $sheet->getStyle('R7')->getNumberFormat()->setFormatCode('_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)');
-                $sheet->getStyle('R7')->getFont()->setSize(11)->setName('Calibri')->setBold(true);
+                $sheet->getStyle('R7')->getFont()->setSize(11)->setName('Calibri')->setBold(true)->getColor()->setRGB('000000');
                 $sheet->getStyle('R7')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('92D050');
                 $sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('000000');
 
@@ -201,21 +228,5 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
         }
 
         return $str;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function headerBaris1(): array
-    {
-        return ['No', 'No. SP2D', 'Sumber Perolehan', 'Kodering Belanja', 'No. SPK / Faktur / Kuitansi', 'BA Penerimaan', '', '', '', 'Kode Barang', 'Rincian Barang', '', '', '', '', '', '', '', 'Kodering Aset', 'Nama Rekening Aset', 'Umur Ekonomis', 'Intrakomptabel', '', 'Ekstrakomptabel', 'Nama Sekolah'];
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function headerBaris2(): array
-    {
-        return ['', '', '', '', '', 'No', 'Tgl', 'Bln', 'Thn', '', 'Nama Barang', 'Merk/Tipe', 'No. Sertifikat/ No. Rangka/ No. Mesin', 'Ukuran (Gedung/ Bangunan)', 'Satuan', 'Volume', 'Harga Satuan', 'Nilai Perolehan', '', '', '', 'Nilai Perolehan', 'Beban Penyusutan', '', ''];
     }
 }
