@@ -1,7 +1,7 @@
 # Strategi Testing
 
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
-> sebelum merge. Status: 66 passed / 318 assertions.
+> sebelum merge. Status: 77 passed / 399 assertions.
 
 ## 1. Perintah
 
@@ -24,11 +24,12 @@ npx tsc --noEmit                     # type-check frontend
 - Export XLSX diverifikasi baca-balik cell (header `A8`, data `A10`,
   VLOOKUP dinamis, `SUM`), bukan sekadar status unduhan.
 
-## 3. Matriks Cakupan (12 Feature + 4 Unit)
+## 3. Matriks Cakupan (13 Feature + 4 Unit)
 
 | File | Menjamin |
 |------|----------|
 | `PelaporanBmTest` | Alur SPJ multi-item, realisasi, export 204/cookie, cetak pre-flight |
+| `ExportDanLogLanjutanTest` | Baca-balik isi XLSX (`A8`/`A10`/VLOOKUP/`SUM`), cookie `complete`/`empty`, 204 tanpa log, kirim sukses, kunci/buka/verifikasi, logout, ganti password, tambah/ubah/hapus user, import + hapus-massal acuan, sinkron/hapus-item/hapus SPK, auto-log acuan & kode barang, unduh SPJ |
 | `ActivityLogTest` | Auto-log create/update/destroy + `old`, login, causer via HTTP, viewer 200/403, password tak bocor |
 | `SecurityHardeningTest` | Cross-tenant 403, bulan terkunci diblokir, rate-limit |
 | `RekapanDanKunciTest` | Rekapan, toggle kunci, status draft→disetujui |
