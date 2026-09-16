@@ -6,7 +6,7 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
 
 ## 1. Middleware & Guard Otentikasi
 - `auth`: Wajib sesi aktif (Laravel Fortify).
-- **Cloudflare Turnstile**: Login (`POST /login`) wajib token `cf-turnstile-response` yang diverifikasi server-side via `app/Services/TurnstileService.php`. Aktif bila `TURNSTILE_ENABLED=true` + site/secret key terisi. Bila nonaktif, verifikasi dilewati di `local`/testing saja.
+- **Cloudflare Turnstile**: Login (`POST /login`) wajib token `cf-turnstile-response` yang diverifikasi server-side via `app/Services/TurnstileService.php`. Aktif bila `TURNSTILE_ENABLED=true` + site/secret key terisi. Bila nonaktif, verifikasi dilewati di `local`/testing saja. Hasil siteverify di-memo per-request (token sekali pakai; pipeline Fortify memanggil `authenticateUsing` dua kali per login). Parameter `remoteip` sengaja tidak dikirim — di balik proxy/serve lokal IP server tak cocok dengan IP browser sehingga Cloudflare menolak token valid dengan `timeout-or-duplicate`.
 - `EnsurePasswordNotExpired`: Memeriksa apakah password operator sekolah kedaluwarsa (login pertama / > 90 hari). Memaksa redirect ke `/ubah-password`.
 - Pembatasan Role:
   - Admin KCD: `auth()->user()->hasRole('admin_kcd')`

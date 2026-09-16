@@ -17,7 +17,7 @@ class TurnstileService
             && filled(config('services.turnstile.secret_key'));
     }
 
-    public function verify(?string $token, ?string $ip = null): bool
+    public function verify(?string $token): bool
     {
         if (! $this->isEnabled()) {
             Log::warning('Turnstile dilewati/ditolak: konfigurasi tidak lengkap', [
@@ -36,13 +36,21 @@ class TurnstileService
             return false;
         }
 
+        // ponytail: Fortify memanggil authenticateUsing dua kali per login (RedirectIfTwoFactorAuthenticatable
+        // + AttemptToAuthenticate); token Turnstile sekali pakai, jadi hasil siteverify perlu di-memo per-request.
+        $memoKey = 'turnstile_verified_'.hash('sha256', $token);
+        $request = request();
+
+        if ($request?->attributes->has($memoKey)) {
+            return (bool) $request->attributes->get($memoKey);
+        }
+
         try {
             $response = Http::asForm()->timeout(8)->post(
                 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
                 [
                     'secret' => config('services.turnstile.secret_key'),
                     'response' => $token,
-                    'remoteip' => $ip,
                 ]
             );
 
@@ -58,6 +66,8 @@ class TurnstileService
                     'token_prefix' => substr((string) $token, 0, 12),
                 ]);
             }
+
+            $request?->attributes->set($memoKey, $success);
 
             return $success;
         } catch (\Throwable $e) {

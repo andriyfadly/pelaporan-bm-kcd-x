@@ -89,7 +89,7 @@ composer test-coverage
    TURNSTILE_SECRET_KEY=xxx
    TURNSTILE_ENABLED=true
    ```
-   Ambil Site Key + Secret Key dari dashboard Cloudflare → Turnstile, daftarkan domain produksi (dan lokal bila perlu). Tanpa key / `TURNSTILE_ENABLED=false`, widget login disembunyikan dan verifikasi dilewati di `local`/testing.
+   Ambil Site Key + Secret Key dari dashboard Cloudflare → Turnstile, daftarkan domain produksi (dan lokal bila perlu; `127.0.0.1` harus masuk daftar hostname widget). Tanpa key / `TURNSTILE_ENABLED=false`, widget login disembunyikan dan verifikasi dilewati di `local`/testing.
 3. Optimasi cache:
    ```bash
    composer install --no-dev --optimize-autoloader

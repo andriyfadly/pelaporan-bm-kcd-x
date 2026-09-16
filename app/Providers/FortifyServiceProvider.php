@@ -36,7 +36,7 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::authenticateUsing(function (Request $request) {
             $turnstile = app(TurnstileService::class);
-            if (! $turnstile->verify($request->input('cf-turnstile-response'), $request->ip())) {
+            if (! $turnstile->verify($request->input('cf-turnstile-response'))) {
                 throw ValidationException::withMessages([
                     Fortify::username() => 'Verifikasi keamanan gagal. Silakan coba lagi.',
                 ]);
