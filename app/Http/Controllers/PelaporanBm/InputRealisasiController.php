@@ -360,10 +360,22 @@ class InputRealisasiController extends Controller
             return back()->with('error', 'Belum bisa kirim! Seluruh target acuan realisasi harus terpenuhi (balance) terlebih dahulu.');
         }
 
-        KunciLaporan::updateOrCreate(
+        $kunci = KunciLaporan::updateOrCreate(
             ['sekolah_id' => $sekolahId, 'bulan' => $bulan],
             ['status_kirim' => 'menunggu_approval', 'status_kunci' => true]
         );
+
+        activity('sistem')
+            ->performedOn($kunci)
+            ->event('kirim-laporan')
+            ->withProperties([
+                'ringkasan' => "Kirim laporan bulan {$bulan} (Rp ".number_format($totalRealisasi, 0, ',', '.').')',
+                'sekolah_id' => $sekolahId,
+                'bulan' => $bulan,
+                'total_acuan' => $totalAcuan,
+                'total_realisasi' => $totalRealisasi,
+            ])
+            ->log('kirim-laporan');
 
         return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
             ->with('success', 'Laporan realisasi berhasil dikirim ke Admin KCD.');

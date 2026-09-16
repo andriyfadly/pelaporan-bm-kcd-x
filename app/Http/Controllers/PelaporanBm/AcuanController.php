@@ -9,7 +9,6 @@ use App\Models\PelaporanBm\Acuan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -119,12 +118,15 @@ class AcuanController extends Controller
         $jumlah = (int) (clone $query)->count();
         $query->delete();
 
-        Log::warning('acuan.destroy_all', [
-            'aktor' => $request->user()->id,
-            'sekolah_id' => $request->user()->sekolah_id,
-            'bulan' => $bulan,
-            'jumlah' => $jumlah,
-        ]);
+        activity('sistem')
+            ->event('hapus-massal-acuan')
+            ->withProperties([
+                'ringkasan' => ($bulan ? "Hapus {$jumlah} acuan bulan {$bulan}" : "Hapus {$jumlah} acuan (semua bulan)"),
+                'sekolah_id' => $sekolahId,
+                'bulan' => $bulan,
+                'jumlah' => $jumlah,
+            ])
+            ->log('hapus-massal-acuan');
 
         $pesan = $bulan ? "Data acuan untuk bulan {$bulan} berhasil dikosongkan." : 'Semua data acuan berhasil dikosongkan.';
 
@@ -199,13 +201,16 @@ class AcuanController extends Controller
             $pesan .= " {$skipped} baris dilewati karena tidak valid.";
         }
 
-        Log::info('acuan.import', [
-            'aktor' => $request->user()->id,
-            'sekolah_id' => $sekolahId,
-            'bulan' => $bulanInput,
-            'berhasil' => $count,
-            'dilewati' => $skipped,
-        ]);
+        activity('sistem')
+            ->event('import-acuan')
+            ->withProperties([
+                'ringkasan' => "Impor acuan: {$count} berhasil, {$skipped} dilewati",
+                'sekolah_id' => $sekolahId,
+                'bulan' => $bulanInput,
+                'berhasil' => $count,
+                'dilewati' => $skipped,
+            ])
+            ->log('import-acuan');
 
         return back()->with('success', $pesan);
     }

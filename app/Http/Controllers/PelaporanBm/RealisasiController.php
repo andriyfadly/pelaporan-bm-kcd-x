@@ -95,6 +95,17 @@ class RealisasiController extends Controller
 
         $filename = 'Daftar_Pengadaan_Belanja_Modal_Bulan_'.($filterBulan > 0 ? $filterBulan : 'All').'_'.($filterTahun > 0 ? $filterTahun : date('Y')).'.xlsx';
 
+        activity('sistem')
+            ->event('unduh-realisasi')
+            ->withProperties([
+                'ringkasan' => "Unduh {$filename} ({$records->count()} baris)",
+                'sekolah_id' => $user->sekolah_id,
+                'bulan' => $filterBulan,
+                'tahun' => $filterTahun,
+                'jumlah' => $records->count(),
+            ])
+            ->log('unduh-realisasi');
+
         $response = Excel::download(
             new RealisasiBmExport($records, $namaSekolah, $filterTahun),
             $filename

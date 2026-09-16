@@ -7,7 +7,6 @@ use App\Models\Master\Sekolah;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -37,16 +36,24 @@ class UserController extends Controller
             'role' => 'required|string|in:admin_kcd,operator_sekolah,bendahara_sekolah',
         ]);
 
-        $user = User::create([
+        $user = activity()->withoutLogging(fn () => User::create([
             'name' => $validated['name'],
             'username' => $validated['username'],
             'password' => $validated['password'],
             'sekolah_id' => $validated['sekolah_id'] ?? null,
-        ]);
+        ]));
 
         $user->assignRole($validated['role']);
 
-        Log::info('user.created', ['aktor' => $request->user()->id, 'target' => $user->id, 'role' => $validated['role']]);
+        activity('sistem')
+            ->performedOn($user)
+            ->event('tambah-user')
+            ->withProperties([
+                'ringkasan' => "Tambah user {$user->username} ({$validated['role']})",
+                'sekolah_id' => $user->sekolah_id,
+                'role' => $validated['role'],
+            ])
+            ->log('tambah-user');
 
         return back()->with('success', 'User berhasil ditambahkan.');
     }
@@ -81,7 +88,7 @@ class UserController extends Controller
             $data['password'] = $validated['password'];
         }
 
-        $user->update($data);
+        activity()->withoutLogging(fn () => $user->update($data));
 
         if (! empty($validated['role'])) {
             $roleName = match ($validated['role']) {
@@ -92,7 +99,15 @@ class UserController extends Controller
             $user->syncRoles([$roleName]);
         }
 
-        Log::info('user.updated', ['aktor' => $request->user()->id, 'target' => $user->id, 'role' => $validated['role'] ?? null]);
+        activity('sistem')
+            ->performedOn($user)
+            ->event('ubah-user')
+            ->withProperties([
+                'ringkasan' => "Ubah user {$user->username}".(! empty($validated['role']) ? " ({$validated['role']})" : ''),
+                'sekolah_id' => $user->sekolah_id,
+                'role' => $validated['role'] ?? null,
+            ])
+            ->log('ubah-user');
 
         return back()->with('success', 'Data user berhasil diperbarui!');
     }
@@ -107,9 +122,18 @@ class UserController extends Controller
             return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri yang sedang digunakan!');
         }
 
-        $user->delete();
+        $username = $user->username;
+        $sekolahId = $user->sekolah_id;
+        activity()->withoutLogging(fn () => $user->delete());
 
-        Log::warning('user.deleted', ['aktor' => auth()->id(), 'target' => $user->id, 'username' => $user->username]);
+        activity('sistem')
+            ->event('hapus-user')
+            ->withProperties([
+                'ringkasan' => "Hapus user {$username}",
+                'sekolah_id' => $sekolahId,
+                'username' => $username,
+            ])
+            ->log('hapus-user');
 
         return back()->with('success', 'User berhasil dihapus!');
     }

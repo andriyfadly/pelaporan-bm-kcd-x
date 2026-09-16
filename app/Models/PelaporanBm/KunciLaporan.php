@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class KunciLaporan extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, LogsActivity;
 
     protected $table = 'pelaporan_bm_kunci_laporan';
 
@@ -33,6 +35,15 @@ class KunciLaporan extends Model
             'dikunci_pada' => 'datetime',
             'dikirim_pada' => 'datetime',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('sistem')
+            ->logOnly(['sekolah_id', 'bulan', 'tahun', 'status_kunci', 'status_kirim', 'dikunci_oleh'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 
     public function sekolah(): BelongsTo

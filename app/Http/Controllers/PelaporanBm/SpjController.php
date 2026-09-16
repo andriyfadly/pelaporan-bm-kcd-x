@@ -231,7 +231,8 @@ class SpjController extends Controller
                         // Sync snapshot realisasi (identik legacy proses_simpan_barang.php:
                         // edit SPJ ikut memperbarui baris realisasi yang teralokasi).
                         // kodering_belanja/acuan_id/bulan alokasi TIDAK disentuh.
-                        Realisasi::where('spj_id', $existing->id)->update([
+                        // Query-builder update bypass auto-log trait: catat ringkasan manual bila tersentuh.
+                        $synced = Realisasi::where('spj_id', $existing->id)->update([
                             'no_sp2d' => $itemPayload['no_sp2d'],
                             'sumber_perolehan' => $itemPayload['sumber_perolehan'],
                             'no_spk' => $itemPayload['no_spk'],
@@ -248,6 +249,17 @@ class SpjController extends Controller
                             'harga_satuan' => $itemPayload['harga_satuan'],
                             'nilai_perolehan' => $nilaiPerolehan,
                         ]);
+                        if ($synced > 0) {
+                            activity('sistem')
+                                ->event('sinkron-realisasi-spk')
+                                ->withProperties([
+                                    'ringkasan' => "Sinkron {$synced} baris realisasi dari SPK {$validated['no_spk']}",
+                                    'sekolah_id' => $sekolahId,
+                                    'no_spk' => $validated['no_spk'],
+                                    'jumlah' => $synced,
+                                ])
+                                ->log('sinkron-realisasi-spk');
+                        }
 
                         continue;
                     }
@@ -266,8 +278,21 @@ class SpjController extends Controller
 
                 $prunedIds = $pruned->pluck('id')->all();
                 if ($prunedIds !== []) {
+                    $prunedCount = count($prunedIds);
                     Realisasi::whereIn('spj_id', $prunedIds)->delete();
                     Spj::whereIn('id', $prunedIds)->delete();
+
+                    // Query-builder delete bypass auto-log trait: catat ringkasan manual.
+                    activity('sistem')
+                        ->event('hapus-item-spk')
+                        ->withProperties([
+                            'ringkasan' => "Hapus {$prunedCount} item SPK {$noSpkLama} bulan {$bulan}",
+                            'sekolah_id' => $sekolahId,
+                            'no_spk' => $noSpkLama,
+                            'bulan' => $bulan,
+                            'jumlah' => $prunedCount,
+                        ])
+                        ->log('hapus-item-spk');
                 }
             }
         });
@@ -367,12 +392,14 @@ class SpjController extends Controller
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
-        DB::transaction(function () use ($sekolahId, $bulan, $no_spk) {
+        $jumlah = 0;
+        DB::transaction(function () use ($sekolahId, $bulan, $no_spk, &$jumlah) {
             $items = Spj::where('sekolah_id', $sekolahId)
                 ->where('bulan_realisasi', $bulan)
                 ->where('no_spk', $no_spk)
                 ->get();
 
+            $jumlah = $items->count();
             $spjIds = $items->pluck('id')->all();
             if ($spjIds !== []) {
                 Realisasi::whereIn('spj_id', $spjIds)->delete();
@@ -383,6 +410,18 @@ class SpjController extends Controller
                 ->where('no_spk', $no_spk)
                 ->delete();
         });
+
+        // Query-builder delete bypass auto-log trait: catat ringkasan manual.
+        activity('sistem')
+            ->event('hapus-spk')
+            ->withProperties([
+                'ringkasan' => "Hapus dokumen SPK {$no_spk} bulan {$bulan} ({$jumlah} item)",
+                'sekolah_id' => $sekolahId,
+                'no_spk' => $no_spk,
+                'bulan' => $bulan,
+                'jumlah' => $jumlah,
+            ])
+            ->log('hapus-spk');
 
         return back()->with('success', 'Seluruh data dokumen SPK berhasil dihapus.');
     }
@@ -451,9 +490,20 @@ class SpjController extends Controller
             return response()->noContent(204)->withCookie(cookie('download_status', 'empty', 1, '/'));
         }
 
+        $filename = "rekap_bm_bulan_{$bulan}.xlsx";
+        activity('sistem')
+            ->event('unduh-spj')
+            ->withProperties([
+                'ringkasan' => "Unduh {$filename} ({$items->count()} baris)",
+                'sekolah_id' => $sekolahId,
+                'bulan' => $bulan,
+                'jumlah' => $items->count(),
+            ])
+            ->log('unduh-spj');
+
         $response = Excel::download(
             new SpjRekapExport($items),
-            "rekap_bm_bulan_{$bulan}.xlsx"
+            $filename
         );
 
         $response->headers->setCookie(cookie('download_status', 'complete', 1, '/'));

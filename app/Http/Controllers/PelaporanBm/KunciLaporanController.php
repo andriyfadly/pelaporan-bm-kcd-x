@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\PelaporanBm\KunciLaporan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class KunciLaporanController extends Controller
 {
@@ -29,12 +28,16 @@ class KunciLaporanController extends Controller
 
         $statusText = $kunci->status_kunci ? 'dikunci' : 'dibuka kuncinya';
 
-        Log::info('kunci_laporan.toggle', [
-            'aktor' => $request->user()->id,
-            'sekolah_id' => $request->input('sekolah_id'),
-            'bulan' => $request->input('bulan'),
-            'status_kunci' => $kunci->status_kunci,
-        ]);
+        activity('sistem')
+            ->performedOn($kunci)
+            ->event($kunci->status_kunci ? 'kunci-laporan' : 'buka-kunci-laporan')
+            ->withProperties([
+                'ringkasan' => "Laporan bulan {$kunci->bulan} ".($kunci->status_kunci ? 'dikunci' : 'dibuka kuncinya'),
+                'sekolah_id' => $kunci->sekolah_id,
+                'bulan' => $kunci->bulan,
+                'status_kunci' => $kunci->status_kunci,
+            ])
+            ->log($kunci->status_kunci ? 'kunci-laporan' : 'buka-kunci-laporan');
 
         return back()->with('success', "Laporan bulan {$request->input('bulan')} berhasil {$statusText}.");
     }
@@ -63,12 +66,16 @@ class KunciLaporanController extends Controller
         }
         $kunci->save();
 
-        Log::info('kunci_laporan.update_status', [
-            'aktor' => $request->user()->id,
-            'sekolah_id' => $request->input('sekolah_id'),
-            'bulan' => $request->input('bulan'),
-            'status_kirim' => $statusKirim,
-        ]);
+        activity('sistem')
+            ->performedOn($kunci)
+            ->event('verifikasi-laporan')
+            ->withProperties([
+                'ringkasan' => "Status laporan bulan {$kunci->bulan} → {$statusKirim}",
+                'sekolah_id' => $kunci->sekolah_id,
+                'bulan' => $kunci->bulan,
+                'status_kirim' => $statusKirim,
+            ])
+            ->log('verifikasi-laporan');
 
         return back()->with('success', "Status laporan berhasil diperbarui menjadi {$statusKirim}.");
     }

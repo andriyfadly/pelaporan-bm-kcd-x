@@ -19,6 +19,9 @@ class MigrasiDataLamaCommand extends Command
 
     public function handle(): int
     {
+        // Migrasi massal legacy bukan aktivitas user: matikan auto-log model.
+        activity()->disableLogging();
+
         $sqlPath = storage_path('bm-kcd-x.sql');
         if (! File::exists($sqlPath)) {
             $sqlPath = storage_path('bm_kcd_x.sql');

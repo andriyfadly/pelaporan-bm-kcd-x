@@ -40,6 +40,16 @@ class PasswordExpiredController extends Controller
             'password_changed_at' => now(),
         ])->save();
 
+        activity('sistem')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->event('ganti-password')
+            ->withProperties([
+                'ringkasan' => 'Ganti password: '.$user->username,
+                'sekolah_id' => $user->sekolah_id,
+            ])
+            ->log('ganti-password');
+
         return redirect()->route('dashboard')->with('success', 'Password berhasil diperbarui.');
     }
 }

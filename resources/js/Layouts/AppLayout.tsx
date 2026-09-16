@@ -33,6 +33,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
     const roles: string[] = user?.roles || [];
     const isAdmin = roles.includes('admin_kcd') || roles.includes('super_admin') || !user?.sekolah_id;
+    const isSuperAdmin = roles.includes('super_admin');
 
     const isMasterActive =
         currentPath.startsWith('/admin/kode-barang') ||
@@ -163,6 +164,17 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                         >
                                             Kelola Users
                                         </Link>
+                                        {isSuperAdmin && (
+                                            <Link
+                                                href="/admin/log-aktivitas"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/admin/log-aktivitas')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Log Aktivitas
+                                            </Link>
+                                        )}
                                     </div>
                                 )}
                             </div>

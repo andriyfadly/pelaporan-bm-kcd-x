@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\KodeBarangController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\PasswordExpiredController;
@@ -74,6 +75,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/user', [UserController::class, 'store'])->middleware('permission:kelola-user')->name('user.store');
         Route::put('/user/{user}', [UserController::class, 'update'])->middleware('permission:kelola-user')->name('user.update');
         Route::delete('/user/{user}', [UserController::class, 'destroy'])->middleware('permission:kelola-user')->name('user.destroy');
+
+        Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])
+            ->middleware(['role:super_admin', 'permission:lihat-log-aktivitas'])
+            ->name('log-aktivitas.index');
 
         Route::get('/kode-barang', [KodeBarangController::class, 'index'])->name('kode-barang.index');
         Route::post('/kode-barang', [KodeBarangController::class, 'store'])->name('kode-barang.store');

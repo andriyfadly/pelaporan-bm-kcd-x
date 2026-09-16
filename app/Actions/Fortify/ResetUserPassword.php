@@ -25,8 +25,18 @@ class ResetUserPassword implements ResetsUserPasswords
             'password' => $this->passwordRules(),
         ])->validate();
 
-        $user->forceFill([
+        activity()->withoutLogging(fn () => $user->forceFill([
             'password' => Hash::make($input['password']),
-        ])->save();
+        ])->save());
+
+        activity('sistem')
+            ->causedByAnonymous()
+            ->performedOn($user)
+            ->event('reset-password')
+            ->withProperties([
+                'ringkasan' => 'Reset password: '.$user->username,
+                'sekolah_id' => $user->sekolah_id,
+            ])
+            ->log('reset-password');
     }
 }

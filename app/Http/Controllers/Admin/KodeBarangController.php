@@ -110,6 +110,14 @@ class KodeBarangController extends Controller
             }
         });
 
+        activity('sistem')
+            ->event('import-kode-barang')
+            ->withProperties([
+                'ringkasan' => "Impor kode barang: {$count} baris",
+                'jumlah' => $count,
+            ])
+            ->log('import-kode-barang');
+
         return back()->with('success', "Berhasil mengimpor {$count} data ke database!");
     }
 

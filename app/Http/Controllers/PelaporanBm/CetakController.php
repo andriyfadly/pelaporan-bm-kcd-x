@@ -116,6 +116,17 @@ class CetakController extends Controller
             ?? $items->first()?->sekolah?->nama_sekolah
             ?? 'SEMUA SEKOLAH';
 
+        activity('sistem')
+            ->event('unduh-cetak')
+            ->withProperties([
+                'ringkasan' => "Unduh {$filename} ({$items->count()} baris)",
+                'sekolah_id' => $request->user()->sekolah_id,
+                'bulan' => $bulan,
+                'tahun' => $tahun,
+                'jumlah' => $items->count(),
+            ])
+            ->log('unduh-cetak');
+
         $response = Excel::download(
             new CetakBmExport($items, $namaSekolah, $bulan, $tahun),
             $filename
