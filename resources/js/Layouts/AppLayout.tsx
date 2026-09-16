@@ -164,28 +164,40 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                         >
                                             Kelola Users
                                         </Link>
-                                        {isSuperAdmin && (
-                                            <>
-                                            <Link
-                                                href="/admin/log-aktivitas"
-                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/admin/log-aktivitas')
-                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
-                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                                    }`}
-                                            >
-                                                Log Aktivitas
-                                            </Link>
-                                            <a
-                                                href="/admin/log-error"
-                                                className="block px-3 py-2 text-[13.5px] rounded-lg transition text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium"
-                                            >
-                                                Log Error
-                                            </a>
-                                            </>
-                                        )}
                                     </div>
                                 )}
                             </div>
+
+                            {isSuperAdmin && (
+                                <>
+                                    {!collapsed && (
+                                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-2">
+                                            Monitoring
+                                        </div>
+                                    )}
+
+                                    <Link
+                                        href="/admin/log-aktivitas"
+                                        className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${currentPath.startsWith('/admin/log-aktivitas')
+                                                ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
+                                                : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                                            }`}
+                                        title={collapsed ? 'Log Aktivitas' : undefined}
+                                    >
+                                        <ClipboardList className="w-5 h-5 shrink-0" />
+                                        {!collapsed && <span>Log Aktivitas</span>}
+                                    </Link>
+
+                                    <a
+                                        href="/admin/log-error"
+                                        className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]"
+                                        title={collapsed ? 'Log Error' : undefined}
+                                    >
+                                        <FileSpreadsheet className="w-5 h-5 shrink-0" />
+                                        {!collapsed && <span>Log Error</span>}
+                                    </a>
+                                </>
+                            )}
 
                             {!collapsed && (
                                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-2">
