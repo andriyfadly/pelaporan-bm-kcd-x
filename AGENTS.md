@@ -78,14 +78,20 @@ Gunakan komponen bersama yang telah tersedia sebelum membuat kode UI baru:
 ## Project Documentation (`docs/`)
 
 Dokumentasi sistem proyek dikelola di dalam direktori `docs/`:
-- `docs/index.md`: Ringkasan sistem, daftar isi, dan perbandingan peran (Admin KCD vs Operator Sekolah).
-- `docs/prd.md`: Product Requirements Document (latar belakang, personas, feature scope F1-F5, dan acceptance criteria).
-- `docs/user-guide.md`: Panduan operasional untuk Admin KCD dan Operator Sekolah.
-- `docs/setup.md`: Petunjuk instalasi lokal, verifikasi kualitas, dan deployment produksi.
-- `docs/architecture.md`: Detail arsitektur teknis, tech stack (Laravel 12, Inertia React, TypeScript), struktur direktori, dan skema data.
-- `docs/modules.md`: Alur fungsional modul (Dashboard Admin & Sekolah, Katalog SPJ vs Realisasi, Cetak 26 Kolom, Master Data).
+- `docs/index.md`: Ringkasan sistem, daftar isi, dan perbandingan peran (super_admin, Admin KCD, Operator/Bendahara Sekolah).
+- `docs/prd.md`: Product Requirements Document (latar belakang, personas, feature scope F1-F9, dan acceptance criteria).
+- `docs/architecture.md`: Detail arsitektur teknis, tech stack (Laravel 13, Inertia React, TypeScript), pola kunci, dan keputusan desain.
+- `docs/design.md`: Design system & panduan UI/UX (token warna, komponen, pola UX).
+- `docs/database.md`: Diagram relasi, kamus tabel, dan konvensi skema (PostgreSQL).
 - `docs/api.md`: Spesifikasi rute, controller, middleware, dan kontrak data.
+- `docs/modules.md`: Alur fungsional modul (Dashboard Admin & Sekolah, Katalog SPJ vs Realisasi, Cetak 26 Kolom, Master Data).
+- `docs/security.md`: Matriks RBAC, isolasi tenant, audit trail, dan checklist rilis.
+- `docs/testing.md`: Strategi testing, perintah, dan matriks cakupan test.
+- `docs/setup.md`: Petunjuk instalasi lokal dan verifikasi kualitas.
+- `docs/deployment.md`: Deployment produksi, backup, dan troubleshooting.
+- `docs/user-guide.md`: Panduan operasional untuk Admin KCD dan Operator Sekolah.
 - `docs/guidelines.md`: Panduan pengembang, standar testing (PHPUnit coverage >= 80%), kode (Pint), dan aturan kerja.
+- `docs/glossary.md`: Istilah BM, SPJ, kunci laporan, dan log aktivitas.
 
 ## Aturan Penulisan Path (Larangan Absolute Path)
 

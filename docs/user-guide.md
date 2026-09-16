@@ -71,3 +71,18 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 1. Buka menu **Rekapan Sekolah** (`/pelaporan-bm/rekapan`).
 2. Teliti perbandingan acuan belanja vs realisasi item SPJ masing-masing sekolah.
 3. Klik tombol **Kunci Laporan** untuk mengesahkan data bulan tersebut dan mencegah perubahan data susulan dari pihak sekolah.
+
+---
+
+## 4. Log Aktivitas (khusus Super Admin)
+
+Menu **Log Aktivitas** (`/admin/log-aktivitas`) hanya terlihat untuk role
+`super_admin`. Berisi jejak audit seluruh sistem: pembuatan/ubah/hapus data
+(SPJ, realisasi, acuan, kode barang, user, kunci laporan), login/logout,
+ganti password, kirim & verifikasi laporan, import, dan unduhan.
+
+1. Buka menu **Log Aktivitas** di grup Master Data.
+2. Saring dengan filter: aksi (event), entitas, sekolah, rentang tanggal,
+   atau kata kunci ringkasan.
+3. Klik **Lihat perubahan** pada baris untuk membuka diff sebelum/sesudah
+   (before/after) perubahan data.
