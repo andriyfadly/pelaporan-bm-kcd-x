@@ -435,7 +435,7 @@ class SpjController extends Controller
         return back()->with('success', 'Data SPJ berhasil diperbarui.');
     }
 
-    public function unduh(Request $request): BinaryFileResponse
+    public function unduh(Request $request): BinaryFileResponse|\Illuminate\Http\Response
     {
         $sekolahId = $this->resolveSekolahId($request);
         $bulan = (int) ($request->input('bulan') ?: date('n'));
@@ -447,10 +447,18 @@ class SpjController extends Controller
 
         $items = $query->orderBy('no_spk')->get();
 
-        return Excel::download(
+        if ($items->isEmpty()) {
+            return response()->noContent(204)->withCookie(cookie('download_status', 'empty', 1, '/'));
+        }
+
+        $response = Excel::download(
             new SpjRekapExport($items),
             "rekap_bm_bulan_{$bulan}.xlsx"
         );
+
+        $response->headers->setCookie(cookie('download_status', 'complete', 1, '/'));
+
+        return $response;
     }
 
     public function cariBarang(Request $request): JsonResponse

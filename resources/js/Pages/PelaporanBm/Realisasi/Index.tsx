@@ -90,6 +90,15 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
         router.get('/pelaporan-bm/realisasi');
     };
 
+    const [showEmpty, setShowEmpty] = useState(false);
+
+    const handleUnduh = (e: React.MouseEvent) => {
+        if (items.total === 0) {
+            e.preventDefault();
+            setShowEmpty(true);
+        }
+    };
+
     const unduhUrl = `/pelaporan-bm/realisasi/unduh?${new URLSearchParams({
         filter_barang: filterBarang,
         filter_bulan: filterBulan,
@@ -183,6 +192,7 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                         </button>
                         <a
                             href={unduhUrl}
+                            onClick={handleUnduh}
                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm transition"
                             title="Download Excel Sesuai Filter"
                         >
@@ -338,6 +348,26 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                     </div>
                 )}
             </div>
+
+            {showEmpty && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full text-center shadow-2xl border border-rose-100">
+                        <h3 className="text-base font-bold text-rose-600 uppercase tracking-wide mb-2">
+                            Data Tidak Ditemukan
+                        </h3>
+                        <p className="text-sm text-slate-600 leading-relaxed mb-6">
+                            Maaf, tidak ditemukan data realisasi untuk filter yang dipilih.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setShowEmpty(false)}
+                            className="w-full py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition"
+                        >
+                            Tutup Notifikasi
+                        </button>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

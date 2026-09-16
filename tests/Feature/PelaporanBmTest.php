@@ -69,7 +69,7 @@ class PelaporanBmTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('pelaporan-bm.realisasi.unduh'))
-            ->assertOk();
+            ->assertNoContent(204);
 
         // Admin without sekolah_id accessing cetak
         $admin = User::create([

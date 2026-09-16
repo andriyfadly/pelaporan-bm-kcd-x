@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\Master\KodeBarang;
 use App\Models\PelaporanBm\Realisasi;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -42,7 +43,13 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
             $this->headerBaris2(),
         ]);
 
+        $batasMaster = KodeBarang::count() + 1;
+        if ($batasMaster < 2) {
+            $batasMaster = 2;
+        }
+
         $no = 1;
+        $maxLen = [];
         foreach ($this->records as $row) {
             $tg = $bl = $thn = '';
             if (! empty($row->ba_tgl) && $row->ba_tgl !== '0000-00-00') {
@@ -53,37 +60,56 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
             }
             // ponytail: baris data mulai Excel row 10 (9 baris judul+header di atas)
             $excelRow = $rows->count() + 1;
+            $valB = $this->safeCell($row->no_sp2d);
+            $valC = $this->safeCell($row->sumber_perolehan);
+            $valD = $this->safeCell($row->kodering_belanja);
+            $valE = $this->safeCell($row->no_spk);
+            $valF = $this->safeCell($row->ba_no);
+            $valJ = $this->safeCell(trim((string) $row->kode_barang));
+            $valL = $this->safeCell($row->merk_tipe);
+            $valM = $this->safeCell($row->no_sertifikat);
+            $valN = $this->safeCell($row->ukuran_bangunan);
+            $valO = $this->safeCell($row->satuan);
+            $valY = $this->safeCell($row->sekolah?->nama_sekolah ?? $this->namaSekolah);
             $rows->push([
                 $no++,
-                $row->no_sp2d ?? '',
-                $row->sumber_perolehan ?? '',
-                $row->kodering_belanja ?? '',
-                $row->no_spk ?? '',
-                $row->ba_no ?? '',
+                $valB,
+                $valC,
+                $valD,
+                $valE,
+                $valF,
                 $tg,
                 $bl,
                 $thn,
-                trim((string) $row->kode_barang),
-                '=IFERROR(VLOOKUP(J'.$excelRow.',\'KODE BARANG\'!$A$2:$E$100000,2,FALSE),"")',
-                $row->merk_tipe ?? '',
-                $row->no_sertifikat ?? '',
-                $row->ukuran_bangunan ?? '',
-                $row->satuan ?? '',
+                $valJ,
+                '=IFERROR(VLOOKUP(J'.$excelRow.',\'KODE BARANG\'!$A$2:$E$'.$batasMaster.',2,FALSE),"")',
+                $valL,
+                $valM,
+                $valN,
+                $valO,
                 (int) ($row->volume ?? 0),
                 (float) ($row->harga_satuan ?? 0),
                 '=P'.$excelRow.'*Q'.$excelRow,
-                '=IFERROR(VLOOKUP(J'.$excelRow.',\'KODE BARANG\'!$A$2:$E$100000,3,FALSE),"")',
-                '=IFERROR(VLOOKUP(J'.$excelRow.',\'KODE BARANG\'!$A$2:$E$100000,4,FALSE),"")',
-                '=IFERROR(VLOOKUP(J'.$excelRow.',\'KODE BARANG\'!$A$2:$E$100000,5,FALSE),0)',
+                '=IFERROR(VLOOKUP(J'.$excelRow.',\'KODE BARANG\'!$A$2:$E$'.$batasMaster.',3,FALSE),"")',
+                '=IFERROR(VLOOKUP(J'.$excelRow.',\'KODE BARANG\'!$A$2:$E$'.$batasMaster.',4,FALSE),"")',
+                '=IFERROR(VLOOKUP(J'.$excelRow.',\'KODE BARANG\'!$A$2:$E$'.$batasMaster.',5,FALSE),0)',
                 '=R'.$excelRow,
                 '=IF(AND($V'.$excelRow.'=0)," ",(($V'.$excelRow.'/$U'.$excelRow.')*(13-H'.$excelRow.')/12))',
                 '=IF(Q'.$excelRow.'<=1000000,R'.$excelRow.',0)',
-                $row->sekolah?->nama_sekolah ?? $this->namaSekolah,
+                $valY,
             ]);
+            foreach (['B' => $valB, 'C' => $valC, 'D' => $valD, 'E' => $valE, 'F' => $valF, 'J' => $valJ, 'L' => $valL, 'M' => $valM, 'N' => $valN, 'O' => $valO, 'Y' => $valY] as $col => $val) {
+                $maxLen[$col] = max($maxLen[$col] ?? 0, strlen((string) $val));
+            }
         }
+
+        $this->maxLen = $maxLen;
 
         return $rows;
     }
+
+    /** @var array<string, int> */
+    private array $maxLen = [];
 
     public function registerEvents(): array
     {
@@ -91,6 +117,8 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
                 $lastRow = max(10, $this->records->count() + 9);
+
+                $sheet->setShowGridlines(true);
 
                 $sheet->mergeCells('A1:Y1');
                 $sheet->mergeCells('A2:Y2');
@@ -146,14 +174,33 @@ class RealisasiBmSheet implements FromCollection, WithEvents, WithTitle
                 $sheet->getStyle('R7')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('92D050');
                 $sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('000000');
 
-                $sheet->getColumnDimension('A')->setWidth(5);
+                $sheet->getColumnDimension('A')->setAutoSize(false)->setWidth(5);
                 foreach (range('B', 'Y') as $col) {
-                    $sheet->getColumnDimension($col)->setWidth(in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y']) ? 16 : 14);
+                    $maxLen = in_array($col, ['K', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']) ? 14 : ($this->maxLen[$col] ?? 0);
+                    $finalWidth = $maxLen + 4;
+                    $minWidth = in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y']) ? 16 : 11;
+                    if ($finalWidth < $minWidth) {
+                        $finalWidth = $minWidth;
+                    }
+                    $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth($finalWidth);
                 }
 
                 $sheet->freezePane('F10');
             },
         ];
+    }
+
+    private function safeCell(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        $str = (string) $value;
+        if (preg_match('/^[\=\+\-\@\t\r]/', $str)) {
+            return "'".$str;
+        }
+
+        return $str;
     }
 
     /**

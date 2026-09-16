@@ -87,7 +87,7 @@ class CetakController extends Controller
         return response()->json(['total_rows' => $count]);
     }
 
-    public function unduh(Request $request): BinaryFileResponse
+    public function unduh(Request $request): BinaryFileResponse|\Illuminate\Http\Response
     {
         $bulan = (int) $request->input('bulan', date('n'));
         $tahun = (int) $request->input('tahun', date('Y'));
@@ -105,17 +105,24 @@ class CetakController extends Controller
             $query->where('sekolah_id', $request->user()->sekolah_id);
         }
 
-        $items = $query->orderBy('sekolah_id')
-            ->orderBy('ba_tgl')
-            ->get();
+        $items = $query->get()
+            ->sortBy(fn ($r) => [$r->sekolah?->nama_sekolah ?? '', $r->ba_tgl ?? '', $r->id])->values();
+
+        if ($items->isEmpty()) {
+            return response()->noContent(204)->withCookie(cookie('download_status', 'empty', 1, '/'));
+        }
 
         $namaSekolah = $request->user()->sekolah?->nama_sekolah
             ?? $items->first()?->sekolah?->nama_sekolah
             ?? 'SEMUA SEKOLAH';
 
-        return Excel::download(
+        $response = Excel::download(
             new CetakBmExport($items, $namaSekolah, $bulan, $tahun),
             $filename
         );
+
+        $response->headers->setCookie(cookie('download_status', 'complete', 1, '/'));
+
+        return $response;
     }
 }

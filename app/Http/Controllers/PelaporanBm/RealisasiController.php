@@ -77,10 +77,16 @@ class RealisasiController extends Controller
         ]);
     }
 
-    public function unduh(Request $request): BinaryFileResponse
+    public function unduh(Request $request): BinaryFileResponse|\Illuminate\Http\Response
     {
-        // Legacy data_realisasi.php: laporan diurut ASC, satu file .xlsx
-        $records = $this->applyFilters($request)->orderBy('ba_tgl')->orderBy('id')->get();
+        // Legacy data_realisasi.php: laporan diurut ASC, satu file .xlsx;
+        // data kosong -> 204 + cookie download_status=empty (tanpa file)
+        $records = $this->applyFilters($request)->orderBy('ba_tgl')->orderBy('id')->get()
+            ->sortBy(fn ($r) => [$r->sekolah?->nama_sekolah ?? '', $r->ba_tgl ?? '', $r->id])->values();
+
+        if ($records->isEmpty()) {
+            return response()->noContent(204)->withCookie(cookie('download_status', 'empty', 1, '/'));
+        }
 
         $user = $request->user();
         $namaSekolah = $user->sekolah?->nama_sekolah ?? $records->first()?->sekolah?->nama_sekolah ?? 'SEMUA SEKOLAH';
@@ -89,9 +95,13 @@ class RealisasiController extends Controller
 
         $filename = 'Daftar_Pengadaan_Belanja_Modal_Bulan_'.($filterBulan > 0 ? $filterBulan : 'All').'_'.($filterTahun > 0 ? $filterTahun : date('Y')).'.xlsx';
 
-        return Excel::download(
+        $response = Excel::download(
             new RealisasiBmExport($records, $namaSekolah, $filterTahun),
             $filename
         );
+
+        $response->headers->setCookie(cookie('download_status', 'complete', 1, '/'));
+
+        return $response;
     }
 }
