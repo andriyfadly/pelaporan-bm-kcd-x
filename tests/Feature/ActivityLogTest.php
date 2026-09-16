@@ -133,6 +133,43 @@ class ActivityLogTest extends TestCase
         $this->assertArrayNotHasKey('password', $changes);
     }
 
+    public function test_causer_terisi_via_http(): void
+    {
+        $admin = $this->buatSuperAdmin();
+        Activity::query()->delete();
+
+        // Login via form memicu listener CatatLoginLogout dengan causer terisi.
+        $this->post('/login', ['username' => 'super_audit', 'password' => 'password'])->assertRedirect();
+
+        $login = Activity::inLog('sistem')->forEvent('login')->latest('id')->first();
+        $this->assertNotNull($login);
+        $this->assertEquals($admin->id, $login->causer_id);
+        $this->assertEquals(User::class, $login->causer_type);
+        $this->assertEquals('super_audit', $login->causer->username);
+
+        // Auto-log model via HTTP terautentikasi ikut terisi causer-nya.
+        $this->actingAs($admin)->post(route('pelaporan-bm.spj.store'), [
+            'no_spk' => 'SPK-CAUSER',
+            'bulan_realisasi' => 5,
+            'kode_barang' => '1.3.2.05',
+            'nama_barang' => 'Laptop',
+            'jenis_aset' => 'Peralatan dan Mesin',
+            'volume' => 1,
+            'harga_satuan' => 5000000,
+        ])->assertRedirect();
+
+        $spj = Spj::where('no_spk', 'SPK-CAUSER')->first();
+        $created = Activity::inLog('sistem')->forEvent('created')
+            ->where('subject_type', Spj::class)->where('subject_id', $spj->id)->first();
+        $this->assertNotNull($created);
+        $this->assertEquals($admin->id, $created->causer_id);
+
+        // Filter viewer (sekolah & pencarian) tetap 200.
+        $sekolah = Sekolah::create(['nama_sekolah' => 'SMK CAUSER', 'kota_kab' => 'Bandung']);
+        $this->actingAs($admin)->get(route('admin.log-aktivitas.index', ['sekolah_id' => $sekolah->id]))->assertOk();
+        $this->actingAs($admin)->get(route('admin.log-aktivitas.index', ['q' => 'SPK-CAUSER']))->assertOk();
+    }
+
     public function test_viewer_hanya_super_admin(): void
     {
         $super = $this->buatSuperAdmin();
