@@ -61,6 +61,7 @@ export default function Tambah({
     const [searchQuery, setSearchQuery] = useState('');
     const [showUraian, setShowUraian] = useState(false);
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
+    const [showOverBudget, setShowOverBudget] = useState(false);
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
     const { post, processing } = useForm({
@@ -128,7 +129,14 @@ export default function Tambah({
         }
     };
 
+    const totalBerjalan = totalRealisasiSaatIni + totalPilihanBaru;
+    const sisaKini = paguAcuan - totalBerjalan;
+
     const handleSubmit = () => {
+        if (sisaKini < 0) {
+            setShowOverBudget(true);
+            return;
+        }
         if (selectedItemIds.length === 0) {
             setShowEmptyAlert(true);
             return;
@@ -193,17 +201,17 @@ export default function Tambah({
                             </span>
 
                             <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-bold font-mono">
-                                Realisasi Saat Ini: {formatRupiah(totalRealisasiSaatIni)}
+                                Realisasi: {formatRupiah(totalBerjalan)}
                             </span>
 
                             <span
                                 className={`px-3 py-1 rounded-lg text-xs font-bold font-mono ${
-                                    sisaAnggaran <= 0
-                                        ? 'bg-emerald-100 text-emerald-800'
-                                        : 'bg-rose-100 text-rose-800'
+                                    sisaKini < 0
+                                        ? 'bg-rose-100 text-rose-800'
+                                        : 'bg-emerald-100 text-emerald-800'
                                 }`}
                             >
-                                Sisa Anggaran: {formatRupiah(sisaAnggaran)}
+                                Sisa Anggaran: {formatRupiah(sisaKini)}
                             </span>
                         </div>
                     </div>
@@ -277,7 +285,7 @@ export default function Tambah({
                                                         teralokasiIds.includes(item.id)
                                                             ? 'bg-slate-50/70 text-slate-400'
                                                             : isChosen
-                                                            ? 'bg-blue-50/60'
+                                                            ? '!bg-sky-100/70'
                                                             : 'hover:bg-slate-50/60'
                                                     }`}
                                                 >
@@ -419,6 +427,16 @@ export default function Tambah({
                     message="Pilih minimal satu item barang untuk direalisasikan."
                     confirmText="Mengerti"
                     isDestructive={false}
+                />
+
+                <ConfirmDialog
+                    isOpen={showOverBudget}
+                    onClose={() => setShowOverBudget(false)}
+                    onConfirm={() => setShowOverBudget(false)}
+                    title="Anggaran Melebihi Batas!"
+                    message="Gagal menyimpan. Total realisasi yang Anda centang melebihi sisa acuan anggaran saat ini (Sisa Anggaran Minus)."
+                    confirmText="Perbaiki Pilihan"
+                    isDestructive={true}
                 />
             </div>
         </AppLayout>
