@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\TurnstileService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -56,7 +57,9 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
-            'turnstileSiteKey' => config('services.turnstile.site_key'),
+            'turnstileSiteKey' => app(TurnstileService::class)->isEnabled()
+                ? config('services.turnstile.site_key')
+                : null,
         ];
     }
 }

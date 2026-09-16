@@ -46,12 +46,16 @@ class TurnstileService
                 ]
             );
 
-            $success = (bool) $response->json('success');
+            $body = $response->json();
+            $success = (bool) ($body['success'] ?? false);
 
             if (! $success) {
                 Log::warning('Verifikasi Turnstile ditolak Cloudflare', [
                     'http_status' => $response->status(),
-                    'error_codes' => $response->json('error-codes'),
+                    'error_codes' => $body['error-codes'] ?? null,
+                    'hostname' => $body['hostname'] ?? null,
+                    'token_len' => strlen($token ?? ''),
+                    'token_prefix' => substr((string) $token, 0, 12),
                 ]);
             }
 

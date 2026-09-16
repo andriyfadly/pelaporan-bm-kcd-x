@@ -8,12 +8,8 @@ use App\Models\PelaporanBm\Acuan;
 use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PelaporanBm\Spj;
-use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
 
 class MigrasiDataLamaCommand extends Command
 {
@@ -57,48 +53,9 @@ class MigrasiDataLamaCommand extends Command
         }
         $this->info('Sekolah dimigrasi: '.count($sekolahLama));
 
-        // 2. Migrasi Users (akun operator & admin; hash bcrypt legacy kompatibel langsung)
-        $usersLama = $this->parseTable($sql, 'users');
-        $usersMigrasi = 0;
-        foreach ($usersLama as $u) {
-            $username = trim((string) ($u['username'] ?? ''));
-            $hash = (string) ($u['password'] ?? '');
-            if ($username === '' || $hash === '') {
-                continue;
-            }
-            $roleLama = strtolower(trim((string) ($u['role'] ?? 'user')));
-            $sekolahUuid = $petaSekolah[(int) ($u['id_sekolah'] ?? 0)] ?? null;
-            // Tulis via query builder: cast 'hashed' di model menolak hash bcrypt
-            // legacy ($2y$), padahal password_verify tetap menerimanya saat login.
-            $userId = DB::table('users')->where('username', $username)->value('id');
-            if ($userId) {
-                DB::table('users')->where('id', $userId)->update([
-                    'name' => trim((string) ($u['nama_sekolah'] ?? $username)) ?: $username,
-                    'password' => $hash,
-                    'sekolah_id' => $roleLama === 'admin' ? null : $sekolahUuid,
-                    'is_active' => true,
-                    'password_changed_at' => null,
-                    'updated_at' => now(),
-                ]);
-                $user = User::find($userId);
-            } else {
-                $user = new User;
-                $user->forceFill([
-                    'name' => trim((string) ($u['nama_sekolah'] ?? $username)) ?: $username,
-                    'username' => $username,
-                    'password' => 'migrasi-sementara-'.Str::random(16),
-                    'sekolah_id' => $roleLama === 'admin' ? null : $sekolahUuid,
-                    'is_active' => true,
-                    'password_changed_at' => null,
-                ]);
-                $user->save();
-                DB::table('users')->where('id', $user->id)->update(['password' => $hash]);
-            }
-            Role::firstOrCreate(['name' => $roleLama === 'admin' ? 'admin_kcd' : 'operator_sekolah', 'guard_name' => 'web']);
-            $user->syncRoles([$roleLama === 'admin' ? 'admin_kcd' : 'operator_sekolah']);
-            $usersMigrasi++;
-        }
-        $this->info('Users dimigrasi: '.$usersMigrasi);
+        // 2. Users TIDAK dimigrasi: akun dikelola UserSeeder ({npsn}-admin,
+        // admin_kcd, developer). Username legacy acak/singkatan dibuang.
+        $this->info('Users dilewati: gunakan UserSeeder.');
 
         // 3. Migrasi Acuan
         $petaAcuan = []; // id_lama => uuid_baru

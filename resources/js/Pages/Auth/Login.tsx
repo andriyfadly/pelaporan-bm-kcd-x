@@ -19,12 +19,14 @@ export default function Login() {
     const { turnstileSiteKey } = usePage<{ turnstileSiteKey?: string | null }>().props;
     const [showPassword, setShowPassword] = useState(false);
     const [turnstileReady, setTurnstileReady] = useState(false);
+    const [turnstileError, setTurnstileError] = useState('');
     const widgetRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
-    const { data, setData, post, processing, errors, transform } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
         username: '',
         password: '',
         remember: true,
+        'cf-turnstile-response': '',
     });
 
     useEffect(() => {
@@ -49,15 +51,29 @@ export default function Login() {
         if (widgetIdRef.current) return;
         widgetIdRef.current = window.turnstile.render(widgetRef.current, {
             sitekey: turnstileSiteKey,
+            'expired-callback': () => {
+                window.turnstile?.reset(widgetIdRef.current ?? undefined);
+                setTurnstileError('Verifikasi kedaluwarsa, silakan centang ulang.');
+            },
+            'timeout-callback': () => {
+                window.turnstile?.reset(widgetIdRef.current ?? undefined);
+                setTurnstileError('Verifikasi habis waktu, silakan centang ulang.');
+            },
+            'error-callback': () => setTurnstileError('Verifikasi gagal dimuat, silakan muat ulang halaman.'),
         });
     }, [turnstileSiteKey, turnstileReady]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        transform((payload) => ({
-            ...payload,
-            'cf-turnstile-response': window.turnstile?.getResponse(widgetIdRef.current ?? undefined) ?? '',
-        }));
+        const token = turnstileSiteKey
+            ? window.turnstile?.getResponse(widgetIdRef.current ?? undefined) ?? ''
+            : '';
+        if (turnstileSiteKey && !token) {
+            setTurnstileError('Silakan selesaikan verifikasi keamanan dulu.');
+            return;
+        }
+        setTurnstileError('');
+        setData('cf-turnstile-response', token);
         post('/login', {
             onFinish: () => window.turnstile?.reset(widgetIdRef.current ?? undefined),
         });
@@ -144,8 +160,13 @@ export default function Login() {
                         </div>
 
                         {turnstileSiteKey ? (
-                            <div className="my-3 flex justify-center">
-                                <div ref={widgetRef} />
+                            <div className="my-3">
+                                <div className="flex justify-center">
+                                    <div ref={widgetRef} />
+                                </div>
+                                {turnstileError ? (
+                                    <p className="mt-1 text-center text-xs font-semibold text-red-600">{turnstileError}</p>
+                                ) : null}
                             </div>
                         ) : null}
 
