@@ -3,16 +3,13 @@ import React, { useState, useMemo } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import {
     Plus,
-    Printer,
     Trash2,
     Lock,
     Search,
     X,
     Pencil,
-    Download,
     CheckCircle2,
     Clock,
-    Calendar,
     Box,
     BookOpen,
     Wrench,
@@ -167,40 +164,33 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => router.visit('/pelaporan-bm/spj/pilih-bulan')}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
-                        >
-                            <Calendar className="w-4 h-4 text-slate-500" />
-                            <span>Pilih Bulan Lain</span>
-                        </button>
-                        <a
-                            href={`/pelaporan-bm/unduh?bulan=${bulan}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
-                        >
-                            <Download className="w-4 h-4" />
-                            <span>Unduh CSV</span>
-                        </a>
-                        <a
-                            href={`/pelaporan-bm/cetak?bulan=${bulan}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shadow-sm"
-                        >
-                            <Printer className="w-4 h-4" />
-                            <span>Cetak BA</span>
-                        </a>
-                        {!isReadOnly && (
+                        {isReadOnly ? (
+                            <button
+                                type="button"
+                                disabled
+                                title="Laporan sudah dikirim, data barang terkunci"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-300 text-white rounded-xl text-xs font-bold cursor-not-allowed opacity-75"
+                            >
+                                <Lock className="w-4 h-4" />
+                                <span>Input SPJ Baru</span>
+                            </button>
+                        ) : (
                             <button
                                 type="button"
                                 onClick={() => setShowKategoriModal(true)}
                                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
                             >
                                 <Plus className="w-4 h-4" />
-                                <span>Tambah SPJ</span>
+                                <span>Input SPJ Baru</span>
                             </button>
                         )}
+                        <button
+                            type="button"
+                            onClick={() => router.visit('/pelaporan-bm/spj/pilih-bulan')}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                        >
+                            <span>Ganti Bulan</span>
+                        </button>
                     </div>
                 </div>
 
