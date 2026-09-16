@@ -73,7 +73,7 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
   - Return: Inertia `PelaporanBm/Realisasi/Index` (19 kolom) + `totalNilaiPerolehan` tersaring + `availableYears` dinamis.
 - **`GET /pelaporan-bm/realisasi/unduh`**
   - Parameter: `filter_barang`, `filter_bulan`, `filter_tahun`.
-  - Return: Stream unduhan CSV UTF-8 BOM (20 kolom, urut ASC) — laporan realisasi sesuai filter.
+  - Return: Unduhan `.xlsx` via `maatwebsite/excel` (25 kolom A–Y + sheet `KODE BARANG`, urut ASC) — laporan realisasi sesuai filter.
 
 ### D. Cetak Laporan 26 Kolom (`app/Http/Controllers/PelaporanBm/CetakController.php`)
 - **`GET /pelaporan-bm/cetak`**

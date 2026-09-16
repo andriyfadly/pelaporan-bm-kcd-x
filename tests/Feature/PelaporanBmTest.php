@@ -437,9 +437,8 @@ class PelaporanBmTest extends TestCase
             ]));
 
         $response->assertOk();
-        $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
-        $content = $response->streamedContent();
-        $this->assertStringContainsString('Monitor LED 24 Inch', $content);
+        $this->assertStringContainsString('spreadsheetml.sheet', $response->headers->get('content-type'));
+        $this->assertStringContainsString('.xlsx', $response->headers->get('content-disposition'));
     }
 
     public function test_multi_item_spk_and_input_realisasi_workflow(): void

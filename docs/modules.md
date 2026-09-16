@@ -60,7 +60,7 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
 - Urutan terbaru dulu (`ORDER BY ba_tgl DESC, id DESC`); pagination 25 baris.
 - Filter komprehensif: nama/kode barang, filter bulan, filter tahun anggaran (tahun dinamis dari data `ba_tgl`).
 - Kartu Total Nilai Perolehan (tersaring) beserta jumlah baris.
-- Ekspor CSV (streaming, UTF-8 BOM) dengan urutan ASC dan kolom lengkap termasuk No Sertifikat & Ukuran.
+- Ekspor XLSX via `maatwebsite/excel` (`RealisasiBmExport`): 25 kolom A–Y + judul + sheet `KODE BARANG` + formula VLOOKUP/Nilai Perolehan/Penyusutan, samakan `legacy/data_realisasi.php`.
 - Unduh template import Excel statis (`/templates/template_import_inventaris.xlsx`).
 
 ---

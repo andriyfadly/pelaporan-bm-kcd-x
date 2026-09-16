@@ -26,7 +26,7 @@ app/
         DashboardController.php     # Logic dashboard Admin KCD vs Sekolah
         InputRealisasiController.php # Alokasi item SPJ ke kodering realisasi (simpan/edit/uncheck)
         KunciLaporanController.php  # Toggle kunci & status approval
-        RealisasiController.php     # Data realisasi (tabel pelaporan_bm_realisasi) + ekspor CSV
+        RealisasiController.php     # Data realisasi (tabel pelaporan_bm_realisasi) + ekspor XLSX (RealisasiBmExport)
         RekapanController.php       # Rekapan kodering per sekolah
         SpjController.php           # Buku SPJ dokumen, form SPK multi-item, & item barang
   Models/

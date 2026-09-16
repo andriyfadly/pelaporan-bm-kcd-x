@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Exports\RealisasiBmExport;
 use App\Http\Controllers\Controller;
 use App\Models\PelaporanBm\Realisasi;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class RealisasiController extends Controller
 {
@@ -75,75 +77,21 @@ class RealisasiController extends Controller
         ]);
     }
 
-    public function unduh(Request $request): StreamedResponse
+    public function unduh(Request $request): BinaryFileResponse
     {
-        // Legacy: laporan diurut ASC
+        // Legacy data_realisasi.php: laporan diurut ASC, satu file .xlsx
         $records = $this->applyFilters($request)->orderBy('ba_tgl')->orderBy('id')->get();
 
-        $filename = 'Laporan_Realisasi_BM_'.date('Ymd_His').'.csv';
+        $user = $request->user();
+        $namaSekolah = $user->sekolah?->nama_sekolah ?? $records->first()?->sekolah?->nama_sekolah ?? 'SEMUA SEKOLAH';
+        $filterBulan = (int) $request->input('filter_bulan', 0);
+        $filterTahun = (int) $request->input('filter_tahun', 0);
 
-        return response()->streamDownload(function () use ($records) {
-            $handle = fopen('php://output', 'w');
-            // Add UTF-8 BOM for Excel compatibility
-            fwrite($handle, "\xEF\xBB\xBF");
+        $filename = 'Daftar_Pengadaan_Belanja_Modal_Bulan_'.($filterBulan > 0 ? $filterBulan : 'All').'_'.($filterTahun > 0 ? $filterTahun : date('Y')).'.xlsx';
 
-            fputcsv($handle, [
-                'No',
-                'Nama Sekolah',
-                'No. SP2D',
-                'Sumber Perolehan',
-                'Kodering Belanja',
-                'No. SPK / Faktur',
-                'BA No',
-                'BA Tgl',
-                'BA Bln',
-                'BA Thn',
-                'Bulan Realisasi',
-                'Kode Barang',
-                'Nama Barang',
-                'Merk/Tipe',
-                'No Sertifikat',
-                'Ukuran Bangunan',
-                'Satuan',
-                'Volume',
-                'Harga Satuan',
-                'Nilai Perolehan',
-            ]);
-
-            $no = 1;
-            foreach ($records as $row) {
-                $tgl = $row->ba_tgl ? date('d', strtotime($row->ba_tgl)) : '-';
-                $bln = $row->ba_tgl ? date('m', strtotime($row->ba_tgl)) : '-';
-                $thn = $row->ba_tgl ? date('Y', strtotime($row->ba_tgl)) : '-';
-
-                fputcsv($handle, [
-                    $no++,
-                    $row->sekolah?->nama_sekolah ?? '-',
-                    $row->no_sp2d ?? '-',
-                    $row->sumber_perolehan ?? '-',
-                    $row->kodering_belanja ?? '-',
-                    $row->no_spk ?? '-',
-                    $row->ba_no ?? '-',
-                    $tgl,
-                    $bln,
-                    $thn,
-                    $row->bulan_realisasi,
-                    $row->kode_barang,
-                    $row->nama_barang,
-                    $row->merk_tipe ?? '-',
-                    $row->no_sertifikat ?? '-',
-                    $row->ukuran_bangunan ?? '-',
-                    $row->satuan ?? '-',
-                    $row->volume,
-                    $row->harga_satuan,
-                    $row->nilai_perolehan,
-                ]);
-            }
-
-            fclose($handle);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return Excel::download(
+            new RealisasiBmExport($records, $namaSekolah, $filterTahun),
+            $filename
+        );
     }
 }

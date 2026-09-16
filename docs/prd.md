@@ -34,7 +34,7 @@ Sekolah negeri (SMKN, SMAN, SLBN) di lingkungan Cabang Dinas Pendidikan Wilayah 
 - **Input Realisasi (Target Acuan Kerja)**: Ringkasan per kodering (acuan vs realisasi vs kekurangan), tombol `+` alokasi item SPJ ke kodering (dibatasi sisa anggaran), dan tombol `Kirim Laporan` dengan validasi balance + kunci otomatis.
 
 ### F3: Data Realisasi & Cetak Laporan
-- **Data Realisasi**: Tabel 19 kolom seluruh baris alokasi realisasi (sumber `pelaporan_bm_realisasi`) dengan filter barang/bulan/tahun dan ekspor CSV.
+- **Data Realisasi**: Tabel seluruh baris alokasi realisasi (sumber `pelaporan_bm_realisasi`) dengan filter barang/bulan/tahun dan ekspor XLSX 25 kolom (samakan legacy).
 - **Cetak 26 Kolom**: Pre-flight validation (mencegah unduh data kosong), modal progres simulasi unduh, dan ekspor CSV 26 kolom UTF-8 BOM.
 
 ### F4: Pengawasan & Penguncian (Admin KCD)
