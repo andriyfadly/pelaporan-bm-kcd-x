@@ -7,12 +7,14 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Models\User;
+use App\Services\TurnstileService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
 
@@ -33,6 +35,13 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::authenticateUsing(function (Request $request) {
+            $turnstile = app(TurnstileService::class);
+            if (! $turnstile->verify($request->input('cf-turnstile-response'), $request->ip())) {
+                throw ValidationException::withMessages([
+                    Fortify::username() => 'Verifikasi keamanan gagal. Silakan coba lagi.',
+                ]);
+            }
+
             $user = User::where('username', Str::lower($request->input(Fortify::username())))->first();
 
             if ($user && (bool) $user->is_active && Hash::check($request->input('password'), $user->password)) {

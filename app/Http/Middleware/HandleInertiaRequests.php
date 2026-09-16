@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            'turnstileSiteKey' => config('services.turnstile.site_key'),
         ];
     }
 }

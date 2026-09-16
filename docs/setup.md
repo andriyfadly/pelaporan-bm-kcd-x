@@ -83,7 +83,14 @@ composer test-coverage
    APP_DEBUG=false
    APP_URL=https://bm-kcd10.disdik.jabarprov.go.id
    ```
-2. Optimasi cache:
+2. Aktifkan Cloudflare Turnstile (proteksi login):
+   ```env
+   TURNSTILE_SITE_KEY=xxx
+   TURNSTILE_SECRET_KEY=xxx
+   TURNSTILE_ENABLED=true
+   ```
+   Ambil Site Key + Secret Key dari dashboard Cloudflare → Turnstile, daftarkan domain produksi (dan lokal bila perlu). Tanpa key / `TURNSTILE_ENABLED=false`, widget login disembunyikan dan verifikasi dilewati di `local`/testing.
+3. Optimasi cache:
    ```bash
    composer install --no-dev --optimize-autoloader
    php artisan config:cache

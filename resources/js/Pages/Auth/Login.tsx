@@ -1,18 +1,27 @@
-import { useForm, Head } from '@inertiajs/react';
-import React, { useState, FormEventHandler } from 'react';
+import { useForm, Head, usePage } from '@inertiajs/react';
+import React, { useRef, useState, FormEventHandler } from 'react';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { User as UserIcon, KeyRound, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export default function Login() {
+    const { turnstileSiteKey } = usePage<{ turnstileSiteKey?: string | null }>().props;
     const [showPassword, setShowPassword] = useState(false);
-    const { data, setData, post, processing, errors } = useForm({
+    const turnstileRef = useRef<TurnstileInstance | undefined>(undefined);
+    const { data, setData, post, processing, errors, reset } = useForm({
         username: '',
         password: '',
         remember: true,
+        'cf-turnstile-response': '',
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post('/login');
+        post('/login', {
+            onError: () => {
+                turnstileRef.current?.reset();
+                reset('cf-turnstile-response');
+            },
+        });
     };
 
     return (
@@ -95,9 +104,21 @@ export default function Login() {
                             </div>
                         </div>
 
+                        {turnstileSiteKey ? (
+                            <div className="my-3 flex justify-center">
+                                <Turnstile
+                                    ref={turnstileRef}
+                                    siteKey={turnstileSiteKey}
+                                    onSuccess={(token) => setData('cf-turnstile-response', token)}
+                                    onExpire={() => reset('cf-turnstile-response')}
+                                    onError={() => reset('cf-turnstile-response')}
+                                />
+                            </div>
+                        ) : null}
+
                         <button
                             type="submit"
-                            disabled={processing}
+                            disabled={processing || (!!turnstileSiteKey && !data['cf-turnstile-response'])}
                             className="w-full mt-2 py-2.5 px-4 bg-[#38bdf8] hover:bg-[#0284c7] text-white font-bold text-[0.9rem] rounded-[12px] shadow-[0_4px_12px_rgba(56,189,248,0.2)] hover:shadow-[0_6px_16px_rgba(2,132,199,0.3)] hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 flex items-center justify-center cursor-pointer"
                         >
                             {processing ? 'MEMPROSES...' : 'MASUK SEKARANG'}
