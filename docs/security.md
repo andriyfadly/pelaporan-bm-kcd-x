@@ -19,8 +19,9 @@
 menyembunyikan super_admin dari daftar dan menolak hapus diri. `Gate::before`
 memberi super_admin bypass semua ability.
 
-Rute log: `role:super_admin` + `permission:lihat-log-aktivitas`
-(terverifikasi test: admin_kcd & operator → 403).
+Rute log (`/admin/log-aktivitas` + `/admin/log-error` via opcodesio/log-viewer):
+`role:super_admin` + gate `viewLogViewer` = permission `lihat-log-aktivitas`
+(terverifikasi test: tamu/operator → 403, super_admin → 200).
 
 ## 2. Isolasi Tenant
 

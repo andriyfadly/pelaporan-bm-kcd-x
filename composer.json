@@ -13,6 +13,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "maatwebsite/excel": "^4.0",
+        "opcodesio/log-viewer": "^3.24",
         "spatie/laravel-activitylog": "^5.0.0",
         "spatie/laravel-permission": "^8.0",
         "tightenco/ziggy": "^2.0"

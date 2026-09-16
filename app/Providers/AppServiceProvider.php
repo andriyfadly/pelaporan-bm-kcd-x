@@ -28,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole('super_admin') ? true : null;
         });
 
+        Gate::define('viewLogViewer', fn ($user) => $user->can('lihat-log-aktivitas'));
+
         Event::listen(Login::class, CatatLoginLogout::class);
         Event::listen(Logout::class, CatatLoginLogout::class);
     }

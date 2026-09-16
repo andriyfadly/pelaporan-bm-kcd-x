@@ -165,6 +165,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             Kelola Users
                                         </Link>
                                         {isSuperAdmin && (
+                                            <>
                                             <Link
                                                 href="/admin/log-aktivitas"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/admin/log-aktivitas')
@@ -174,6 +175,13 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Log Aktivitas
                                             </Link>
+                                            <a
+                                                href="/admin/log-error"
+                                                className="block px-3 py-2 text-[13.5px] rounded-lg transition text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium"
+                                            >
+                                                Log Error
+                                            </a>
+                                            </>
                                         )}
                                     </div>
                                 )}
