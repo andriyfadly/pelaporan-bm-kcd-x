@@ -7,7 +7,6 @@ declare global {
         turnstile?: {
             render: (container: string | HTMLElement, options: Record<string, unknown>) => string;
             reset: (widgetId?: string) => void;
-            execute: (widgetId?: string) => void;
             getResponse: (widgetId?: string) => string | undefined;
         };
         onloadTurnstileCallback?: () => void;
@@ -20,7 +19,6 @@ export default function Login() {
     const { turnstileSiteKey } = usePage<{ turnstileSiteKey?: string | null }>().props;
     const [showPassword, setShowPassword] = useState(false);
     const [turnstileReady, setTurnstileReady] = useState(false);
-    const [turnstileToken, setTurnstileToken] = useState('');
     const widgetRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
     const { data, setData, post, processing, errors, transform } = useForm({
@@ -51,43 +49,18 @@ export default function Login() {
         if (widgetIdRef.current) return;
         widgetIdRef.current = window.turnstile.render(widgetRef.current, {
             sitekey: turnstileSiteKey,
-            size: 'invisible',
-            callback: (token: string) => {
-                setTurnstileToken(token);
-            },
-            'expired-callback': () => setTurnstileToken(''),
-            'error-callback': () => setTurnstileToken(''),
         });
     }, [turnstileSiteKey, turnstileReady]);
 
-    const doPost = (token: string) => {
-        transform((payload) => ({
-            ...payload,
-            'cf-turnstile-response': token,
-        }));
-        post('/login', {
-            onFinish: () => {
-                setTurnstileToken('');
-                window.turnstile?.reset(widgetIdRef.current ?? undefined);
-            },
-        });
-    };
-
-    useEffect(() => {
-        if (turnstileToken) {
-            doPost(turnstileToken);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [turnstileToken]);
-
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (turnstileSiteKey && window.turnstile && widgetIdRef.current) {
-            setTurnstileToken('');
-            window.turnstile.execute(widgetIdRef.current);
-            return;
-        }
-        doPost('');
+        transform((payload) => ({
+            ...payload,
+            'cf-turnstile-response': window.turnstile?.getResponse(widgetIdRef.current ?? undefined) ?? '',
+        }));
+        post('/login', {
+            onFinish: () => window.turnstile?.reset(widgetIdRef.current ?? undefined),
+        });
     };
 
     return (
