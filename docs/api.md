@@ -101,6 +101,6 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
 ### G. Migrasi Data Legacy (console command)
 - **`php artisan app:migrasi-data-lama`** (`app/Console/Commands/MigrasiDataLamaCommand.php`)
   - Membaca dump SQL `storage/bm_kcd_x.sql` (DB transaksional belanja modal) dan `storage/db_inventaris.sql` (katalog `kode_barang`, 27 batch INSERT).
-  - Cakupan (terverifikasi test `MigrasiLegacyTest`): 77 `kode_sekolah` → `Sekolah`, 717 `data_barang_acuan` (3 batch) → `Acuan` + backfill `npsn`, 490 `master_barang_sekolah` (4 batch) → `Spj`, 42 `realisasi_barang_sekolah` → `Realisasi`, 13 `laporan_realisasi` → `KunciLaporan` (status `disetujui` + `tanggal_kirim` terbawa), 78 `users` → `User` (hash bcrypt dipakai langsung, role `admin`→`admin_kcd`/`user`→`operator_sekolah`, wajib ganti password perdana), katalog kode barang via `upsert` chunk 500.
+   - Cakupan (terverifikasi test `MigrasiLegacyTest`): 77 `kode_sekolah` → `Sekolah`, 717 `data_barang_acuan` (3 batch) → `Acuan` + backfill `npsn`, 490 `master_barang_sekolah` (4 batch) → `Spj`, 42 `realisasi_barang_sekolah` → `Realisasi`, 13 `laporan_realisasi` → `KunciLaporan` (status `disetujui` + `tanggal_kirim` terbawa), katalog kode barang via `upsert` chunk 500. Users legacy **tidak** dimigrasi (dilewati; akun dikelola `UserSeeder`).
   - Idempoten (`updateOrCreate` by id lama) — aman dijalankan ulang.
   - Wajib dijalankan sekali setelah `migrate --seed` pada instalasi baru yang menginginkan data legacy.

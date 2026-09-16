@@ -1,62 +1,143 @@
-# Product Requirements Document (PRD): Sistem Pelaporan Belanja Modal KCD Wilayah X
+# Product Requirements Document (PRD): SI DIPTA Beu! — Pelaporan Belanja Modal KCD
+
+> Status: menggambarkan implementasi berjalan (branch `feat/migrasi-laravel-12`).
+> Stack rujukan: `docs/architecture.md`. Skema data: `docs/database.md`.
 
 ## 1. Latar Belakang & Masalah
-Sekolah negeri (SMKN, SMAN, SLBN) di lingkungan Cabang Dinas Pendidikan Wilayah X memiliki target belanja modal tahunan berbasis kodering rekening. Pengelolaan manual atau parsial berisiko menyebabkan selisih antara target acuan belanja dan realisasi aset fisik, keterlambatan pelaporan bulanan, serta format pelaporan yang tidak seragam saat rekapitulasi dinas.
 
----
+Sekolah negeri (SMAN/SMKN/SLBN) di Cabang Dinas Pendidikan Wilayah X mengelola belanja
+modal tahunan berbasis kodering rekening. Proses manual/parsial menimbulkan:
 
-## 2. Tujuan Produk (Product Goals)
-1. **Sentralisasi SPJ & Fisik Barang**: Dokumentasi digital terpusat untuk dokumen kontrak (SPK/SP2D) dan rincian item barang fisik.
-2. **Kesesuaian Target Acuan vs Realisasi**: Memastikan belanja modal per kodering rekening termonitor secara real-time (Target, Realisasi, Kekurangan).
-3. **Standarisasi Cetak Laporan**: Menghasilkan Berita Acara Rekapitulasi Belanja Modal format resmi 26 Kolom (Excel).
-4. **Akuntabilitas & Kontrol**: Penguncian laporan bulanan oleh KCD untuk menjamin validitas data audit.
+1. Selisih target acuan vs realisasi fisik per kodering yang terlambat ketahuan.
+2. Keterlambatan pelaporan bulanan dan format rekap tidak seragam saat konsolidasi dinas.
+3. Jejak audit lemah — siapa mengubah apa dan kapan tidak terlacak.
 
----
+Sistem ini memigrasi aplikasi legacy PHP prosedural (`legacy/`) ke Laravel +
+Inertia React, menyamakan output Excel legacy (25/26 kolom + sheet `KODE BARANG`),
+dan menambahkan kontrol kunci laporan + log aktivitas sistem-wide.
 
-## 3. Persona & Peran Pengguna
+## 2. Tujuan Produk
 
-| Role | Identifikasi | Kebutuhan Utama |
-|---|---|---|
-| **Operator Sekolah** | `user` (terikat `sekolah_id`) | Input SPK/barang, alokasi realisasi ke kodering acuan, pantau progres & kekurangan target kodering, ajukan approval bulanan ke KCD. |
-| **Admin KCD** | `admin` (tanpa `sekolah_id`) | Unggah pagu acuan sekolah, pantau kepatuhan lapor seluruh sekolah, verifikasi / kunci laporan, kelola master kode barang & pengguna. |
+| ID | Tujuan | Indikator |
+|----|--------|-----------|
+| G1 | Sentralisasi SPJ & fisik barang | 1 dokumen SPK = N item barang, tersimpan atomik |
+| G2 | Kesesuaian acuan vs realisasi | Per kodering terpantau: target, realisasi, kekurangan (real-time) |
+| G3 | Standardisasi cetak | XLSX 25 kolom (realisasi) & 26 kolom (cetak) identik legacy, formula hidup |
+| G4 | Akuntabilitas & kontrol | Kunci bulanan + log aktivitas queryable (super_admin) |
+| G5 | Migrasi aman dari legacy | Perintah `app:migrasi-data-lama` idempoten, terverifikasi test |
 
----
+## 3. Persona & Peran
 
-## 4. Ruang Lingkup Fitur (Feature Scope)
+| Role | Identitas | Kebutuhan utama |
+|------|-----------|-----------------|
+| `super_admin` (`developer`) | Tanpa `sekolah_id`, semua permission | Operasional penuh + melihat log aktivitas seluruh sistem |
+| `admin_kcd` | Tanpa `sekolah_id` | Upload acuan, pantau kepatuhan, verifikasi/kunci, kelola master & user |
+| `operator_sekolah` (`[npsn]-admin`) | Terikat `sekolah_id` | Input SPK/barang, alokasi realisasi, kirim laporan, cetak |
+| `bendahara_sekolah` | Terikat `sekolah_id` | Sama seperti operator (hak setara saat ini) |
 
-### F1: Dashboard Peran
-- **Admin**: Metrik total target wilayah, total realisasi, sisa anggaran, daftar sekolah selesai vs belum lapor, dan tombol kunci instan.
-- **Sekolah**: Banner status laporan bulan sebelumnya, 4 kartu ringkasan belanja, dan tabel riwayat status lapor 12 bulan.
+Kredensial default (wajib diganti, lihat `docs/setup.md`):
+operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
 
-### F2: Manajemen SPJ & Input Realisasi
-- **Katalog SPJ**: Pengelompokan dokumen berdasarkan nomor SPK, urut terbaru dulu, dengan pencarian instan.
-- **Form SPK Multi-Item**: Seksi dokumen (SP2D, SPK, BA) + accordion item barang dengan pencarian katalog pagu, draft autosave, dan datalist history.
-- **Input Realisasi (Target Acuan Kerja)**: Ringkasan per kodering (acuan vs realisasi vs kekurangan), tombol `+` alokasi item SPJ ke kodering (dibatasi sisa anggaran), dan tombol `Kirim Laporan` dengan validasi balance + kunci otomatis.
+## 4. Ruang Lingkup Fitur
 
-### F3: Data Realisasi & Cetak Laporan
-- **Data Realisasi**: Tabel seluruh baris alokasi realisasi (sumber `pelaporan_bm_realisasi`) dengan filter barang/bulan/tahun dan ekspor XLSX 25 kolom (samakan legacy).
-- **Cetak 26 Kolom**: Pre-flight validation (mencegah unduh data kosong), modal progres simulasi unduh, dan ekspor Excel 26 kolom.
+### F1 — Dashboard peran (`/dashboard`)
+- Admin: total target wilayah, total realisasi, sisa anggaran, tabel sekolah
+  selesai vs belum lapor, tombol kunci instan.
+- Sekolah: banner status bulan lalu, 4 kartu (target berjalan, realisasi,
+  aset fisik, berkas SPK), riwayat 12 bulan.
 
-### F4: Pengawasan & Penguncian (Admin KCD)
-- **Rekapan Kodering**: Komparasi acuan vs realisasi seluruh sekolah per bulan.
-- **Gembok Laporan**: Kunci (`disetujui`) atau buka kunci (`draft`) per sekolah per bulan.
+### F2 — Buku SPJ & Data Barang (`/pelaporan-bm/spj`)
+- Katalog dokumen per nomor SPK, terbaru dulu, live search.
+- Form SPK multi-item (seksi dokumen + accordion item), kategori
+  `Peralatan & Mesin` / `Buku`, draft autosave localStorage, datalist history.
+- Pencarian katalog `/pelaporan-bm/cari-barang`: lowercase, escape wildcard,
+  hanya kode leaf, limit 100 (replika `legacy/ajax_cari_barang.php`).
+- Edit SPK ikut sinkron snapshot realisasi teralokasi (kecuali
+  `kodering_belanja`/`acuan_id`/bulan alokasi). Hapus item/SPK hapus realisasi
+  terkait dalam transaksi.
+- Blokir bila bulan terkunci / `menunggu_approval` / `disetujui`.
 
-### F5: Master Data
-- Master Kode Barang (standar aset pemda, live search, import).
-- Master Target Kodering Acuan (input manual & import massal).
-- Master Data Sekolah (identitas unit sekolah dan NPSN resmi).
-- Kelola Pengguna (manajemen akses akun operator & admin).
+### F3 — Input Realisasi (`/pelaporan-bm/input-realisasi`)
+- Rekap per kodering: nominal acuan, realisasi, kekurangan.
+- Alokasi item SPJ ke kodering (tombol `+`), dibatasi sisa anggaran kodering.
+- Edit alokasi (uncheck). `Kirim Laporan` aktif hanya bila kekurangan = 0
+  (validasi balance server-side) → `menunggu_approval` + kunci otomatis.
 
-### F6: Autentikasi & Keamanan Akun
-- **Username-based Login**: Autentikasi murni berbasis `username` (tanpa kolom/fitur email).
-- **Akun Standar Operator**: Format username `[npsn]-admin` dengan password default `#SidiptaKCD10`.
-- **Rotasi Password & Dedicated Page**: Intersep otomatis via `EnsurePasswordNotExpired` mengarahkan akun ke dedicated page `/ubah-password` saat login perdana (`password_changed_at = null`) dan setiap 90 hari (3 bulan).
-- **Kompleksitas Password**: Validasi password baru wajib rumit (min. 8 karakter, kombinasi huruf besar/kecil, angka, dan simbol).
+### F4 — Data Realisasi (`/pelaporan-bm/realisasi`)
+- Tabel 19 kolom dari `pelaporan_bm_realisasi`, `ba_tgl DESC, id DESC`,
+  paginasi 25, filter barang/bulan/tahun, kartu total tersaring.
+- Unduh XLSX 25 kolom A–Y + sheet `KODE BARANG` (formula VLOOKUP/nilai/
+  penyusutan). Data kosong → `204` + cookie `download_status=empty`.
 
----
+### F5 — Cetak Laporan (`/pelaporan-bm/cetak`)
+- Pre-flight `POST /pelaporan-bm/cetak/check` mencegah unduh kosong.
+- Unduh XLSX 26 kolom A–Z (+ Kab/Kota), judul 3 baris, header biru muda,
+  gridlines, auto-width, formula dinamis. Legacy: `legacy/proses_unduh_bm.php`.
 
-## 5. Kriteria Penerimaan Non-Fungsional
-- **Keamanan & Isolasi Data**: Sekolah dilarang keras mengakses atau memodifikasi data sekolah lain (enforced via scope `sekolah_id`). Rotasi password wajib dipatuhi setiap 90 hari dengan standar password rumit.
-- **Integritas Data Kunci**: Data pada bulan yang terkunci (`disetujui`) tidak dapat diubah oleh operator.
-- **Kualitas Kode**: Formatter Pint lolos, TypeScript 0 error, dan PHPUnit line coverage &ge; 80%.
-- **Aturan Dokumentasi**: Seluruh dokumentasi dan tautan repo wajib menggunakan relative path.
+### F6 — Pengawasan & Penguncian (admin)
+- Rekapan (`/pelaporan-bm/rekapan`): acuan vs realisasi seluruh sekolah/bulan.
+- Toggle kunci + update status (`draft`/`menunggu_approval`/`disetujui`).
+
+### F7 — Log Aktivitas (`/admin/log-aktivitas`, super_admin saja)
+- Auto-log model (spatie/laravel-activitylog v5, log `sistem`): Spj,
+  Realisasi, Acuan, KunciLaporan, KodeBarang, User (password/token dikecualikan).
+- Manual: login/logout, ganti/reset password, kirim/verifikasi/kunci,
+  import & hapus-massal, 3 unduhan, hapus SPK/prune/sinkron.
+- Viewer: filter event/entitas/sekolah/tanggal/pencarian, diff before/after.
+- Detail: `docs/architecture.md` (bagian Logging) dan `docs/security.md`.
+
+### F8 — Master Data (admin)
+- Kode Barang (`/admin/kode-barang`): CRUD + import (maks 20.000 baris).
+- Acuan (`/pelaporan-bm/acuan`): input manual + import XLSX-only (maks 5.000
+  baris), filter bulan/sekolah, hapus massal.
+- Sekolah: identitas + NPSN (dikelola via seeder/migrasi).
+- User (`/admin/user`): CRUD + assign role, proteksi hapus diri & super_admin.
+
+### F9 — Autentikasi & keamanan akun
+- Login username (tanpa email), Fortify session, bcrypt.
+- Rotasi password 90 hari via `EnsurePasswordNotExpired` → `/ubah-password`.
+- Kompleksitas: min 8, huruf besar/kecil, angka, simbol.
+- Cloudflare Turnstile di login (opsional via env). 2FA (TOTP) + passkeys
+  tersedia dari Fortify.
+
+## 5. Kriteria Penerimaan
+
+### Fungsional (ringkas)
+- [ ] Operator hanya baca/tulis sekolahnya sendiri (403 lintas tenant).
+- [ ] Alokasi melebihi sisa anggaran ditolak dengan pesan nominal.
+- [ ] Kirim laporan ditolak bila total realisasi < total acuan.
+- [ ] Mutasi bulan terkunci/dikirim ditolak.
+- [ ] Unduh kosong → 204 + cookie `empty`, tanpa file.
+- [ ] File XLSX: header `A8=No`, data dari `A10`, VLOOKUP range dinamis,
+      label kota format `KABUPATEN/KOTA X`.
+- [ ] Setiap mutasi tercatat di `activity_log` (log `sistem`); password tak bocor.
+- [ ] Viewer log: super_admin 200, admin_kcd/operator 403.
+
+### Non-fungsional
+- Keamanan: lihat `docs/security.md` (RBAC matrix, throttle, validasi).
+- Kualitas: Pint lolos, `tsc --noEmit` 0 error, PHPUnit ≥ 80% coverage
+  (`composer test-coverage`), 66 test / 318 assertions saat dokumen ditulis.
+- Dokumentasi: relative path saja (aturan `docs/guidelines.md`).
+
+## 6. Di Luar Ruang Lingkup
+
+- Aplikasi mobile native; notifikasi real-time (email/WA/push).
+- Akuntansi ganda / integrasi SIPD/ARKAS; tanda tangan elektronik.
+- Retensi/purge otomatis log (disimpan permanen hingga diputuskan lain).
+
+## 7. Risiko & Mitigasi
+
+| Risiko | Mitigasi |
+|--------|----------|
+| Template Excel berubah sepihak | Test baca-balik cell (A8/A10/VLOOKUP/SUM) di suite export |
+| Import raksasa memperlambat DB | Batas 5.000/20.000 baris + transaksi + throttle |
+| Kunci manual lupa dibuka | Toggle + status `draft` oleh admin, tercatat di log |
+| Kredensial default bocor | Wajib ganti perdana (middleware), kompleksitas, 2FA opsional |
+
+## 8. Lampiran
+
+- Arsitektur: `docs/architecture.md` · Skema: `docs/database.md`
+- Endpoint: `docs/api.md` · Modul per role: `docs/modules.md`
+- Desain UI: `docs/design.md` · Keamanan: `docs/security.md`
+- Testing: `docs/testing.md` · Deploy: `docs/deployment.md`
+- Istilah: `docs/glossary.md` · Instalasi: `docs/setup.md`

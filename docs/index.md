@@ -1,31 +1,49 @@
-# Dokumentasi Sistem Pelaporan Belanja Modal (KCD Wilayah X)
+# Dokumentasi SI DIPTA Beu! — Pelaporan Belanja Modal KCD
 
-Sistem aplikasi web modern berbasis Laravel 12 dan Inertia.js (React + TypeScript) untuk pengelolaan, pencatatan SPJ, verifikasi, rekapan, dan pelaporan belanja modal sekolah di lingkungan Cabang Dinas Pendidikan Wilayah X.
-
----
-
-## Daftar Isi Dokumentasi
-
-1. [Product Requirements Document (PRD)](prd.md)
-   - Latar belakang, sasaran produk, batasan sistem, personas, dan feature scope F1-F5.
-2. [Panduan Penggunaan (User Manual)](user-guide.md)
-   - Alur operasional Operator Sekolah (SPJ, alokasi realisasi, cetak) dan Admin KCD (monitoring & kunci).
-3. [Panduan Instalasi & Setup](setup.md)
-   - Kebutuhan sistem, instalasi lokal, perintah verifikasi kualitas, dan deployment produksi.
-4. [Arsitektur & Konfigurasi](architecture.md)
-   - Teknologi stack (Laravel 12, Inertia React, TypeScript, Tailwind CSS), struktur folder, dan skema data.
-5. [Alur & Modul Per Role](modules.md)
-   - Detail alur Dashboard, Data Barang (Buku SPJ), Input Realisasi (Target Acuan Kerja), Data Realisasi, Cetak 26 Kolom, dan Rekapan.
-6. [Spesifikasi Endpoint & Kontrak Data](api.md)
-   - Ringkasan rute web, controller, middleware, dan payload request/response.
-7. [Panduan Developer & Aturan Kerja](guidelines.md)
-   - Standar formatting (Pint), pengujian (PHPUnit coverage &ge; 80%), dan aturan ketat relative path.
+Sistem web Laravel 13 + Inertia React untuk pencatatan SPJ, alokasi realisasi,
+verifikasi, rekapan, dan pelaporan belanja modal sekolah di Cabang Dinas
+Pendidikan Wilayah X. Migrasi dari aplikasi legacy PHP (`legacy/`).
 
 ---
 
-## Ringkasan Peran (Roles)
+## Daftar Isi
 
-| Role | Akses Utama | Tanggung Jawab |
-|---|---|---|
-| **Admin KCD** (`admin_kcd` / tanpa `sekolah_id`) | Dashboard KCD, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola User, Cetak Laporan | Mengelola master kode barang, upload target acuan sekolah, memantau kepatuhan lapor sekolah, verifikasi / approval, dan mengunci laporan bulanan. |
-| **Operator Sekolah** (`[npsn]-admin` / terikat `sekolah_id`) | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi (Target Acuan Belanja), Data Realisasi, Cetak Laporan, Ubah Password | Menginput dokumen SPK & barang belanja, mengalokasikan realisasi ke kodering acuan, memantau kekurangan anggaran, kirim laporan bulanan ke dinas. Wajib ubah password pada login perdana dan berkala tiap 3 bulan. |
+1. [PRD](prd.md) — latar belakang, tujuan, persona, scope F1–F9, kriteria terima.
+2. [Arsitektur & Teknologi](architecture.md) — stack, alur request, pola kunci, ADL.
+3. [Design System & UI/UX](design.md) — token warna, tipografi, layout, komponen, pola UX.
+4. [Skema Database](database.md) — diagram relasi + kamus 13 tabel + konvensi.
+5. [Endpoint & Kontrak Data](api.md) — rute web, controller, middleware, payload.
+6. [Alur & Modul per Role](modules.md) — detail operasional tiap modul.
+7. [Keamanan](security.md) — matriks RBAC, isolasi tenant, audit trail, checklist rilis.
+8. [Testing](testing.md) — strategi, perintah, matriks 16 file test.
+9. [Instalasi Lokal](setup.md) — prasyarat, instalasi, verifikasi kualitas.
+10. [Deployment Produksi](deployment.md) — prasyarat server, rilis, backup, troubleshooting.
+11. [User Manual](user-guide.md) — panduan operator & admin KCD.
+12. [Developer Guidelines](guidelines.md) — standar kode, testing, RBAC, relative-path.
+13. [Glosarium](glossary.md) — istilah BM, SPJ, kunci, log.
+
+---
+
+## Mulai Cepat
+
+| Saya mau... | Buka |
+|-------------|------|
+| Paham produk & fitur | `prd.md` |
+| Ngoding / ubah kode | `architecture.md` + `guidelines.md` |
+| Desain halaman baru | `design.md` |
+| Ubah skema / query | `database.md` |
+| Tambah endpoint | `api.md` |
+| Rilis ke produksi | `deployment.md` + `security.md` |
+| Pakai aplikasi | `user-guide.md` |
+
+---
+
+## Peran (ringkas)
+
+| Role | Scope |
+|------|-------|
+| `super_admin` | Penuh + viewer log aktivitas |
+| `admin_kcd` | Lintas sekolah: acuan, rekapan, kunci/verifikasi, master, user |
+| `operator_sekolah` / `bendahara_sekolah` | Satu sekolah: SPJ, realisasi, kirim, cetak |
+
+Detail: `prd.md` (§3), matriks hak: `security.md` (§1).

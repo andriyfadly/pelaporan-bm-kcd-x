@@ -6,10 +6,10 @@ Petunjuk instalasi, konfigurasi environment lokal, dan deployment aplikasi Pelap
 
 ## 1. Kebutuhan Sistem (Prerequisites)
 
-- **PHP**: &ge; 8.4 (ekstensi: `pdo`, `pdo_mysql`, `mbstring`, `bcmath`, `curl`, `zip`)
+- **PHP**: &ge; 8.4 (ekstensi: `pdo`, `pdo_pgsql`, `mbstring`, `bcmath`, `curl`, `zip`)
 - **Node.js**: &ge; 20.x & npm &ge; 10.x
 - **Composer**: &ge; 2.8
-- **Database**: MySQL &ge; 8.0 atau MariaDB &ge; 10.6
+- **Database**: PostgreSQL &ge; 14 (dev & prod; test memakai SQLite in-memory)
 - **Web Server**: Nginx, Apache, atau Laravel Valet/Herd
 
 ---
@@ -30,11 +30,11 @@ cp .env.example .env
 php artisan key:generate
 
 # 4. Sesuaikan konfigurasi database pada .env
-# DB_CONNECTION=mysql
+# DB_CONNECTION=pgsql
 # DB_HOST=127.0.0.1
-# DB_PORT=3306
+# DB_PORT=5432
 # DB_DATABASE=pelaporan_bm
-# DB_USERNAME=root
+# DB_USERNAME=postgres
 # DB_PASSWORD=
 
 # 5. Jalankan migrasi & seeder
