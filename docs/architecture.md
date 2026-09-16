@@ -57,6 +57,13 @@ app/
 bootstrap/app.php             # middleware alias role/permission, web group
 routes/web.php                # ~40 rute (lihat docs/api.md)
 config/activitylog.php        # log default `default`, auth driver default
+public/
+  favicon.ico                 # favicon multi-res (16/32/48/64)
+  favicon-16x16.png, favicon-32x32.png
+  site.webmanifest            # manifest PWA (nama, theme_color, icons)
+  icons/                      # apple-touch, PWA 72–512, mstile-150
+  images/logolog.jpeg         # master logo (sumber semua ikon)
+resources/views/app.blade.php # <head> global: favicon, manifest, @inertia
 ```
 
 ## 4. Pola Kunci Implementasi
@@ -164,3 +171,4 @@ Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
 | Log via Spatie v5, bukan custom | Auto-diff, causer/subject morph, viewer siap |
 | Morph activity UUID | Seluruh model ber-UUID |
 | Tanpa purge log | Keputusan produk: simpan permanen |
+| Ikon brand statis di `public/` + `site.webmanifest` | Tanpa pipeline build; disajikan langsung, cacheable, PWA-ready |

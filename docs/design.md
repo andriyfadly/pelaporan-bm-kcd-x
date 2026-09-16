@@ -70,6 +70,42 @@ Submenu aktif: teks bold + `bg-blue-50/50`.
 | `StatusBadge` | status | `draft`/`menunggu_approval`/`disetujui`/kunci |
 | `CardStat` | label, nilai, ikon | 4 kartu dashboard sekolah, rekap admin |
 
+## 5a. Favicon, Ikon Aplikasi & Web Manifest
+
+Aset brand diturunkan dari satu master: `public/images/logolog.jpeg` (1600×1600,
+JPEG sRGB). Semua ikon digenerate dengan **ImageMagick** (`magick` CLI — mesin
+yang sama dengan ekstensi PHP Imagick, yang belum aktif di mesin dev).
+
+| Aset | Path | Ukuran |
+|------|------|--------|
+| Favicon multi-res | `public/favicon.ico` | 16/32/48/64 |
+| Favicon PNG | `public/favicon-16x16.png`, `public/favicon-32x32.png` | 16, 32 |
+| Apple touch icon | `public/icons/apple-touch-icon.png` | 180 |
+| PWA icons | `public/icons/icon-{72,96,144,192,384,512}.png` | 72–512 |
+| Windows tile | `public/icons/mstile-150x150.png` | 150 |
+| Web manifest | `public/site.webmanifest` | — |
+
+- Wajib punya `192` & `512` dengan `purpose: any`; `512` tambahan
+  `purpose: maskable` untuk Android adaptive icon.
+- `theme_color: #2563eb` (primer, §2) dan `background_color: #f8fafc` (latar app).
+- `<head>` (`resources/views/app.blade.php`) memuat semua `<link>` favicon,
+  `<link rel="manifest">`, `theme-color`, dan meta MS Tile.
+
+**Regenerate** (bila master logo berubah):
+
+```bash
+SRC=public/images/logolog.jpeg
+magick "$SRC" -resize 512x512 public/icons/icon-512.png
+magick "$SRC" -resize 192x192 public/icons/icon-192.png
+magick "$SRC" -resize 180x180 public/icons/apple-touch-icon.png
+magick "$SRC" -resize 32x32  public/favicon-32x32.png
+magick "$SRC" -resize 16x16  public/favicon-16x16.png
+magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
+```
+
+> Catatan: agar bisa generate via PHP, pasang ekstensi Imagick
+> (`brew install php-imagick` / `pecl install imagick`) lalu restart Valet.
+
 ## 6. Pola UX per Modul
 
 - **Pilih bulan dulu**: SPJ & Input Realisasi selalu lewat `PilihBulan`

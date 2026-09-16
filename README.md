@@ -35,6 +35,15 @@ Dokumentasi lengkap dan spesifikasi teknis tersedia di direktori `docs/`:
 
 ---
 
+## 🎨 Branding & Ikon
+
+Favicon, ikon PWA, dan Apple touch icon diturunkan dari satu master
+`public/images/logolog.jpeg` via ImageMagick dan dimuat di
+`resources/views/app.blade.php`. Manifest: `public/site.webmanifest`.
+Detail & perintah regenerate: [docs/design.md](docs/design.md) (§5a).
+
+---
+
 ## ⚡ Quick Start
 
 ```bash
