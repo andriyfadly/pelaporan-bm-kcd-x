@@ -60,7 +60,8 @@
         "test-coverage": [
             "@putenv XDEBUG_MODE=coverage",
             "@php artisan config:clear --ansi",
-            "@php artisan test --coverage --min=80"
+            "@php artisan test --coverage --min=80 --coverage-clover=storage/coverage/clover.xml",
+            "@php tests/coverage-per-file.php storage/coverage/clover.xml 80"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

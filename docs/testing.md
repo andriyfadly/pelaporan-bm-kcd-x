@@ -1,7 +1,9 @@
 # Strategi Testing
 
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
-> sebelum merge. Status: 85 passed / 416 assertions.
+> sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
+> **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
+> Status: 88 passed / 422 assertions.
 
 ## 1. Perintah
 
@@ -19,6 +21,12 @@ npx tsc --noEmit                     # type-check frontend
 - DB SQLite in-memory (`phpunit.xml`); tiap Feature memakai
   `RefreshDatabase` + seed `PeranDanHakAksesSeeder`, user via
   `User::create` + `assignRole` (pola baku).
+- `TURNSTILE_ENABLED=false` di-override di `phpunit.xml` agar key produksi
+  dari `.env` tidak bocor ke test env; skenario Turnstile aktif diatur
+  per-test via `config([...])` + `Http::fake()`.
+- `tests/TestCase::setUp()` memanggil `withoutVite()` — halaman Inertia
+  500 bila Vite manifest belum di-build, dan test feature tidak merender
+  asset frontend.
 - Import xlsx dibuat in-test via `ZipArchive` (tanpa paket tambahan);
   CSV via `UploadedFile::fake()->createWithContent()`.
 - Export XLSX diverifikasi baca-balik cell (header `A8`, data `A10`,
@@ -38,7 +46,7 @@ npx tsc --noEmit                     # type-check frontend
 | `RekapanDanKunciTest` | Rekapan, toggle kunci, status draft→disetujui |
 | `UserManagementTest` | CRUD user, proteksi super_admin & hapus diri |
 | `PasswordExpiryTest` | Intersep 90 hari, dedicated page, kompleksitas |
-| `TurnstileLoginTest` | Login dengan/without Turnstile sesuai env |
+| `TurnstileLoginTest` | Login dengan/without Turnstile sesuai env, penolakan Cloudflare, gagal koneksi, memo siteverify (token sekali pakai) |
 | `KodeBarangTest` / `KodeBarangImportTest` | CRUD + leaf-search + import batas 20rb |
 | `MigrasiLegacyTest` | 77 sekolah, 717 acuan, 490 SPJ, 42 realisasi, 13 kunci, users, katalog |
 | `SekolahFlowFixTest` | Regresi alur sekolah |

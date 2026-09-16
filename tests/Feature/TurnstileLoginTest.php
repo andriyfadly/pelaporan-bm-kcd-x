@@ -73,4 +73,48 @@ class TurnstileLoginTest extends TestCase
 
         $this->assertTrue(app(TurnstileService::class)->verify(null));
     }
+
+    public function test_service_gagal_saat_cloudflare_menolak_token(): void
+    {
+        config([
+            'services.turnstile.enabled' => true,
+            'services.turnstile.site_key' => 'site-key',
+            'services.turnstile.secret_key' => 'secret-key',
+        ]);
+        Http::fake(['https://challenges.cloudflare.com/*' => Http::response(
+            ['success' => false, 'error-codes' => ['timeout-or-duplicate']],
+            200
+        )]);
+
+        $this->assertFalse(app(TurnstileService::class)->verify('token-ditolak'));
+        Http::assertSentCount(1);
+    }
+
+    public function test_service_memo_hasil_siteverify_agar_token_tak_diverifikasi_dua_kali(): void
+    {
+        config([
+            'services.turnstile.enabled' => true,
+            'services.turnstile.site_key' => 'site-key',
+            'services.turnstile.secret_key' => 'secret-key',
+        ]);
+        Http::fake(['https://challenges.cloudflare.com/*' => Http::response(['success' => true], 200)]);
+
+        $service = app(TurnstileService::class);
+
+        $this->assertTrue($service->verify('token-sama'));
+        $this->assertTrue($service->verify('token-sama'));
+        Http::assertSentCount(1);
+    }
+
+    public function test_service_gagal_saat_cloudflare_tak_terjangkau(): void
+    {
+        config([
+            'services.turnstile.enabled' => true,
+            'services.turnstile.site_key' => 'site-key',
+            'services.turnstile.secret_key' => 'secret-key',
+        ]);
+        Http::fake(['https://challenges.cloudflare.com/*' => Http::failedConnection()]);
+
+        $this->assertFalse(app(TurnstileService::class)->verify('token-apa-pun'));
+    }
 }
