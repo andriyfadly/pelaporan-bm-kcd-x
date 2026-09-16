@@ -3,7 +3,7 @@
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
 > sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
 > **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
-> Status: 142 passed / 623 assertions (total 98.1%).
+> Status: 179 passed / 930 assertions (total **100.0%**, semua file 100%).
 
 ## 1. Perintah
 
@@ -15,6 +15,18 @@ php artisan test --filter=nama_test                   # satu kasus
 vendor/bin/pint --format agent   # format (terpisah dari gate)
 npx tsc --noEmit                     # type-check frontend
 ```
+
+Coverage satu file (untuk audit gap, tanpa menjalankan seluruh suite):
+
+```bash
+XDEBUG_MODE=coverage vendor/bin/phpunit tests/Feature/AcuanIndexEdgeTest.php \
+  --coverage-clover /tmp/cov.xml
+```
+
+`composer test-coverage` menjalankan dua pengecekan: total ≥ 80% (flag `--min`
+phpunit) **dan** tiap file ≥ 80% lewat `tests/coverage-per-file.php` yang
+mem-parse Clover XML dan keluar `exit 1` bila ada satu file di bawah ambang.
+Status kini: **100% total, semua file 100%**.
 
 ## 2. Fondasi
 
@@ -31,8 +43,13 @@ npx tsc --noEmit                     # type-check frontend
   CSV via `UploadedFile::fake()->createWithContent()`.
 - Export XLSX diverifikasi baca-balik cell (header `A8`, data `A10`,
   VLOOKUP dinamis, `SUM`), bukan sekadar status unduhan.
+- Cabang privat (parser `parseXlsx`/`parseTanggal`, formatter `formatKotaKab`,
+  `safeCell`) diuji via `ReflectionMethod` — tidak perlu memaksa jalur HTTP.
+- Logika bergantung `date('n')` global diuji lewat helper ber-argumen opsional
+  (`AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`)
+  agar deterministik tanpa mengunci jam sistem.
 
-## 3. Matriks Cakupan (16 Feature + 4 Unit)
+## 3. Matriks Cakupan (24 Feature + 4 Unit)
 
 | File | Menjamin |
 |------|----------|
@@ -47,8 +64,14 @@ npx tsc --noEmit                     # type-check frontend
 | `SpjGapTest` | SPJ: pilih-bulan, create/edit-spk lock, store-spk lock, destroy/update cross-tenant 403 + acuan lintas sekolah, cari-barang kosong & fallback master→SPJ |
 | `AcuanImportGapTest` | Import acuan: skip baris pendek/invalid, tanggal serial Excel, bulan dari request, target via NPSN, batas 5000 baris, tenant isolation store/destroy |
 | `CetakBmSheetTest` | `safeCell` netralkan formula injection (`=`/`+`/`@`), `formatKotaKab` normalisasi "Kab."→"KABUPATEN" |
+| `AcuanIndexEdgeTest` | Default bulan Januari→Desember (unit `defaultBulan`), `search_satuan` by nama/NPSN + escape wildcard `%`, `parseTanggal` kosong, `parseXlsx` zip rusak + rich-text/inlineStr, daftar sekolah untuk admin, bulan kosong tanpa filter |
+| `CetakControllerEdgeTest` | `show()` stub "Belum Ada Sekolah" saat DB sekolah kosong, daftar sekolah admin, `check()` terfilter per sekolah & hitung `ba_tgl` null |
+| `RekapanEdgeTest` | Label status menunggu/disetujui, realisasi per `acuan_id`, sort TUNTAS dulu + alfabetis, grup `TANPA KODERING` tak masuk progres |
+| `DashboardEdgeTest` | Admin listSelesai/listBelum, fallback target semua sekolah, status `menunggu_approval`→SELESAI, unit `bulanLapor` Januari→Desember |
+| `ActivityLogFilterTest` | Filter `subject_type`, `dari`/`sampai`, `event`, `q` (description), `sekolah_id` (properties) |
+| `ExportSafeCellTest` | `RealisasiBmSheet::safeCell` netralkan formula + null/kosong, `CetakBmSheet::formatKotaKab` kosong/spasi |
 | `RekapanDanKunciTest` | Rekapan, toggle kunci, status draft→disetujui |
-| `UserManagementTest` | CRUD user, proteksi super_admin & hapus diri |
+| `UserManagementTest` | CRUD user, proteksi super_admin & hapus diri, pemetaan role admin_kcd/bendahara_sekolah |
 | `PasswordExpiryTest` | Intersep 90 hari, dedicated page, kompleksitas |
 | `TurnstileLoginTest` | Login dengan/without Turnstile sesuai env, penolakan Cloudflare, gagal koneksi, memo siteverify (token sekali pakai) |
 | `KodeBarangTest` / `KodeBarangImportTest` | CRUD + leaf-search + import batas 20rb |
@@ -64,9 +87,17 @@ npx tsc --noEmit                     # type-check frontend
    `activity()->withoutLogging(...)` agar hitungan log presisi.
 3. Kasus keamanan baru (tenant/kunci) masuk `SecurityHardeningTest`,
    bukan file acak.
-4. Jalankan file barunya + full suite sebelum commit.
+4. Utamakan menutup baris yang belum tercakup **karena menjamin perilaku nyata**
+   (batas, fallback, cabang error), bukan sekadar menembak angka coverage.
+   Preferensi assert: nilai hasil (Inertia props / cell XLSX / isi DB), bukan
+   hanya status.
+5. Jalankan file barunya + full suite + `composer test-coverage` sebelum commit.
 
 ## 5. Batasan Diketahui
 
 - Tanpa test browser/JS (Vite/Inertia diuji via HTTP + `tsc`).
 - Tanpa test konkurensi transaksi; tanpa benchmark performa export besar.
+- Logika yang bergantung `date('n')` global (default bulan filter, bulan lapor
+  dashboard) diuji lewat helper kecil ber-argumen opsional
+  (`AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`)
+  agar deterministik tanpa mengunci jam sistem.

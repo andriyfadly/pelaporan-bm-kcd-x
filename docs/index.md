@@ -15,7 +15,7 @@ Pendidikan Wilayah X. Migrasi dari aplikasi legacy PHP (`legacy/`).
 5. [Endpoint & Kontrak Data](api.md) — rute web, controller, middleware, payload.
 6. [Alur & Modul per Role](modules.md) — detail operasional tiap modul.
 7. [Keamanan](security.md) — matriks RBAC, isolasi tenant, audit trail, checklist rilis.
-8. [Testing](testing.md) — strategi, perintah, matriks 16 file test.
+8. [Testing](testing.md) — strategi, perintah, matriks 24 file test, status 100%.
 9. [Instalasi Lokal](setup.md) — prasyarat, instalasi, verifikasi kualitas.
 10. [Deployment Produksi](deployment.md) — prasyarat server, rilis, backup, troubleshooting.
 11. [User Manual](user-guide.md) — panduan operator & admin KCD.

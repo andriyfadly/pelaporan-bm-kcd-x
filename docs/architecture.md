@@ -146,10 +146,11 @@ Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
 
 ## 7. Testing & Kualitas
 
-- 66 test / 318 assertions: Feature per modul + Unit (Fortify, relasi, gate,
-  rate limit). DB SQLite in-memory (`phpunit.xml`), seed
-  `PeranDanHakAksesSeeder` per test.
-- Gate: `composer test` (cepat), `composer test-coverage` (Xdebug, min 80%).
+- 179 test / 930 assertions (line coverage 100%, semua file 100%): Feature per
+  modul + Unit (Fortify, relasi, gate, rate limit). DB SQLite in-memory
+  (`phpunit.xml`), seed `PeranDanHakAksesSeeder` per test.
+- Gate: `composer test` (cepat), `composer test-coverage` (Xdebug; total ≥ 80%
+  via `--min` **dan** tiap file ≥ 80% via `tests/coverage-per-file.php`).
 - `vendor/bin/pint`, `npx tsc --noEmit` wajib hijau sebelum merge.
 
 ## 8. Keputusan Arsitektur Penting (ADL ringkas)

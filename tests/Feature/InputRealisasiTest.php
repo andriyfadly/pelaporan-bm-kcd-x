@@ -468,4 +468,63 @@ class InputRealisasiTest extends TestCase
             'status_kunci' => true,
         ]);
     }
+
+    public function test_index_menormalkan_bulan_di_luar_rentang_ke_bulan_berjalan(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->operator($sekolah, 'op_bulan_invalid');
+
+        // Bulan di luar 1..12 -> jatuh ke bulan berjalan (bukan error).
+        $bulanBerjalan = (int) date('n');
+
+        $this->actingAs($user)
+            ->get(route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => 99]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('PelaporanBm/InputRealisasi/Index')
+                ->where('bulan', $bulanBerjalan)
+            );
+    }
+
+    public function test_simpan_ditolak_saat_bulan_terkunci(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->operator($sekolah, 'op_simpan_kunci');
+        $this->acuan($sekolah, 5, '5.2.02.01', 1_000_000);
+        $spj = $this->spj($sekolah, 5, '1.3.2.01', 100_000);
+
+        activity()->withoutLogging(fn () => KunciLaporan::create([
+            'sekolah_id' => $sekolah->id,
+            'bulan' => 5,
+            'status_kunci' => true,
+            'status_kirim' => 'menunggu_approval',
+        ]));
+
+        $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.simpan'), [
+                'kodering' => '5.2.02.01',
+                'bulan_realisasi' => 5,
+                'item_ids' => [$spj->id],
+            ])
+            ->assertSessionHas('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+
+        $this->assertDatabaseCount('pelaporan_bm_realisasi', 0);
+    }
+
+    public function test_kirim_laporan_menolak_parameter_bulan_tidak_valid(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->operator($sekolah, 'op_kirim_invalid');
+
+        // Bulan 0 dan 99 -> "Parameter tidak valid." sebelum menyentuh DB.
+        $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.kirim-laporan'), ['bulan_realisasi' => 0])
+            ->assertSessionHas('error', 'Parameter tidak valid.');
+
+        $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.kirim-laporan'), ['bulan_realisasi' => 99])
+            ->assertSessionHas('error', 'Parameter tidak valid.');
+
+        $this->assertDatabaseCount('pelaporan_bm_kunci_laporan', 0);
+    }
 }

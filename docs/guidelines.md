@@ -54,9 +54,9 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
 
 ---
 
-## 3. Standar Pengujian (Testing & Code Coverage)
+## 5. Standar Pengujian (Testing & Code Coverage)
 
-- **Target Coverage**: Line coverage &ge; 80% per file dan total, di-enforce via gate `composer test-coverage` (gagal bila di bawah minimum).
+- **Target Coverage**: Line coverage &ge; 80% per file dan total, di-enforce via gate `composer test-coverage` (gagal bila di bawah minimum). Status saat ini: **100% total, semua file 100%**.
 - **Menjalankan Tes**:
   ```bash
   # Cepat (tanpa coverage) — pakai ini saat iterasi harian
@@ -71,9 +71,10 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
   php artisan test --filter=test_multi_item_spk_and_input_realisasi_workflow
   ```
 - **Struktur Test**:
-  - `tests/Feature/`: alur HTTP end-to-end per modul (SPJ & Input Realisasi, Kode Barang + import CSV/xlsx, User Management, Password Expiry, Rekapan & Kunci).
+  - `tests/Feature/`: alur HTTP end-to-end per modul (SPJ & Input Realisasi, Kode Barang + import CSV/xlsx, User Management, Password Expiry, Rekapan & Kunci, isolasi tenant, filter log aktivitas, edge-case index/export).
   - `tests/Unit/`: Fortify actions, relasi model, Gate super_admin & rate limiter.
 - **Prinsip**: Gunakan database SQLite in-memory (sudah disetel di `phpunit.xml`). Untuk test feature, seed `PeranDanHakAksesSeeder` lalu buat user via `User::create` + `assignRole` mengikuti pola test existing. Gunakan `UploadedFile::fake()->createWithContent()` untuk import CSV; xlsx dibuat in-test via `ZipArchive` (tanpa paket tambahan).
+- **Logika bergantung waktu**: jangan mengandalkan `date('n')`/jam sistem di test. Ekstrak perhitungan ke helper kecil ber-argumen opsional (contoh: `AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`) lalu uji deterministik via reflection. Untuk cabang murni privat (parser, formatter), uji memakai `ReflectionMethod` alih-alih memaksa jalur HTTP.
 
 ---
 

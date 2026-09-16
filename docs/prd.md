@@ -115,8 +115,9 @@ operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
 
 ### Non-fungsional
 - Keamanan: lihat `docs/security.md` (RBAC matrix, throttle, validasi).
-- Kualitas: Pint lolos, `tsc --noEmit` 0 error, PHPUnit ≥ 80% coverage
-  (`composer test-coverage`), 66 test / 318 assertions saat dokumen ditulis.
+- Kualitas: Pint lolos, `tsc --noEmit` 0 error, PHPUnit coverage 100% (semua
+  file) via `composer test-coverage`, 179 test / 930 assertions saat dokumen
+  diperbarui.
 - Dokumentasi: relative path saja (aturan `docs/guidelines.md`).
 
 ## 6. Di Luar Ruang Lingkup

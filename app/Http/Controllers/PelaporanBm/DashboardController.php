@@ -96,7 +96,7 @@ class DashboardController extends Controller
         $sekolah = $user->sekolah ?: Sekolah::find($sekolahId);
 
         $bulanSekarang = (int) date('n');
-        $bulanLapor = ($bulanSekarang === 1) ? 12 : ($bulanSekarang - 1);
+        $bulanLapor = $this->bulanLapor($bulanSekarang);
 
         $kunciLapor = KunciLaporan::where('sekolah_id', $sekolahId)
             ->where('bulan', $bulanLapor)
@@ -151,8 +151,7 @@ class DashboardController extends Controller
         }
 
         return Inertia::render('PelaporanBm/Dashboard', [
-            'isAdmin' => false,
-            'sekolah' => $sekolah,
+            'isAdmin' => false,            'sekolah' => $sekolah,
             'bulanSekarang' => $bulanSekarang,
             'bulanLapor' => $bulanLapor,
             'namaBulanSekarang' => $namaBulanArr[$bulanSekarang] ?? 'Januari',
@@ -167,5 +166,16 @@ class DashboardController extends Controller
             'totalSpj' => $totalKeseluruhanAset,
             'totalNominal' => $totalKeseluruhanRealisasi,
         ]);
+    }
+
+    /**
+     * Bulan lapor (periode yang dilaporkan) = bulan berjalan - 1,
+     * dengan Januari dibulatkan mundur ke Desember.
+     */
+    protected function bulanLapor(?int $bulanSekarang = null): int
+    {
+        $bulan = $bulanSekarang ?? (int) date('n');
+
+        return $bulan === 1 ? 12 : $bulan - 1;
     }
 }

@@ -103,4 +103,52 @@ class UserManagementTest extends TestCase
             'id' => $user->id,
         ]);
     }
+
+    public function test_update_memetakan_role_admin_kcd_dan_bendahara(): void
+    {
+        $admin = User::create([
+            'name' => 'Admin KCD', 'username' => 'admin_map', 'password' => bcrypt('password'),
+        ]);
+        $admin->assignRole('admin_kcd');
+
+        $target = User::create([
+            'name' => 'Target', 'username' => 'target_map', 'password' => bcrypt('password'),
+        ]);
+        $target->assignRole('operator_sekolah');
+
+        // admin_kcd -> peran admin_kcd
+        $this->actingAs($admin)
+            ->put(route('admin.user.update', $target), [
+                'username' => 'target_map', 'role' => 'admin_kcd',
+            ])
+            ->assertRedirect();
+        $this->assertTrue($target->fresh()->hasRole('admin_kcd'));
+
+        // bendahara_sekolah -> peran bendahara_sekolah
+        $this->actingAs($admin)
+            ->put(route('admin.user.update', $target), [
+                'username' => 'target_map', 'role' => 'bendahara_sekolah',
+            ])
+            ->assertRedirect();
+        $this->assertTrue($target->fresh()->hasRole('bendahara_sekolah'));
+    }
+
+    public function test_update_tanpa_role_tidak_mengubah_peran(): void
+    {
+        $admin = User::create([
+            'name' => 'Admin KCD', 'username' => 'admin_norole', 'password' => bcrypt('password'),
+        ]);
+        $admin->assignRole('admin_kcd');
+
+        $target = User::create([
+            'name' => 'Target', 'username' => 'target_norole', 'password' => bcrypt('password'),
+        ]);
+        $target->assignRole('operator_sekolah');
+
+        $this->actingAs($admin)
+            ->put(route('admin.user.update', $target), ['username' => 'target_norole'])
+            ->assertRedirect();
+
+        $this->assertTrue($target->fresh()->hasRole('operator_sekolah'));
+    }
 }

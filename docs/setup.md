@@ -69,7 +69,8 @@ npx tsc --noEmit
 # Pengujian unit & fitur (cepat, tanpa coverage)
 composer test
 
-# Gate coverage penuh: gagal bila line coverage < 80%
+# Gate coverage penuh: gagal bila line coverage total < 80%
+# atau ada satu file < 80% (lihat tests/coverage-per-file.php)
 composer test-coverage
 ```
 

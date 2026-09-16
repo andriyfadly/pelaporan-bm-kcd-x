@@ -18,12 +18,7 @@ class AcuanController extends Controller
 
     public function index(Request $request): Response
     {
-        $defaultBulan = (int) date('n') - 1;
-        if ($defaultBulan <= 0) {
-            $defaultBulan = 12;
-        }
-
-        $filterBulan = $request->has('bulan') ? $request->input('bulan') : $defaultBulan;
+        $filterBulan = $request->has('bulan') ? $request->input('bulan') : $this->defaultBulan();
         $searchSatuan = trim((string) $request->input('search_satuan', ''));
         $sekolahId = $this->resolveSekolahId($request);
 
@@ -92,6 +87,17 @@ class AcuanController extends Controller
         Acuan::create($validated);
 
         return back()->with('success', 'Data acuan berhasil ditambahkan.');
+    }
+
+    /**
+     * Bulan default untuk filter: bulan berjalan - 1, dengan Januari (0)
+     * dibulatkan mundur ke Desember.
+     */
+    protected function defaultBulan(?int $bulanSekarang = null): int
+    {
+        $bulan = ($bulanSekarang ?? (int) date('n')) - 1;
+
+        return $bulan <= 0 ? 12 : $bulan;
     }
 
     public function destroy(Acuan $acuan, Request $request): RedirectResponse
