@@ -8,9 +8,11 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -52,7 +54,25 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson() || $request->wantsJson()) {
                 return response()->json(['message' => $pesan], 500);
             }
+            if ($request->header('X-Inertia')) {
+                return Inertia::render('Error', ['status' => 500])->toResponse($request)->setStatusCode(500);
+            }
 
             return back()->with('error', $pesan);
+        });
+
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return null;
+            }
+            $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
+            if ($status < 400 || $status === 500) {
+                return null;
+            }
+            if ($request->header('X-Inertia')) {
+                return Inertia::render('Error', ['status' => $status])->toResponse($request)->setStatusCode($status);
+            }
+
+            return response()->view('errors.page', ['status' => $status], $status);
         });
     })->create();

@@ -52,7 +52,8 @@ Rute log: `role:super_admin` + `permission:lihat-log-aktivitas`
 | Mass assignment | `$fillable` eksplisit; validasi per-controller |
 | Data terkunci diubah | Guard status di tiap aksi tulis (kunci/menunggu/disetujui) |
 | Secret bocor ke log | `logExcept` password/token di model User; test `password_tidak_bocor_di_log` |
-| DB error bocor ke user | Handler `QueryException` di `bootstrap/app.php`: pesan ramah + `Log::error` konteks; tanpa SQL ke respons |
+| DB error bocor ke user | Handler `QueryException` di `bootstrap/app.php`: Inertia `Error` 500 (XHR) / flash ramah (web biasa) + `Log::error` konteks; tanpa SQL ke respons |
+| Error page default Laravel | Handler `Throwable` 4xx → Inertia `Error` (navigasi) / `errors.page` Blade (load awal); tanpa stack trace ke user |
 | Session hijack | `SESSION_SECURE_COOKIE`, regenerasi saat login (Fortify) |
 
 ## 5. Audit Trail
