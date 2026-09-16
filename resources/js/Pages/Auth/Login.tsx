@@ -19,6 +19,7 @@ export default function Login() {
     const { turnstileSiteKey } = usePage<{ turnstileSiteKey?: string | null }>().props;
     const [showPassword, setShowPassword] = useState(false);
     const [turnstileReady, setTurnstileReady] = useState(false);
+    const [turnstileVerified, setTurnstileVerified] = useState(false);
     const [turnstileError, setTurnstileError] = useState('');
     const widgetRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
@@ -51,15 +52,24 @@ export default function Login() {
         if (widgetIdRef.current) return;
         widgetIdRef.current = window.turnstile.render(widgetRef.current, {
             sitekey: turnstileSiteKey,
+            'success-callback': () => {
+                setTurnstileVerified(true);
+                setTurnstileError('');
+            },
             'expired-callback': () => {
+                setTurnstileVerified(false);
                 window.turnstile?.reset(widgetIdRef.current ?? undefined);
                 setTurnstileError('Verifikasi kedaluwarsa, silakan centang ulang.');
             },
             'timeout-callback': () => {
+                setTurnstileVerified(false);
                 window.turnstile?.reset(widgetIdRef.current ?? undefined);
                 setTurnstileError('Verifikasi habis waktu, silakan centang ulang.');
             },
-            'error-callback': () => setTurnstileError('Verifikasi gagal dimuat, silakan muat ulang halaman.'),
+            'error-callback': () => {
+                setTurnstileVerified(false);
+                setTurnstileError('Verifikasi gagal dimuat, silakan muat ulang halaman.');
+            },
         });
     }, [turnstileSiteKey, turnstileReady]);
 
@@ -75,9 +85,15 @@ export default function Login() {
         setTurnstileError('');
         setData('cf-turnstile-response', token);
         post('/login', {
-            onFinish: () => window.turnstile?.reset(widgetIdRef.current ?? undefined),
+            onFinish: () => {
+                setTurnstileVerified(false);
+                window.turnstile?.reset(widgetIdRef.current ?? undefined);
+            },
         });
     };
+
+    // Tombol aktif hanya bila Turnstile (jika diaktifkan) sudah terverifikasi.
+    const canSubmit = !processing && (!turnstileSiteKey || turnstileVerified);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f0f9ff] to-[#e0f2fe] p-[15px]">
@@ -172,11 +188,20 @@ export default function Login() {
 
                         <button
                             type="submit"
-                            disabled={processing}
-                            className="w-full mt-2 py-2.5 px-4 bg-[#38bdf8] hover:bg-[#0284c7] text-white font-bold text-[0.9rem] rounded-[12px] shadow-[0_4px_12px_rgba(56,189,248,0.2)] hover:shadow-[0_6px_16px_rgba(2,132,199,0.3)] hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 flex items-center justify-center cursor-pointer"
+                            disabled={!canSubmit}
+                            className="w-full mt-2 py-2.5 px-4 bg-[#38bdf8] hover:bg-[#0284c7] text-white font-bold text-[0.9rem] rounded-[12px] shadow-[0_4px_12px_rgba(56,189,248,0.2)] hover:shadow-[0_6px_16px_rgba(2,132,199,0.3)] hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center cursor-pointer"
                         >
-                            {processing ? 'MEMPROSES...' : 'MASUK SEKARANG'}
+                            {processing
+                                ? 'MEMPROSES...'
+                                : turnstileSiteKey && !turnstileVerified
+                                  ? 'SELESAIKAN VERIFIKASI'
+                                  : 'MASUK SEKARANG'}
                         </button>
+                        {turnstileSiteKey && !turnstileVerified && !turnstileError ? (
+                            <p className="mt-2 text-center text-[11px] font-medium text-slate-400">
+                                Selesaikan verifikasi keamanan untuk mengaktifkan tombol masuk.
+                            </p>
+                        ) : null}
                     </form>
                 </div>
             </div>

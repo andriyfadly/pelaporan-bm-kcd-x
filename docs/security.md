@@ -50,7 +50,8 @@ Rute log (`/admin/log-aktivitas` + `/admin/log-error` via opcodesio/log-viewer):
   besar/kecil + angka + simbol; `different:current_password`.
 - 2FA TOTP + recovery codes + passkeys (WebAuthn) tersedia.
 - Turnstile di login (arda proteksi bot); dilewati bila `TURNSTILE_ENABLED=false`
-  (lokal/testing).
+  (lokal/testing). Di klien, tombol "Masuk" baru aktif setelah widget Turnstile
+  lolos verifikasi (`success-callback`), sehingga submit tak mengirim token kosong.
 - Reset password via Fortify tercatat sebagai `reset-password` (causer anonim).
 
 ## 4. Proteksi Aplikasi
