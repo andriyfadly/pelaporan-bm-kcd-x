@@ -184,7 +184,7 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                         <a
                             href={unduhUrl}
                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm transition"
-                            title="Download CSV/Excel Sesuai Filter"
+                            title="Download Excel Sesuai Filter"
                         >
                             <Download className="w-4 h-4" /> Laporan
                         </a>

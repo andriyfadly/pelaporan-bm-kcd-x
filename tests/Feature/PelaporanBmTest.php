@@ -106,8 +106,7 @@ class PelaporanBmTest extends TestCase
         $response = $this->actingAs($admin)
             ->get(route('pelaporan-bm.cetak.unduh', ['bulan' => 5, 'tahun' => 2026]));
         $response->assertOk()
-            ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
-        $this->assertStringContainsString('Laptop Cetak', $response->streamedContent());
+            ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 
     public function test_user_can_update_and_export_spj_and_kirim_laporan(): void
@@ -167,9 +166,8 @@ class PelaporanBmTest extends TestCase
             ->get(route('pelaporan-bm.unduh', ['bulan' => 5]));
 
         $response->assertOk();
-        $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
-        $content = $response->streamedContent();
-        $this->assertStringContainsString('SPK/001-REV', $content);
+        $this->assertStringContainsString('spreadsheetml.sheet', $response->headers->get('content-type'));
+        $this->assertStringContainsString('.xlsx', $response->headers->get('content-disposition'));
 
         // Test import acuan XLSX (samakan legacy: input_acuan.php)
         $shared = '<?xml version="1.0"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="9" uniqueCount="9"><si><t>Satuan</t></si><si><t>NPSN</t></si><si><t>Tanggal</t></si><si><t>Kodering</t></si><si><t>BKU</t></si><si><t>Uraian</t></si><si><t>Nominal</t></si><si><t>Bulan</t></si><si><t>Komputer Server</t></si></sst>';

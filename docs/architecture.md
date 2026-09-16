@@ -22,11 +22,12 @@ app/
         UserController.php          # Kelola user & hak akses
       PelaporanBm/
         AcuanController.php         # Master target kodering acuan
-        CetakController.php         # Pre-flight check & export CSV 26 kolom
+        CetakController.php         # Pre-flight check & export XLSX 26 kolom (CetakBmExport)
         DashboardController.php     # Logic dashboard Admin KCD vs Sekolah
         InputRealisasiController.php # Alokasi item SPJ ke kodering realisasi (simpan/edit/uncheck)
         KunciLaporanController.php  # Toggle kunci & status approval
         RealisasiController.php     # Data realisasi (tabel pelaporan_bm_realisasi) + ekspor XLSX (RealisasiBmExport)
+        SpjController.php           # Rekap SPJ + ekspor XLSX (SpjRekapExport)
         RekapanController.php       # Rekapan kodering per sekolah
         SpjController.php           # Buku SPJ dokumen, form SPK multi-item, & item barang
   Models/

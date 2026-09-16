@@ -8,7 +8,7 @@ Sekolah negeri (SMKN, SMAN, SLBN) di lingkungan Cabang Dinas Pendidikan Wilayah 
 ## 2. Tujuan Produk (Product Goals)
 1. **Sentralisasi SPJ & Fisik Barang**: Dokumentasi digital terpusat untuk dokumen kontrak (SPK/SP2D) dan rincian item barang fisik.
 2. **Kesesuaian Target Acuan vs Realisasi**: Memastikan belanja modal per kodering rekening termonitor secara real-time (Target, Realisasi, Kekurangan).
-3. **Standarisasi Cetak Laporan**: Menghasilkan Berita Acara Rekapitulasi Belanja Modal format resmi 26 Kolom (CSV/Excel).
+3. **Standarisasi Cetak Laporan**: Menghasilkan Berita Acara Rekapitulasi Belanja Modal format resmi 26 Kolom (Excel).
 4. **Akuntabilitas & Kontrol**: Penguncian laporan bulanan oleh KCD untuk menjamin validitas data audit.
 
 ---
@@ -35,7 +35,7 @@ Sekolah negeri (SMKN, SMAN, SLBN) di lingkungan Cabang Dinas Pendidikan Wilayah 
 
 ### F3: Data Realisasi & Cetak Laporan
 - **Data Realisasi**: Tabel seluruh baris alokasi realisasi (sumber `pelaporan_bm_realisasi`) dengan filter barang/bulan/tahun dan ekspor XLSX 25 kolom (samakan legacy).
-- **Cetak 26 Kolom**: Pre-flight validation (mencegah unduh data kosong), modal progres simulasi unduh, dan ekspor CSV 26 kolom UTF-8 BOM.
+- **Cetak 26 Kolom**: Pre-flight validation (mencegah unduh data kosong), modal progres simulasi unduh, dan ekspor Excel 26 kolom.
 
 ### F4: Pengawasan & Penguncian (Admin KCD)
 - **Rekapan Kodering**: Komparasi acuan vs realisasi seluruh sekolah per bulan.

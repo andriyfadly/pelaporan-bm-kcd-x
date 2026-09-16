@@ -207,7 +207,7 @@ export default function Index({
                         {/* Action Footer */}
                         <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
                             <span className="text-xs text-slate-500">
-                                Berkas akan diunduh dalam format lembar kerja Excel (.csv/UTF-8) dengan 26 kolom standar KCD.
+                                Berkas akan diunduh dalam format Excel (.xlsx) dengan 26 kolom standar KCD.
                             </span>
                             <button
                                 type="button"

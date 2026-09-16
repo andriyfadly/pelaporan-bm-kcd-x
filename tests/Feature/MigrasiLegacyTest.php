@@ -24,7 +24,9 @@ class MigrasiLegacyTest extends TestCase
         $this->assertSame(490, Spj::count());
         $this->assertSame(42, Realisasi::count());
         $this->assertSame(13, KunciLaporan::count());
-        $this->assertSame(78, User::count());
+
+        // users TIDAK dimigrasi: akun via UserSeeder ({npsn}-admin)
+        $this->assertSame(0, User::count());
 
         // status laporan terbawa
         $this->assertSame(13, KunciLaporan::where('status_kirim', 'disetujui')->count());
@@ -34,10 +36,5 @@ class MigrasiLegacyTest extends TestCase
         $this->assertSame(0, Spj::whereNull('sekolah_id')->count());
         $this->assertSame(0, Realisasi::whereNull('spj_id')->count());
         $this->assertSame(0, Realisasi::whereNull('sekolah_id')->count());
-
-        // role user legacy
-        $this->assertSame(1, User::role('admin_kcd')->count());
-        $this->assertSame(77, User::role('operator_sekolah')->count());
-        $this->assertSame(78, User::whereNull('password_changed_at')->count());
     }
 }

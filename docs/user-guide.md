@@ -51,7 +51,7 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 ### Langkah 4: Kirim & Cetak Laporan Bulanan
 1. Ketika total kekurangan = Rp 0, klik **Kirim Laporan** di panel bawah Input Realisasi (konfirmasi lalu status berubah `menunggu_approval` dan data terkunci).
-2. Setelah disetujui Admin KCD, buka menu **Cetak Laporan** (`/pelaporan-bm/cetak`), pilih bulan, lalu unduh format resmi CSV 26 kolom.
+2. Setelah disetujui Admin KCD, buka menu **Cetak Laporan** (`/pelaporan-bm/cetak`), pilih bulan, lalu unduh format resmi Excel 26 kolom.
 3. Menu **Data Realisasi** juga menyediakan unduhan **Laporan XLSX** sesuai filter dan **Template Isian** Excel.
 
 ---
@@ -60,7 +60,7 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 ### Langkah 1: Unggah Target Acuan Anggaran
 1. Buka menu **Acuan Belanja Modal** (`/pelaporan-bm/acuan`).
-2. Masukkan pagu per kodering per sekolah secara manual atau gunakan tombol **Import Excel/CSV**.
+2. Masukkan pagu per kodering per sekolah secara manual atau gunakan tombol **Import Excel**.
 
 ### Langkah 2: Monitoring Wilayah di Dashboard
 1. Buka **Dashboard** (`/dashboard`).

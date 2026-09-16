@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Exports\SpjRekapExport;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\Master\KodeBarang;
@@ -15,7 +16,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SpjController extends Controller
 {
@@ -433,9 +435,8 @@ class SpjController extends Controller
         return back()->with('success', 'Data SPJ berhasil diperbarui.');
     }
 
-    public function unduh(Request $request): StreamedResponse
+    public function unduh(Request $request): BinaryFileResponse
     {
-        $user = $request->user();
         $sekolahId = $this->resolveSekolahId($request);
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
@@ -446,33 +447,10 @@ class SpjController extends Controller
 
         $items = $query->orderBy('no_spk')->get();
 
-        $headers = [
-            'Content-Type' => 'text/csv; charset=utf-8',
-            'Content-Disposition' => "attachment; filename=\"rekap_bm_bulan_{$bulan}.csv\"",
-        ];
-
-        return response()->stream(function () use ($items) {
-            $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-            fputcsv($handle, ['No SPK', 'No SP2D', 'Sumber', 'Kode Barang', 'Nama Barang', 'Jenis Aset', 'Merk/Tipe', 'Satuan', 'Volume', 'Harga Satuan', 'Nilai Perolehan']);
-
-            foreach ($items as $item) {
-                fputcsv($handle, [
-                    $item->no_spk,
-                    $item->no_sp2d,
-                    $item->sumber_perolehan,
-                    $item->kode_barang,
-                    $item->nama_barang,
-                    $item->jenis_aset,
-                    $item->merk_tipe,
-                    $item->satuan,
-                    $item->volume,
-                    $item->harga_satuan,
-                    $item->nilai_perolehan,
-                ]);
-            }
-            fclose($handle);
-        }, 200, $headers);
+        return Excel::download(
+            new SpjRekapExport($items),
+            "rekap_bm_bulan_{$bulan}.xlsx"
+        );
     }
 
     public function cariBarang(Request $request): JsonResponse

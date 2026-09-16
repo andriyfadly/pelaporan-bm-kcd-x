@@ -84,7 +84,7 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
   - Return JSON: `{ status: 'ok'|'empty', count: number, message: string }`.
 - **`GET /pelaporan-bm/cetak/export`**
   - Parameter: `bulan`, `sekolah_id`
-  - Return: Stream unduhan file `.csv` (26 Kolom format KCD Wilayah X).
+  - Return: Unduhan `.xlsx` via `maatwebsite/excel` (26 Kolom format KCD Wilayah X).
 
 ### E. Administrasi & Kunci Laporan (`app/Http/Controllers/PelaporanBm/KunciLaporanController.php`)
 - **`POST /pelaporan-bm/kunci-laporan/toggle`** (Admin only)

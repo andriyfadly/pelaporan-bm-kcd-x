@@ -70,7 +70,7 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
 - Format cetak Berita Acara Rekapitulasi Belanja Modal standar KCD Wilayah X.
 - **Pre-Flight Validation**: Sistem mengecek kelayakan data via endpoint `POST /pelaporan-bm/cetak/check`. Jika tidak ada data realisasi pada bulan/sekolah yang dipilih, muncul modal alert dan unduhan dicegah.
 - **Progress Unduh**: Modal simulasi progress unduh melingkar (0-100%).
-- **Format 26 Kolom**: File CSV UTF-8 dengan BOM kompatibel Microsoft Excel mencakup identitas sekolah, SP2D, SPK, BA Penerimaan, kodering, spesifikasi, volume, dan harga satuan.
+- **Format 26 Kolom**: File Excel (.xlsx) mencakup identitas sekolah, SP2D, SPK, BA Penerimaan, kodering, spesifikasi, volume, dan harga satuan.
 
 ---
 
