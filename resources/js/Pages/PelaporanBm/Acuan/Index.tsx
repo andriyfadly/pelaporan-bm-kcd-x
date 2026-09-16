@@ -243,12 +243,12 @@ export default function Index({
                                 Pilih File Template Anda
                             </h3>
                             <p className="text-[11px] text-slate-500 mb-3">
-                                Mendukung berkas CSV atau TXT yang diekspor dari template Excel resmi
+                                Mendukung berkas .xlsx atau .xls dari template resmi
                             </p>
                             <div className="flex justify-center">
                                 <input
                                     type="file"
-                                    accept=".csv,.txt"
+                                    accept=".xlsx,.xls"
                                     onChange={(e) => setImportData('file', e.target.files?.[0] || null)}
                                     className="block w-full max-w-sm text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-[#2563eb] hover:file:bg-blue-100 cursor-pointer"
                                 />

@@ -253,7 +253,7 @@ class SecurityHardeningTest extends TestCase
                 ->where('items.0.nama_sekolah', 'SMKN Sendiri'));
     }
 
-    public function test_import_acuan_menolak_berkas_bukan_csv(): void
+    public function test_import_acuan_menolak_berkas_bukan_xlsx(): void
     {
         $operator = $this->operator($this->sekolah());
 

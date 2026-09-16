@@ -171,9 +171,19 @@ class PelaporanBmTest extends TestCase
         $content = $response->streamedContent();
         $this->assertStringContainsString('SPK/001-REV', $content);
 
-        // Test import acuan CSV
-        $csvContent = "Tanggal,Kodering,BKU,Uraian,Nominal\n2026-05-10,5.2.02.05,BKU-01,Komputer Server,25000000\n";
-        $file = UploadedFile::fake()->createWithContent('acuan.csv', $csvContent);
+        // Test import acuan XLSX (samakan legacy: input_acuan.php)
+        $shared = '<?xml version="1.0"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="9" uniqueCount="9"><si><t>Satuan</t></si><si><t>NPSN</t></si><si><t>Tanggal</t></si><si><t>Kodering</t></si><si><t>BKU</t></si><si><t>Uraian</t></si><si><t>Nominal</t></si><si><t>Bulan</t></si><si><t>Komputer Server</t></si></sst>';
+        $sheet = '<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+            .'<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c><c r="D1" t="s"><v>3</v></c><c r="E1" t="s"><v>4</v></c><c r="F1" t="s"><v>5</v></c><c r="G1" t="s"><v>6</v></c><c r="H1" t="s"><v>7</v></c></row>'
+            .'<row r="2"><c r="A2" t="s"><v>0</v></c><c r="B2"><v>0</v></c><c r="C2"><v>2026-05-10</v></c><c r="D2"><v>5.2.02.05</v></c><c r="E2"><v>BKU-01</v></c><c r="F2" t="s"><v>8</v></c><c r="G2"><v>25000000</v></c><c r="H2"><v>5</v></c></row>'
+            .'</sheetData></worksheet>';
+        $path = tempnam(sys_get_temp_dir(), 'acuan').'.xlsx';
+        $zip = new \ZipArchive;
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $zip->addFromString('xl/sharedStrings.xml', $shared);
+        $zip->addFromString('xl/worksheets/sheet1.xml', $sheet);
+        $zip->close();
+        $file = new UploadedFile($path, 'acuan.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
 
         $this->actingAs($user)
             ->post(route('pelaporan-bm.acuan.import'), [

@@ -134,93 +134,65 @@ class AcuanController extends Controller
     public function import(Request $request): RedirectResponse
     {
         $request->validate([
-            'file' => 'required|file|max:10240|mimes:csv,txt',
+            'file' => 'required|file|max:10240|mimes:xlsx,xls',
             'bulan' => 'nullable|integer|between:1,12',
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
         ]);
 
         $sekolahId = $this->resolveSekolahId($request);
         $file = $request->file('file');
-        $extension = strtolower($file->getClientOriginalExtension());
         $bulanInput = $request->input('bulan');
 
         $count = 0;
         $skipped = 0;
-        // ponytail: parser CSV/TXT native; format template legacy:
+        // ponytail: format template legacy (input_acuan.php):
         // [0: Satuan Pendidikan, 1: NPSN, 2: Tanggal, 3: Kodering, 4: BKU, 5: Uraian, 6: Nominal, 7: Bulan]
-        if (in_array($extension, ['csv', 'txt'])) {
-            $handle = fopen($file->getRealPath(), 'r');
-            fgetcsv($handle); // lewati baris header
+        $rows = array_slice($this->parseXlsx($file->getRealPath()), 1);
 
-            $rows = [];
-            while (($row = fgetcsv($handle, 2000, ',')) !== false) {
-                $rows[] = $row;
-            }
-            fclose($handle);
-
-            // ponytail: batas 5000 baris per import, naikkan jika kebutuhan riil melebihi
-            if (count($rows) > 5000) {
-                return back()->with('error', 'Berkas terlalu besar: maksimal 5000 baris data per impor.');
-            }
-
-            DB::transaction(function () use ($rows, $sekolahId, $bulanInput, &$count, &$skipped) {
-                foreach ($rows as $row) {
-                    if (count($row) < 4) {
-                        $skipped++;
-
-                        continue;
-                    }
-
-                    if (count($row) >= 7) {
-                        // Template Lengkap Vendor: Satuan Pendidikan, NPSN, Tanggal, Kodering, BKU, Uraian, Nominal, Bulan
-                        $satuanPendidikan = trim($row[0] ?? '');
-                        $npsn = trim($row[1] ?? '');
-                        $tanggal = trim($row[2] ?? '') ?: now()->toDateString();
-                        $kodering = trim($row[3] ?? '');
-                        $bku = trim($row[4] ?? '');
-                        $uraian = trim($row[5] ?? 'Acuan Import');
-                        $nominal = (float) str_replace(['.', ',', ' '], '', $row[6] ?? '0');
-                        $bulan = ! empty($row[7]) ? (int) $row[7] : ((int) $bulanInput ?: (int) date('n'));
-                    } else {
-                        // Format Sederhana: Tanggal, Kodering, BKU, Uraian, Nominal, [Bulan]
-                        $satuanPendidikan = '';
-                        $npsn = '';
-                        $tanggal = trim($row[0] ?? '') ?: now()->toDateString();
-                        $kodering = trim($row[1] ?? '');
-                        $bku = trim($row[2] ?? '');
-                        $uraian = trim($row[3] ?? 'Acuan Import');
-                        $nominal = (float) str_replace(['.', ',', ' '], '', $row[4] ?? '0');
-                        $bulan = ! empty($row[5]) ? (int) $row[5] : ((int) $bulanInput ?: (int) date('n'));
-                    }
-
-                    // Validasi per-baris: bulan & tanggal wajib valid, nominal tidak negatif
-                    if ($bulan < 1 || $bulan > 12 || $nominal < 0 || ! strtotime($tanggal)) {
-                        $skipped++;
-
-                        continue;
-                    }
-
-                    $targetSekolahId = $sekolahId;
-                    if (! $targetSekolahId && ! empty($npsn)) {
-                        // Hanya NPSN exact — tanpa fuzzy match nama (risiko salah atribusi)
-                        $targetSekolahId = Sekolah::where('npsn', $npsn)->value('id');
-                    }
-
-                    Acuan::create([
-                        'sekolah_id' => $targetSekolahId,
-                        'tanggal' => $tanggal,
-                        'kodering' => $kodering,
-                        'bku' => $bku,
-                        'uraian' => $uraian,
-                        'nominal' => $nominal,
-                        'bulan' => $bulan,
-                    ]);
-                    $count++;
-                }
-            });
-        } else {
-            return back()->with('error', 'Silakan gunakan berkas CSV yang diekspor dari template Excel resmi.');
+        // ponytail: batas 5000 baris per import, naikkan jika kebutuhan riil melebihi
+        if (count($rows) > 5000) {
+            return back()->with('error', 'Berkas terlalu besar: maksimal 5000 baris data per impor.');
         }
+
+        DB::transaction(function () use ($rows, $sekolahId, $bulanInput, &$count, &$skipped) {
+            foreach ($rows as $row) {
+                if (count($row) < 7) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $npsn = trim((string) ($row[1] ?? ''));
+                $tanggal = $this->parseTanggal($row[2] ?? '');
+                $kodering = trim((string) ($row[3] ?? ''));
+                $bku = trim((string) ($row[4] ?? ''));
+                $uraian = trim((string) ($row[5] ?? ''));
+                $nominal = (float) str_replace(['.', ',', ' '], '', (string) ($row[6] ?? '0'));
+                $bulan = ! empty($row[7]) ? (int) $row[7] : ((int) $bulanInput ?: (int) date('n'));
+
+                if ($uraian === '' || $tanggal === '' || $bulan < 1 || $bulan > 12 || $nominal < 0) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $targetSekolahId = $sekolahId;
+                if (! $targetSekolahId && $npsn !== '') {
+                    $targetSekolahId = Sekolah::where('npsn', $npsn)->value('id');
+                }
+
+                Acuan::create([
+                    'sekolah_id' => $targetSekolahId,
+                    'tanggal' => $tanggal,
+                    'kodering' => $kodering,
+                    'bku' => $bku,
+                    'uraian' => $uraian,
+                    'nominal' => $nominal,
+                    'bulan' => $bulan,
+                ]);
+                $count++;
+            }
+        });
 
         $pesan = "Berhasil mengimpor {$count} data acuan.";
         if ($skipped > 0) {
@@ -236,5 +208,76 @@ class AcuanController extends Controller
         ]);
 
         return back()->with('success', $pesan);
+    }
+
+    private function parseTanggal(mixed $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+        if (is_numeric($value) && (float) $value > 20000 && (float) $value < 80000) {
+            return gmdate('Y-m-d', (int) (((float) $value - 25569) * 86400));
+        }
+
+        return strtotime($value) ? date('Y-m-d', strtotime($value)) : '';
+    }
+
+    /**
+     * Parse Excel .xlsx native via ZipArchive + SimpleXML (tanpa paket tambahan).
+     * Mendukung shared strings, inline strings, dan angka tanggal serial Excel.
+     *
+     * @return array<int, array<int, string>>
+     */
+    private function parseXlsx(string $filePath): array
+    {
+        $zip = new \ZipArchive;
+        if ($zip->open($filePath) !== true) {
+            return [];
+        }
+
+        $strings = [];
+        $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($sharedXml !== false) {
+            $xml = simplexml_load_string($sharedXml);
+            if ($xml !== false && isset($xml->si)) {
+                foreach ($xml->si as $si) {
+                    $text = (string) $si->t;
+                    if ($text === '' && isset($si->r)) {
+                        foreach ($si->r as $r) {
+                            $text .= (string) $r->t;
+                        }
+                    }
+                    $strings[] = $text;
+                }
+            }
+        }
+
+        $rows = [];
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        if ($sheetXml !== false) {
+            $xml = simplexml_load_string($sheetXml);
+            if ($xml !== false && isset($xml->sheetData->row)) {
+                foreach ($xml->sheetData->row as $r) {
+                    $row = [];
+                    foreach ($r->c as $c) {
+                        $val = (string) $c->v;
+                        $type = (string) $c['t'];
+                        if ($type === 's' && isset($strings[(int) $val])) {
+                            $val = $strings[(int) $val];
+                        } elseif ($type === 'inlineStr') {
+                            $val = (string) ($c->is->t ?? $val);
+                        }
+                        $row[] = $val;
+                    }
+                    if (! empty(array_filter($row, fn ($v) => trim((string) $v) !== ''))) {
+                        $rows[] = $row;
+                    }
+                }
+            }
+        }
+        $zip->close();
+
+        return $rows;
     }
 }
