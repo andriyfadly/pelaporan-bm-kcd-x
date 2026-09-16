@@ -20,15 +20,24 @@ class TurnstileService
     public function verify(?string $token, ?string $ip = null): bool
     {
         if (! $this->isEnabled()) {
+            Log::warning('Turnstile dilewati/ditolak: konfigurasi tidak lengkap', [
+                'enabled_flag' => (bool) config('services.turnstile.enabled'),
+                'site_key_terisi' => filled(config('services.turnstile.site_key')),
+                'secret_key_terisi' => filled(config('services.turnstile.secret_key')),
+                'env' => app()->environment(),
+            ]);
+
             return app()->isLocal() || app()->runningUnitTests();
         }
 
         if (blank($token)) {
+            Log::warning('Verifikasi Turnstile gagal: token kosong dari client.');
+
             return false;
         }
 
         try {
-            $response = Http::asForm()->timeout(5)->post(
+            $response = Http::asForm()->timeout(8)->post(
                 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
                 [
                     'secret' => config('services.turnstile.secret_key'),
@@ -37,7 +46,16 @@ class TurnstileService
                 ]
             );
 
-            return (bool) $response->json('success');
+            $success = (bool) $response->json('success');
+
+            if (! $success) {
+                Log::warning('Verifikasi Turnstile ditolak Cloudflare', [
+                    'http_status' => $response->status(),
+                    'error_codes' => $response->json('error-codes'),
+                ]);
+            }
+
+            return $success;
         } catch (\Throwable $e) {
             Log::warning('Verifikasi Turnstile gagal: '.$e->getMessage());
 
