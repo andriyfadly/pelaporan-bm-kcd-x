@@ -11,3 +11,17 @@ logs_security/
 
 # Test temp
 _test_env.php
+.phpunit.result.cache
+/storage/coverage/
+/.playwright-mcp/
+
+# Dependencies
+/vendor/
+/legacy/vendor/
+/node_modules/
+/public/hot
+/public/build
+/public/vendor/
+
+# OMC runtime state
+.omc/

@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Models\PelaporanBm;
+
+use App\Models\Master\Sekolah;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
+
+class Spj extends Model
+{
+    use HasFactory, HasUuids, LogsActivity;
+
+    protected $table = 'pelaporan_bm_spj';
+
+    protected $fillable = [
+        'sekolah_id',
+        'acuan_id',
+        'kategori',
+        'no_sp2d',
+        'sumber_perolehan',
+        'bulan_realisasi',
+        'no_spk',
+        'ba_no',
+        'ba_tgl',
+        'kode_barang',
+        'nama_barang',
+        'jenis_aset',
+        'merk_tipe',
+        'no_sertifikat',
+        'ukuran_bangunan',
+        'satuan',
+        'volume',
+        'harga_satuan',
+        'nilai_perolehan',
+        'id_spj_lama',
+    ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('sistem')
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'volume' => 'float',
+            'harga_satuan' => 'float',
+            'nilai_perolehan' => 'float',
+        ];
+    }
+
+    public function sekolah(): BelongsTo
+    {
+        return $this->belongsTo(Sekolah::class, 'sekolah_id');
+    }
+
+    public function acuan(): BelongsTo
+    {
+        return $this->belongsTo(Acuan::class, 'acuan_id');
+    }
+
+    public function realisasi(): HasMany
+    {
+        return $this->hasMany(Realisasi::class, 'spj_id');
+    }
+
+    public function getIsRealisasiAttribute(): bool
+    {
+        return $this->relationLoaded('realisasi')
+            ? $this->realisasi->isNotEmpty()
+            : $this->realisasi()->exists();
+    }
+}

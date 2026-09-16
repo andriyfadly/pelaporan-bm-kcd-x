@@ -1,0 +1,558 @@
+<?php
+
+namespace App\Http\Controllers\PelaporanBm;
+
+use App\Exports\SpjRekapExport;
+use App\Http\Controllers\Concerns\ResolvesSekolah;
+use App\Http\Controllers\Controller;
+use App\Models\Master\KodeBarang;
+use App\Models\PelaporanBm\Acuan;
+use App\Models\PelaporanBm\KunciLaporan;
+use App\Models\PelaporanBm\Realisasi;
+use App\Models\PelaporanBm\Spj;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+
+class SpjController extends Controller
+{
+    use ResolvesSekolah;
+
+    public function pilihBulan(Request $request): Response
+    {
+        $bulan = (int) ($request->input('bulan') ?: date('n'));
+        if ($bulan < 1 || $bulan > 12) {
+            $bulan = (int) date('n');
+        }
+
+        return Inertia::render('PelaporanBm/Spj/PilihBulan', [
+            'bulanAwal' => $bulan,
+        ]);
+    }
+
+    public function index(Request $request): Response
+    {
+        $user = $request->user();
+        $bulan = (int) ($request->input('bulan') ?: date('n'));
+        $sekolahId = $this->resolveSekolahId($request);
+        $mode = $request->input('mode', '');
+
+        $query = Spj::with(['acuan', 'sekolah'])
+            ->where('bulan_realisasi', $bulan);
+
+        if ($sekolahId) {
+            $query->where('sekolah_id', $sekolahId);
+        }
+
+        // Legacy data_barang.php: ORDER BY id DESC (terbaru dulu)
+        $items = $query->orderByDesc('created_at')->get();
+        $realisasiIds = Realisasi::where('sekolah_id', $sekolahId)
+            ->where('bulan_realisasi', $bulan)
+            ->whereNotNull('spj_id')
+            ->pluck('spj_id')
+            ->all();
+
+        $isLocked = false;
+        $statusKirim = 'draft';
+        if ($sekolahId) {
+            $kunci = KunciLaporan::where('sekolah_id', $sekolahId)
+                ->where('bulan', $bulan)
+                ->first();
+            $isLocked = (bool) ($kunci?->status_kunci ?? false);
+            $statusKirim = $kunci?->status_kirim ?? 'draft';
+        }
+
+        $acuanList = Acuan::where('bulan', $bulan)
+            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->get();
+        $totalAcuan = (float) $acuanList->sum('nominal');
+
+        return Inertia::render('PelaporanBm/Spj/Index', [
+            'items' => $items,
+            'realisasiIds' => $realisasiIds,
+            'acuanList' => $acuanList,
+            'totalAcuan' => $totalAcuan,
+            'bulan' => $bulan,
+            'isLocked' => $isLocked,
+            'statusKirim' => $statusKirim,
+            'mode' => $mode,
+        ]);
+    }
+
+    public function create(Request $request): Response|RedirectResponse
+    {
+        $user = $request->user();
+        $sekolahId = $this->resolveSekolahId($request);
+        $kategori = $request->input('kategori', 'Peralatan & Mesin');
+        $bulan = (int) ($request->input('bulan') ?: date('n'));
+
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
+        if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
+            return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
+                ->with('error', 'Laporan bulan ini telah dikunci/dikirim.');
+        }
+
+        return Inertia::render('PelaporanBm/Spj/FormSpk', [
+            'kategori' => $kategori,
+            'bulan' => $bulan,
+            'isEdit' => false,
+            'spkData' => null,
+        ]);
+    }
+
+    public function editSpk(Request $request, string $no_spk): Response|RedirectResponse
+    {
+        $user = $request->user();
+        $sekolahId = $this->resolveSekolahId($request);
+        $bulan = (int) ($request->input('bulan') ?: date('n'));
+
+        $items = Spj::where('sekolah_id', $sekolahId)
+            ->where('no_spk', $no_spk)
+            ->where('bulan_realisasi', $bulan)
+            ->orderBy('created_at')
+            ->get();
+
+        if ($items->isEmpty()) {
+            return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
+                ->with('error', 'Data Dokumen SPK tidak ditemukan.');
+        }
+
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
+        if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
+            return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
+                ->with('error', 'Laporan bulan ini telah dikunci/dikirim.');
+        }
+
+        $first = $items->first();
+        $spkData = [
+            'no_spk' => $first->no_spk,
+            'no_sp2d' => $first->no_sp2d ?? '',
+            'sumber_perolehan' => $first->sumber_perolehan ?? 'BOS Reguler',
+            'ba_no' => $first->ba_no ?? '',
+            'ba_tgl' => $first->ba_tgl ?? '',
+            'kategori' => $first->kategori ?? 'Peralatan & Mesin',
+            'items' => $items->map(fn ($item) => [
+                'id' => $item->id,
+                'kode_barang' => $item->kode_barang,
+                'nama_barang' => $item->nama_barang,
+                'jenis_aset' => $item->jenis_aset,
+                'merk_tipe' => $item->merk_tipe ?? '',
+                'no_sertifikat' => $item->no_sertifikat ?? '',
+                'ukuran_bangunan' => $item->ukuran_bangunan ?? '',
+                'satuan' => $item->satuan ?? 'UNIT',
+                'volume' => (float) $item->volume,
+                'harga_satuan' => (float) $item->harga_satuan,
+                'nilai_perolehan' => (float) $item->nilai_perolehan,
+            ])->all(),
+        ];
+
+        return Inertia::render('PelaporanBm/Spj/FormSpk', [
+            'kategori' => $first->kategori ?? 'Peralatan & Mesin',
+            'bulan' => $bulan,
+            'isEdit' => true,
+            'spkData' => $spkData,
+        ]);
+    }
+
+    public function storeSpk(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $sekolahId = $this->resolveSekolahId($request);
+
+        $validated = $request->validate([
+            'is_edit' => 'nullable|boolean',
+            'no_spk_lama' => 'nullable|string|max:150',
+            'no_spk' => 'required|string|max:150',
+            'no_sp2d' => 'nullable|string|max:100',
+            'sumber_perolehan' => 'required|string|max:100',
+            'bulan_realisasi' => 'required|integer|between:1,12',
+            'kategori' => 'nullable|string|max:50',
+            'ba_no' => 'nullable|string|max:150',
+            'ba_tgl' => 'nullable|date',
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'nullable|string',
+            'items.*.kode_barang' => 'required|string|max:50',
+            'items.*.nama_barang' => 'required|string|max:255',
+            'items.*.jenis_aset' => 'required|string|max:100',
+            'items.*.merk_tipe' => 'nullable|string|max:255',
+            'items.*.no_sertifikat' => 'nullable|string|max:150',
+            'items.*.ukuran_bangunan' => 'nullable|string|max:150',
+            'items.*.satuan' => 'nullable|string|max:50',
+            'items.*.volume' => 'required|numeric|min:0.01',
+            'items.*.harga_satuan' => 'required|numeric|min:0',
+        ]);
+
+        $bulan = $validated['bulan_realisasi'];
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
+        if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
+
+        $isEdit = ! empty($validated['is_edit']);
+        $noSpkLama = $validated['no_spk_lama'] ?? $validated['no_spk'];
+
+        DB::transaction(function () use ($validated, $sekolahId, $isEdit, $noSpkLama, $bulan) {
+            $itemIdsKept = [];
+
+            foreach ($validated['items'] as $item) {
+                $nilaiPerolehan = (float) $item['volume'] * (float) $item['harga_satuan'];
+                $itemPayload = [
+                    'sekolah_id' => $sekolahId,
+                    'no_sp2d' => $validated['no_sp2d'] ?? null,
+                    'sumber_perolehan' => $validated['sumber_perolehan'],
+                    'bulan_realisasi' => $bulan,
+                    'no_spk' => $validated['no_spk'],
+                    'ba_no' => $validated['ba_no'] ?? null,
+                    'ba_tgl' => $validated['ba_tgl'] ?? null,
+                    'kategori' => $validated['kategori'] ?? null,
+                    'kode_barang' => $item['kode_barang'],
+                    'nama_barang' => $item['nama_barang'],
+                    'jenis_aset' => $item['jenis_aset'],
+                    'merk_tipe' => $item['merk_tipe'] ?? null,
+                    'no_sertifikat' => $item['no_sertifikat'] ?? null,
+                    'ukuran_bangunan' => $item['ukuran_bangunan'] ?? null,
+                    'satuan' => $item['satuan'] ?? 'UNIT',
+                    'volume' => $item['volume'],
+                    'harga_satuan' => $item['harga_satuan'],
+                    'nilai_perolehan' => $nilaiPerolehan,
+                ];
+
+                if (! empty($item['id'])) {
+                    $existing = Spj::where('sekolah_id', $sekolahId)->where('id', $item['id'])->first();
+                    if ($existing) {
+                        $existing->update($itemPayload);
+                        $itemIdsKept[] = $existing->id;
+
+                        // Sync snapshot realisasi (identik legacy proses_simpan_barang.php:
+                        // edit SPJ ikut memperbarui baris realisasi yang teralokasi).
+                        // kodering_belanja/acuan_id/bulan alokasi TIDAK disentuh.
+                        // Query-builder update bypass auto-log trait: catat ringkasan manual bila tersentuh.
+                        $synced = Realisasi::where('spj_id', $existing->id)->update([
+                            'no_sp2d' => $itemPayload['no_sp2d'],
+                            'sumber_perolehan' => $itemPayload['sumber_perolehan'],
+                            'no_spk' => $itemPayload['no_spk'],
+                            'ba_no' => $itemPayload['ba_no'],
+                            'ba_tgl' => $itemPayload['ba_tgl'],
+                            'kode_barang' => $itemPayload['kode_barang'],
+                            'nama_barang' => $itemPayload['nama_barang'],
+                            'jenis_aset' => $itemPayload['jenis_aset'],
+                            'merk_tipe' => $itemPayload['merk_tipe'],
+                            'no_sertifikat' => $itemPayload['no_sertifikat'],
+                            'ukuran_bangunan' => $itemPayload['ukuran_bangunan'],
+                            'satuan' => $itemPayload['satuan'],
+                            'volume' => $itemPayload['volume'],
+                            'harga_satuan' => $itemPayload['harga_satuan'],
+                            'nilai_perolehan' => $nilaiPerolehan,
+                        ]);
+                        if ($synced > 0) {
+                            activity('sistem')
+                                ->event('sinkron-realisasi-spk')
+                                ->withProperties([
+                                    'ringkasan' => "Sinkron {$synced} baris realisasi dari SPK {$validated['no_spk']}",
+                                    'sekolah_id' => $sekolahId,
+                                    'no_spk' => $validated['no_spk'],
+                                    'jumlah' => $synced,
+                                ])
+                                ->log('sinkron-realisasi-spk');
+                        }
+
+                        continue;
+                    }
+                }
+
+                $newRecord = Spj::create($itemPayload);
+                $itemIdsKept[] = $newRecord->id;
+            }
+
+            if ($isEdit) {
+                $pruned = Spj::where('sekolah_id', $sekolahId)
+                    ->where('no_spk', $noSpkLama)
+                    ->where('bulan_realisasi', $bulan)
+                    ->whereNotIn('id', $itemIdsKept)
+                    ->get();
+
+                $prunedIds = $pruned->pluck('id')->all();
+                if ($prunedIds !== []) {
+                    $prunedCount = count($prunedIds);
+                    Realisasi::whereIn('spj_id', $prunedIds)->delete();
+                    Spj::whereIn('id', $prunedIds)->delete();
+
+                    // Query-builder delete bypass auto-log trait: catat ringkasan manual.
+                    activity('sistem')
+                        ->event('hapus-item-spk')
+                        ->withProperties([
+                            'ringkasan' => "Hapus {$prunedCount} item SPK {$noSpkLama} bulan {$bulan}",
+                            'sekolah_id' => $sekolahId,
+                            'no_spk' => $noSpkLama,
+                            'bulan' => $bulan,
+                            'jumlah' => $prunedCount,
+                        ])
+                        ->log('hapus-item-spk');
+                }
+            }
+        });
+
+        return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
+            ->with('success', 'Dokumen SPK berhasil disimpan.');
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $sekolahId = $this->resolveSekolahId($request);
+
+        $validated = $request->validate([
+            'no_spk' => 'required|string|max:150',
+            'no_sp2d' => 'nullable|string|max:100',
+            'sumber_perolehan' => 'nullable|string|max:100',
+            'bulan_realisasi' => 'required|integer|between:1,12',
+            'kategori' => 'nullable|string|max:50',
+            'ba_no' => 'nullable|string|max:150',
+            'ba_tgl' => 'nullable|date',
+            'kode_barang' => 'required|string|max:50',
+            'nama_barang' => 'required|string|max:255',
+            'jenis_aset' => 'required|string|max:100',
+            'merk_tipe' => 'nullable|string|max:255',
+            'no_sertifikat' => 'nullable|string|max:100',
+            'ukuran_bangunan' => 'nullable|string|max:100',
+            'satuan' => 'nullable|string|max:50',
+            'volume' => 'required|numeric|min:0.01',
+            'harga_satuan' => 'required|numeric|min:0',
+            'acuan_id' => 'nullable|uuid|exists:pelaporan_bm_acuan,id',
+        ]);
+
+        // Check lock status
+        if ($this->isLaporanTerkunci($sekolahId, (int) $validated['bulan_realisasi'])) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
+
+        // acuan_id harus milik sekolah yang sama (anti cross-tenant link)
+        if (! empty($validated['acuan_id'])) {
+            $acuanMilikSekolah = Acuan::where('id', $validated['acuan_id'])
+                ->where('sekolah_id', $sekolahId)
+                ->exists();
+            if (! $acuanMilikSekolah) {
+                return back()->with('error', 'Acuan tidak valid untuk sekolah ini.');
+            }
+        }
+
+        $validated['sekolah_id'] = $sekolahId;
+        $validated['nilai_perolehan'] = $validated['volume'] * $validated['harga_satuan'];
+
+        Spj::create($validated);
+
+        return back()->with('success', 'Data SPJ berhasil disimpan.');
+    }
+
+    private function isLaporanTerkunci(?string $sekolahId, int $bulan): bool
+    {
+        if (! $sekolahId) {
+            return false;
+        }
+
+        $kunci = KunciLaporan::where('sekolah_id', $sekolahId)
+            ->where('bulan', $bulan)
+            ->first();
+
+        return (bool) ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true));
+    }
+
+    public function destroy(Spj $spj, Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->sekolah_id && $spj->sekolah_id !== $user->sekolah_id) {
+            abort(403, 'Tidak memiliki akses');
+        }
+
+        if ($this->isLaporanTerkunci($spj->sekolah_id, (int) $spj->bulan_realisasi)) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
+
+        DB::transaction(function () use ($spj) {
+            $spj->realisasi()->delete();
+            $spj->delete();
+        });
+
+        return back()->with('success', 'Data item SPJ berhasil dihapus.');
+    }
+
+    public function destroySpk(Request $request, string $no_spk): RedirectResponse
+    {
+        $user = $request->user();
+        $sekolahId = $this->resolveSekolahId($request);
+        $bulan = (int) ($request->input('bulan') ?: date('n'));
+
+        if ($this->isLaporanTerkunci($sekolahId, $bulan)) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
+
+        $jumlah = 0;
+        DB::transaction(function () use ($sekolahId, $bulan, $no_spk, &$jumlah) {
+            $items = Spj::where('sekolah_id', $sekolahId)
+                ->where('bulan_realisasi', $bulan)
+                ->where('no_spk', $no_spk)
+                ->get();
+
+            $jumlah = $items->count();
+            $spjIds = $items->pluck('id')->all();
+            if ($spjIds !== []) {
+                Realisasi::whereIn('spj_id', $spjIds)->delete();
+            }
+
+            Spj::where('sekolah_id', $sekolahId)
+                ->where('bulan_realisasi', $bulan)
+                ->where('no_spk', $no_spk)
+                ->delete();
+        });
+
+        // Query-builder delete bypass auto-log trait: catat ringkasan manual.
+        activity('sistem')
+            ->event('hapus-spk')
+            ->withProperties([
+                'ringkasan' => "Hapus dokumen SPK {$no_spk} bulan {$bulan} ({$jumlah} item)",
+                'sekolah_id' => $sekolahId,
+                'no_spk' => $no_spk,
+                'bulan' => $bulan,
+                'jumlah' => $jumlah,
+            ])
+            ->log('hapus-spk');
+
+        return back()->with('success', 'Seluruh data dokumen SPK berhasil dihapus.');
+    }
+
+    public function update(Request $request, Spj $spj): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->sekolah_id && $spj->sekolah_id !== $user->sekolah_id) {
+            abort(403, 'Tidak memiliki akses');
+        }
+
+        if ($this->isLaporanTerkunci($spj->sekolah_id, (int) $spj->bulan_realisasi)) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
+
+        $validated = $request->validate([
+            'no_spk' => 'required|string|max:150',
+            'no_sp2d' => 'nullable|string|max:100',
+            'sumber_perolehan' => 'nullable|string|max:100',
+            'bulan_realisasi' => 'required|integer|between:1,12',
+            'kategori' => 'nullable|string|max:50',
+            'ba_no' => 'nullable|string|max:150',
+            'ba_tgl' => 'nullable|date',
+            'kode_barang' => 'required|string|max:50',
+            'nama_barang' => 'required|string|max:255',
+            'jenis_aset' => 'required|string|max:100',
+            'merk_tipe' => 'nullable|string|max:255',
+            'no_sertifikat' => 'nullable|string|max:100',
+            'ukuran_bangunan' => 'nullable|string|max:100',
+            'satuan' => 'nullable|string|max:50',
+            'volume' => 'required|numeric|min:0.01',
+            'harga_satuan' => 'required|numeric|min:0',
+            'acuan_id' => 'nullable|uuid|exists:pelaporan_bm_acuan,id',
+        ]);
+
+        $validated['nilai_perolehan'] = $validated['volume'] * $validated['harga_satuan'];
+
+        if (! empty($validated['acuan_id'])) {
+            $acuanMilikSekolah = Acuan::where('id', $validated['acuan_id'])
+                ->where('sekolah_id', $spj->sekolah_id)
+                ->exists();
+            if (! $acuanMilikSekolah) {
+                return back()->with('error', 'Acuan tidak valid untuk sekolah ini.');
+            }
+        }
+
+        $spj->update($validated);
+
+        return back()->with('success', 'Data SPJ berhasil diperbarui.');
+    }
+
+    public function unduh(Request $request): BinaryFileResponse|\Illuminate\Http\Response
+    {
+        $sekolahId = $this->resolveSekolahId($request);
+        $bulan = (int) ($request->input('bulan') ?: date('n'));
+
+        $query = Spj::with('sekolah')->where('bulan_realisasi', $bulan);
+        if ($sekolahId) {
+            $query->where('sekolah_id', $sekolahId);
+        }
+
+        $items = $query->orderBy('no_spk')->get();
+
+        if ($items->isEmpty()) {
+            return response()->noContent(204)->withCookie(cookie('download_status', 'empty', 1, '/'));
+        }
+
+        $filename = "rekap_bm_bulan_{$bulan}.xlsx";
+        activity('sistem')
+            ->event('unduh-spj')
+            ->withProperties([
+                'ringkasan' => "Unduh {$filename} ({$items->count()} baris)",
+                'sekolah_id' => $sekolahId,
+                'bulan' => $bulan,
+                'jumlah' => $items->count(),
+            ])
+            ->log('unduh-spj');
+
+        $response = Excel::download(
+            new SpjRekapExport($items),
+            $filename
+        );
+
+        $response->headers->setCookie(cookie('download_status', 'complete', 1, '/'));
+
+        return $response;
+    }
+
+    public function cariBarang(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->input('q', ''));
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        // Samakan perilaku legacy ajax_cari_barang.php:
+        // lowercase matching, escape wildcard LIKE, hanya kode leaf, limit 100
+        $keyword = mb_strtolower($q, 'UTF-8');
+        $escaped = addcslashes($keyword, '%_\\');
+        $searchParam = '%'.$escaped.'%';
+
+        $masterResults = KodeBarang::query()
+            ->where(function ($query) use ($searchParam) {
+                $query->whereRaw('LOWER(kode_barang) LIKE ?', [$searchParam])
+                    ->orWhereRaw('LOWER(uraian) LIKE ?', [$searchParam]);
+            })
+            ->whereNotExists(function ($sub) {
+                $sub->selectRaw(1)
+                    ->from('master_data_kode_barang as k2')
+                    ->whereColumn('k2.kode_barang', 'like', DB::raw("master_data_kode_barang.kode_barang || '%'"))
+                    ->whereColumn('k2.kode_barang', '!=', 'master_data_kode_barang.kode_barang');
+            })
+            ->orderBy('kode_barang')
+            ->limit(100)
+            ->get(['kode_barang', 'uraian as nama_barang', 'kodering_aset', 'jenis_aset', 'satuan']);
+
+        if ($masterResults->isNotEmpty()) {
+            return response()->json($masterResults);
+        }
+
+        $results = Spj::select('kode_barang', 'nama_barang', 'jenis_aset', 'satuan')
+            ->when($request->user()->sekolah_id, fn ($q) => $q->where('sekolah_id', $request->user()->sekolah_id))
+            ->where(function ($query) use ($searchParam) {
+                $query->whereRaw('LOWER(kode_barang) LIKE ?', [$searchParam])
+                    ->orWhereRaw('LOWER(nama_barang) LIKE ?', [$searchParam]);
+            })
+            ->distinct()
+            ->limit(10)
+            ->get();
+
+        return response()->json($results);
+    }
+}

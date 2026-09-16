@@ -1,0 +1,518 @@
+<?php
+
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+// AMAN: Tidak boleh ada spasi/enter di atas tag <?php
+ob_start();
+
+// === KEAMANAN LAPIS BAJA: PENGATURAN SESI KETAT & COOKIE SECURE ===
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_samesite', 'Strict');
+
+// Otomatis aktifkan cookie secure jika koneksi menggunakan HTTPS
+$isHttps = (
+    (! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ||
+    (! empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+);
+if ($isHttps) {
+    ini_set('session.cookie_secure', 1);
+}
+
+// === KEAMANAN LAPIS BAJA: HTTP SECURITY HEADERS ===
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+
+// 1. FORCE PAKSA MEMORI DAN WAKTU MAKSIMAL SERVER (ANTI MASALAH TEKNIS)
+ini_set('memory_limit', '1024M');
+ini_set('max_execution_time', '900'); // 15 Menit eksekusi aman
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// SIMPAN SESSION ID UTAMA (Mencegah Bug Ghost Session)
+$main_session_id = session_id();
+
+// === KEAMANAN LAPIS BAJA: VALIDASI METHOD & CSRF TOKEN ===
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    ob_end_clean();
+    http_response_code(405);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Metode request tidak diizinkan.']);
+    exit;
+}
+
+if (empty($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || ! hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+    ob_end_clean();
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Keamanan: Akses ditolak (CSRF Token tidak valid).']);
+    exit;
+}
+
+// Proteksi file
+if (! isset($_SESSION['login']) || $_SESSION['login'] !== true) {
+    ob_end_clean();
+    http_response_code(401);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Akses ditolak. Silakan login terlebih dahulu.']);
+    exit;
+}
+
+// TUTUP KHUSUS KUNCI SESI PHP UNTUK MENCEGAH DEADLOCK (HTTP 524)
+session_write_close();
+
+include 'koneksi.php';
+require 'vendor/autoload.php';
+
+// Validasi dan Filter Input Rentang Nilai Ketat
+$filter_bulan = filter_input(INPUT_POST, 'bulan', FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1, 'max_range' => 12],
+]);
+$filter_tahun = filter_input(INPUT_POST, 'tahun', FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 2000, 'max_range' => 2100],
+]);
+
+if (! $filter_bulan || ! $filter_tahun) {
+    ob_end_clean();
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Parameter bulan (1-12) dan tahun valid wajib dipilih!']);
+    exit;
+}
+
+// === HELPER AMAN UNTUK UPDATE PROGRESS (TANPA SESSION LOCK / ANTI FREEZE 524) ===
+function updateProgressSafe($count, $session_id)
+{
+    if (empty($session_id)) {
+        return;
+    }
+    $progressFile = sys_get_temp_dir().'/progress_'.preg_replace('/[^a-zA-Z0-9]/', '', $session_id).'.json';
+    @file_put_contents($progressFile, json_encode(['progress' => (int) $count, 'updated' => time()]));
+}
+
+// Inisialisasi awal progress 0
+updateProgressSafe(0, $main_session_id);
+
+// === HELPER SANITASI MENCEGAH FORMULA / EXCEL INJECTION ===
+function safeCellString($value)
+{
+    if ($value === null || $value === '') {
+        return '';
+    }
+    $str = (string) $value;
+    if (preg_match('/^[\=\+\-\@\t\r]/', $str)) {
+        return "'".$str;
+    }
+
+    return $str;
+}
+
+// === HELPER FORMAT NAMA KOTA / KABUPATEN ===
+function formatKotaKab($val)
+{
+    $val = trim(strtoupper((string) $val));
+    if (empty($val)) {
+        return '';
+    }
+
+    // Jika sudah KOTA ..., biarkan
+    if (strpos($val, 'KOTA ') === 0) {
+        return $val;
+    }
+
+    // Jika diawali KAB atau KAB. (contoh: KAB CIREBON -> KABUPATEN CIREBON)
+    if (preg_match('/^KAB\.?\s+(.+)$/i', $val, $matches)) {
+        return 'KABUPATEN '.trim($matches[1]);
+    }
+
+    // Jika sudah KABUPATEN ..., biarkan
+    if (strpos($val, 'KABUPATEN ') === 0) {
+        return $val;
+    }
+
+    // Jika cuma nama wilayah saja (contoh: KUNINGAN -> KABUPATEN KUNINGAN)
+    return 'KABUPATEN '.$val;
+}
+
+$nama_bulan_indo = [
+    1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
+    5 => 'MEI', 6 => 'JUNI', 7 => 'JULI', 8 => 'AGUSTUS',
+    9 => 'SEPTEMBER', 10 => 'OKTOBER', 11 => 'NOVEMBER', 12 => 'DESEMBER',
+];
+$teks_bulan_pilihan = $nama_bulan_indo[$filter_bulan] ?? '';
+
+// === OPTIMASI SUPER KENCANG: DOUBLE LEFT JOIN UNTUK MEMANFAATKAN INDEX MYSQL ===
+$query = 'SELECT r.*, 
+                 COALESCE(k1.nama_sekolah, k2.nama_sekolah) as nama_sekolah_db,
+                 COALESCE(k1.kota_kab, k2.kota_kab) as kota_kab_db
+          FROM `realisasi_barang_sekolah` r 
+          LEFT JOIN `kode_sekolah` k1 ON r.id_sekolah = k1.id_sekolah 
+          LEFT JOIN `kode_sekolah` k2 ON r.id_sekolah = k2.id 
+          WHERE r.`bulan_realisasi` = ? AND YEAR(r.`ba_tgl`) = ? 
+          ORDER BY nama_sekolah_db ASC, r.`ba_tgl` ASC, r.`id` ASC';
+
+$stmt = mysqli_prepare($conn, $query);
+if (! $stmt) {
+    ob_end_clean();
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Gagal mempersiapkan query database.']);
+    exit;
+}
+
+mysqli_stmt_bind_param($stmt, 'ii', $filter_bulan, $filter_tahun);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+$totalRows = mysqli_num_rows($result);
+
+if ($totalRows === 0) {
+    mysqli_stmt_close($stmt);
+    ob_end_clean();
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status' => 'empty',
+        'message' => 'Data realisasi tidak ditemukan',
+    ]);
+    exit;
+}
+
+// Inisialisasi Spreadsheet
+$spreadsheet = new Spreadsheet;
+
+// ==============================================================================
+// STEP 1: SHEET REFERENSI 'KODE BARANG' (OPTIMASI FAST BULK INSERT)
+// ==============================================================================
+$sheetMaster = $spreadsheet->createSheet();
+$sheetMaster->setTitle('KODE BARANG');
+
+$sheetMaster->setCellValue('A1', 'KODE BARANG');
+$sheetMaster->setCellValue('B1', 'URAIAN');
+$sheetMaster->setCellValue('C1', 'KODERING ASET');
+$sheetMaster->setCellValue('D1', 'JENIS ASET');
+$sheetMaster->setCellValue('E1', 'UMUR EKONOMIS');
+
+$batasMaster = 2;
+try {
+    $db_inv = getenv('DB_INV') ?: 'db_inventaris';
+    $query_master_inventaris = 'SELECT kode_barang, uraian, kodering_aset, jenis_aset, umur_ekonomis
+                                FROM `'.$db_inv."`.kode_barang
+                                WHERE kode_barang IS NOT NULL AND kode_barang != ''";
+
+    $qMaster = @mysqli_query($conn, $query_master_inventaris);
+
+    if ($qMaster) {
+        $masterRows = [];
+        while ($m = mysqli_fetch_assoc($qMaster)) {
+            $masterRows[] = [
+                safeCellString(trim($m['kode_barang'])),
+                safeCellString($m['uraian']),
+                safeCellString(trim($m['kodering_aset'])),
+                safeCellString($m['jenis_aset']),
+                (int) $m['umur_ekonomis'],
+            ];
+        }
+        if (! empty($masterRows)) {
+            $sheetMaster->fromArray($masterRows, null, 'A2');
+            $batasMaster = count($masterRows) + 1;
+        }
+    }
+} catch (Throwable $t) {
+    error_log('Master Inventaris Error: '.$t->getMessage());
+}
+if ($batasMaster < 2) {
+    $batasMaster = 2;
+}
+
+// ==============================================================================
+// STEP 2: SET SHEET UTAMA
+// ==============================================================================
+$spreadsheet->setActiveSheetIndex(0);
+$sheet = $spreadsheet->getActiveSheet();
+$sheet->setTitle('Laporan Belanja Modal');
+$sheet->setShowGridlines(true);
+
+// Kunci baris 1-9 dan kolom A-E saat di-scroll (Freeze Panes di F10)
+$sheet->freezePane('F10');
+
+$sheet->setCellValue('A1', 'DAFTAR PENGADAAN BARANG DARI BELANJA MODAL');
+$sheet->mergeCells('A1:Z1');
+$sheet->setCellValue('A2', 'SMAN/SMKN/SLBN');
+$sheet->mergeCells('A2:Z2');
+$sheet->setCellValue('A3', 'DARI TANGGAL 1 JANUARI S.D 31 DESEMBER '.$filter_tahun);
+$sheet->mergeCells('A3:Z3');
+
+$styleJudul = [
+    'font' => ['bold' => true, 'color' => ['rgb' => '000000'], 'size' => 11, 'name' => 'Calibri'],
+    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+];
+$sheet->getStyle('A1:A3')->applyFromArray($styleJudul);
+$sheet->getStyle('A2')->getFont()->getColor()->setRGB('FF0000');
+
+$sheet->setCellValue('A5', '*CATATAN HURUF KOLOM:');
+$sheet->setCellValue('D5', ': Wajib Diisi secara Manual');
+$sheet->setCellValue('D6', ': Terisi Otomatis');
+
+$sheet->getStyle('C5')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FF0000');
+$sheet->getStyle('C6')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('000000');
+
+// Header Tabel
+$sheet->setCellValue('A8', 'No');
+$sheet->mergeCells('A8:A9');
+$sheet->setCellValue('B8', 'No. SP2D');
+$sheet->mergeCells('B8:B9');
+$sheet->setCellValue('C8', 'Sumber Perolehan');
+$sheet->mergeCells('C8:C9');
+$sheet->setCellValue('D8', 'Kodering Belanja');
+$sheet->mergeCells('D8:D9');
+$sheet->setCellValue('E8', 'No. SPK / Faktur / Kuitansi');
+$sheet->mergeCells('E8:E9');
+$sheet->setCellValue('F8', 'BA Penerimaan');
+$sheet->mergeCells('F8:I8');
+$sheet->setCellValue('J8', 'Kode Barang');
+$sheet->mergeCells('J8:J9');
+$sheet->setCellValue('K8', 'Rincian Barang');
+$sheet->mergeCells('K8:R8');
+$sheet->setCellValue('S8', 'Kodering Aset');
+$sheet->mergeCells('S8:S9');
+$sheet->setCellValue('T8', 'Nama Rekening Aset');
+$sheet->mergeCells('T8:T9');
+$sheet->setCellValue('U8', 'Umur Ekonomis');
+$sheet->mergeCells('U8:U9');
+$sheet->setCellValue('V8', 'Intrakomptabel');
+$sheet->mergeCells('V8:W8');
+$sheet->setCellValue('X8', 'Ekstrakomptabel');
+$sheet->mergeCells('X8:X9');
+$sheet->setCellValue('Y8', 'Nama Sekolah');
+$sheet->mergeCells('Y8:Y9');
+$sheet->setCellValue('Z8', 'kab/kota');
+$sheet->mergeCells('Z8:Z9');
+
+$sheet->setCellValue('F9', 'No');
+$sheet->setCellValue('G9', 'Tgl');
+$sheet->setCellValue('H9', 'Bln');
+$sheet->setCellValue('I9', 'Thn');
+$sheet->setCellValue('K9', 'Nama Barang');
+$sheet->setCellValue('L9', 'Merk/Tipe');
+$sheet->setCellValue('M9', 'No. Sertifikat/ No. Rangka/ No. Mesin');
+$sheet->setCellValue('N9', 'Ukuran (Gedung/ Bangunan)');
+$sheet->setCellValue('O9', 'Satuan');
+$sheet->setCellValue('P9', 'Volume');
+$sheet->setCellValue('Q9', 'Harga Satuan');
+$sheet->setCellValue('R9', 'Nilai Perolehan');
+$sheet->setCellValue('V9', 'Nilai Perolehan');
+$sheet->setCellValue('W9', 'Beban Penyusutan');
+
+$styleHeaderTable = [
+    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DDEBF7']],
+    'font' => ['bold' => false, 'size' => 11, 'name' => 'Calibri'],
+    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+];
+// Apply border header hanya A8 sampai Y9
+$sheet->getStyle('A8:Y9')->applyFromArray($styleHeaderTable);
+
+// Style Header Z8:Z9 tanpa border
+$styleHeaderTableZ = $styleHeaderTable;
+unset($styleHeaderTableZ['borders']);
+$sheet->getStyle('Z8:Z9')->applyFromArray($styleHeaderTableZ);
+
+// Warna teks header tertentu menjadi merah
+$kolomMerah = ['C8', 'D8', 'E8', 'F8', 'F9', 'G9', 'H9', 'I9', 'J8', 'L9', 'M9', 'N9', 'O9', 'P9', 'Q9', 'Y8'];
+foreach ($kolomMerah as $cell) {
+    $sheet->getStyle($cell)->getFont()->getColor()->setRGB('FF0000');
+}
+
+// Format Code Tipe Data "Accounting" tanpa simbol Rp
+$formatAccountingNone = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
+
+// Tracking Panjang Maksimal Kolom
+$maxLenCol = array_fill_keys(range('A', 'Z'), 0);
+
+// ==============================================================================
+// POPULASI DATA UTAMA (OPTIMASI HIGH SPEED WITH fromArray)
+// ==============================================================================
+$dataRows = [];
+$rowNum = 10;
+$noIdx = 1;
+$currentCount = 0;
+
+while ($row = mysqli_fetch_assoc($result)) {
+    $currentCount++;
+
+    if ($currentCount === 1 || $currentCount % 100 === 0 || $currentCount === $totalRows) {
+        updateProgressSafe($currentCount, $main_session_id);
+    }
+
+    $tg = '';
+    $bl = '';
+    $thn = '';
+    if (! empty($row['ba_tgl']) && $row['ba_tgl'] != '0000-00-00') {
+        $time = strtotime($row['ba_tgl']);
+        $tg = (int) date('d', $time);
+        $bl = (int) date('m', $time);
+        $thn = date('Y', $time);
+    }
+
+    $nama_sekolah_tampil = ! empty($row['nama_sekolah_db']) ? $row['nama_sekolah_db'] : 'Sekolah ID: '.$row['id_sekolah'];
+
+    // Normalisasi Nama Kota / Kabupaten
+    $raw_kota_kab = ! empty($row['kota_kab_db']) ? $row['kota_kab_db'] : '';
+    $kota_kab_tampil = formatKotaKab($raw_kota_kab);
+
+    $valB = safeCellString($row['no_sp2d']);
+    $valC = safeCellString($row['sumber_perolehan']);
+    $valD = safeCellString($row['kodering_belanja']);
+    $valE = safeCellString($row['no_spk']);
+    $valF = safeCellString($row['ba_no']);
+    $valJ = safeCellString(trim($row['kode_barang']));
+    $valL = safeCellString($row['merk_tipe']);
+    $valM = safeCellString($row['no_sertifikat']);
+    $valN = safeCellString($row['ukuran_bangunan']);
+    $valO = safeCellString($row['satuan']);
+
+    $volume_clean = isset($row['volume']) ? (int) $row['volume'] : 0;
+    $harga_clean = isset($row['harga_satuan']) ? (float) $row['harga_satuan'] : 0.0;
+
+    // Susun baris ke array PHP
+    $dataRows[] = [
+        $noIdx,                                                // A
+        $valB,                                                 // B
+        $valC,                                                 // C
+        $valD,                                                 // D
+        $valE,                                                 // E
+        $valF,                                                 // F
+        $tg,                                                   // G
+        $bl,                                                   // H
+        $thn,                                                  // I
+        $valJ,                                                 // J
+        '=IFERROR(VLOOKUP(J'.$rowNum.',\'KODE BARANG\'!$A$2:$E$'.$batasMaster.',2,FALSE),"")', // K
+        $valL,                                                 // L
+        $valM,                                                 // M
+        $valN,                                                 // N
+        $valO,                                                 // O
+        $volume_clean,                                         // P
+        $harga_clean,                                          // Q
+        '=P'.$rowNum.'*Q'.$rowNum,                       // R (Nilai Perolehan = Volume * Harga Satuan)
+        '=IFERROR(VLOOKUP(J'.$rowNum.',\'KODE BARANG\'!$A$2:$E$'.$batasMaster.',3,FALSE),"")', // S
+        '=IFERROR(VLOOKUP(J'.$rowNum.',\'KODE BARANG\'!$A$2:$E$'.$batasMaster.',4,FALSE),"")', // T
+        '=IFERROR(VLOOKUP(J'.$rowNum.',\'KODE BARANG\'!$A$2:$E$'.$batasMaster.',5,FALSE),0)',  // U
+        '=R'.$rowNum,                                        // V
+        '=IF(AND($V'.$rowNum.'=0)," ",(($V'.$rowNum.'/$U'.$rowNum.')*(13-H'.$rowNum.')/12))', // W
+        '=IF(Q'.$rowNum.'<=1000000,R'.$rowNum.',0)',   // X
+        safeCellString($nama_sekolah_tampil),                  // Y
+        safeCellString($kota_kab_tampil),                       // Z
+    ];
+
+    // Recording Panjang Maksimal Nilai Sel
+    $maxLenCol['B'] = max($maxLenCol['B'], strlen($valB));
+    $maxLenCol['C'] = max($maxLenCol['C'], strlen($valC));
+    $maxLenCol['D'] = max($maxLenCol['D'], strlen($valD));
+    $maxLenCol['E'] = max($maxLenCol['E'], strlen($valE));
+    $maxLenCol['F'] = max($maxLenCol['F'], strlen($valF));
+    $maxLenCol['J'] = max($maxLenCol['J'], strlen($valJ));
+    $maxLenCol['L'] = max($maxLenCol['L'], strlen($valL));
+    $maxLenCol['M'] = max($maxLenCol['M'], strlen($valM));
+    $maxLenCol['N'] = max($maxLenCol['N'], strlen($valN));
+    $maxLenCol['O'] = max($maxLenCol['O'], strlen($valO));
+    $maxLenCol['Y'] = max($maxLenCol['Y'], strlen((string) $nama_sekolah_tampil));
+    $maxLenCol['Z'] = max($maxLenCol['Z'], strlen((string) $kota_kab_tampil));
+
+    $rowNum++;
+    $noIdx++;
+}
+
+// Tutup Prepared Statement
+mysqli_stmt_close($stmt);
+
+// INJEKSI MASSAL DATA UTAMA KE EXCEL DALAM 1 PERINTAH
+if (! empty($dataRows)) {
+    $sheet->fromArray($dataRows, null, 'A10');
+}
+
+// Total Box Hijau Row 7
+$lastDataRow = $rowNum - 1;
+if ($lastDataRow < 10) {
+    $lastDataRow = 10;
+}
+$sheet->setCellValue('R7', '=SUM(R10:R'.$lastDataRow.')');
+$sheet->getStyle('R7')->getNumberFormat()->setFormatCode($formatAccountingNone);
+$sheet->getStyle('R7')->getFont()->setSize(11)->setName('Calibri')->setBold(true)->getColor()->setRGB('000000');
+$sheet->getStyle('R7')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('92D050');
+$sheet->getStyle('R7')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('000000');
+
+// ==============================================================================
+// BATCH STYLING SEKALIGUS UNTUK SELURUH TABEL
+// ==============================================================================
+if ($lastDataRow >= 10) {
+    // Border hanya dipasang untuk kolom A sampai Y (kolom Z polos tanpa border)
+    $dataRange = 'A10:Y'.$lastDataRow;
+
+    // Font dan Border Massal (A-Y)
+    $sheet->getStyle($dataRange)->getFont()->setSize(11)->setName('Calibri');
+    $sheet->getStyle($dataRange)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('000000');
+
+    // Font Massal Kolom Z (Tanpa Border)
+    $sheet->getStyle('Z10:Z'.$lastDataRow)->getFont()->setSize(11)->setName('Calibri');
+
+    // Alignment Massal
+    $sheet->getStyle('A10:A'.$lastDataRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('G10:I'.$lastDataRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('O10:P'.$lastDataRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('U10:U'.$lastDataRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+    // Number Format Massal
+    $sheet->getStyle('Q10:R'.$lastDataRow)->getNumberFormat()->setFormatCode($formatAccountingNone);
+    $sheet->getStyle('V10:X'.$lastDataRow)->getNumberFormat()->setFormatCode($formatAccountingNone);
+}
+
+// ==============================================================================
+// LOGIKA LEBAR KOLOM MASSAL
+// ==============================================================================
+foreach (range('A', 'Z') as $col) {
+    if ($col === 'A') {
+        $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth(5);
+
+        continue;
+    }
+
+    $maxLen = in_array($col, ['K', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']) ? 14 : $maxLenCol[$col];
+    $finalWidth = $maxLen + 4;
+
+    $minWidth = 11;
+    if (in_array($col, ['B', 'E', 'K', 'L', 'M', 'T', 'Y', 'Z'])) {
+        $minWidth = 16;
+    }
+
+    if ($finalWidth < $minWidth) {
+        $finalWidth = $minWidth;
+    }
+
+    $sheet->getColumnDimension($col)->setAutoSize(false);
+    $sheet->getColumnDimension($col)->setWidth($finalWidth);
+}
+
+// MEMBERSIHKAN SELURUH BUFFER SEBELUM OUTPUT FILE DIKIRIM
+if (ob_get_length()) {
+    ob_end_clean();
+}
+
+$filename = 'Daftar_Pengadaan_Belanja_Modal_Bulan_'.$filter_bulan.'_'.$filter_tahun.'.xlsx';
+header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+header('Content-Disposition: attachment;filename="'.$filename.'"');
+header('Cache-Control: max-age=0, no-cache, must-revalidate');
+header('Pragma: public');
+
+// INSTANSIASI WRITER & MATIKAN PRE-CALCULATE FORMULAS
+$writer = new Xlsx($spreadsheet);
+$writer->setPreCalculateFormulas(false); // OPTIMASI KRUSIAL UNTUK KECEPATAN
+$writer->save('php://output');
+exit;
