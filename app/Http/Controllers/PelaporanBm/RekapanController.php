@@ -21,8 +21,12 @@ class RekapanController extends Controller
         $bulan = (int) ($request->input('bulan') ?: date('n'));
         $search = trim((string) $request->input('search', ''));
 
+        // Tenant isolation: operator tanpa sekolah_id ditolak 403; operator sekolah
+        // dipaksa ke sekolahnya (cegah bocor rekap lintas sekolah).
+        $sekolahId = $this->resolveSekolahId($request);
+
         $sekolahs = Sekolah::query()
-            ->when($request->user()->sekolah_id, fn ($q) => $q->where('id', $request->user()->sekolah_id))
+            ->when($sekolahId, fn ($q) => $q->where('id', $sekolahId))
             ->when($search, function ($q) use ($search) {
                 $escaped = addcslashes($search, '%_\\');
                 $q->where('nama_sekolah', 'like', "%{$escaped}%");

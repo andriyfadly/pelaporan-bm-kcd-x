@@ -324,7 +324,11 @@ class InputRealisasiController extends Controller
         }
 
         if (! empty($uncheckIds) && is_array($uncheckIds)) {
+            // Scope ketat: hanya boleh menghapus baris pada bulan & kodering yang
+            // sedang diedit — cegah hapus lintas periode (ID ditebak/dikirim sembarang).
             Realisasi::where('sekolah_id', $sekolahId)
+                ->where('bulan_realisasi', $bulan)
+                ->where('kodering_belanja', $kodering)
                 ->whereIn('id', $uncheckIds)
                 ->delete();
         }

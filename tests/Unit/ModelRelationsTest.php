@@ -56,4 +56,32 @@ class ModelRelationsTest extends TestCase
         $this->assertTrue($kunci->status_kunci);
         $this->assertInstanceOf(\DateTimeInterface::class, $kunci->dikunci_pada ?? now());
     }
+
+    public function test_is_realisasi_membedakan_relasi_terisi_dan_kosong(): void
+    {
+        $sekolah = activity()->withoutLogging(fn () => Sekolah::create([
+            'nama_sekolah' => 'SMA Is Realisasi',
+            'kota_kab' => 'Bandung',
+        ]));
+
+        $spjDengan = activity()->withoutLogging(fn () => Spj::create([
+            'sekolah_id' => $sekolah->id, 'no_spk' => 'SPK/R1', 'kode_barang' => '1.1',
+            'nama_barang' => 'B', 'jenis_aset' => 'J', 'volume' => 1, 'harga_satuan' => 100, 'nilai_perolehan' => 100,
+        ]));
+        $spjTanpa = activity()->withoutLogging(fn () => Spj::create([
+            'sekolah_id' => $sekolah->id, 'no_spk' => 'SPK/R2', 'kode_barang' => '1.2',
+            'nama_barang' => 'C', 'jenis_aset' => 'J', 'volume' => 1, 'harga_satuan' => 100, 'nilai_perolehan' => 100,
+        ]));
+
+        activity()->withoutLogging(fn () => Realisasi::create([
+            'sekolah_id' => $sekolah->id, 'spj_id' => $spjDengan->id, 'kode_barang' => '1.1',
+            'volume' => 1, 'harga_satuan' => 100, 'nilai_perolehan' => 100,
+        ]));
+
+        // Cabang relasi belum di-load (query exists) dan sudah di-load (koleksi).
+        $this->assertTrue($spjDengan->is_realisasi);
+        $this->assertFalse($spjTanpa->is_realisasi);
+        $this->assertTrue($spjDengan->load('realisasi')->is_realisasi);
+        $this->assertFalse($spjTanpa->load('realisasi')->is_realisasi);
+    }
 }

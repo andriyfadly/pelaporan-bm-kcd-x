@@ -9,6 +9,7 @@ use App\Models\User;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class SecurityHardeningTest extends TestCase
@@ -262,5 +263,43 @@ class SecurityHardeningTest extends TestCase
         $this->actingAs($operator)
             ->post(route('pelaporan-bm.acuan.import'), ['file' => $file])
             ->assertSessionHasErrors('file');
+    }
+
+    private function operatorTanpaSekolah(string $username = 'op_tanpa'): User
+    {
+        $user = User::create([
+            'name' => 'Operator Tanpa Sekolah',
+            'username' => $username,
+            'password' => bcrypt('Password123!'),
+            'password_changed_at' => now(),
+        ]);
+        $user->assignRole('operator_sekolah');
+
+        return $user;
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function endpointLintasSekolahProvider(): array
+    {
+        return [
+            'cetak' => ['pelaporan-bm.cetak'],
+            'realisasi index' => ['pelaporan-bm.realisasi.index'],
+            'rekapan' => ['pelaporan-bm.rekapan.index'],
+            'spj index' => ['pelaporan-bm.spj.index'],
+            'cetak unduh' => ['pelaporan-bm.cetak.unduh'],
+            'realisasi unduh' => ['pelaporan-bm.realisasi.unduh'],
+            'spj unduh' => ['pelaporan-bm.unduh'],
+        ];
+    }
+
+    #[DataProvider('endpointLintasSekolahProvider')]
+    public function test_operator_tanpa_sekolah_ditolak_di_endpoint_lintas_sekolah(string $routeName): void
+    {
+        // Akun operator_sekolah tanpa sekolah_id tidak boleh melihat data seluruh sekolah.
+        $this->actingAs($this->operatorTanpaSekolah("op_tanpa_{$routeName}"))
+            ->get(route($routeName))
+            ->assertForbidden();
     }
 }

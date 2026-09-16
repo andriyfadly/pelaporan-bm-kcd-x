@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\PelaporanBm;
 
 use App\Exports\RealisasiBmExport;
+use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\PelaporanBm\Realisasi;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,6 +15,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class RealisasiController extends Controller
 {
+    use ResolvesSekolah;
+
     private function applyFilters(Request $request): Builder
     {
         $user = $request->user();
@@ -25,8 +28,11 @@ class RealisasiController extends Controller
         $query = Realisasi::query()
             ->with('sekolah:id,nama_sekolah');
 
-        if ($user->sekolah_id) {
-            $query->where('sekolah_id', $user->sekolah_id);
+        // Tenant isolation: operator tanpa sekolah ditolak 403, operator sekolah
+        // dipaksa ke sekolahnya; admin (null) melihat semua.
+        $sekolahId = $this->resolveSekolahId($request);
+        if ($sekolahId) {
+            $query->where('sekolah_id', $sekolahId);
         }
 
         if (! empty($filterBarang)) {
@@ -51,6 +57,7 @@ class RealisasiController extends Controller
     public function index(Request $request): Response
     {
         $query = $this->applyFilters($request);
+        $sekolahId = $this->resolveSekolahId($request);
 
         $totalNilaiPerolehan = (float) (clone $query)->sum('nilai_perolehan');
         // Legacy: ORDER BY ba_tgl DESC, id DESC
@@ -58,7 +65,7 @@ class RealisasiController extends Controller
 
         $availableYears = Realisasi::query()
             ->whereNotNull('ba_tgl')
-            ->when($request->user()->sekolah_id, fn ($q) => $q->where('sekolah_id', $request->user()->sekolah_id))
+            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
             ->pluck('ba_tgl')
             ->map(fn ($tgl) => (int) date('Y', strtotime($tgl)))
             ->unique()

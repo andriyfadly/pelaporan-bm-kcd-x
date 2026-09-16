@@ -83,7 +83,9 @@ class AcuanController extends Controller
             'bulan' => 'required|integer|between:1,12',
         ]);
 
-        if (empty($validated['sekolah_id']) && $request->user()->sekolah_id) {
+        // Tenant isolation: user sekolah selalu dipaksa ke sekolahnya sendiri,
+        // sekolah_id kiriman request diabaikan (konsisten dengan ResolvesSekolah).
+        if ($request->user()->sekolah_id) {
             $validated['sekolah_id'] = $request->user()->sekolah_id;
         }
 

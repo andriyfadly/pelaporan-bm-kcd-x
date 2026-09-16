@@ -3,7 +3,7 @@
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
 > sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
 > **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
-> Status: 88 passed / 422 assertions.
+> Status: 142 passed / 623 assertions (total 98.1%).
 
 ## 1. Perintah
 
@@ -42,7 +42,11 @@ npx tsc --noEmit                     # type-check frontend
 | `ErrorPageTest` | Error page kustom: Blade `errors.page` (load awal) + Inertia `Error` (navigasi) untuk 404/403 |
 | `LogViewerAccessTest` | `/admin/log-error`: tamu/operator → 403, super_admin → 200 |
 | `ActivityLogTest` | Auto-log create/update/destroy + `old`, login, causer via HTTP, viewer 200/403, password tak bocor |
-| `SecurityHardeningTest` | Cross-tenant 403, bulan terkunci diblokir, rate-limit |
+| `SecurityHardeningTest` | Cross-tenant 403, bulan terkunci diblokir, rate-limit, operator tanpa sekolah ditolak 403 di semua endpoint lintas-sekolah (index + unduh) |
+| `InputRealisasiTest` | Alur realisasi: pilih-bulan normalisasi, index hitung kekurangan, tambah/simpan (validasi item, acuan, batas anggaran), edit readonly, update uncheck ter-scope bulan+kodering, kirim balance→lock |
+| `SpjGapTest` | SPJ: pilih-bulan, create/edit-spk lock, store-spk lock, destroy/update cross-tenant 403 + acuan lintas sekolah, cari-barang kosong & fallback master→SPJ |
+| `AcuanImportGapTest` | Import acuan: skip baris pendek/invalid, tanggal serial Excel, bulan dari request, target via NPSN, batas 5000 baris, tenant isolation store/destroy |
+| `CetakBmSheetTest` | `safeCell` netralkan formula injection (`=`/`+`/`@`), `formatKotaKab` normalisasi "Kab."→"KABUPATEN" |
 | `RekapanDanKunciTest` | Rekapan, toggle kunci, status draft→disetujui |
 | `UserManagementTest` | CRUD user, proteksi super_admin & hapus diri |
 | `PasswordExpiryTest` | Intersep 90 hari, dedicated page, kompleksitas |

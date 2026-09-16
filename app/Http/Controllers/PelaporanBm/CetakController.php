@@ -71,6 +71,7 @@ class CetakController extends Controller
     {
         $bulan = (int) $request->input('bulan', date('n'));
         $tahun = (int) $request->input('tahun', date('Y'));
+        $sekolahId = $this->resolveSekolahId($request);
 
         $query = Realisasi::where('bulan_realisasi', $bulan)
             ->where(function ($q) use ($tahun) {
@@ -78,8 +79,8 @@ class CetakController extends Controller
                     ->orWhereNull('ba_tgl');
             });
 
-        if ($request->user()->sekolah_id) {
-            $query->where('sekolah_id', $request->user()->sekolah_id);
+        if ($sekolahId) {
+            $query->where('sekolah_id', $sekolahId);
         }
 
         $count = $query->count();
@@ -91,6 +92,7 @@ class CetakController extends Controller
     {
         $bulan = (int) $request->input('bulan', date('n'));
         $tahun = (int) $request->input('tahun', date('Y'));
+        $sekolahId = $this->resolveSekolahId($request);
 
         $filename = "Daftar_Pengadaan_Belanja_Modal_Bulan_{$bulan}_{$tahun}.xlsx";
 
@@ -101,8 +103,8 @@ class CetakController extends Controller
                     ->orWhereNull('ba_tgl');
             });
 
-        if ($request->user()->sekolah_id) {
-            $query->where('sekolah_id', $request->user()->sekolah_id);
+        if ($sekolahId) {
+            $query->where('sekolah_id', $sekolahId);
         }
 
         $items = $query->get()
