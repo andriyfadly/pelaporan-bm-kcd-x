@@ -50,7 +50,7 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
         no_sertifikat: '',
         ukuran_bangunan: '-',
         satuan: '',
-        volume: 1,
+        volume: 0,
         harga_satuan: 0,
         nilai_perolehan: 0,
     };
@@ -189,7 +189,6 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
             kode_barang: item.kode_barang,
             nama_barang: item.nama_barang,
             jenis_aset: item.jenis_aset || newItems[index].jenis_aset,
-            satuan: item.satuan || newItems[index].satuan || 'UNIT',
         };
         setData('items', newItems);
         setSuggestions([]);
@@ -758,17 +757,19 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                 </div>
                                             </div>
 
-                                            {/* Tombol Tambah di Bawah Kartu */}
-                                            <div className="flex justify-end mt-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => validasiDanTambahBaru(index)}
-                                                    className="font-bold px-3 py-2 flex items-center shadow-sm text-white rounded-md text-xs hover:opacity-90 transition"
-                                                    style={{ backgroundColor: '#0284c7' }}
-                                                >
-                                                    <Plus className="w-4 h-4 mr-1.5" /> Tambah Item Barang
-                                                </button>
-                                            </div>
+                                            {/* Tombol Tambah di Bawah Kartu (legacy: hanya di kartu terakhir yang terbuka) */}
+                                            {index === data.items.length - 1 && (
+                                                <div className="flex justify-end mt-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => validasiDanTambahBaru(index)}
+                                                        className="font-bold px-3 py-2 flex items-center shadow-sm text-white rounded-md text-xs hover:opacity-90 transition"
+                                                        style={{ backgroundColor: '#0284c7' }}
+                                                    >
+                                                        <Plus className="w-4 h-4 mr-1.5" /> Tambah Item Barang
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
