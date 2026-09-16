@@ -52,6 +52,7 @@ Rute log: `role:super_admin` + `permission:lihat-log-aktivitas`
 | Mass assignment | `$fillable` eksplisit; validasi per-controller |
 | Data terkunci diubah | Guard status di tiap aksi tulis (kunci/menunggu/disetujui) |
 | Secret bocor ke log | `logExcept` password/token di model User; test `password_tidak_bocor_di_log` |
+| DB error bocor ke user | Handler `QueryException` di `bootstrap/app.php`: pesan ramah + `Log::error` konteks; tanpa SQL ke respons |
 | Session hijack | `SESSION_SECURE_COOKIE`, regenerasi saat login (Fortify) |
 
 ## 5. Audit Trail
@@ -59,7 +60,7 @@ Rute log: `role:super_admin` + `permission:lihat-log-aktivitas`
 - `activity_log` (log `sistem`): auto-diff model + manual login/logout,
   password, kirim/verifikasi/kunci, import/hapus-massal, unduhan, hapus SPK.
 - Viewer super_admin: filter event/entitas/sekolah/tanggal/pencarian.
-- `Log::` file保留 untuk Turnstile & error sistem (bukan data bisnis).
+- `Log::` file untuk Turnstile & error sistem termasuk `db-error` (bukan activity log — DB ikut mati saat down, dan jejak audit bebas noise infra).
 - Tanpa purge — retensi permanen (keputusan produk, tinjau tiap evaluasi tahunan).
 
 ## 6. Checklist Aman Sebelum Rilis
