@@ -33,7 +33,11 @@ export default function Login() {
     useEffect(() => {
         if (!turnstileSiteKey) return;
         if (document.querySelector(`script[src="${TURNSTILE_SRC}"]`)) {
-            setTurnstileReady(!!window.turnstile);
+            if (window.turnstile) {
+                setTurnstileReady(true);
+            } else {
+                window.onloadTurnstileCallback = () => setTurnstileReady(true);
+            }
             return;
         }
         window.onloadTurnstileCallback = () => setTurnstileReady(true);
@@ -52,7 +56,7 @@ export default function Login() {
         if (widgetIdRef.current) return;
         widgetIdRef.current = window.turnstile.render(widgetRef.current, {
             sitekey: turnstileSiteKey,
-            'success-callback': () => {
+            callback: () => {
                 setTurnstileVerified(true);
                 setTurnstileError('');
             },
