@@ -1,6 +1,7 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import React, { useState, useMemo } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import ConfirmDialog from '@/Components/ConfirmDialog';
 import {
     Users,
     UserPlus,
@@ -13,6 +14,7 @@ import {
     Eye,
     EyeOff,
     UserCircle2,
+    Power,
     X,
 } from 'lucide-react';
 
@@ -27,6 +29,7 @@ interface UserItem {
     id: string;
     name: string;
     username: string;
+    is_active: boolean;
     sekolah_id: string | null;
     sekolah?: Sekolah | null;
     roles: { name: string }[];
@@ -50,6 +53,7 @@ export default function Index({ users, sekolahs, auth }: Props) {
     const [modalEditOpen, setModalEditOpen] = useState(false);
     const [modalCreateOpen, setModalCreateOpen] = useState(false);
     const [modalDeleteUser, setModalDeleteUser] = useState<UserItem | null>(null);
+    const [toggleTarget, setToggleTarget] = useState<UserItem | null>(null);
     const [showPassword, setShowPassword] = useState(false);
 
     // Form Edit User & Ganti Password
@@ -203,6 +207,18 @@ export default function Index({ users, sekolahs, auth }: Props) {
         });
     };
 
+    const handleToggleConfirm = () => {
+        if (!toggleTarget) return;
+        router.put(
+            `/admin/user/${toggleTarget.id}`,
+            {
+                username: toggleTarget.username,
+                is_active: toggleTarget.is_active ? 0 : 1,
+            },
+            { preserveScroll: true },
+        );
+    };
+
     return (
         <AppLayout title="Kelola Data User">
             <Head title="Kelola Data User | SINVENTARIS" />
@@ -268,6 +284,7 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                     <th className="p-3.5 text-center w-16">ID</th>
                                     <th className="p-3.5">Username</th>
                                     <th className="p-3.5">Role</th>
+                                    <th className="p-3.5">Status</th>
                                     <th className="p-3.5">NPSN / ID</th>
                                     <th className="p-3.5">Nama Sekolah</th>
                                     <th className="p-3.5">Dibuat Pada</th>
@@ -277,7 +294,7 @@ export default function Index({ users, sekolahs, auth }: Props) {
                             <tbody className="divide-y divide-slate-100 font-semibold">
                                 {filteredUsers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="p-8 text-center text-slate-400">
+                                        <td colSpan={8} className="p-8 text-center text-slate-400">
                                             Data sekolah atau user tidak ditemukan.
                                         </td>
                                     </tr>
@@ -288,7 +305,10 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                         );
 
                                         return (
-                                            <tr key={u.id} className="hover:bg-slate-50/80 transition">
+                                            <tr
+                                                key={u.id}
+                                                className={`transition ${u.is_active ? 'hover:bg-slate-50/80' : 'bg-slate-50/60 hover:bg-slate-50/80'}`}
+                                            >
                                                 <td className="p-3.5 text-center text-slate-500 font-mono">
                                                     #{idx + 1}
                                                 </td>
@@ -310,6 +330,17 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                                     ) : (
                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-bold">
                                                             <Building2 className="w-3 h-3" /> Operator Sekolah
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-3.5">
+                                                    {u.is_active ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md text-[10px] font-bold">
+                                                            Aktif
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-md text-[10px] font-bold">
+                                                            Nonaktif
                                                         </span>
                                                     )}
                                                 </td>
@@ -338,6 +369,21 @@ export default function Index({ users, sekolahs, auth }: Props) {
                                                         >
                                                             <Pencil className="w-4 h-4" />
                                                         </button>
+
+                                                        {/* Tombol Nonaktifkan / Aktifkan (tersembunyi utk akun sendiri) */}
+                                                        {u.id !== auth.user.id && (
+                                                            <button
+                                                                onClick={() => setToggleTarget(u)}
+                                                                className={
+                                                                    u.is_active
+                                                                        ? 'p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition cursor-pointer'
+                                                                        : 'p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer'
+                                                                }
+                                                                title={u.is_active ? 'Nonaktifkan User' : 'Aktifkan User'}
+                                                            >
+                                                                <Power className="w-4 h-4" />
+                                                            </button>
+                                                        )}
 
                                                         {/* Tombol Hapus */}
                                                         <button
@@ -654,6 +700,20 @@ export default function Index({ users, sekolahs, auth }: Props) {
                     </div>
                 </div>
             )}
+            {/* MODAL KONFIRMASI NONAKTIF/AKTIFKAN USER */}
+            <ConfirmDialog
+                isOpen={toggleTarget !== null}
+                onClose={() => setToggleTarget(null)}
+                onConfirm={handleToggleConfirm}
+                title={toggleTarget?.is_active ? 'Nonaktifkan User' : 'Aktifkan User'}
+                message={
+                    toggleTarget?.is_active
+                        ? `Nonaktifkan @${toggleTarget?.username}? User tidak dapat login dan semua sesi aktifnya langsung diputus.`
+                        : `Aktifkan kembali @${toggleTarget?.username}? User dapat login seperti semula.`
+                }
+                confirmText={toggleTarget?.is_active ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan'}
+                isDestructive={!!toggleTarget?.is_active}
+            />
         </AppLayout>
     );
 }

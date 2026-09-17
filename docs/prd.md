@@ -91,7 +91,7 @@ operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
 - Acuan (`/pelaporan-bm/acuan`): input manual + import XLSX-only (maks 5.000
   baris), filter bulan/sekolah, hapus massal.
 - Sekolah: identitas + NPSN (dikelola via seeder/migrasi).
-- User (`/admin/user`): CRUD + assign role, proteksi hapus diri & super_admin.
+- User (`/admin/user`): CRUD + assign role, nonaktifkan/aktifkan user (sesi aktif diputus), proteksi hapus diri & super_admin.
 
 ### F9 — Autentikasi & keamanan akun
 - Login username (tanpa email), Fortify session, bcrypt.

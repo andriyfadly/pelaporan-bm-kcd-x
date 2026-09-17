@@ -7,6 +7,7 @@ use App\Models\Master\Sekolah;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -70,7 +71,14 @@ class UserController extends Controller
             'password' => ['nullable', 'string', Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
             'role' => 'nullable|string|in:admin_kcd,operator_sekolah,bendahara_sekolah',
+            'is_active' => 'nullable|boolean',
         ]);
+
+        $menonaktifkan = array_key_exists('is_active', $validated) && ! (bool) $validated['is_active'];
+
+        if ($menonaktifkan && $user->id === auth()->id()) {
+            return back()->with('error', 'Anda tidak dapat menonaktifkan akun Anda sendiri!');
+        }
 
         $data = [
             'username' => $validated['username'],
@@ -88,7 +96,16 @@ class UserController extends Controller
             $data['password'] = $validated['password'];
         }
 
+        if (array_key_exists('is_active', $validated)) {
+            $data['is_active'] = (bool) $validated['is_active'];
+        }
+
         activity()->withoutLogging(fn () => $user->update($data));
+
+        // Nonaktif = putus semua sesi login yang sedang berjalan.
+        if ($menonaktifkan) {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
 
         if (! empty($validated['role'])) {
             $roleName = match ($validated['role']) {
@@ -99,13 +116,18 @@ class UserController extends Controller
             $user->syncRoles([$roleName]);
         }
 
+        $ringkasan = "Ubah user {$user->username}"
+            .(! empty($validated['role']) ? " ({$validated['role']})" : '')
+            .(array_key_exists('is_active', $validated) ? ($validated['is_active'] ? ' [diaktifkan]' : ' [dinonaktifkan]') : '');
+
         activity('sistem')
             ->performedOn($user)
             ->event('ubah-user')
             ->withProperties([
-                'ringkasan' => "Ubah user {$user->username}".(! empty($validated['role']) ? " ({$validated['role']})" : ''),
+                'ringkasan' => $ringkasan,
                 'sekolah_id' => $user->sekolah_id,
                 'role' => $validated['role'] ?? null,
+                'is_active' => array_key_exists('is_active', $validated) ? (bool) $validated['is_active'] : null,
             ])
             ->log('ubah-user');
 

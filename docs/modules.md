@@ -84,6 +84,7 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
   - Import massal dan pencarian live search.
 - **Kelola User (`/admin/user`)**:
   - Manajemen akun operator sekolah dan administrator.
+  - Nonaktifkan/aktifkan user (kolom `users.is_active`): user nonaktif ditolak saat login, semua sesi aktifnya langsung diputus, dan tidak bisa menonaktifkan akun sendiri.
 - **Rekapan Sekolah (`/pelaporan-bm/rekapan`)**:
   - Rekapitulasi laporan seluruh sekolah per bulan, perbandingan acuan vs realisasi per kodering, serta toggle gembok laporan.
 
