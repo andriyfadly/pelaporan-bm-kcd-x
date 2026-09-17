@@ -54,13 +54,33 @@ TURNSTILE_SECRET_KEY=...
 
 ## 5. Update Rilis (tanpa downtime besar)
 
+Cara utama di server:
+
+```bash
+./deploy.sh
+```
+
+Script menjalankan: `git pull` → `composer install` → pertanyaan migrasi (default
+**N**, Enter = lewati). Bila dijawab `y`: situs di-`down`, DB di-backup otomatis
+ke `storage/backups/<db>_<tanggal>.dump` (format `pg_dump -Fc`, restore via
+`pg_restore`), dump diverifikasi ada & tidak kosong (gagal backup = migrasi
+dibatalkan), baru `migrate --force`. Dilanjut `npm ci && npm run build`, rebuild
+cache `config`/`route`/`view`, `permission:cache-reset`, dan situs otomatis
+kembali online (`php artisan up` via trap) walau ada langkah yang gagal.
+Backups lama di `storage/backups/` dibersihkan manual sesuai kebutuhan.
+
+Manual (fallback, urutan sama):
+
 ```bash
 git pull origin <branch>
 composer install --no-dev --optimize-autoloader
+php artisan down
+pg_dump -Fc <db> > storage/backups/<db>_$(date +%F).dump  # backup dulu
 php artisan migrate --force
 npm ci && npm run build
 php artisan config:cache && php artisan route:cache && php artisan view:cache
-# php-fpm reload / restart queue bila ada
+php artisan permission:cache-reset
+php artisan up
 ```
 
 Rollback: `git reset --hard <tag>` + `php artisan migrate:rollback --step=N`

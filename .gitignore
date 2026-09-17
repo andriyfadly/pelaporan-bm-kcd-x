@@ -13,6 +13,7 @@ logs_security/
 _test_env.php
 .phpunit.result.cache
 /storage/coverage/
+/storage/backups/
 /.playwright-mcp/
 
 # Dependencies
