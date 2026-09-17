@@ -168,7 +168,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 )}
                             </div>
 
-                            {isSuperAdmin && (
+                            {isAdmin && (
                                 <>
                                     {!collapsed && (
                                         <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-2">
@@ -188,14 +188,16 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                         {!collapsed && <span>Log Aktivitas</span>}
                                     </Link>
 
-                                    <a
-                                        href="/admin/log-error"
-                                        className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]"
-                                        title={collapsed ? 'Log Error' : undefined}
-                                    >
-                                        <FileSpreadsheet className="w-5 h-5 shrink-0" />
-                                        {!collapsed && <span>Log Error</span>}
-                                    </a>
+                                    {isSuperAdmin && (
+                                        <a
+                                            href="/admin/log-error"
+                                            className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]"
+                                            title={collapsed ? 'Log Error' : undefined}
+                                        >
+                                            <FileSpreadsheet className="w-5 h-5 shrink-0" />
+                                            {!collapsed && <span>Log Error</span>}
+                                        </a>
+                                    )}
                                 </>
                             )}
 

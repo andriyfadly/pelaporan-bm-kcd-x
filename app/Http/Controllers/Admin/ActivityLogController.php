@@ -27,6 +27,17 @@ class ActivityLogController extends Controller
             ->with(['causer', 'subject'])
             ->latest('id');
 
+        // Aktivitas super_admin hanya terlihat oleh super_admin sendiri.
+        $tanpaAktivitasSuperAdmin = fn ($q) => $q->where(function ($q) {
+            $q->whereNull('causer_id')
+                ->orWhereHasMorph('causer', User::class, fn ($c) => $c
+                    ->whereDoesntHave('roles', fn ($r) => $r->where('name', 'super_admin')));
+        });
+
+        if (! $request->user()->hasRole('super_admin')) {
+            $query->where($tanpaAktivitasSuperAdmin);
+        }
+
         if (! empty($validated['event'])) {
             $query->forEvent($validated['event']);
         }
@@ -60,6 +71,7 @@ class ActivityLogController extends Controller
         }
 
         $events = Activity::inLog('sistem')
+            ->when(! $request->user()->hasRole('super_admin'), $tanpaAktivitasSuperAdmin)
             ->whereNotNull('event')
             ->distinct()
             ->orderBy('event')
@@ -67,6 +79,7 @@ class ActivityLogController extends Controller
             ->toArray();
 
         $subjectTypes = Activity::inLog('sistem')
+            ->when(! $request->user()->hasRole('super_admin'), $tanpaAktivitasSuperAdmin)
             ->whereNotNull('subject_type')
             ->distinct()
             ->orderBy('subject_type')

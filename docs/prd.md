@@ -23,15 +23,14 @@ dan menambahkan kontrol kunci laporan + log aktivitas sistem-wide.
 | G1 | Sentralisasi SPJ & fisik barang | 1 dokumen SPK = N item barang, tersimpan atomik |
 | G2 | Kesesuaian acuan vs realisasi | Per kodering terpantau: target, realisasi, kekurangan (real-time) |
 | G3 | Standardisasi cetak | XLSX 25 kolom (realisasi) & 26 kolom (cetak) identik legacy, formula hidup |
-| G4 | Akuntabilitas & kontrol | Kunci bulanan + log aktivitas queryable (super_admin) |
+| G4 | Akuntabilitas & kontrol | Kunci bulanan + log aktivitas queryable (super_admin & admin_kcd) |
 | G5 | Migrasi aman dari legacy | Perintah `app:migrasi-data-lama` idempoten, terverifikasi test |
 
 ## 3. Persona & Peran
 
 | Role | Identitas | Kebutuhan utama |
 |------|-----------|-----------------|
-| `super_admin` (`developer`) | Tanpa `sekolah_id`, semua permission | Operasional penuh + melihat log aktivitas seluruh sistem |
-| `admin_kcd` | Tanpa `sekolah_id` | Upload acuan, pantau kepatuhan, verifikasi/kunci, kelola master & user |
+| `super_admin` (`developer`) | Tanpa `sekolah_id`, semua permission | Operasional penuh + melihat log aktivitas seluruh sistem || `admin_kcd` | Tanpa `sekolah_id` | Upload acuan, pantau kepatuhan, verifikasi/kunci, kelola master & user |
 | `operator_sekolah` (`[npsn]-admin`) | Terikat `sekolah_id` | Input SPK/barang, alokasi realisasi, kirim laporan, cetak |
 | `bendahara_sekolah` | Terikat `sekolah_id` | Sama seperti operator (hak setara saat ini) |
 
@@ -78,12 +77,13 @@ operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
 - Rekapan (`/pelaporan-bm/rekapan`): acuan vs realisasi seluruh sekolah/bulan.
 - Toggle kunci + update status (`draft`/`menunggu_approval`/`disetujui`).
 
-### F7 — Log Aktivitas (`/admin/log-aktivitas`, super_admin saja)
+### F7 — Log Aktivitas (`/admin/log-aktivitas`, super_admin + admin_kcd)
 - Auto-log model (spatie/laravel-activitylog v5, log `sistem`): Spj,
   Realisasi, Acuan, KunciLaporan, KodeBarang, User (password/token dikecualikan).
 - Manual: login/logout, ganti/reset password, kirim/verifikasi/kunci,
   import & hapus-massal, 3 unduhan, hapus SPK/prune/sinkron.
 - Viewer: filter event/entitas/sekolah/tanggal/pencarian, diff before/after.
+- Aktivitas super_admin disembunyikan dari admin_kcd.
 - Detail: `docs/architecture.md` (bagian Logging) dan `docs/security.md`.
 
 ### F8 — Master Data (admin)

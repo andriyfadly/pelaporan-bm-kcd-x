@@ -74,12 +74,13 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 ---
 
-## 4. Log Aktivitas (khusus Super Admin)
+## 4. Log Aktivitas (Super Admin & Admin KCD)
 
-Menu **Log Aktivitas** (`/admin/log-aktivitas`) hanya terlihat untuk role
-`super_admin`. Berisi jejak audit seluruh sistem: pembuatan/ubah/hapus data
+Menu **Log Aktivitas** (`/admin/log-aktivitas`) terlihat untuk role `super_admin`
+dan `admin_kcd`. Berisi jejak audit sistem: pembuatan/ubah/hapus data
 (SPJ, realisasi, acuan, kode barang, user, kunci laporan), login/logout,
 ganti password, kirim & verifikasi laporan, import, dan unduhan.
+Aktivitas yang dilakukan `super_admin` hanya terlihat oleh super_admin sendiri.
 
 1. Buka menu **Log Aktivitas** di grup Master Data.
 2. Saring dengan filter: aksi (event), entitas, sekolah, rentang tanggal,

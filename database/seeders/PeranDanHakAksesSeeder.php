@@ -23,10 +23,8 @@ class PeranDanHakAksesSeeder extends Seeder
             'unduh-rekap-bm',
             'cetak-laporan-bm',
             'kelola-user',
+            'lihat-log-aktivitas',
         ];
-
-        // ponytail: viewer log aktivitas khusus super_admin, jangan masuk $hakAkses admin_kcd
-        Permission::firstOrCreate(['name' => 'lihat-log-aktivitas', 'guard_name' => 'web']);
 
         foreach ($hakAkses as $hak) {
             Permission::firstOrCreate(['name' => $hak, 'guard_name' => 'web']);

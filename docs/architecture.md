@@ -19,7 +19,8 @@
 | Test | PHPUnit 13, Pint, `tsc --noEmit` | coverage gate 80% |
 
 Roles: `super_admin`, `admin_kcd`, `operator_sekolah`, `bendahara_sekolah`.
-10 permission, termasuk `lihat-log-aktivitas` (super_admin saja).
+10 permission; `lihat-log-aktivitas` dimiliki super_admin & admin_kcd
+(aktivitas super_admin disembunyikan dari admin_kcd).
 
 ## 2. Alur Request
 
@@ -116,8 +117,9 @@ resources/views/app.blade.php # <head> global: favicon, manifest, @inertia
 - Anti-duplikat: aksi user & reset password dibungkus `withoutLogging` +
   1 ringkasan manual. Migrasi legacy mematikan logging.
 - Tenant: via `causer.sekolah` (`User belongsTo Sekolah`) + `properties.sekolah_id`.
-- Viewer super_admin: `Admin/ActivityLogController` + page filter +
-  permission `lihat-log-aktivitas`. Tanpa purge (retensi permanen).
+- Viewer: `Admin/ActivityLogController` + page filter + permission
+  `lihat-log-aktivitas`; aktivitas super_admin disembunyikan dari non-super_admin.
+  Tanpa purge (retensi permanen).
 - Migrasi bawaan Spatie diubah ke `nullableUuidMorphs` (model ber-UUID).
 
 ### 4.7 Auth & keamanan akun

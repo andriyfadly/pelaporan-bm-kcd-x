@@ -42,8 +42,8 @@ Pendidikan Wilayah X. Migrasi dari aplikasi legacy PHP (`legacy/`).
 
 | Role | Scope |
 |------|-------|
-| `super_admin` | Penuh + viewer log aktivitas |
-| `admin_kcd` | Lintas sekolah: acuan, rekapan, kunci/verifikasi, master, user |
+| `super_admin` | Penuh + log aktivitas lengkap |
+| `admin_kcd` | Lintas sekolah: acuan, rekapan, kunci/verifikasi, master, user, log aktivitas (tanpa aktivitas super_admin) |
 | `operator_sekolah` / `bendahara_sekolah` | Satu sekolah: SPJ, realisasi, kirim, cetak |
 
 Detail: `prd.md` (§3), matriks hak: `security.md` (§1).

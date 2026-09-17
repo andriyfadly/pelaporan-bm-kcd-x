@@ -77,7 +77,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/user/{user}', [UserController::class, 'destroy'])->middleware('permission:kelola-user')->name('user.destroy');
 
         Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])
-            ->middleware(['role:super_admin', 'permission:lihat-log-aktivitas'])
+            ->middleware('permission:lihat-log-aktivitas')
             ->name('log-aktivitas.index');
 
         Route::get('/kode-barang', [KodeBarangController::class, 'index'])->name('kode-barang.index');

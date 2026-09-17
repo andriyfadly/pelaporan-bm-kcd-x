@@ -13,15 +13,19 @@
 | Kunci laporan (`kunci-laporan-bm`) | ✅ | ✅ | ❌ |
 | Verifikasi (`verifikasi-laporan-bm`) | ✅ | ✅ | ❌ |
 | Kelola user (`kelola-user`) | ✅ | ✅* | ❌ |
-| Lihat log aktivitas (`lihat-log-aktivitas`) | ✅ | ❌ | ❌ |
+| Lihat log aktivitas (`lihat-log-aktivitas`) | ✅ | ✅\*\* | ❌ |
 
 \* Grup rute `/admin` memakai `role:super_admin|admin_kcd`; halaman user
 menyembunyikan super_admin dari daftar dan menolak hapus diri. `Gate::before`
 memberi super_admin bypass semua ability.
 
-Rute log (`/admin/log-aktivitas` + `/admin/log-error` via opcodesio/log-viewer):
-`role:super_admin` + gate `viewLogViewer` = permission `lihat-log-aktivitas`
-(terverifikasi test: tamu/operator → 403, super_admin → 200).
+\*\* Aktivitas yang di-cause super_admin disembunyikan dari admin_kcd;
+super_admin melihat semua.
+
+Rute log aktivitas (`/admin/log-aktivitas`): `permission:lihat-log-aktivitas`
+(terverifikasi test: tamu/operator → 403, super_admin & admin_kcd → 200).
+Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
++ gate `viewLogViewer`.
 
 ## 2. Isolasi Tenant
 

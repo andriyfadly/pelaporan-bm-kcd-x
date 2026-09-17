@@ -170,7 +170,7 @@ class ActivityLogTest extends TestCase
         $this->actingAs($admin)->get(route('admin.log-aktivitas.index', ['q' => 'SPK-CAUSER']))->assertOk();
     }
 
-    public function test_viewer_hanya_super_admin(): void
+    public function test_viewer_super_admin_admin_kcd_serta_aktivitas_super_admin_disembunyikan(): void
     {
         $super = $this->buatSuperAdmin();
 
@@ -198,10 +198,25 @@ class ActivityLogTest extends TestCase
             'nominal' => 1000,
         ]);
 
+        // Akses: super_admin & admin_kcd boleh, operator ditolak.
         $this->actingAs($super)->get(route('admin.log-aktivitas.index'))->assertOk();
         $this->actingAs($super)->get(route('admin.log-aktivitas.index', ['event' => 'created']))->assertOk();
-
-        $this->actingAs($admin)->get(route('admin.log-aktivitas.index'))->assertForbidden();
+        $this->actingAs($admin)->get(route('admin.log-aktivitas.index'))->assertOk();
         $this->actingAs($operator)->get(route('admin.log-aktivitas.index'))->assertForbidden();
+
+        // Aktivitas super_admin tersembunyi dari admin_kcd, tapi tetap terlihat oleh super_admin.
+        Activity::query()->delete();
+        activity('sistem')->causedBy($super)->event('rahasia-super')->withProperties(['ringkasan' => 'Aksi super admin'])->log('rahasia-super');
+        activity('sistem')->causedBy($admin)->event('aksi-admin')->withProperties(['ringkasan' => 'Aksi admin kcd'])->log('aksi-admin');
+
+        $this->actingAs($admin)->get(route('admin.log-aktivitas.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('items.data', 1)
+                ->where('items.data.0.event', 'aksi-admin'));
+
+        $this->actingAs($super)->get(route('admin.log-aktivitas.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('items.data', 2));
     }
 }
