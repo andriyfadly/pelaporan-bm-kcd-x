@@ -106,20 +106,20 @@ class DashboardEdgeTest extends TestCase
             );
     }
 
-    public function test_admin_tanpa_data_acuan_memakai_semua_sekolah_sebagai_target(): void
+    public function test_admin_tanpa_data_acuan_tidak_menampilkan_target(): void
     {
         $admin = $this->admin('admin_dash_all');
         $this->sekolah('SMKN Satu');
         $this->sekolah('SMKN Dua');
 
-        // Tidak ada acuan di bulan 6 -> target jatuh ke seluruh sekolah.
+        // Tidak ada acuan di bulan 6 -> target 0 (paritas legacy index_admin.php).
         $this->actingAs($admin)
             ->get(route('dashboard', ['bulan' => 6, 'tahun' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('totalTarget', 2)
-                ->where('totalBelum', 2)
-                ->has('listBelum', 2)
+                ->where('totalTarget', 0)
+                ->where('totalBelum', 0)
+                ->has('listBelum', 0)
             );
     }
 
