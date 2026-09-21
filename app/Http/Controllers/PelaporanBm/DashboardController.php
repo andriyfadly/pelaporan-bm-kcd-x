@@ -35,30 +35,35 @@ class DashboardController extends Controller
                 $years[] = $y;
             }
 
-            // 1. Ambil target sekolah yang memiliki data acuan
-            $targetSekolahIds = Acuan::where('bulan', $filterBulan)
+            // 1. Target = sekolah yang memiliki data acuan di bulan & tahun
+            // terpilih (paritas dengan legacy index_admin.php). Tidak ada
+            // fallback ke semua sekolah: bulan tanpa acuan = target 0.
+            $acuanQuery = Acuan::query()
+                ->where('bulan', $filterBulan)
                 ->whereNotNull('sekolah_id')
-                ->distinct()
-                ->pluck('sekolah_id')
-                ->toArray();
+                ->where(function ($q) use ($filterTahun) {
+                    $q->whereYear('tanggal', $filterTahun)
+                        ->orWhereNull('tanggal')
+                        ->orWhereYear('created_at', $filterTahun);
+                });
 
-            if (empty($targetSekolahIds)) {
-                $targetSekolahIds = Sekolah::pluck('id')->toArray();
-            }
-
-            $targetSekolah = Sekolah::whereIn('id', $targetSekolahIds)
+            $targetSekolah = Sekolah::query()
+                ->whereIn('id', $acuanQuery->select('sekolah_id'))
                 ->orderBy('nama_sekolah')
                 ->get(['id', 'nama_sekolah']);
 
-            // 2. Ambil sekolah yang sudah realisasi di bulan terpilih
-            $selesaiIds = Realisasi::where('bulan_realisasi', $filterBulan)
+            // 2. Sekolah yang sudah realisasi di bulan & tahun terpilih
+            // (hanya Realisasi final; Spj = katalog draft tidak dihitung).
+            $selesaiIds = Realisasi::query()
+                ->where('bulan_realisasi', $filterBulan)
+                ->where(function ($q) use ($filterTahun) {
+                    $q->whereYear('ba_tgl', $filterTahun)
+                        ->orWhereNull('ba_tgl')
+                        ->orWhereYear('created_at', $filterTahun);
+                })
+                ->whereNotNull('sekolah_id')
                 ->distinct()
                 ->pluck('sekolah_id')
-                ->merge(
-                    Spj::where('bulan_realisasi', $filterBulan)
-                        ->distinct()
-                        ->pluck('sekolah_id')
-                )
                 ->toArray();
 
             $listSelesai = [];

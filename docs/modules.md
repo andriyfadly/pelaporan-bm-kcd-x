@@ -8,8 +8,9 @@ Sistem Pelaporan Belanja Modal KCD Wilayah X membagi akses ke dalam 2 peran utam
 
 - **Admin KCD**:
   - Filter bulan (1-12) dan tahun.
-  - Kartu ringkasan wilayah: Total Target Acuan, Total Realisasi, Sisa Anggaran.
-  - Tabel Sekolah Selesai Lapor vs Sekolah Belum Selesai Lapor.
+  - Target = sekolah yang memiliki data acuan di bulan+tahun terpilih (paritas `legacy/index_admin.php`). Bulan tanpa acuan → target 0, **tanpa fallback** ke semua sekolah.
+  - "Sudah Realisasi" hanya dihitung dari `Realisasi` final (bukan `Spj` katalog draft), difilter bulan+tahun (`YEAR(ba_tgl/created_at)`).
+  - Tabel Sekolah Sudah Realisasi vs Sekolah Belum Realisasi.
   - Aksi langsung Kunci / Buka Gembok Laporan sekolah.
 - **Operator Sekolah**:
   - Banner Status Laporan Bulan Lalu (SELESAI / BELUM SELESAI).
