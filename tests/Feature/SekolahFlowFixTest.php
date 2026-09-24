@@ -298,7 +298,14 @@ class SekolahFlowFixTest extends TestCase
             'password' => bcrypt('password'),
         ]);
 
-        $this->buatSpj($sekolah);
+        // Paritas legacy: baris rekapan bersumber dari acuan bulan terpilih.
+        Acuan::create([
+            'sekolah_id' => $sekolah->id,
+            'kodering' => '5.2.02.05.01.0001',
+            'nominal' => 10000000,
+            'bulan' => 8,
+            'uraian' => 'Pengadaan Laptop',
+        ]);
 
         $response = $this->actingAs($admin)
             ->get(route('pelaporan-bm.rekapan.index', ['bulan' => 8]))

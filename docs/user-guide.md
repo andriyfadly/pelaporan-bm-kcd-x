@@ -69,8 +69,9 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 ### Langkah 3: Verifikasi & Gembok Laporan Sekolah
 1. Buka menu **Rekapan Sekolah** (`/pelaporan-bm/rekapan`).
-2. Teliti perbandingan acuan belanja vs realisasi item SPJ masing-masing sekolah.
-3. Klik tombol **Kunci Laporan** untuk mengesahkan data bulan tersebut dan mencegah perubahan data susulan dari pihak sekolah.
+2. Pilih bulan; daftar menampilkan sekolah yang memiliki target acuan pada bulan tersebut, diurutkan TUNTAS dulu lalu alfabetis. Gunakan kotak SUDAH SELESAI / BELUM SELESAI atau pencarian nama/NPSN untuk menyaring.
+3. Klik **Lihat** untuk membuka rincian dua tab: REKENING ACUAN (acuan vs realisasi per kodering, badge SESUAI/BELUM SESUAI) dan INPUT REALISASI (log fisik barang yang dialokasikan operator ke rekening acuan).
+4. Pada laporan berstatus **Wait ACC**, klik **ACC** untuk menyetujui (terkunci otomatis), atau **Buka Edit** untuk mengembalikan status ke draft agar operator dapat mengisi ulang (tanpa menghapus data).
 
 ---
 

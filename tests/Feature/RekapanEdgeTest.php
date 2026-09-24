@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Acuan;
 use App\Models\PelaporanBm\KunciLaporan;
+use App\Models\PelaporanBm\Realisasi;
 use App\Models\PelaporanBm\Spj;
 use App\Models\User;
 use Database\Seeders\PeranDanHakAksesSeeder;
@@ -53,14 +54,14 @@ class RekapanEdgeTest extends TestCase
         ]));
     }
 
-    private function spj(Sekolah $sekolah, float $nilai, ?string $acuanId = null, string $noSpk = 'SPK-01'): Spj
+    private function realisasi(Sekolah $sekolah, Acuan $acuan, float $nilai): Realisasi
     {
-        return activity()->withoutLogging(fn () => Spj::create([
+        return activity()->withoutLogging(fn () => Realisasi::create([
             'sekolah_id' => $sekolah->id,
-            'acuan_id' => $acuanId,
-            'no_spk' => $noSpk,
+            'acuan_id' => $acuan->id,
+            'kodering_belanja' => $acuan->kodering ?: 'TANPA KODERING',
             'bulan_realisasi' => 5,
-            'kodering_belanja' => '5.2.02.05',
+            'no_spk' => 'SPK-01',
             'kode_barang' => '1.3.2.05',
             'nama_barang' => 'Laptop',
             'jenis_aset' => 'Peralatan dan Mesin',
@@ -107,8 +108,8 @@ class RekapanEdgeTest extends TestCase
         $sekolah = $this->sekolah('SMKN AcuanId');
         $acuan = $this->acuan($sekolah, 20_000_000);
 
-        // SPJ terhubung ke acuan_id -> realisasi masuk ke kodering acuan.
-        $this->spj($sekolah, 15_000_000, $acuan->id);
+        // Realisasi dialokasikan ke acuan (paritas legacy id_uraian).
+        $this->realisasi($sekolah, $acuan, 15_000_000);
 
         $this->actingAs($admin)
             ->get(route('pelaporan-bm.rekapan.index', ['bulan' => 5]))
@@ -151,6 +152,55 @@ class RekapanEdgeTest extends TestCase
                     ['SMKN B Tuntas', 'SMKN A Belum', 'SMKN C Belum'],
                     $nama
                 );
+            });
+    }
+
+    public function test_parity_legacy_baris_dari_acuan_dan_realisasi_dari_alokasi(): void
+    {
+        $admin = $this->admin('admin_rekap_parity');
+
+        // Sekolah TANPA acuan pada bulan terpilih tidak boleh muncul (legacy).
+        $tanpaAcuan = $this->sekolah('SMKN TanpaAcuan');
+        activity()->withoutLogging(fn () => Spj::create([
+            'sekolah_id' => $tanpaAcuan->id,
+            'no_spk' => 'SPK-TANPA-ACUAN',
+            'bulan_realisasi' => 5,
+            'kode_barang' => '1.3.2.05',
+            'nama_barang' => 'Laptop Lepas',
+            'jenis_aset' => 'Peralatan dan Mesin',
+            'volume' => 1,
+            'harga_satuan' => 5_000_000,
+            'nilai_perolehan' => 5_000_000,
+        ]));
+
+        // Sekolah dengan acuan: SPJ yang belum dialokasikan TIDAK dihitung realisasi.
+        $sekolah = $this->sekolah('SMKN DenganAcuan');
+        $this->acuan($sekolah, 10_000_000);
+        activity()->withoutLogging(fn () => Spj::create([
+            'sekolah_id' => $sekolah->id,
+            'no_spk' => 'SPK-BELUM-ALOKASI',
+            'bulan_realisasi' => 5,
+            'kode_barang' => '1.3.2.05',
+            'nama_barang' => 'Laptop Belum Alokasi',
+            'jenis_aset' => 'Peralatan dan Mesin',
+            'volume' => 1,
+            'harga_satuan' => 7_000_000,
+            'nilai_perolehan' => 7_000_000,
+        ]));
+
+        $this->actingAs($admin)
+            ->get(route('pelaporan-bm.rekapan.index', ['bulan' => 5]))
+            ->assertOk()
+            ->assertInertia(function ($page) {
+                $items = collect($page->toArray()['props']['items']);
+                $this->assertCount(1, $items);
+                $item = $items->first();
+                $this->assertSame('SMKN DenganAcuan', $item['nama_sekolah']);
+                $this->assertEquals(0, $item['total_realisasi']);
+                $this->assertSame('BELUM', $item['status']);
+                $this->assertSame(0, $item['progres']['match']);
+                $this->assertSame(1, $item['progres']['total']);
+                $this->assertSame([], $item['log_fisik']);
             });
     }
 

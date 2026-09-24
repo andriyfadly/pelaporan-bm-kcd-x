@@ -5,5 +5,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | phpunit.xml, tests/** | .ai/rules/general.md |
-| app/Http/Controllers/PelaporanBm/** | .ai/rules/pelaporan-bm.md |
+| app/Http/Controllers/PelaporanBm/**, app/Http/Controllers/PelaporanBm/RekapanController.php | .ai/rules/pelaporan-bm.md |
 | tests/** | .ai/rules/tests.md |

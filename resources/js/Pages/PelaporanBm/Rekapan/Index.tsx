@@ -322,7 +322,9 @@ export default function Index({
                                 {filteredItems.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="p-8 text-center text-slate-400">
-                                            Tidak ada data unit sekolah yang cocok dengan pencarian.
+                                            {items.length === 0
+                                                ? `Tidak ada data target belanja acuan untuk kriteria bulan ${namaBulan}.`
+                                                : 'Tidak ada data unit sekolah yang cocok dengan pencarian.'}
                                         </td>
                                     </tr>
                                 ) : (
@@ -537,6 +539,8 @@ export default function Index({
                                             ) : (
                                                 selectedSchool.rekening_acuan.map((rec, rIdx) => {
                                                     const isExpanded = expandedKodering.includes(rec.kodering);
+                                                    // Paritas legacy: SESUAI ditentukan kekurangan <= 0.
+                                                    const isMatch = rec.kekurangan <= 0;
 
                                                     return (
                                                         <React.Fragment key={rIdx}>
@@ -579,12 +583,12 @@ export default function Index({
                                                                 <td className="p-3.5 text-center">
                                                                     <span
                                                                         className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase border ${
-                                                                            rec.is_match
+                                                                            isMatch
                                                                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                                                                 : 'bg-rose-50 text-rose-700 border-rose-200'
                                                                         }`}
                                                                     >
-                                                                        {rec.is_match ? 'SESUAI' : 'BELUM SESUAI'}
+                                                                        {isMatch ? 'SESUAI' : 'BELUM SESUAI'}
                                                                     </span>
                                                                 </td>
                                                             </tr>
@@ -674,6 +678,7 @@ export default function Index({
                                                 <th className="p-3 text-center">Tgl</th>
                                                 <th className="p-3 text-center">Bln</th>
                                                 <th className="p-3 text-center">Thn</th>
+                                                <th className="p-3 text-center">Bulan Realisasi</th>
                                                 <th className="p-3">Kodering</th>
                                                 <th className="p-3">Jenis Aset</th>
                                                 <th className="p-3">Kode & Nama Barang</th>
@@ -688,7 +693,7 @@ export default function Index({
                                         <tbody className="divide-y divide-slate-100 font-medium">
                                             {selectedSchool.log_fisik.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={14} className="p-8 text-center text-slate-400">
+                                                    <td colSpan={15} className="p-8 text-center text-slate-400">
                                                         Belum ada rincian log input fisik realisasi pada bulan acuan ini.
                                                     </td>
                                                 </tr>
@@ -709,6 +714,9 @@ export default function Index({
                                                         </td>
                                                         <td className="p-3 text-center text-slate-600">
                                                             {log.tahun}
+                                                        </td>
+                                                        <td className="p-3 text-center text-slate-600 uppercase">
+                                                            {log.bulan_realisasi}
                                                         </td>
                                                         <td className="p-3 font-mono font-bold text-slate-700">
                                                             {log.kodering}

@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Acuan;
 use App\Models\PelaporanBm\KunciLaporan;
-use App\Models\PelaporanBm\Spj;
+use App\Models\PelaporanBm\Realisasi;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,25 +25,40 @@ class RekapanController extends Controller
         // dipaksa ke sekolahnya (cegah bocor rekap lintas sekolah).
         $sekolahId = $this->resolveSekolahId($request);
 
+        // Paritas legacy/rekapan_admin.php: baris tabel = sekolah dengan acuan
+        // pada bulan terpilih (tanpa fallback ke semua sekolah).
+        $allAcuan = Acuan::query()
+            ->where('bulan', $bulan)
+            ->whereNotNull('sekolah_id')
+            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->get()
+            ->groupBy('sekolah_id');
+
         $sekolahs = Sekolah::query()
-            ->when($sekolahId, fn ($q) => $q->where('id', $sekolahId))
+            ->whereIn('id', $allAcuan->keys())
             ->when($search, function ($q) use ($search) {
                 $escaped = addcslashes($search, '%_\\');
-                $q->where('nama_sekolah', 'like', "%{$escaped}%");
+                $q->where(fn ($w) => $w
+                    ->where('nama_sekolah', 'like', "%{$escaped}%")
+                    ->orWhere('npsn', 'like', "%{$escaped}%"));
             })
             ->orderBy('nama_sekolah')
             ->get();
 
-        $allAcuan = Acuan::where('bulan', $bulan)->get()->groupBy('sekolah_id');
-        $allSpj = Spj::where('bulan_realisasi', $bulan)->get()->groupBy('sekolah_id');
+        // Paritas legacy: realisasi dihitung dari baris yang dialokasikan ke
+        // acuan (id_uraian), bukan dari seluruh SPJ bulan tersebut.
+        $acuanIds = $allAcuan->flatten()->pluck('id');
+        $allRealisasi = Realisasi::query()
+            ->whereIn('acuan_id', $acuanIds)
+            ->get()
+            ->groupBy('acuan_id');
         $kunciMap = KunciLaporan::where('bulan', $bulan)->get()->keyBy('sekolah_id');
 
         $counter = ['tuntas' => 0, 'belum' => 0];
 
-        $items = $sekolahs->map(function ($sekolah) use ($bulan, $allAcuan, $allSpj, $kunciMap, &$counter) {
+        $items = $sekolahs->map(function ($sekolah) use ($bulan, $allAcuan, $allRealisasi, $kunciMap, &$counter) {
             $id = $sekolah->id;
             $acuans = $allAcuan->get($id, collect());
-            $spjs = $allSpj->get($id, collect());
             $kunci = $kunciMap->get($id);
 
             $statusKirimRaw = $kunci?->status_kirim ?? 'draft';
@@ -55,18 +70,11 @@ class RekapanController extends Controller
 
             $npsn = $sekolah->npsn ?? '-';
 
-            $realisasiPerAcuan = [];
-            foreach ($spjs as $s) {
-                if ($s->acuan_id) {
-                    $realisasiPerAcuan[$s->acuan_id] = ($realisasiPerAcuan[$s->acuan_id] ?? 0) + (float) $s->nilai_perolehan;
-                }
-            }
-
             $groupedKodering = [];
             foreach ($acuans as $ac) {
                 $kodering = trim($ac->kodering) ?: 'TANPA KODERING';
                 $nominalAcuan = (float) $ac->nominal;
-                $nominalRealisasi = $realisasiPerAcuan[$ac->id] ?? 0;
+                $nominalRealisasi = (float) $allRealisasi->get($ac->id, collect())->sum('nilai_perolehan');
 
                 if (! isset($groupedKodering[$kodering])) {
                     $groupedKodering[$kodering] = [
@@ -86,12 +94,7 @@ class RekapanController extends Controller
                 }
             }
 
-            $totalSpjNominal = (float) $spjs->sum('nilai_perolehan');
-            $sumGroupedRealisasi = array_sum(array_column($groupedKodering, 'realisasi'));
-            if ($sumGroupedRealisasi == 0 && $totalSpjNominal > 0 && count($groupedKodering) > 0) {
-                $firstKey = array_key_first($groupedKodering);
-                $groupedKodering[$firstKey]['realisasi'] = $totalSpjNominal;
-            }
+            $totalRealisasi = (float) array_sum(array_column($groupedKodering, 'realisasi'));
 
             $matchKoderingCount = 0;
             $totalKodering = 0;
@@ -116,29 +119,31 @@ class RekapanController extends Controller
                 $counter['belum']++;
             }
 
-            $logFisik = $spjs->map(function ($s) use ($statusKirim) {
-                $tgl = $s->ba_tgl ? strtotime($s->ba_tgl) : null;
+            $logFisik = $acuans->pluck('id')
+                ->flatMap(fn ($acuanId) => $allRealisasi->get($acuanId, collect()))
+                ->map(function ($r) use ($statusKirim) {
+                    $tgl = $r->ba_tgl ? strtotime($r->ba_tgl) : null;
 
-                return [
-                    'id' => $s->id,
-                    'no_sp2d' => $s->no_sp2d ?? '-',
-                    'tanggal' => $tgl ? date('d', $tgl) : '-',
-                    'bulan' => $tgl ? date('m', $tgl) : '-',
-                    'tahun' => $tgl ? date('Y', $tgl) : '-',
-                    'bulan_realisasi' => (string) $s->bulan_realisasi,
-                    'kodering' => $s->kategori ?? '-',
-                    'jenis_aset' => $s->jenis_aset ?? '-',
-                    'kode_barang' => $s->kode_barang ?? '-',
-                    'nama_barang' => $s->nama_barang ?? '-',
-                    'merk_tipe' => $s->merk_tipe ?? '-',
-                    'no_sertifikat' => $s->no_sertifikat ?? '-',
-                    'volume' => (float) ($s->volume ?? 0),
-                    'satuan' => $s->satuan ?? 'Unit',
-                    'harga_satuan' => (float) ($s->harga_satuan ?? 0),
-                    'nilai_perolehan' => (float) ($s->nilai_perolehan ?? 0),
-                    'is_locked' => $statusKirim === 'Disetujui' || $statusKirim === 'Menunggu Approval',
-                ];
-            })->values()->all();
+                    return [
+                        'id' => $r->id,
+                        'no_sp2d' => $r->no_sp2d ?? '-',
+                        'tanggal' => $tgl ? date('d', $tgl) : '-',
+                        'bulan' => $tgl ? date('m', $tgl) : '-',
+                        'tahun' => $tgl ? date('Y', $tgl) : '-',
+                        'bulan_realisasi' => (string) $r->bulan_realisasi,
+                        'kodering' => $r->kodering_belanja ?? '-',
+                        'jenis_aset' => $r->jenis_aset ?? '-',
+                        'kode_barang' => $r->kode_barang ?? '-',
+                        'nama_barang' => $r->nama_barang ?? '-',
+                        'merk_tipe' => $r->merk_tipe ?? '-',
+                        'no_sertifikat' => $r->no_sertifikat ?? '-',
+                        'volume' => (float) ($r->volume ?? 0),
+                        'satuan' => $r->satuan ?? 'Unit',
+                        'harga_satuan' => (float) ($r->harga_satuan ?? 0),
+                        'nilai_perolehan' => (float) ($r->nilai_perolehan ?? 0),
+                        'is_locked' => $statusKirim === 'Disetujui' || $statusKirim === 'Menunggu Approval',
+                    ];
+                })->values()->all();
 
             return [
                 'id' => $id,
@@ -158,7 +163,7 @@ class RekapanController extends Controller
                 'rekening_acuan' => array_values($groupedKodering),
                 'log_fisik' => $logFisik,
                 'total_acuan' => (float) $acuans->sum('nominal'),
-                'total_realisasi' => $totalSpjNominal,
+                'total_realisasi' => $totalRealisasi,
             ];
         });
 

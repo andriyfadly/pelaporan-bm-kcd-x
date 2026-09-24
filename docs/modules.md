@@ -88,6 +88,9 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
   - Nonaktifkan/aktifkan user (kolom `users.is_active`): user nonaktif ditolak saat login, semua sesi aktifnya langsung diputus, dan tidak bisa menonaktifkan akun sendiri.
 - **Rekapan Sekolah (`/pelaporan-bm/rekapan`)**:
   - Rekapitulasi laporan seluruh sekolah per bulan, perbandingan acuan vs realisasi per kodering, serta toggle gembok laporan.
+  - Paritas `legacy/rekapan_admin.php`: baris tabel = sekolah dengan acuan pada bulan terpilih (tanpa fallback ke semua sekolah); realisasi & log fisik dihitung dari baris `pelaporan_bm_realisasi` yang dialokasikan ke acuan (`acuan_id`), bukan dari seluruh SPJ bulan tersebut.
+  - Detail drill-down dua tab: REKENING ACUAN (badge SESUAI/BELUM SESUAI ditentukan `kekurangan <= 0`) dan INPUT REALISASI (log fisik dengan kolom bulan realisasi).
+  - Aksi admin: ACC Laporan (status → Disetujui) dan Buka Kunci Edit (status → draft) via `/pelaporan-bm/kunci-laporan/status`.
 
 ---
 
