@@ -29,7 +29,7 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
   - Return: Inertia `PelaporanBm/Spj/PilihBulan` (Menu pilih bulan data barang identik legacy).
 - **`GET /pelaporan-bm/spj`**
   - Parameter: `bulan` (1-12).
-  - Return: Inertia `PelaporanBm/Spj/Index` (Katalog dokumen SPJ belanja modal identik legacy; urut terbaru dulu).
+  - Return: Inertia `PelaporanBm/Spj/Index` (Katalog dokumen SPJ belanja modal identik legacy; urut terbaru dulu) + prop `canImportSpj` (NPSN sekolah ada di allowlist import).
 - **`GET /pelaporan-bm/spj/create`**
   - Parameter: `kategori` (`Peralatan & Mesin`|`Buku`), `bulan` (1-12).
   - Return: Inertia `PelaporanBm/Spj/FormSpk` (Form dokumen SPK multi-item identik legacy `data_barang_input.php`). Redirect jika bulan dikunci/dikirim.
@@ -39,6 +39,14 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
 - **`POST /pelaporan-bm/spj/store-spk`**
   - Payload: `no_spk`, `no_sp2d`, `sumber_perolehan`, `bulan_realisasi`, `kategori`, `ba_no`, `ba_tgl`, `items: [{id?, kode_barang, nama_barang, jenis_aset, merk_tipe, no_sertifikat, ukuran_bangunan, satuan, volume, harga_satuan}]`.
   - Result: Transaksi atomik simpan/update SPK beserta multi-item; item yang dilepas saat edit ikut menghapus realisasi terkait.
+- **`POST /pelaporan-bm/spj/import`** (throttle 10/menit, **restricted NPSN**)
+  - Dibatasi sekolah dengan NPSN di daftar allowlist `SpjController::NPSN_IMPORT_SPJ`
+    (saat ini `20246369`, `20246370`, `20252161`, `20254692`); sekolah lain
+    ditolak dengan flash error. Halaman index mengirim flag `canImportSpj`
+    untuk menampilkan/menyembunyikan tombol Import Excel.
+  - Payload: `file` (xlsx/xls, max 10MB, template `/templates/template_import_spj.xlsx`), `bulan` (1-12).
+  - Kolom template (urutan tetap): No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\*.
+  - Result: **All-or-nothing** — pre-validasi seluruh baris (kolom wajib, BA TGL valid/serial Excel, `kode_barang` harus ada di master katalog → `nama_barang`+`jenis_aset` di-lookup, volume &gt; 0, harga ≥ 0); satu baris invalid = batal semua + flash error per baris. Baris `no_spk` sama = 1 dokumen SPK multi-item (sama seperti UI). Limit 5.000 baris. Diblokir saat laporan terkunci. Tercatat di log `sistem` (event `import-spj`) **dengan flag `sembunyi_dari_admin_kcd`** — log hanya terlihat oleh super_admin.
 - **`DELETE /pelaporan-bm/spj/{id}`**: Hapus item barang SPJ (beserta realisasi terkait, transaksi DB).
 - **`DELETE /pelaporan-bm/spj/spk/{no_spk}`**: Hapus seluruh item satu dokumen SPK + realisasi terkait (`no_spk` wildcard).
 - **`GET /pelaporan-bm/cari-barang`**

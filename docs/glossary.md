@@ -13,6 +13,7 @@
 | Kodering | Kode rekening belanja (mis. `5.2.02`) — kunci alokasi realisasi |
 | Kunci laporan | Status `status_kunci` + `status_kirim`; bulan terkunci tak bisa dimutasi |
 | Kode leaf | Kode barang tanpa turunan prefix (satu-satunya yang bisa dipilih) |
+| Import SPJ | Unggah Excel item SPJ massal via template 12 kolom; all-or-nothing; dibatasi allowlist NPSN (`SpjController::NPSN_IMPORT_SPJ`) |
 | NPSN | Nomor Pokok Sekolah Nasional; dipakai untuk username `[npsn]-admin` |
 | Pre-flight | Pengecekan `cetak/check` sebelum unduh diizinkan |
 | Realisasi | Baris alokasi item SPJ ke kodering (`pelaporan_bm_realisasi`) |

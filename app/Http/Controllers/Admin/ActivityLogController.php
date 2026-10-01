@@ -38,6 +38,12 @@ class ActivityLogController extends Controller
             $query->where($tanpaAktivitasSuperAdmin);
         }
 
+        // Import SPJ (bulk) hanya terlihat oleh super_admin, disembunyikan dari admin_kcd.
+        if (! $request->user()->hasRole('super_admin')) {
+            $query->where(fn ($q) => $q->where('properties->sembunyi_dari_admin_kcd', '!=', true)
+                ->orWhereNull('properties->sembunyi_dari_admin_kcd'));
+        }
+
         if (! empty($validated['event'])) {
             $query->forEvent($validated['event']);
         }
@@ -72,6 +78,9 @@ class ActivityLogController extends Controller
 
         $events = Activity::inLog('sistem')
             ->when(! $request->user()->hasRole('super_admin'), $tanpaAktivitasSuperAdmin)
+            ->when(! $request->user()->hasRole('super_admin'), fn ($q) => $q
+                ->where(fn ($w) => $w->where('properties->sembunyi_dari_admin_kcd', '!=', true)
+                    ->orWhereNull('properties->sembunyi_dari_admin_kcd')))
             ->whereNotNull('event')
             ->distinct()
             ->orderBy('event')
@@ -80,6 +89,9 @@ class ActivityLogController extends Controller
 
         $subjectTypes = Activity::inLog('sistem')
             ->when(! $request->user()->hasRole('super_admin'), $tanpaAktivitasSuperAdmin)
+            ->when(! $request->user()->hasRole('super_admin'), fn ($q) => $q
+                ->where(fn ($w) => $w->where('properties->sembunyi_dari_admin_kcd', '!=', true)
+                    ->orWhereNull('properties->sembunyi_dari_admin_kcd')))
             ->whereNotNull('subject_type')
             ->distinct()
             ->orderBy('subject_type')

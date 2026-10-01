@@ -13,15 +13,22 @@ use App\Models\PelaporanBm\Spj;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SpjController extends Controller
 {
     use ResolvesSekolah;
+
+    /**
+     * NPSN sekolah yang diizinkan memakai fitur import Excel SPJ.
+     */
+    private const NPSN_IMPORT_SPJ = ['20246369', '20246370', '20252161', '20254692'];
 
     public function pilihBulan(Request $request): Response
     {
@@ -81,6 +88,7 @@ class SpjController extends Controller
             'isLocked' => $isLocked,
             'statusKirim' => $statusKirim,
             'mode' => $mode,
+            'canImportSpj' => in_array($user->sekolah?->npsn, self::NPSN_IMPORT_SPJ, true),
         ]);
     }
 
@@ -299,6 +307,158 @@ class SpjController extends Controller
 
         return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
             ->with('success', 'Dokumen SPK berhasil disimpan.');
+    }
+
+    /**
+     * Impor SPJ dari template Excel (all-or-nothing: satu baris invalid = batal semua).
+     *
+     * Kolom template (index berbasis 0):
+     * [0] No. SP2D, [1] Sumber Perolehan*, [2] No. SPK/Kwitansi*, [3] BA NO*,
+     * [4] BA TGL*, [5] Kode Barang, [6] Merk/Tipe*, [7] No. Sertifikat/Pabrik/Penerbit,
+     * [8] Ukuran/Dimensi Bangunan, [9] Satuan*, [10] Volume*, [11] Harga Satuan*
+     *
+     * Baris dengan No. SPK sama digabung jadi 1 dokumen SPK multi-item (sama seperti UI);
+     * nama_barang & jenis_aset di-lookup dari master katalog via kode_barang.
+     */
+    public function import(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240|mimes:xlsx,xls',
+            'bulan' => 'required|integer|between:1,12',
+        ]);
+
+        $sekolahId = $this->resolveSekolahId($request);
+        $bulan = (int) $request->input('bulan');
+
+        $npsnSekolah = $request->user()->sekolah?->npsn;
+        if (! in_array($npsnSekolah, self::NPSN_IMPORT_SPJ, true)) {
+            return back()->with('error', 'Fitur import Excel belum tersedia untuk sekolah Anda.');
+        }
+
+        if ($this->isLaporanTerkunci($sekolahId, $bulan)) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
+
+        $rows = Excel::toCollection(null, $request->file('file'))->first();
+        $dataRows = $rows instanceof Collection ? $rows->slice(1)->values() : collect();
+
+        // ponytail: batas 5000 baris per import, naikkan jika kebutuhan riil melebihi
+        if ($dataRows->count() > 5000) {
+            return back()->with('error', 'Berkas terlalu besar: maksimal 5000 baris data per impor.');
+        }
+
+        if ($dataRows->isEmpty()) {
+            return back()->with('error', 'Berkas tidak berisi data untuk diimpor.');
+        }
+
+        // Pre-validasi semua baris sebelum menyentuh DB (all-or-nothing).
+        $errors = [];
+        $masterKode = $dataRows->pluck(5)->map(fn ($v) => trim((string) $v))->filter()->unique()->values();
+        $katalog = KodeBarang::whereIn('kode_barang', $masterKode)
+            ->get(['kode_barang', 'uraian', 'jenis_aset', 'satuan'])
+            ->keyBy('kode_barang');
+
+        foreach ($dataRows as $i => $row) {
+            $noBaris = $i + 2;
+            $get = fn (int $idx): string => trim((string) ($row[$idx] ?? ''));
+
+            foreach ([1 => 'Sumber Perolehan', 2 => 'No. SPK/Kwitansi', 3 => 'BA NO', 6 => 'Merk/Tipe', 9 => 'Satuan'] as $idx => $label) {
+                if ($get($idx) === '') {
+                    $errors[] = "Baris {$noBaris}: {$label} wajib diisi.";
+                }
+            }
+
+            $baTgl = $this->parseTanggalXlsx($row[4] ?? '');
+            if ($baTgl === '') {
+                $errors[] = "Baris {$noBaris}: Tanggal BA (BA TGL) wajib diisi dengan format valid.";
+            }
+
+            $kode = $get(5);
+            if ($kode === '') {
+                $errors[] = "Baris {$noBaris}: Kode Barang wajib diisi.";
+            } elseif (! $katalog->has($kode)) {
+                $errors[] = "Baris {$noBaris}: Kode Barang \"{$kode}\" tidak ditemukan di katalog.";
+            }
+
+            $volume = (float) str_replace([',', ' '], '', $get(10));
+            $harga = (float) str_replace([',', ' '], '', $get(11));
+            if ($volume <= 0) {
+                $errors[] = "Baris {$noBaris}: Volume (QTY) harus lebih dari 0.";
+            }
+            if ($harga < 0) {
+                $errors[] = "Baris {$noBaris}: Harga Satuan tidak boleh negatif.";
+            }
+        }
+
+        if ($errors !== []) {
+            $ringkasan = count($errors) > 5
+                ? implode(' ', array_slice($errors, 0, 5)).' (dan '.(count($errors) - 5).' kesalahan lain)'
+                : implode(' ', $errors);
+
+            return back()->with('error', "Impor dibatalkan, tidak ada data tersimpan. {$ringkasan}");
+        }
+
+        $count = 0;
+        DB::transaction(function () use ($dataRows, $katalog, $sekolahId, $bulan, &$count) {
+            foreach ($dataRows as $row) {
+                $get = fn (int $idx): string => trim((string) ($row[$idx] ?? ''));
+                $kode = $get(5);
+                $barang = $katalog->get($kode);
+                $volume = (float) str_replace([',', ' '], '', $get(10));
+                $harga = (float) str_replace([',', ' '], '', $get(11));
+
+                Spj::create([
+                    'sekolah_id' => $sekolahId,
+                    'no_sp2d' => $get(0) ?: null,
+                    'sumber_perolehan' => $get(1),
+                    'no_spk' => $get(2),
+                    'ba_no' => $get(3),
+                    'ba_tgl' => $this->parseTanggalXlsx($row[4] ?? ''),
+                    'bulan_realisasi' => $bulan,
+                    'kategori' => null,
+                    'kode_barang' => $kode,
+                    'nama_barang' => $barang->uraian,
+                    'jenis_aset' => $barang->jenis_aset ?: 'Peralatan dan Mesin',
+                    'merk_tipe' => $get(6),
+                    'no_sertifikat' => $get(7) ?: null,
+                    'ukuran_bangunan' => $get(8) ?: null,
+                    'satuan' => $get(9),
+                    'volume' => $volume,
+                    'harga_satuan' => $harga,
+                    'nilai_perolehan' => $volume * $harga,
+                ]);
+                $count++;
+            }
+        });
+
+        // Bulk import bukan aksi sensitif: tercatat, tapi disembunyikan dari admin_kcd
+        // (pola sama dengan penyembunyian aktivitas super_admin di ActivityLogController).
+        activity('sistem')
+            ->event('import-spj')
+            ->withProperties([
+                'ringkasan' => "Impor SPJ: {$count} item (bulan {$bulan})",
+                'sekolah_id' => $sekolahId,
+                'bulan' => $bulan,
+                'jumlah' => $count,
+                'sembunyi_dari_admin_kcd' => true,
+            ])
+            ->log('import-spj');
+
+        return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
+            ->with('success', "Berhasil mengimpor {$count} item SPJ ke bulan {$bulan}.");
+    }
+
+    private function parseTanggalXlsx(mixed $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+        if (is_numeric($value) && (float) $value > 20000 && (float) $value < 80000) {
+            return ExcelDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
+        }
+
+        return strtotime($value) ? date('Y-m-d', strtotime($value)) : '';
     }
 
     public function store(Request $request): RedirectResponse

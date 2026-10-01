@@ -34,6 +34,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/spj/create', [SpjController::class, 'create'])->name('spj.create');
         Route::get('/spj/edit-spk/{no_spk}', [SpjController::class, 'editSpk'])->name('spj.edit-spk')->where('no_spk', '.*');
         Route::post('/spj/store-spk', [SpjController::class, 'storeSpk'])->name('spj.store-spk');
+        Route::post('/spj/import', [SpjController::class, 'import'])->middleware('throttle:10,1')->name('spj.import');
         Route::post('/spj', [SpjController::class, 'store'])->name('spj.store');
         Route::put('/spj/{spj}', [SpjController::class, 'update'])->name('spj.update');
         Route::delete('/spj/{spj}', [SpjController::class, 'destroy'])->name('spj.destroy');

@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import React, { useState, useMemo } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import {
@@ -14,6 +14,9 @@ import {
     BookOpen,
     Wrench,
     AlertCircle,
+    Upload,
+    Download,
+    FileSpreadsheet,
 } from 'lucide-react';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 
@@ -43,6 +46,7 @@ interface Props {
     bulan: number;
     isLocked: boolean;
     statusKirim: string;
+    canImportSpj?: boolean;
 }
 
 interface SpkGroup {
@@ -54,11 +58,24 @@ interface SpkGroup {
     total_nilai_spk: number;
 }
 
-export default function Index({ items, realisasiIds = [], bulan, isLocked, statusKirim }: Props) {
+export default function Index({ items, realisasiIds = [], bulan, isLocked, statusKirim, canImportSpj = false }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showKategoriModal, setShowKategoriModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const [confirmDeleteSpk, setConfirmDeleteSpk] = useState<string | null>(null);
     const [confirmDeleteItem, setConfirmDeleteItem] = useState<{ id: string; nama: string } | null>(null);
+
+    const {
+        data: importData,
+        setData: setImportData,
+        post: postImport,
+        processing: importProcessing,
+        reset: resetImport,
+        errors: importErrors,
+    } = useForm({
+        file: null as File | null,
+        bulan,
+    });
 
     const bulanNames = [
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -131,6 +148,21 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
         });
     };
 
+    const handleImportSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!importData.file) {
+            alert('Silakan pilih berkas template terlebih dahulu.');
+            return;
+        }
+        postImport('/pelaporan-bm/spj/import', {
+            forceFormData: true,
+            onSuccess: () => {
+                setShowImportModal(false);
+                resetImport();
+            },
+        });
+    };
+
     return (
         <AppLayout title="Data Barang">
             <Head title={`Data Barang | Bulan ${bulanNames[bulan - 1]}`} />
@@ -165,24 +197,49 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
 
                     <div className="flex flex-wrap items-center gap-2">
                         {isReadOnly ? (
-                            <button
-                                type="button"
-                                disabled
-                                title="Laporan sudah dikirim, data barang terkunci"
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-300 text-white rounded-xl text-xs font-bold cursor-not-allowed opacity-75"
-                            >
-                                <Lock className="w-4 h-4" />
-                                <span>Input SPJ Baru</span>
-                            </button>
+                            <>
+                                <button
+                                    type="button"
+                                    disabled
+                                    title="Laporan sudah dikirim, data barang terkunci"
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-300 text-white rounded-xl text-xs font-bold cursor-not-allowed opacity-75"
+                                >
+                                    <Lock className="w-4 h-4" />
+                                    <span>Input SPJ Baru</span>
+                                </button>
+                                {canImportSpj && (
+                                    <button
+                                        type="button"
+                                        disabled
+                                        title="Laporan sudah dikirim, data barang terkunci"
+                                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-300 text-white rounded-xl text-xs font-bold cursor-not-allowed opacity-75"
+                                    >
+                                        <Upload className="w-4 h-4" />
+                                        <span>Import Excel</span>
+                                    </button>
+                                )}
+                            </>
                         ) : (
-                            <button
-                                type="button"
-                                onClick={() => setShowKategoriModal(true)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>Input SPJ Baru</span>
-                            </button>
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowKategoriModal(true)}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    <span>Input SPJ Baru</span>
+                                </button>
+                                {canImportSpj && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowImportModal(true)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                                    >
+                                        <Upload className="w-4 h-4" />
+                                        <span>Import Excel</span>
+                                    </button>
+                                )}
+                            </>
                         )}
                         <button
                             type="button"
@@ -394,6 +451,72 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                     </div>
                 </div>
             </div>
+
+            {/* Modal Import Excel */}
+            {showImportModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                            <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                                Import SPJ dari Excel
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowImportModal(false)}
+                                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <p className="text-slate-500 text-xs mb-4 leading-relaxed">
+                            Unggah berkas sesuai template. Data bulan <strong>Bulan {bulanNames[bulan - 1]}</strong>.
+                            Import bersifat all-or-nothing: jika ada satu baris tidak valid, seluruh impor dibatalkan.
+                        </p>
+                        <div className="flex justify-end mb-4">
+                            <a
+                                href="/templates/template_import_spj.xlsx"
+                                download
+                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition"
+                            >
+                                <Download className="w-3.5 h-3.5" /> Download Template
+                            </a>
+                        </div>
+                        <form onSubmit={handleImportSubmit}>
+                            <div className="border-2 border-dashed border-emerald-200 bg-slate-50 hover:bg-emerald-50/40 rounded-xl p-5 text-center transition mb-4">
+                                <Upload className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                                <p className="text-[11px] text-slate-500 mb-2">Mendukung berkas .xlsx atau .xls</p>
+                                <input
+                                    type="file"
+                                    accept=".xlsx,.xls"
+                                    onChange={(e) => setImportData('file', e.target.files?.[0] || null)}
+                                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                                />
+                                {importErrors.file && (
+                                    <p className="text-red-500 text-xs mt-2">{importErrors.file}</p>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowImportModal(false)}
+                                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={importProcessing}
+                                    className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm disabled:opacity-50 cursor-pointer"
+                                >
+                                    <Upload className="w-4 h-4" />
+                                    {importProcessing ? 'Memproses...' : 'Proses Import'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Kategori Belanja (Sesuai legacy data_barang.php) */}
             {showKategoriModal && (

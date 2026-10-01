@@ -105,6 +105,12 @@ resources/views/app.blade.php # <head> global: favicon, manifest, @inertia
 - Acuan: XLSX-only (`mimes:xlsx,xls`), parser native ZipArchive + SimpleXML
   (shared/inline strings, serial tanggal), batas 5.000 baris, transaksi.
 - Kode Barang: xlsx/xls/csv, batas 20.000 baris, `updateOrCreate` per kode.
+- SPJ: `maatwebsite/excel` (`Excel::toCollection`), xlsx/xls max 10MB, batas
+  5.000 baris, **all-or-nothing** (pre-validasi semua baris → transaksi bila
+  lolos), lookup `nama_barang`/`jenis_aset` dari katalog via `kode_barang`,
+  BA TGL serial Excel via `PhpSpreadsheet\Shared\Date`. **Restricted NPSN**:
+  allowlist `SpjController::NPSN_IMPORT_SPJ` (backend tolak + flag
+  `canImportSpj` untuk UI). Log `import-spj` ber-flag `sembunyi_dari_admin_kcd`.
 
 ### 4.6 Logging aktivitas (sistem-wide)
 - Trait `LogsActivity` di 6 model (Spj, Realisasi, Acuan, KunciLaporan,
@@ -118,8 +124,9 @@ resources/views/app.blade.php # <head> global: favicon, manifest, @inertia
   1 ringkasan manual. Migrasi legacy mematikan logging.
 - Tenant: via `causer.sekolah` (`User belongsTo Sekolah`) + `properties.sekolah_id`.
 - Viewer: `Admin/ActivityLogController` + page filter + permission
-  `lihat-log-aktivitas`; aktivitas super_admin disembunyikan dari non-super_admin.
-  Tanpa purge (retensi permanen).
+  `lihat-log-aktivitas`; aktivitas super_admin disembunyikan dari non-super_admin,
+  demikian juga log ber-flag `sembunyi_dari_admin_kcd` (query utama + dropdown
+  events/subjectTypes). Tanpa purge (retensi permanen).
 - Migrasi bawaan Spatie diubah ke `nullableUuidMorphs` (model ber-UUID).
 
 ### 4.7 Auth & keamanan akun
@@ -150,12 +157,14 @@ Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
   `ConfirmDialog`, `StatusBadge`, `CardStat`.
 - Form SPK: accordion item, live search katalog, draft autosave
   (`draft_spj_barang_{sekolah}_{bulan}`), datalist history merk/sertifikat/satuan.
+- Import SPJ: tombol "Import Excel" + modal unggah di `Spj/Index.tsx`
+  (kondisional `canImportSpj`), link template `template_import_spj.xlsx`.
 - Cetak: pre-flight check, cegah unduh kosong, modal progres (cookie status).
 - Ikon: lucide-react. Tanpa `any` (aturan `docs/guidelines.md`).
 
 ## 7. Testing & Kualitas
 
-- 179 test / 930 assertions (line coverage 100%, semua file 100%): Feature per
+- 200 test / 1087 assertions (line coverage 100%, semua file 100%): Feature per
   modul + Unit (Fortify, relasi, gate, rate limit). DB SQLite in-memory
   (`phpunit.xml`), seed `PeranDanHakAksesSeeder` per test.
 - Gate: `composer test` (cepat), `composer test-coverage` (Xdebug; total ≥ 80%
@@ -170,6 +179,7 @@ Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
 | Status realisasi di-derive | Hindari flag basi; konsisten otomatis |
 | Header Excel via `setCellValue` | `FromCollection` skip baris kosong → data geser |
 | Import Acuan XLSX-only | Samakan template legacy `input_acuan.php` |
+| Import SPJ all-or-nothing + restricted NPSN | Mencegah data parsial; rollout bertahap ke sekolah terpilih |
 | Log via Spatie v5, bukan custom | Auto-diff, causer/subject morph, viewer siap |
 | Morph activity UUID | Seluruh model ber-UUID |
 | Tanpa purge log | Keputusan produk: simpan permanen |

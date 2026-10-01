@@ -20,7 +20,8 @@ menyembunyikan super_admin dari daftar dan menolak hapus diri. `Gate::before`
 memberi super_admin bypass semua ability.
 
 \*\* Aktivitas yang di-cause super_admin disembunyikan dari admin_kcd;
-super_admin melihat semua.
+super_admin melihat semua. Log ber-flag `sembunyi_dari_admin_kcd` (saat ini:
+event `import-spj`) juga hanya terlihat oleh super_admin.
 
 Rute log aktivitas (`/admin/log-aktivitas`): `permission:lihat-log-aktivitas`
 (terverifikasi test: tamu/operator → 403, super_admin & admin_kcd → 200).
@@ -41,6 +42,9 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
   `bulan_realisasi` + `kodering_belanja` (anti hapus realisasi periode lain
   via ID tebakan).
 - `acuan_id` lintas sekolah ditolak ("Acuan tidak valid untuk sekolah ini").
+- Import Excel SPJ dibatasi allowlist NPSN (`SpjController::NPSN_IMPORT_SPJ`):
+  sekolah di luar daftar ditolak di backend (flash error) dan tombol Import
+  tidak dirender di UI (prop `canImportSpj`). Verifikasi: `SpjImportTest`.
 - `like` search di-escape (`addcslashes %_\`) anti wildcard-injection — termasuk
   `search_satuan` (`AcuanController::index`).
 - Terverifikasi `SecurityHardeningTest` + `AcuanImportGapTest` + `CetakControllerEdgeTest`
@@ -63,7 +67,7 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 | Ancaman | Kontrol |
 |---------|---------|
 | Brute force login | Fortify rate-limit + Turnstile; throttle rute sensitif |
-| Spam unduh/import | Throttle: unduh 30/mnt, import & destroy-all 10/mnt, cari-barang 120/mnt |
+| Spam unduh/import | Throttle: unduh 30/mnt, import (acuan & SPJ) & destroy-all 10/mnt, cari-barang 120/mnt |
 | CSRF | Middleware web Laravel + token Inertia |
 | XSS / formula injection | Blade escape default; React escape default; unduhan teks via `safeCell` di `CetakBmSheet` **dan** `RealisasiBmSheet` (prefix anti formula-injection `=+-@\t\r`), terverifikasi `CetakBmSheetTest` + `ExportSafeCellTest` |
 | Mass assignment | `$fillable` eksplisit; validasi per-controller |
@@ -76,8 +80,11 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 ## 5. Audit Trail
 
 - `activity_log` (log `sistem`): auto-diff model + manual login/logout,
-  password, kirim/verifikasi/kunci, import/hapus-massal, unduhan, hapus SPK.
-- Viewer super_admin: filter event/entitas/sekolah/tanggal/pencarian.
+  password, kirim/verifikasi/kunci, import/hapus-massal (import SPJ ber-flag
+  `sembunyi_dari_admin_kcd` → hanya super_admin yang melihat), unduhan, hapus SPK.
+- Viewer super_admin: filter event/entitas/sekolah/tanggal/pencarian; menyembunyikan
+  aktivitas super_admin **dan** log ber-flag `sembunyi_dari_admin_kcd` dari
+  admin_kcd (query utama + daftar dropdown events/subjectTypes).
 - `Log::` file untuk Turnstile & error sistem termasuk `db-error` (bukan activity log — DB ikut mati saat down, dan jejak audit bebas noise infra).
 - Tanpa purge — retensi permanen (keputusan produk, tinjau tiap evaluasi tahunan).
 
