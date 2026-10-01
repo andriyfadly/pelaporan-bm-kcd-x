@@ -7,11 +7,11 @@
 
 | Lapisan | Teknologi | Versi |
 |---------|-----------|-------|
-| Backend | Laravel | 13.31 (PHP 8.4) |
+| Backend | Laravel | 13.34 (PHP 8.4) |
 | Frontend | Inertia.js React + TypeScript | Inertia 3, React 19, TS 7 |
 | Styling / build | Tailwind CSS 4, Vite 7 | — |
 | Database | **PostgreSQL** (dev & prod) | PDO pgsql |
-| Auth | Fortify 1.39 (session) + 2FA TOTP + passkeys (webauthn) | — |
+| Auth | Fortify 1.40 (session) + 2FA TOTP + passkeys (webauthn) | — |
 | RBAC | spatie/laravel-permission | 8.3 |
 | Activity log | spatie/laravel-activitylog | 5.1.1 (log `sistem`) |
 | Export Excel | maatwebsite/excel 4 + PhpSpreadsheet 5 | `.xlsx` langsung |
