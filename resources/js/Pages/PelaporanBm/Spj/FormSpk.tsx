@@ -38,7 +38,7 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
     const defaultJenisAset = isBuku ? 'Buku' : 'PERSONAL KOMPUTER';
 
     // Legacy: draft autosave per sekolah+bulan (+suffix no_spk saat edit)
-    const { auth } = usePage<any>().props;
+    const { auth } = usePage<{ auth?: { user?: { sekolah_id?: string | null } } }>().props;
     const sekolahKey = auth?.user?.sekolah_id ?? 'x';
     const draftKey = `draft_spj_barang_${sekolahKey}_${bulan}${isEdit && spkData?.no_spk ? `_edit_${spkData.no_spk.replace(/[^a-zA-Z0-9]/g, '')}` : ''}`;
 
@@ -260,7 +260,6 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
     const removeItem = (index: number, e: React.MouseEvent) => {
         e.stopPropagation();
         if (data.items.length <= 1) {
-            alert('Minimal harus ada 1 barang untuk direalisasikan!');
             return;
         }
         const newItems = data.items.filter((_, i) => i !== index);
@@ -291,21 +290,6 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
 
     const bersihkanFormatSebelumSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (!data.ba_no.trim()) {
-            alert('Nomor Berita Acara (BA NO) belum diisi!');
-            return;
-        }
-
-        if (!data.ba_tgl.trim()) {
-            alert('Tanggal Berita Acara (BA TGL) belum diisi!');
-            return;
-        }
-
-        if (data.items.length === 0) {
-            alert('Minimal harus ada 1 barang untuk direalisasikan!');
-            return;
-        }
 
         for (let i = 0; i < data.items.length; i++) {
             if (!validateItem(i)) {
@@ -366,10 +350,11 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6 px-1">
                         <div className="md:col-span-4">
-                            <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
+                            <label htmlFor="fld_no_sp2d" className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
                                 No. SP2D
                             </label>
                             <input
+                                id="fld_no_sp2d"
                                 type="text"
                                 value={data.no_sp2d}
                                 onChange={(e) => setData('no_sp2d', e.target.value)}
@@ -380,10 +365,11 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                         </div>
 
                         <div className="md:col-span-4">
-                            <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
+                            <label htmlFor="fld_sumber" className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
                                 Sumber Perolehan *
                             </label>
                             <select
+                                id="fld_sumber"
                                 value={data.sumber_perolehan}
                                 onChange={(e) => setData('sumber_perolehan', e.target.value)}
                                 required
@@ -396,10 +382,11 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                         </div>
 
                         <div className="md:col-span-4">
-                            <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
+                            <label htmlFor="fld_no_spk" className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
                                 No. SPK / Kwitansi *
                             </label>
                             <input
+                                id="fld_no_spk"
                                 type="text"
                                 required
                                 value={data.no_spk}
@@ -412,10 +399,11 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                         </div>
 
                         <div className="md:col-span-8">
-                            <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
+                            <label htmlFor="fld_ba_no" className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
                                 Nomor Berita Acara Penerimaan (BA NO) *
                             </label>
                             <input
+                                id="fld_ba_no"
                                 type="text"
                                 required
                                 value={data.ba_no}
@@ -427,10 +415,11 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                         </div>
 
                         <div className="md:col-span-4">
-                            <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
+                            <label htmlFor="fld_ba_tgl" className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
                                 Tanggal BA (BA TGL) *
                             </label>
                             <input
+                                id="fld_ba_tgl"
                                 type="date"
                                 required
                                 value={data.ba_tgl}
@@ -491,9 +480,12 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                     }}
                                 >
                                     {/* ACCORDION HEADER */}
-                                    <div
+                                    <button
+                                        type="button"
                                         onClick={() => toggleAccordion(index)}
-                                        className="accordion-header-custom flex justify-between items-center cursor-pointer transition select-none"
+                                        aria-expanded={!isCardCollapsed}
+                                        aria-label={`${isCardCollapsed ? 'Buka' : 'Tutup'} item ${index + 1}: ${item.nama_barang || 'barang baru'}`}
+                                        className="accordion-header-custom w-full flex justify-between items-center cursor-pointer transition select-none text-left"
                                         style={{
                                             backgroundColor: '#f0f9ff',
                                             padding: '14px 20px',
@@ -527,23 +519,26 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                             <button
                                                 type="button"
                                                 onClick={(e) => removeItem(index, e)}
-                                                className="p-1 text-rose-500 hover:bg-rose-50 rounded transition"
+                                                disabled={data.items.length <= 1}
+                                                aria-label={`Hapus item ${index + 1}${item.nama_barang ? `: ${item.nama_barang}` : ''}`}
+                                                className="p-1 text-rose-500 hover:bg-rose-50 rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
                                                 title="Hapus baris barang ini"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
-                                    </div>
+                                    </button>
 
                                     {/* ACCORDION BODY */}
                                     {!isCardCollapsed && (
                                         <div className="accordion-body-custom p-5 space-y-4">
                                             {/* Pencarian Katalog */}
                                             <div className="relative wrapper-cari">
-                                                <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5 flex items-center gap-1.5">
+                                                <label htmlFor="fld_cari_katalog" className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5 flex items-center gap-1.5">
                                                     <Search className="w-3.5 h-3.5" /> Cari Nama Barang / Kode Aset Dari Katalog Pagu
                                                 </label>
                                                 <input
+                                                    id="fld_cari_katalog"
                                                     type="text"
                                                     value={searchKeywords[index] ?? ''}
                                                     onChange={(e) => handleSearchPagu(index, e.target.value)}
@@ -557,10 +552,11 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                         className="absolute top-full left-0 right-0 z-50 bg-white border border-slate-300 rounded-b-lg shadow-xl max-h-60 overflow-y-auto mt-0.5"
                                                     >
                                                         {suggestions.map((sug, sIdx) => (
-                                                            <div
+                                                            <button
+                                                                type="button"
                                                                 key={sIdx}
                                                                 onClick={() => selectSuggestion(index, sug)}
-                                                                className="p-3 hover:bg-sky-50 cursor-pointer border-b border-slate-100 last:border-0"
+                                                                className="w-full text-left p-3 hover:bg-sky-50 cursor-pointer border-b border-slate-100 last:border-0"
                                                             >
                                                                 <div className="font-bold text-[14px] text-slate-900">
                                                                     {sug.nama_barang}
@@ -573,7 +569,7 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                                         {sug.jenis_aset}
                                                                     </span>
                                                                 </div>
-                                                            </div>
+                                                            </button>
                                                         ))}
                                                     </div>
                                                 )}
