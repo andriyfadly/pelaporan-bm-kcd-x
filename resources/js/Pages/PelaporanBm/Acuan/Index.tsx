@@ -216,7 +216,7 @@ export default function Index({
         <AppLayout title="Input Acuan">
             <Head title="Master Barang Acuan" />
 
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="space-y-6">
                 {/* 1. KARTU IMPORT MASTER BARANG ACUAN (Sama dengan Legacy) */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">

@@ -102,7 +102,7 @@ export default function Dashboard({
         <AppLayout title="Dashboard">
             <Head title={isAdmin ? 'Inventaris Barang | Dashboard' : 'SI DIPTA | Dashboard User'} />
 
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="space-y-6">
                 {isAdmin ? (
                     /* ========================================================
                        DASHBOARD ADMIN (Diselaraskan dengan legacy index_admin.php)

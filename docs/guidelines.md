@@ -31,8 +31,13 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
   ```bash
   npx tsc --noEmit
   ```
-- **Strict Typing**: Deklarasikan tipe eksplisit untuk props, state, dan return values. Dilarang menggunakan `any`; gunakan generics, discriminating union, atau `unknown`.
+  dan build bundel:
+  ```bash
+  npx vite build
+  ```
+- **Strict Typing**: Deklarasikan tipe eksplisit untuk props, state, dan return values. Dilarang menggunakan `any`; gunakan generics, discriminating union, atau `unknown` (contoh: `usePage<{ auth?: {...} }>()`, bukan `usePage<any>()`).
 - **Shared Contracts**: Definisikan interface bersama untuk data entitas (misal: `SpjItem`, `AcuanItem`, `Sekolah`) dan ekspor untuk konsistensi antar-komponen.
+- **Helper bersama**: Nama bulan (`BULAN_LIST`, `getNamaBulan`) dan format rupiah (`formatRupiah`) dari `resources/js/Utils/format.ts` — dilarang mendefinisikan ulang `bulanNames` lokal di halaman.
 
 ---
 
@@ -54,7 +59,20 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
 
 ---
 
-## 5. Standar Pengujian (Testing & Code Coverage)
+## 5. Standar UI Halaman (Konsistensi Antar Modul)
+
+Standar ini hasil audit UI seluruh halaman (Dashboard, Acuan, Rekapan, Cetak, Kode Barang, User, Log Aktivitas). Detail token & pola: `docs/design.md`.
+
+1. **Komponen bersama wajib**: `Modal`, `ConfirmDialog`, `SearchInput`, `EmptyState`, `Pagination` dari `resources/js/Components/`. Dilarang modal ad-hoc `fixed inset-0`, `window.confirm()`/`alert()`, input search manual, atau sel kosong italic.
+2. **Konfirmasi destruktif**: hapus/kunci/buka kunci/ACC selalu `ConfirmDialog`; aksi konstruktif (ACC) pakai `isDestructive={false}`.
+3. **Guard diri-sendiri di UI**: tombol hapus/nonaktifkan disembunyikan untuk akun yang sedang login (validasi backend tetap ada).
+4. **Lebar konten penuh**: wrapper halaman tanpa `max-w-* mx-auto`; padding hanya dari `main`.
+5. **Aksesibilitas**: widget filter clickable = `<button aria-pressed>`; toggle expand-baris = `aria-expanded`; kontrol filter tanpa label visual = `aria-label`; tombol ikon = `aria-label`; glyph redup minimal `slate-400`.
+6. **Tabel responsif**: `overflow-x-auto` + `min-w` skala sesuai jumlah kolom (skala di `docs/design.md` §4).
+
+---
+
+## 6. Standar Pengujian (Testing & Code Coverage)
 
 - **Target Coverage**: Line coverage &ge; 80% per file dan total, di-enforce via gate `composer test-coverage` (gagal bila di bawah minimum). Status saat ini: **100% total, semua file 100%**.
 - **Menjalankan Tes**:
@@ -78,7 +96,7 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
 
 ---
 
-## 4. Konvensi Alur Modul & Kontrol Akses (RBAC)
+## 7. Konvensi Alur Modul & Kontrol Akses (RBAC)
 
 1. **Pemisahan Role**:
    - Operator Sekolah (`user` terikat `sekolah_id`): Hanya dapat melihat dan memanipulasi data sekolahnya sendiri. Tidak diizinkan mengakses data sekolah lain.

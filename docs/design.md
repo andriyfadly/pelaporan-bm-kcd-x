@@ -61,10 +61,16 @@ Submenu aktif: teks bold + `bg-blue-50/50`.
   (dropdown), "Reports & Tools" → Laporan (admin) | "Menu Utama User" (sekolah).
 - Header: tombol collapse (desktop) / hamburger (mobile), badge sekolah
   truncate `max-w-[260px]`, avatar inisial `bg-[#2563eb]`.
+- **Footer app** (di `AppLayout`, bawah `main`, `flex-1` agar menempel dasar
+  viewport): copyright "ASET KCD X - DISDIK JABAR" + versi aplikasi
+  (`v1.0.0`, naikkan manual saat rilis), `text-[11px] text-slate-400`,
+  menumpuk di mobile.
 - Kartu: `bg-white rounded-xl border border-slate-200`.
 - **Padding halaman hanya dari `main`** (`p-6 lg:p-10`). Wrapper halaman
-  (`Dashboard.tsx` dll) memakai `max-w-7xl mx-auto space-y-*` **tanpa** padding
-  horizontal — mencegah gutter ganda 40px di mobile.
+  `space-y-*` **tanpa** padding horizontal dan **tanpa** `max-w-* mx-auto` —
+  konten memenuhi lebar `main` di semua ukuran layar (lebar penuh konsisten
+  antar modul, mulai Dashboard, Acuan, Rekapan, Cetak, User, Kode Barang,
+  hingga Log Aktivitas).
 - **Breakpoint grid** (dashboard admin): kartu metrik `sm:grid-cols-3`; dua tabel
   monitoring `xl:grid-cols-2` (di `lg` 1024px dua tabel jadi terlalu sempit).
 - **Tabel dalam kartu tinggi tetap**: pembungkus `max-h-[420px] overflow-y-auto
@@ -75,19 +81,22 @@ Submenu aktif: teks bold + `bg-blue-50/50`.
   karena pada 1024px kolom kanan terlalu sempit untuk tabel.
 - **Header halaman + aksi**: `flex flex-col md:flex-row justify-between
   items-start md:items-center gap-4` agar tombol turun ke bawah di mobile.
-- **`min-w` tabel per halaman**: `min-w-[440px]` untuk tabel 3 kolom;
-  `min-w-[720px]` untuk tabel 6 kolom (Kode Barang). Setel sesuai jumlah kolom
-  agar scroll horizontal, bukan kolom terkompresi.
+- **`min-w` tabel per halaman** (aturan praktis ± 100–130px per kolom):
+  `min-w-[440px]` (3 kolom), `min-w-[640px]` (rekening 5 kolom),
+  `min-w-[720px]` (6 kolom), `min-w-[760px]` (log 5 kolom berisi teks panjang),
+  `min-w-[900px]` (user 8 kolom), `min-w-[1024px]` (acuan 10 kolom),
+  `min-w-[1200px]` (log fisik 15 kolom). Setel sesuai jumlah kolom agar scroll
+  horizontal, bukan kolom terkompresi.
 
 ## 5. Komponen (`resources/js/Components/`)
 
 | Komponen | Props inti | Aturan pakai |
 |----------|-----------|--------------|
 | `Pagination` | `links`, `total?` | Selalu di bawah tabel; sembunyi bila ≤ 3 link |
-| `SearchInput` | `value`, `onChange`, `placeholder?` | Ikon Search + tombol X; submit via form Enter |
+| `SearchInput` | `value`, `onChange`, `placeholder?`, `className?`, `ariaLabel?` | Ikon Search + tombol clear + `aria-label` (fallback ke placeholder); submit via form Enter |
 | `EmptyState` | `icon`, `title`, `description` | Data kosong / filter tak cocok |
-| `Modal` | standar | Form tambah/edit; fokus pertama otomatis |
-| `ConfirmDialog` | `title`, `message`, `confirmText`, `isDestructive` | Hapus, kirim laporan, kunci, logout |
+| `Modal` | `isOpen`, `onClose`, `title`, `maxWidth` | Form tambah/edit; ESC + scroll lock + fokus otomatis |
+| `ConfirmDialog` | `title`, `message`, `confirmText`, `isDestructive` | Hapus, kirim laporan, kunci, ACC, buka kunci, logout |
 | `StatusBadge` | status | `draft`/`menunggu_approval`/`disetujui`/kunci |
 | `CardStat` | label, nilai, ikon | 4 kartu dashboard sekolah, rekap admin |
 
@@ -187,11 +196,28 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
   = 'hidden'`, reset di cleanup `useEffect`).
 - `title` tooltip saat sidebar collapsed (ikon saja).
 - Dialog: tutup via tombol + overlay; konfirmasi destruktif berwarna merah.
+- **Widget/filter yang bisa diklik = tombol, bukan `div onClick`** — wajib
+  `<button type="button">` + `aria-pressed` saat bersifat toggle (contoh:
+  widget filter TUNTAS/BELUM di Rekapan). Supaya bisa dijangkau keyboard dan
+  status filter terbaca screen reader.
+- **Toggle expand-baris tabel** (+/− rincian): `aria-expanded` +
+  `aria-label` deskriptif (mis. "Lihat rincian uraian 5.2.3"), target sentuh
+  minimal `w-6 h-6`.
+- **Kontrol filter tanpa label visual** (select, `input type="date"`):
+  wajib `aria-label` eksplisit (contoh: Log Aktivitas — "Filter aksi",
+  "Tanggal mulai").
+- **Toggle password** (mata terbuka/tertutup): `aria-label` dinamis +
+  `aria-pressed={showPassword}`.
+- **Guard aksi pada diri sendiri di level UI**: tombol destruktif (hapus,
+  nonaktifkan) disembunyikan untuk akun yang sedang login — jangan andalkan
+  `alert()` setelah klik; validasi backend tetap wajib.
+- Placeholder/glyph redup minimal `text-slate-400` (slate-300 di atas putih
+  hanya 2:1, gagal AA).
 
 ### Responsif
 
 - Tabel dibungkus `overflow-x-auto` (scroll horizontal di HP, bukan remuk);
-  minimal lebar konten `min-w-[440px]` (3 kolom) s/d `min-w-[720px]` (6 kolom).
+  `min-w` sesuai jumlah kolom — lihat skala §4.
 - Grid tidak boleh turun ke kolom terlalu sempit: pakai breakpoint `sm`/`xl`
   sesuai §4, bukan `md`/`lg` yang memadatkan konten.
 - Split form+daftar memakai `xl:` (§4); header halaman menumpuk di mobile
@@ -217,10 +243,15 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 - [ ] Modal / konfirmasi / search / empty state? Impor komponen §5, jangan tulis ulang.
 - [ ] Aksi merusak? Wajib `ConfirmDialog` (`isDestructive` untuk hapus).
 - [ ] Menu baru? Tambah di grup yang tepat + state aktif `currentPath`.
-- [ ] Padding horizontal hanya di `main`; wrapper halaman tanpa `p-*` sendiri.
-- [ ] Tabel 6+ kolom? Beri `min-w-[720px]` di dalam `overflow-x-auto`.
+- [ ] Padding horizontal hanya di `main`; wrapper halaman tanpa `p-*` dan
+      tanpa `max-w-* mx-auto` sendiri (konten lebar penuh, §4).
+- [ ] Tabel 5+ kolom? Beri `min-w` skala §4 di dalam `overflow-x-auto`.
 - [ ] Split form+daftar? Pakai `xl:grid-cols-12`, bukan `lg`.
+- [ ] Widget/filter clickable? `<button>` + `aria-pressed` (bukan `div onClick`).
+- [ ] Toggle expand-baris? `aria-expanded` + `aria-label`.
+- [ ] Filter tanpa label visual (select/date)? `aria-label` eksplisit.
 - [ ] Tombol ikon baru? Beri `aria-label` + `title`; toggle dropdown beri `aria-expanded`.
 - [ ] Teks di atas tint berwarna? Pakai shade hue yang sama, bukan `slate-*`.
+- [ ] Teks/glyph redup minimal `slate-400` (bukan `slate-300`).
 - [ ] Kartu metrik tanpa `border-l-4` dekoratif (pakai border penuh / warna teks).
 - [ ] `npx tsc --noEmit` hijau; tanpa `any` (aturan `docs/guidelines.md`).

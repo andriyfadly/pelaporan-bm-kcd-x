@@ -191,7 +191,7 @@ export default function Index({
         <AppLayout title={`Kendali Realisasi - Bulan ${namaBulan}`}>
             <Head title="Sistem Kendali Realisasi | SINVENTARIS" />
 
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="space-y-6">
                 {/* Navbar Topbar Legacy */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                     <div className="flex items-center gap-2.5">

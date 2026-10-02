@@ -381,6 +381,13 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                 <main className="p-6 lg:p-10 flex-1">
                     {children}
                 </main>
+
+                <footer className="px-6 lg:px-10 py-4 border-t border-slate-200 text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-1">
+                    <span>
+                        &copy; {new Date().getFullYear()} ASET KCD X - DISDIK JABAR
+                    </span>
+                    <span className="font-mono">v1.0.0</span>
+                </footer>
             </div>
 
             <ConfirmDialog

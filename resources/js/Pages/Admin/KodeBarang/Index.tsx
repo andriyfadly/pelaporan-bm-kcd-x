@@ -122,7 +122,7 @@ export default function Index({ items, search }: Props) {
         <AppLayout title="Master Kode Barang">
             <Head title="Master Kode Barang | SINVENTARIS" />
 
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="space-y-6">
                 {/* Header disesuaikan dengan legacy kode_barang.php */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div>
