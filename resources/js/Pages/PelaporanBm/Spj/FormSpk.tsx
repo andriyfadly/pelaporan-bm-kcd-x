@@ -284,7 +284,6 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
         });
         return [...set];
     };
-    const historyMerk = uniqueValues('merk_tipe');
     const historySertifikat = uniqueValues('no_sertifikat');
     const historySatuan = uniqueValues('satuan');
 
@@ -503,9 +502,9 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                 <span className="font-bold text-slate-600 text-xs uppercase tracking-wide">
                                                     {headLabel}
                                                 </span>
-                                                <span className="text-slate-400 text-[11px] font-semibold">
-                                                    Merk/Tipe:{' '}
-                                                    <span className="text-blue-600 font-bold">
+                                                <span className="text-slate-400 text-[11px] font-semibold flex items-center gap-1 max-w-[420px]">
+                                                    <span className="shrink-0">Merk/Tipe:</span>
+                                                    <span className="text-blue-600 font-bold truncate" title={item.merk_tipe || undefined}>
                                                         {item.merk_tipe || '-'}
                                                     </span>
                                                 </span>
@@ -638,16 +637,17 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                     <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
                                                         Merk / Tipe *
                                                     </label>
-                                                    <input
-                                                        type="text"
+                                                    <textarea
                                                         required
-                                                        list="history_merk"
-                                                        autoComplete="off"
+                                                        rows={1}
                                                         value={item.merk_tipe}
                                                         onChange={(e) => handleItemChange(index, 'merk_tipe', e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') e.preventDefault();
+                                                        }}
                                                         placeholder="Contoh: Lenovo Core i3"
-                                                        className="w-full px-3 py-2 text-[13px] text-slate-700 bg-white rounded-lg focus:outline-none"
-                                                        style={{ border: '1px solid #7dd3fc' }}
+                                                        className="w-full px-3 py-2 text-[13px] text-slate-700 bg-white rounded-lg focus:outline-none resize-none field-sizing-content"
+                                                        style={{ border: '1px solid #7dd3fc', minHeight: '2.625rem', maxHeight: '8rem' }}
                                                     />
                                                 </div>
                                                 <div className="md:col-span-4">
@@ -837,9 +837,6 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                 </form>
 
                 {/* Datalist history (legacy: history_merk, history_sertifikat, history_satuan) */}
-                <datalist id="history_merk">
-                    {historyMerk.map((v) => <option key={v} value={v} />)}
-                </datalist>
                 <datalist id="history_sertifikat">
                     {historySertifikat.map((v) => <option key={v} value={v} />)}
                 </datalist>
