@@ -96,6 +96,7 @@ export default function Index({ items, filters, events, subjectTypes, sekolahs }
                     <select
                         value={form.event}
                         onChange={(e) => terapkan({ event: e.target.value })}
+                        aria-label="Filter aksi"
                         className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white"
                     >
                         <option value="">Semua aksi</option>
@@ -106,6 +107,7 @@ export default function Index({ items, filters, events, subjectTypes, sekolahs }
                     <select
                         value={form.subject_type}
                         onChange={(e) => terapkan({ subject_type: e.target.value })}
+                        aria-label="Filter entitas"
                         className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white"
                     >
                         <option value="">Semua entitas</option>
@@ -116,6 +118,7 @@ export default function Index({ items, filters, events, subjectTypes, sekolahs }
                     <select
                         value={form.sekolah_id}
                         onChange={(e) => terapkan({ sekolah_id: e.target.value })}
+                        aria-label="Filter sekolah"
                         className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white"
                     >
                         <option value="">Semua sekolah</option>
@@ -127,12 +130,14 @@ export default function Index({ items, filters, events, subjectTypes, sekolahs }
                         type="date"
                         value={form.dari}
                         onChange={(e) => terapkan({ dari: e.target.value })}
+                        aria-label="Tanggal mulai"
                         className="px-3 py-2 text-sm border border-slate-200 rounded-lg"
                     />
                     <input
                         type="date"
                         value={form.sampai}
                         onChange={(e) => terapkan({ sampai: e.target.value })}
+                        aria-label="Tanggal akhir"
                         className="px-3 py-2 text-sm border border-slate-200 rounded-lg"
                     />
                 </div>
@@ -147,7 +152,7 @@ export default function Index({ items, filters, events, subjectTypes, sekolahs }
                     />
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full min-w-[760px] text-sm">
                             <thead>
                                 <tr className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                                     <th className="px-4 py-3">Waktu</th>
@@ -186,7 +191,7 @@ export default function Index({ items, filters, events, subjectTypes, sekolahs }
                                                     </pre>
                                                 </details>
                                             ) : (
-                                                <span className="text-slate-300">-</span>
+                                                <span className="text-slate-400">-</span>
                                             )}
                                         </td>
                                     </tr>
