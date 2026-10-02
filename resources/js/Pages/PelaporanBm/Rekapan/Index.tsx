@@ -444,9 +444,6 @@ export default function Index({
                                     </strong>
                                 </p>
                                 <div className="flex gap-2 mt-2">
-                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-bold">
-                                        Mode Admin: Kontrol Penuh Akses
-                                    </span>
                                     <span className="px-2 py-0.5 bg-slate-800 text-white rounded text-[10px] font-bold">
                                         Status: {selectedSchool.status_kirim.toUpperCase()}
                                     </span>
