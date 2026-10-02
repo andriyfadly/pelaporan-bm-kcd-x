@@ -2,6 +2,7 @@ import { Head, router, Link, useForm } from '@inertiajs/react';
 import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import ConfirmDialog from '@/Components/ConfirmDialog';
+import EmptyState from '@/Components/EmptyState';
 import {
     FileSpreadsheet,
     Plus,
@@ -114,21 +115,25 @@ export default function Index({
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm border-collapse">
+                        <table className="w-full min-w-[760px] text-left text-sm border-collapse">
                             <thead className="bg-[#1e3a8a] text-white text-xs uppercase font-extrabold tracking-wider">
                                 <tr>
-                                    <th className="p-3.5 w-[35%]">Kode Rekening</th>
-                                    <th className="p-3.5 text-right w-[20%]">Nilai Acuan</th>
-                                    <th className="p-3.5 text-right w-[20%]">Realisasi</th>
-                                    <th className="p-3.5 text-right w-[15%]">Kekurangan</th>
-                                    <th className="p-3.5 text-center w-[10%]">Aksi Kerja</th>
+                                    <th className="p-3.5 w-[38%]">Kode Rekening</th>
+                                    <th className="p-3.5 text-right w-[18%]">Nilai Acuan</th>
+                                    <th className="p-3.5 text-right w-[18%]">Realisasi</th>
+                                    <th className="p-3.5 text-right w-[14%]">Kekurangan</th>
+                                    <th className="p-3.5 text-center w-[12%]">Aksi Kerja</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-medium">
                                 {daftarRekening.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-slate-400">
-                                            Tidak ada target acuan kodering anggaran pada bulan ini.
+                                        <td colSpan={5}>
+                                            <EmptyState
+                                                icon={<FileSpreadsheet className="w-10 h-10 text-slate-300" />}
+                                                title="Belum ada target acuan"
+                                                description="Tidak ada target acuan kodering anggaran pada bulan ini."
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
@@ -141,6 +146,8 @@ export default function Index({
                                                     <button
                                                         type="button"
                                                         onClick={() => toggleExpand(row.kodering)}
+                                                        aria-expanded={isExpanded}
+                                                        aria-label={`${isExpanded ? 'Tutup' : 'Lihat'} rincian uraian ${row.kodering}`}
                                                         className="font-mono font-bold text-slate-800 hover:text-blue-600 flex items-center gap-1.5 cursor-pointer text-left"
                                                     >
                                                         {isExpanded ? (

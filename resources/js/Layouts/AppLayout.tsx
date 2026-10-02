@@ -331,7 +331,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
             {/* Main Content Area */}
             <div
-                className={`flex-1 flex flex-col transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-72'
+                className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-72'
                     }`}
             >
                 <header className="sticky top-0 h-20 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 lg:px-10 flex items-center justify-between z-30">
