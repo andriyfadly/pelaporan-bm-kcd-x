@@ -70,6 +70,14 @@ Submenu aktif: teks bold + `bg-blue-50/50`.
 - **Tabel dalam kartu tinggi tetap**: pembungkus `max-h-[420px] overflow-y-auto
   overflow-x-auto`; tabel `min-w-[440px]` agar sticky `thead` tetap terbaca saat
   di-scroll horizontal di HP.
+- **Split form + daftar** (mis. Kode Barang): `xl:grid-cols-12`
+  (`xl:col-span-4` form upload/cari, `xl:col-span-8` daftar) — bukan `lg`,
+  karena pada 1024px kolom kanan terlalu sempit untuk tabel.
+- **Header halaman + aksi**: `flex flex-col md:flex-row justify-between
+  items-start md:items-center gap-4` agar tombol turun ke bawah di mobile.
+- **`min-w` tabel per halaman**: `min-w-[440px]` untuk tabel 3 kolom;
+  `min-w-[720px]` untuk tabel 6 kolom (Kode Barang). Setel sesuai jumlah kolom
+  agar scroll horizontal, bukan kolom terkompresi.
 
 ## 5. Komponen (`resources/js/Components/`)
 
@@ -82,6 +90,22 @@ Submenu aktif: teks bold + `bg-blue-50/50`.
 | `ConfirmDialog` | `title`, `message`, `confirmText`, `isDestructive` | Hapus, kirim laporan, kunci, logout |
 | `StatusBadge` | status | `draft`/`menunggu_approval`/`disetujui`/kunci |
 | `CardStat` | label, nilai, ikon | 4 kartu dashboard sekolah, rekap admin |
+
+> **Wajib pakai komponen ini, jangan reinvent.** Halaman baru yang butuh modal,
+> konfirmasi hapus, search box, atau empty state harus mengimpor dari
+> `resources/js/Components/`. Dilarang `window.confirm()` (pakai
+> `ConfirmDialog`), modal `fixed inset-0` ad-hoc (pakai `Modal`, yang sudah
+> menangani ESC + scroll lock + fokus), atau input search manual (pakai
+> `SearchInput`, tombol clear gratis).
+
+### Konvensi kontrol form
+
+- **Select**: `bg-white` eksplisit + `focus:ring-2 focus:ring-blue-500`.
+- **Teks di atas latar berwarna** (§2): pakai shade teks dari hue latar (mis.
+  `bg-blue-50` → `text-blue-900`/`text-blue-800`), bukan `text-slate-*` —
+  slate di atas biru terlihat pudar dan gagal kontras.
+- **Kotak info/panduan**: border penuh (`border border-{hue}-200`) + tint latar;
+  jangan `border-l-4` dekoratif (lihat §1 butir 7).
 
 ## 5a. Favicon, Ikon Aplikasi & Web Manifest
 
@@ -167,12 +191,17 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 ### Responsif
 
 - Tabel dibungkus `overflow-x-auto` (scroll horizontal di HP, bukan remuk);
-  minimal lebar konten `min-w-[440px]` untuk tabel monitoring.
+  minimal lebar konten `min-w-[440px]` (3 kolom) s/d `min-w-[720px]` (6 kolom).
 - Grid tidak boleh turun ke kolom terlalu sempit: pakai breakpoint `sm`/`xl`
   sesuai §4, bukan `md`/`lg` yang memadatkan konten.
+- Split form+daftar memakai `xl:` (§4); header halaman menumpuk di mobile
+  (`flex-col md:flex-row`).
 - Panel status dengan `min-w-[240px]` hanya di `md:` ke atas; di mobile
   `w-full`.
-- Kontras teks primer ≥ 4.5:1 di atas putih (slate-500 ke atas untuk teks kecil).
+- Aksi ikon-only di dalam tabel: `aria-label` deskriptif (mis.
+  `` `Hapus kode ${item.kode_barang}` ``) + `title`; target sentuh `p-1.5`.
+- Kontras teks primer ≥ 4.5:1 di atas putih (slate-500 ke atas untuk teks kecil);
+  teks di atas tint berwarna pakai shade hue yang sama (§5).
 
 ## 9. Yang Belum / Batasan Diketahui
 
@@ -185,9 +214,13 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 
 - [ ] Warna baru? Pakai token tabel §2 (jangan hex bebas).
 - [ ] Halaman tabel baru? Kartu filter + tabel + `Pagination` + `EmptyState`.
+- [ ] Modal / konfirmasi / search / empty state? Impor komponen §5, jangan tulis ulang.
 - [ ] Aksi merusak? Wajib `ConfirmDialog` (`isDestructive` untuk hapus).
 - [ ] Menu baru? Tambah di grup yang tepat + state aktif `currentPath`.
 - [ ] Padding horizontal hanya di `main`; wrapper halaman tanpa `p-*` sendiri.
-- [ ] Tombol ikon baru? Beri `aria-label`; toggle dropdown beri `aria-expanded`.
+- [ ] Tabel 6+ kolom? Beri `min-w-[720px]` di dalam `overflow-x-auto`.
+- [ ] Split form+daftar? Pakai `xl:grid-cols-12`, bukan `lg`.
+- [ ] Tombol ikon baru? Beri `aria-label` + `title`; toggle dropdown beri `aria-expanded`.
+- [ ] Teks di atas tint berwarna? Pakai shade hue yang sama, bukan `slate-*`.
 - [ ] Kartu metrik tanpa `border-l-4` dekoratif (pakai border penuh / warna teks).
 - [ ] `npx tsc --noEmit` hijau; tanpa `any` (aturan `docs/guidelines.md`).
