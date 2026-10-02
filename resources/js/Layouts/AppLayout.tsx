@@ -10,7 +10,6 @@ import {
     LogOut,
     Menu,
     ChevronDown,
-    CheckCircle2,
     User as UserIcon,
 } from 'lucide-react';
 
@@ -367,9 +366,6 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                             <h3 className="font-bold text-xs text-slate-800 max-w-[260px] truncate">
                                 {namaSekolahTampil}
                             </h3>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md">
-                                <CheckCircle2 className="w-3 h-3" /> Akses Sekolah
-                            </span>
                         </div>
 
                         <div className="w-10 h-10 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-sm shadow-sm">
