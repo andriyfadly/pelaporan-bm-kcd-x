@@ -74,7 +74,7 @@ export default function Edit({ kodering, bulan, paguAcuan, items = [], isReadOnl
         <AppLayout title={`Edit Realisasi - ${kodering}`}>
             <Head title={`Edit Realisasi - ${kodering}`} />
 
-            <div className="space-y-6 max-w-6xl mx-auto pb-16">
+            <div className="space-y-6 pb-16">
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <div className="flex items-center gap-2">

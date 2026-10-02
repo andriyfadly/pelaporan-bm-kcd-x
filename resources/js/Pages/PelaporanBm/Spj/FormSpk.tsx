@@ -326,7 +326,7 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
         <AppLayout title={`${isEdit ? 'Edit' : 'Tambah'} Dokumen SPJ - ${kategori}`}>
             <Head title={`${isEdit ? 'Edit' : 'Tambah'} Dokumen SPJ`} />
 
-            <div className="spj-container py-3 max-w-6xl mx-auto font-sans" style={{ background: '#fdfdfd' }}>
+            <div className="spj-container py-3 font-sans" style={{ background: '#fdfdfd' }}>
                 {/* LABEL STICKY KATEGORI */}
                 <div
                     style={{
