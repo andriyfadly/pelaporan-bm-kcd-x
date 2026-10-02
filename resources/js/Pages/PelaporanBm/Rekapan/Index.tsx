@@ -1,11 +1,14 @@
 import { Head, router } from '@inertiajs/react';
 import React, { useState, useMemo } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import ConfirmDialog from '@/Components/ConfirmDialog';
+import SearchInput from '@/Components/SearchInput';
+import EmptyState from '@/Components/EmptyState';
+import { BULAN_LIST } from '@/Utils/format';
 import {
     PieChart,
     CheckCircle2,
     AlertCircle,
-    Search,
     Eye,
     Check,
     Unlock,
@@ -95,11 +98,6 @@ export default function Index({
 
     const [modalAcc, setModalAcc] = useState<RekapanItem | null>(null);
     const [modalBukaEdit, setModalBukaEdit] = useState<RekapanItem | null>(null);
-
-    const bulanNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-    ];
 
     const toggleWidget = (type: 'TUNTAS' | 'BELUM') => {
         setFilterWidget((prev) => (prev === type ? '' : type));
@@ -213,7 +211,7 @@ export default function Index({
                             onChange={(e) => handleBulanChange(Number(e.target.value))}
                             className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
-                            {bulanNames.map((nama, idx) => (
+                            {BULAN_LIST.map((nama, idx) => (
                                 <option key={idx + 1} value={idx + 1}>
                                     {nama}
                                 </option>
@@ -239,9 +237,11 @@ export default function Index({
                     <div className="lg:col-span-6">
                         <div className="grid grid-cols-2 gap-4">
                             {/* Widget 1: SUDAH SELESAI */}
-                            <div
+                            <button
+                                type="button"
                                 onClick={() => toggleWidget('TUNTAS')}
-                                className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center justify-between ${
+                                aria-pressed={filterWidget === 'TUNTAS'}
+                                className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center justify-between text-left ${
                                     filterWidget === 'TUNTAS'
                                         ? 'bg-emerald-50 border-emerald-500 shadow-sm'
                                         : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
@@ -257,12 +257,14 @@ export default function Index({
                                     </div>
                                 </div>
                                 <CheckCircle2 className="w-8 h-8 text-emerald-500 opacity-80" />
-                            </div>
+                            </button>
 
                             {/* Widget 2: BELUM SELESAI */}
-                            <div
+                            <button
+                                type="button"
                                 onClick={() => toggleWidget('BELUM')}
-                                className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center justify-between ${
+                                aria-pressed={filterWidget === 'BELUM'}
+                                className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center justify-between text-left ${
                                     filterWidget === 'BELUM'
                                         ? 'bg-rose-50 border-rose-500 shadow-sm'
                                         : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
@@ -278,35 +280,24 @@ export default function Index({
                                     </div>
                                 </div>
                                 <AlertCircle className="w-8 h-8 text-rose-500 opacity-80" />
-                            </div>
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 {/* Search Bar persis legacy */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-sm flex items-center px-4">
-                    <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="MASUKKAN NAMA SEKOLAH ATAU NPSN YANG INGIN DICARI..."
-                        className="w-full text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none bg-transparent"
-                    />
-                    {searchQuery && (
-                        <button
-                            onClick={() => setSearchQuery('')}
-                            className="text-slate-400 hover:text-slate-600 text-xs font-bold p-1"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
+                <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="MASUKKAN NAMA SEKOLAH ATAU NPSN YANG INGIN DICARI..."
+                    ariaLabel="Cari sekolah atau NPSN"
+                    className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-sm"
+                />
 
                 {/* Main Table: Satuan Pendidikan */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
-                        <table className="w-full text-left text-xs">
+                        <table className="w-full min-w-[760px] text-left text-xs">
                             <thead className="bg-slate-50 text-slate-600 uppercase font-bold tracking-wider border-b border-slate-200 sticky top-0 z-10 text-[11px]">
                                 <tr>
                                     <th className="p-3 text-center w-12">No</th>
@@ -321,10 +312,19 @@ export default function Index({
                             <tbody className="divide-y divide-slate-100 font-semibold">
                                 {filteredItems.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="p-8 text-center text-slate-400">
-                                            {items.length === 0
-                                                ? `Tidak ada data target belanja acuan untuk kriteria bulan ${namaBulan}.`
-                                                : 'Tidak ada data unit sekolah yang cocok dengan pencarian.'}
+                                        <td colSpan={7}>
+                                            <EmptyState
+                                                title={
+                                                    items.length === 0
+                                                        ? 'Belum ada data acuan'
+                                                        : 'Tidak ada yang cocok'
+                                                }
+                                                description={
+                                                    items.length === 0
+                                                        ? `Tidak ada data target belanja acuan untuk bulan ${namaBulan}.`
+                                                        : 'Tidak ada unit sekolah yang cocok dengan pencarian.'
+                                                }
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
@@ -335,7 +335,7 @@ export default function Index({
                                             <tr
                                                 key={sek.id}
                                                 className={`transition hover:bg-slate-50/90 ${
-                                                    isSelected ? 'bg-blue-50/70 border-l-4 border-blue-600' : ''
+                                                    isSelected ? 'bg-blue-100/70' : ''
                                                 }`}
                                             >
                                                 <td className="p-3 text-center text-slate-500 font-mono">
@@ -519,7 +519,7 @@ export default function Index({
                                 </div>
 
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-xs">
+                                    <table className="w-full min-w-[640px] text-left text-xs">
                                         <thead className="bg-slate-50 text-slate-600 uppercase font-bold tracking-wider border-b border-slate-200 text-[11px]">
                                             <tr>
                                                 <th className="p-3.5 w-1/3">Kode Rekening</th>
@@ -532,8 +532,11 @@ export default function Index({
                                         <tbody className="divide-y divide-slate-100">
                                             {selectedSchool.rekening_acuan.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={5} className="p-8 text-center text-slate-400">
-                                                        Tidak ada data target belanja acuan untuk bulan ini.
+                                                    <td colSpan={5}>
+                                                        <EmptyState
+                                                            title="Belum ada rekening acuan"
+                                                            description="Tidak ada data target belanja acuan untuk bulan ini."
+                                                        />
                                                     </td>
                                                 </tr>
                                             ) : (
@@ -551,7 +554,9 @@ export default function Index({
                                                                             onClick={() =>
                                                                                 toggleKoderingExpand(rec.kodering)
                                                                             }
-                                                                            className="w-5 h-5 rounded border border-blue-500 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 flex items-center justify-center transition cursor-pointer"
+                                                                            aria-expanded={isExpanded}
+                                                                            aria-label={`${isExpanded ? 'Tutup' : 'Lihat'} rincian uraian ${rec.kodering}`}
+                                                                            className="w-6 h-6 rounded border border-blue-500 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 flex items-center justify-center transition cursor-pointer"
                                                                             title="Lihat Rincian Uraian"
                                                                         >
                                                                             {isExpanded ? (
@@ -693,8 +698,11 @@ export default function Index({
                                         <tbody className="divide-y divide-slate-100 font-medium">
                                             {selectedSchool.log_fisik.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={15} className="p-8 text-center text-slate-400">
-                                                        Belum ada rincian log input fisik realisasi pada bulan acuan ini.
+                                                    <td colSpan={15}>
+                                                        <EmptyState
+                                                            title="Belum ada log fisik"
+                                                            description="Belum ada rincian log input fisik realisasi pada bulan acuan ini."
+                                                        />
                                                     </td>
                                                 </tr>
                                             ) : (
@@ -767,64 +775,26 @@ export default function Index({
             </div>
 
             {/* Modal Konfirmasi ACC */}
-            {modalAcc && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
-                        <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
-                        <h3 className="text-lg font-bold text-slate-800 mb-1">Konfirmasi ACC</h3>
-                        <div className="bg-blue-50 text-blue-800 border border-blue-200 rounded-xl p-2.5 mb-3 text-xs font-bold uppercase">
-                            {modalAcc.nama}
-                        </div>
-                        <p className="text-xs text-slate-500 mb-5">
-                            Apakah Anda yakin ingin menyetujui (ACC) laporan realisasi unit sekolah ini?
-                        </p>
-                        <div className="flex justify-center gap-2">
-                            <button
-                                onClick={() => setModalAcc(null)}
-                                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                onClick={handleConfirmAcc}
-                                className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 cursor-pointer shadow-sm"
-                            >
-                                Ya, Setujui
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmDialog
+                isOpen={modalAcc !== null}
+                onClose={() => setModalAcc(null)}
+                onConfirm={handleConfirmAcc}
+                title="Konfirmasi ACC"
+                message={`Setujui (ACC) laporan realisasi ${modalAcc?.nama ?? ''}? Laporan akan terkunci untuk user sekolah.`}
+                confirmText="Ya, Setujui"
+                isDestructive={false}
+            />
 
             {/* Modal Konfirmasi Buka Edit */}
-            {modalBukaEdit && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
-                        <Unlock className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-                        <h3 className="text-lg font-bold text-slate-800 mb-1">Buka Kunci Edit?</h3>
-                        <div className="bg-amber-50 text-amber-900 border border-amber-200 rounded-xl p-2.5 mb-3 text-xs font-bold uppercase">
-                            {modalBukaEdit.nama}
-                        </div>
-                        <p className="text-xs text-slate-500 mb-5">
-                            Aksi ini membuat user bisa mengisi/mengedit kembali inputan realisasi fisik mereka (Tanpa menghapus data). Lanjutkan?
-                        </p>
-                        <div className="flex justify-center gap-2">
-                            <button
-                                onClick={() => setModalBukaEdit(null)}
-                                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                onClick={handleConfirmBukaEdit}
-                                className="px-4 py-2 bg-amber-400 text-slate-900 rounded-xl text-xs font-bold hover:bg-amber-500 cursor-pointer shadow-sm"
-                            >
-                                Ya, Buka Kunci
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmDialog
+                isOpen={modalBukaEdit !== null}
+                onClose={() => setModalBukaEdit(null)}
+                onConfirm={handleConfirmBukaEdit}
+                title="Buka Kunci Edit?"
+                message={`Buka kunci edit untuk ${modalBukaEdit?.nama ?? ''}? User bisa mengisi/mengedit kembali inputan realisasi fisik mereka (tanpa menghapus data).`}
+                confirmText="Ya, Buka Kunci"
+                isDestructive={true}
+            />
         </AppLayout>
     );
 }
