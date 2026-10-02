@@ -1,7 +1,8 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Head } from '@inertiajs/react';
-import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { AlertCircle, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
+import { BULAN_LIST } from '@/Utils/format';
 
 interface Props {
     years?: number[];
@@ -20,11 +21,6 @@ export default function Index({
     const [progress, setProgress] = useState<number>(0);
     const [rowCount, setRowCount] = useState<number>(0);
     const [emptyModal, setEmptyModal] = useState<boolean>(false);
-
-    const bulanNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-    ];
 
     const handleDownload = async () => {
         if (!bulan || !tahun) {
@@ -133,7 +129,7 @@ export default function Index({
                             Data Tidak Ditemukan
                         </h3>
                         <p className="text-sm text-slate-600 leading-relaxed mb-6">
-                            Maaf, pada periode bulan <strong>{bulanNames[bulan - 1]} {tahun}</strong> tidak ditemukan adanya catatan data realisasi belanja modal.
+                            Maaf, pada periode bulan <strong>{BULAN_LIST[bulan - 1]} {tahun}</strong> tidak ditemukan adanya catatan data realisasi belanja modal.
                         </p>
                         <button
                             type="button"
@@ -146,7 +142,7 @@ export default function Index({
                 </div>
             )}
 
-            <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+            <div className="p-4 sm:p-6 lg:p-8 space-y-6">
                 {/* Excel Theme Card */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     {/* Header Dark Gradient with Excel Green Accent */}
@@ -178,7 +174,7 @@ export default function Index({
                                     onChange={(e) => setBulan(Number(e.target.value))}
                                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#107c41] focus:bg-white transition"
                                 >
-                                    {bulanNames.map((name, idx) => (
+                                    {BULAN_LIST.map((name, idx) => (
                                         <option key={idx + 1} value={idx + 1}>
                                             {name}
                                         </option>
