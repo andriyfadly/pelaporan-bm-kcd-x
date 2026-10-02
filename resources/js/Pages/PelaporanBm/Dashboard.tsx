@@ -102,7 +102,7 @@ export default function Dashboard({
         <AppLayout title="Dashboard">
             <Head title={isAdmin ? 'Inventaris Barang | Dashboard' : 'SI DIPTA | Dashboard User'} />
 
-            <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto space-y-6">
                 {isAdmin ? (
                     /* ========================================================
                        DASHBOARD ADMIN (Diselaraskan dengan legacy index_admin.php)
@@ -160,7 +160,7 @@ export default function Dashboard({
                         </div>
 
                         {/* Cards Ringkasan Monitoring (3 Metrik) */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
                                 <div className="flex items-center justify-between mb-3">
                                     <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">
@@ -214,7 +214,7 @@ export default function Dashboard({
                         </div>
 
                         {/* Tabel Informasi Detail Sekolah (2 Kolom) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             {/* Kolom Kiri: Sudah Realisasi */}
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                                 <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-emerald-50/50">
@@ -226,9 +226,9 @@ export default function Dashboard({
                                         {totalSelesai} Sekolah
                                     </span>
                                 </div>
-                                <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 flex-1">
+                                <div className="max-h-[420px] overflow-y-auto overflow-x-auto divide-y divide-slate-100 flex-1">
                                     {listSelesai.length > 0 ? (
-                                        <table className="w-full text-left text-xs">
+                                        <table className="w-full min-w-[440px] text-left text-xs">
                                             <thead className="bg-slate-50 text-slate-400 font-bold uppercase sticky top-0">
                                                 <tr>
                                                     <th className="py-2.5 px-4 w-12 text-center">No</th>
@@ -269,9 +269,9 @@ export default function Dashboard({
                                         {totalBelum} Sekolah
                                     </span>
                                 </div>
-                                <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 flex-1">
+                                <div className="max-h-[420px] overflow-y-auto overflow-x-auto divide-y divide-slate-100 flex-1">
                                     {listBelum.length > 0 ? (
-                                        <table className="w-full text-left text-xs">
+                                        <table className="w-full min-w-[440px] text-left text-xs">
                                             <thead className="bg-slate-50 text-slate-400 font-bold uppercase sticky top-0">
                                                 <tr>
                                                     <th className="py-2.5 px-4 w-12 text-center">No</th>
@@ -327,7 +327,7 @@ export default function Dashboard({
                             </div>
 
                             {/* Panel Status Kanan Atas */}
-                            <div className="bg-white/95 text-slate-800 rounded-xl p-4 text-left md:text-right shadow-sm border border-white/40 min-w-[240px]">
+                            <div className="bg-white/95 text-slate-800 rounded-xl p-4 text-left md:text-right shadow-sm border border-white/40 w-full md:w-auto md:min-w-[240px]">
                                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                                     STATUS LAPORAN BULAN {namaBulanLapor.toUpperCase()}:
                                 </div>
@@ -348,7 +348,7 @@ export default function Dashboard({
 
                         {/* 4 Metrik Utama Rekapitulasi Setahun */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                            <div className="bg-white rounded-2xl border-l-4 border-l-blue-600 border border-slate-200 p-5 shadow-sm">
+                            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                                 <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                                     TOTAL ACUAN ANGGARAN
                                 </span>
@@ -360,7 +360,7 @@ export default function Dashboard({
                                 </span>
                             </div>
 
-                            <div className="bg-white rounded-2xl border-l-4 border-l-emerald-600 border border-slate-200 p-5 shadow-sm">
+                            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                                 <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                                     TOTAL REALISASI BELANJA
                                 </span>
@@ -372,7 +372,7 @@ export default function Dashboard({
                                 </span>
                             </div>
 
-                            <div className="bg-white rounded-2xl border-l-4 border-l-amber-500 border border-slate-200 p-5 shadow-sm">
+                            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                                 <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                                     TOTAL FISIK ASET
                                 </span>
@@ -384,7 +384,7 @@ export default function Dashboard({
                                 </span>
                             </div>
 
-                            <div className="bg-white rounded-2xl border-l-4 border-l-cyan-600 border border-slate-200 p-5 shadow-sm">
+                            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                                 <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                                     TOTAL BERKAS SPK
                                 </span>

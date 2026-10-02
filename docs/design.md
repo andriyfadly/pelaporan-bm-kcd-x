@@ -13,6 +13,10 @@
 4. **Jujur soal data kosong**: `EmptyState`, bukan tabel kosong; unduh kosong dicegah.
 5. **Terbaca di lapangan**: kontras kuat, target sentuh cukup, responsif
    (sidebar → drawer di mobile).
+6. **Satu sumber padding**: `main` di `AppLayout` pemilik padding halaman;
+   komponen halaman tidak menambah padding horizontal sendiri.
+7. **Anti-slop**: tak ada aksen dekoratif `border-l-4` pada kartu; garis sisi
+   hanya untuk penanda menu aktif.
 
 ## 2. Token Warna
 
@@ -52,11 +56,20 @@ Submenu aktif: teks bold + `bg-blue-50/50`.
 ```
 
 - Sidebar: fixed, collapsible (`w-72 ↔ w-20`), drawer + overlay di mobile
-  (`lg:` breakpoint). Grup: "Main Menu" → Dashboard, "Master Data"
+  (`lg:` breakpoint), tinggi `h-dvh` (bukan `h-screen`, agar tombol Logout tak
+  terpotong chrome browser mobile). Grup: "Main Menu" → Dashboard, "Master Data"
   (dropdown), "Reports & Tools" → Laporan (admin) | "Menu Utama User" (sekolah).
 - Header: tombol collapse (desktop) / hamburger (mobile), badge sekolah
   truncate `max-w-[260px]`, avatar inisial `bg-[#2563eb]`.
 - Kartu: `bg-white rounded-xl border border-slate-200`.
+- **Padding halaman hanya dari `main`** (`p-6 lg:p-10`). Wrapper halaman
+  (`Dashboard.tsx` dll) memakai `max-w-7xl mx-auto space-y-*` **tanpa** padding
+  horizontal — mencegah gutter ganda 40px di mobile.
+- **Breakpoint grid** (dashboard admin): kartu metrik `sm:grid-cols-3`; dua tabel
+  monitoring `xl:grid-cols-2` (di `lg` 1024px dua tabel jadi terlalu sempit).
+- **Tabel dalam kartu tinggi tetap**: pembungkus `max-h-[420px] overflow-y-auto
+  overflow-x-auto`; tabel `min-w-[440px]` agar sticky `thead` tetap terbaca saat
+  di-scroll horizontal di HP.
 
 ## 5. Komponen (`resources/js/Components/`)
 
@@ -133,11 +146,33 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 
 ## 8. Aksesibilitas & Responsif
 
-- Target sentuh ≥ 40px untuk aksi utama; menu sidebar `py-3`.
-- Tabel dibungkus `overflow-x-auto` (scroll horizontal di HP, bukan remuk).
+### Target sentuh
+
+- Aksi utama ≥ 44px. Menu sidebar `py-3`; tombol ikon header (hamburger,
+  collapse) `p-2.5` (≈40px) + ikon `w-5 h-5` — naik dari `p-2`.
+- Tombol ikon **wajib** punya `aria-label` (mis. "Buka menu navigasi",
+  "Perkecil sidebar"); jangan andalkan ikon saja.
+
+### State & ARIA
+
+- Toggle drawer/hamburger: `aria-expanded={mobileOpen}` +
+  `aria-controls="app-sidebar"`; `<aside id="app-sidebar">`.
+- Dropdown sidebar (Master Data, Laporan): `aria-expanded` +
+  `aria-controls` (`nav-master`, `nav-laporan`) pada tombol, `id` pada panel.
+- Saat drawer mobile terbuka, scroll body dikunci (`document.body.style.overflow
+  = 'hidden'`, reset di cleanup `useEffect`).
 - `title` tooltip saat sidebar collapsed (ikon saja).
-- Kontras teks primer ≥ 4.5:1 di atas putih (slate-500 ke atas untuk teks kecil).
 - Dialog: tutup via tombol + overlay; konfirmasi destruktif berwarna merah.
+
+### Responsif
+
+- Tabel dibungkus `overflow-x-auto` (scroll horizontal di HP, bukan remuk);
+  minimal lebar konten `min-w-[440px]` untuk tabel monitoring.
+- Grid tidak boleh turun ke kolom terlalu sempit: pakai breakpoint `sm`/`xl`
+  sesuai §4, bukan `md`/`lg` yang memadatkan konten.
+- Panel status dengan `min-w-[240px]` hanya di `md:` ke atas; di mobile
+  `w-full`.
+- Kontras teks primer ≥ 4.5:1 di atas putih (slate-500 ke atas untuk teks kecil).
 
 ## 9. Yang Belum / Batasan Diketahui
 
@@ -152,4 +187,7 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 - [ ] Halaman tabel baru? Kartu filter + tabel + `Pagination` + `EmptyState`.
 - [ ] Aksi merusak? Wajib `ConfirmDialog` (`isDestructive` untuk hapus).
 - [ ] Menu baru? Tambah di grup yang tepat + state aktif `currentPath`.
+- [ ] Padding horizontal hanya di `main`; wrapper halaman tanpa `p-*` sendiri.
+- [ ] Tombol ikon baru? Beri `aria-label`; toggle dropdown beri `aria-expanded`.
+- [ ] Kartu metrik tanpa `border-l-4` dekoratif (pakai border penuh / warna teks).
 - [ ] `npx tsc --noEmit` hijau; tanpa `any` (aturan `docs/guidelines.md`).

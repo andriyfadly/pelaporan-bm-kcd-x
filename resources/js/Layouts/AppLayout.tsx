@@ -1,5 +1,5 @@
 import { Link, usePage, router } from '@inertiajs/react';
-import React, { useState, ReactNode } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import {
     LayoutDashboard,
@@ -46,6 +46,13 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const [openMaster, setOpenMaster] = useState(true);
     const [openLaporan, setOpenLaporan] = useState(true);
 
+    useEffect(() => {
+        document.body.style.overflow = mobileOpen ? 'hidden' : '';
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [mobileOpen]);
+
     return (
         <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans flex">
             {mobileOpen && (
@@ -57,7 +64,9 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-0 left-0 h-screen bg-white border-r border-slate-200 z-50 flex flex-col transition-all duration-300 ${collapsed ? 'w-20' : 'w-72'
+                id="app-sidebar"
+                aria-label="Navigasi utama"
+                className={`fixed top-0 left-0 h-dvh bg-white border-r border-slate-200 z-50 flex flex-col transition-all duration-300 ${collapsed ? 'w-20' : 'w-72'
                     } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
             >
                 <div className="pt-8 pb-5 px-5 flex flex-col items-center justify-center text-center border-b border-slate-100">
@@ -108,6 +117,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setOpenMaster(!openMaster)}
+                                    aria-expanded={openMaster}
+                                    aria-controls="nav-master"
                                     className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${isMasterActive
                                             ? 'text-[#2563eb] bg-blue-50/30'
                                             : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
@@ -127,7 +138,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 </button>
 
                                 {(!collapsed && openMaster) && (
-                                    <div className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
+                                    <div id="nav-master" className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
                                         <Link
                                             href="/admin/kode-barang"
                                             className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/admin/kode-barang')
@@ -212,6 +223,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setOpenLaporan(!openLaporan)}
+                                    aria-expanded={openLaporan}
+                                    aria-controls="nav-laporan"
                                     className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${isLaporanActive
                                             ? 'text-[#2563eb] bg-blue-50/30'
                                             : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
@@ -231,7 +244,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 </button>
 
                                 {(!collapsed && openLaporan) && (
-                                    <div className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
+                                    <div id="nav-laporan" className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
                                         <Link
                                             href="/pelaporan-bm/cetak"
                                             className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pelaporan-bm/cetak')
@@ -326,14 +339,20 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                         <button
                             type="button"
                             onClick={() => setCollapsed(!collapsed)}
-                            className="hidden lg:flex p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 cursor-pointer"
+                            aria-label={collapsed ? 'Perbesar sidebar' : 'Perkecil sidebar'}
+                            aria-expanded={!collapsed}
+                            aria-controls="app-sidebar"
+                            className="hidden lg:flex p-2.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 cursor-pointer"
                         >
                             <Menu className="w-5 h-5" />
                         </button>
                         <button
                             type="button"
                             onClick={() => setMobileOpen(!mobileOpen)}
-                            className="lg:hidden p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 cursor-pointer"
+                            aria-label="Buka menu navigasi"
+                            aria-expanded={mobileOpen}
+                            aria-controls="app-sidebar"
+                            className="lg:hidden p-2.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 cursor-pointer"
                         >
                             <Menu className="w-5 h-5" />
                         </button>
