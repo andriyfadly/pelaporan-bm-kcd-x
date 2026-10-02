@@ -2,18 +2,18 @@ import { Head, useForm, router, Link } from '@inertiajs/react';
 import React, { useState, useMemo } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import ConfirmDialog from '@/Components/ConfirmDialog';
+import SearchInput from '@/Components/SearchInput';
+import EmptyState from '@/Components/EmptyState';
 import {
     ArrowLeft,
-    Search,
     Save,
     CheckSquare,
     Square,
-    AlertCircle,
     Info,
     Calendar,
     ChevronDown,
 } from 'lucide-react';
-import { formatRupiah, BULAN_LIST, getNamaBulan } from '@/Utils/format';
+import { formatRupiah, getNamaBulan } from '@/Utils/format';
 
 interface SpjItem {
     id: string;
@@ -179,7 +179,7 @@ export default function Tambah({
                                 </button>
 
                                 {showUraian && (
-                                    <div className="absolute top-full left-0 mt-1 z-30 bg-white border border-slate-200 shadow-xl rounded-xl p-3 w-80 text-xs text-slate-700 space-y-1">
+                                    <div className="absolute top-full left-0 mt-1 z-30 bg-white border border-slate-200 shadow-xl rounded-xl p-3 w-80 max-w-[calc(100vw-3rem)] text-xs text-slate-700 space-y-1">
                                         <div className="font-extrabold uppercase text-[10px] text-slate-400">
                                             Daftar Uraian Pekerjaan:
                                         </div>
@@ -234,21 +234,17 @@ export default function Tambah({
                 </div>
 
                 {/* Search Bar */}
-                <div className="relative">
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Cari nomor SPK, nama barang, atau spesifikasi..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                </div>
+                <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Cari nomor SPK, nama barang, atau spesifikasi..."
+                    ariaLabel="Cari SPK atau barang"
+                />
 
                 {/* Table of SPK & Items */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto max-h-[55vh]">
-                        <table className="w-full text-left text-sm border-collapse">
+                        <table className="w-full min-w-[960px] text-left text-sm border-collapse">
                             <thead className="bg-[#1e3a8a] text-white text-xs uppercase font-extrabold tracking-wider sticky top-0 z-20">
                                 <tr>
                                     <th className="p-3.5 w-1/4">Informasi Dokumen Berkas (SPK)</th>
@@ -262,8 +258,20 @@ export default function Tambah({
                             <tbody className="divide-y divide-slate-200 font-medium">
                                 {filteredGroups.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-12 text-center text-slate-400">
-                                            Tidak ada data barang belanja modal yang ditemukan pada bulan ini.
+                                        <td colSpan={6}>
+                                            <EmptyState
+                                                icon={<Square className="w-10 h-10 text-slate-300" />}
+                                                title={
+                                                    spkGroups.length === 0
+                                                        ? 'Belum ada data barang'
+                                                        : 'Tidak ada yang cocok'
+                                                }
+                                                description={
+                                                    spkGroups.length === 0
+                                                        ? 'Tidak ada data barang belanja modal yang ditemukan pada bulan ini.'
+                                                        : 'Tidak ada SPK atau barang yang cocok dengan pencarian.'
+                                                }
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
@@ -302,6 +310,7 @@ export default function Tambah({
                                                                     onChange={() => toggleGroup(group)}
                                                                     className="w-4 h-4 rounded text-blue-600 cursor-pointer disabled:opacity-50"
                                                                     title="Centang seluruh item di SPK ini"
+                                                                    aria-label={`Centang seluruh item pada SPK ${group.no_spk}`}
                                                                 />
                                                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
                                                                     {group.sumber_perolehan}
@@ -331,6 +340,7 @@ export default function Tambah({
                                                                 disabled={teralokasiIds.includes(item.id)}
                                                                 onChange={() => toggleItem(item.id)}
                                                                 className="w-4 h-4 mt-0.5 rounded text-blue-600 cursor-pointer disabled:opacity-50"
+                                                                aria-label={`Pilih barang ${item.nama_barang}`}
                                                             />
                                                             <div>
                                                                 <div

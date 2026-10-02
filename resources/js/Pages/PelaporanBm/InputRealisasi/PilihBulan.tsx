@@ -40,10 +40,11 @@ export default function PilihBulan({ bulanAwal }: Props) {
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                <label htmlFor="pilih-bulan-realisasi" className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                                     Pilih Bulan
                                 </label>
                                 <select
+                                    id="pilih-bulan-realisasi"
                                     value={selectedBulan}
                                     onChange={(e) => setSelectedBulan(Number(e.target.value))}
                                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"

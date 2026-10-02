@@ -1,7 +1,8 @@
 import { Head, router, Link } from '@inertiajs/react';
 import React, { useState, useMemo } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
-import { ArrowLeft, Save, AlertCircle, Calendar } from 'lucide-react';
+import EmptyState from '@/Components/EmptyState';
+import { ArrowLeft, Save, Calendar } from 'lucide-react';
 import { formatRupiah, getNamaBulan } from '@/Utils/format';
 
 interface RealisasiItem {
@@ -50,11 +51,6 @@ export default function Edit({ kodering, bulan, paguAcuan, items = [], isReadOnl
     }, [items, uncheckedIds]);
 
     const handleSave = () => {
-        if (uncheckedIds.length === 0) {
-            alert('Tidak ada perubahan alokasi barang.');
-            return;
-        }
-
         setProcessing(true);
         router.post(
             '/pelaporan-bm/input-realisasi/update',
@@ -107,7 +103,7 @@ export default function Edit({ kodering, bulan, paguAcuan, items = [], isReadOnl
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm border-collapse">
+                        <table className="w-full min-w-[900px] text-left text-sm border-collapse">
                             <thead className="bg-[#1e3a8a] text-white text-xs uppercase font-extrabold tracking-wider">
                                 <tr>
                                     <th className="p-3.5 w-12 text-center">Status</th>
@@ -121,8 +117,12 @@ export default function Edit({ kodering, bulan, paguAcuan, items = [], isReadOnl
                             <tbody className="divide-y divide-slate-100 font-medium">
                                 {items.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-slate-400">
-                                            Tidak ada item realisasi pada kodering ini.
+                                        <td colSpan={6}>
+                                            <EmptyState
+                                                icon={<Calendar className="w-10 h-10 text-slate-300" />}
+                                                title="Belum ada item realisasi"
+                                                description="Tidak ada item realisasi pada kodering ini."
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
