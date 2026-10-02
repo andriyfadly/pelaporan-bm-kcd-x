@@ -284,6 +284,7 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
         });
         return [...set];
     };
+    const historyMerk = uniqueValues('merk_tipe');
     const historySertifikat = uniqueValues('no_sertifikat');
     const historySatuan = uniqueValues('satuan');
 
@@ -637,18 +638,37 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                                                     <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
                                                         Merk / Tipe *
                                                     </label>
-                                                    <textarea
-                                                        required
-                                                        rows={1}
-                                                        value={item.merk_tipe}
-                                                        onChange={(e) => handleItemChange(index, 'merk_tipe', e.target.value)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') e.preventDefault();
-                                                        }}
-                                                        placeholder="Contoh: Lenovo Core i3"
-                                                        className="w-full px-3 py-2 text-[13px] text-slate-700 bg-white rounded-lg focus:outline-none resize-none field-sizing-content"
-                                                        style={{ border: '1px solid #7dd3fc', minHeight: '2.625rem', maxHeight: '8rem' }}
-                                                    />
+                                                    <div className="relative">
+                                                        <textarea
+                                                            id={`fld_merk_${index}`}
+                                                            required
+                                                            rows={1}
+                                                            value={item.merk_tipe}
+                                                            onChange={(e) => handleItemChange(index, 'merk_tipe', e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') e.preventDefault();
+                                                            }}
+                                                            placeholder="Contoh: Lenovo Core i3"
+                                                            className="w-full px-3 py-2 text-[13px] text-slate-700 bg-white rounded-lg focus:outline-none resize-none field-sizing-content"
+                                                            style={{ border: '1px solid #7dd3fc', minHeight: '2.625rem', maxHeight: '8rem' }}
+                                                        />
+                                                        {historyMerk.length > 0 && item.merk_tipe !== (historyMerk[0] ?? '') && (
+                                                            <div className="absolute top-full left-0 right-0 z-30 bg-white border border-slate-300 rounded-b-lg shadow-xl max-h-40 overflow-y-auto mt-0.5">
+                                                                {historyMerk
+                                                                    .filter((v) => v.toLowerCase().includes((item.merk_tipe || '').toLowerCase()) && v !== item.merk_tipe)
+                                                                    .map((v) => (
+                                                                        <button
+                                                                            type="button"
+                                                                            key={v}
+                                                                            onClick={() => handleItemChange(index, 'merk_tipe', v)}
+                                                                            className="w-full text-left px-3 py-2 text-[13px] text-slate-700 hover:bg-sky-50 cursor-pointer border-b border-slate-100 last:border-0 truncate"
+                                                                        >
+                                                                            {v}
+                                                                        </button>
+                                                                    ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="md:col-span-4">
                                                     <label className="block font-bold text-[11px] text-slate-700 uppercase mb-1.5">
@@ -839,8 +859,7 @@ export default function FormSpk({ kategori, bulan, isEdit, spkData }: Props) {
                 {/* Datalist history (legacy: history_merk, history_sertifikat, history_satuan) */}
                 <datalist id="history_sertifikat">
                     {historySertifikat.map((v) => <option key={v} value={v} />)}
-                </datalist>
-                <datalist id="history_satuan">
+                </datalist>                <datalist id="history_satuan">
                     {historySatuan.map((v) => <option key={v} value={v} />)}
                 </datalist>
             </div>
