@@ -2,6 +2,7 @@ import AppLayout from '@/Layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
 import { ArrowRight, Calendar } from 'lucide-react';
 import React, { useState } from 'react';
+import { BULAN_LIST } from '@/Utils/format';
 
 interface Props {
     bulanAwal?: number;
@@ -10,11 +11,6 @@ interface Props {
 export default function PilihBulan({ bulanAwal }: Props) {
     const defaultBulan = bulanAwal || new Date().getMonth() + 1;
     const [selectedBulan, setSelectedBulan] = useState(defaultBulan);
-
-    const bulanList = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-    ];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,16 +34,17 @@ export default function PilihBulan({ bulanAwal }: Props) {
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                <label htmlFor="pilih-bulan-spj" className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                                     Pilih Bulan
                                 </label>
                                 <select
+                                    id="pilih-bulan-spj"
                                     value={selectedBulan}
                                     onChange={(e) => setSelectedBulan(Number(e.target.value))}
                                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                                     required
                                 >
-                                    {bulanList.map((nama, idx) => (
+                                    {BULAN_LIST.map((nama, idx) => (
                                         <option key={idx + 1} value={idx + 1}>
                                             {nama}
                                         </option>

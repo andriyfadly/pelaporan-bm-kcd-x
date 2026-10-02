@@ -5,20 +5,21 @@ import {
     Plus,
     Trash2,
     Lock,
-    Search,
-    X,
     Pencil,
     CheckCircle2,
     Clock,
     Box,
     BookOpen,
     Wrench,
-    AlertCircle,
     Upload,
     Download,
     FileSpreadsheet,
 } from 'lucide-react';
 import ConfirmDialog from '@/Components/ConfirmDialog';
+import Modal from '@/Components/Modal';
+import SearchInput from '@/Components/SearchInput';
+import EmptyState from '@/Components/EmptyState';
+import { BULAN_LIST } from '@/Utils/format';
 
 interface SpjItem {
     id: string;
@@ -76,11 +77,6 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
         file: null as File | null,
         bulan,
     });
-
-    const bulanNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-    ];
 
     const isReadOnly = isLocked || statusKirim === 'menunggu_approval' || statusKirim === 'disetujui';
 
@@ -150,10 +146,6 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
 
     const handleImportSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!importData.file) {
-            alert('Silakan pilih berkas template terlebih dahulu.');
-            return;
-        }
         postImport('/pelaporan-bm/spj/import', {
             forceFormData: true,
             onSuccess: () => {
@@ -165,7 +157,7 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
 
     return (
         <AppLayout title="Data Barang">
-            <Head title={`Data Barang | Bulan ${bulanNames[bulan - 1]}`} />
+            <Head title={`Data Barang | Bulan ${BULAN_LIST[bulan - 1]}`} />
 
             <div className="space-y-6">
                 {/* Header Floating Banner Bar */}
@@ -176,7 +168,7 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                                 <Box className="w-4 h-4" /> Manajemen Data Barang
                             </span>
                             <span className="px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold font-mono">
-                                Total SPJ Bulan {bulanNames[bulan - 1]}: {groupedSpk.length} Berkas
+                                Total SPJ Bulan {BULAN_LIST[bulan - 1]}: {groupedSpk.length} Berkas
                             </span>
                             <span className="px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold font-mono">
                                 Total Barang: {items.length} Item
@@ -191,7 +183,7 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                             Katalog Dokumen SPJ Belanja Modal
                         </h1>
                         <p className="text-slate-500 text-xs">
-                            Pengelolaan dokumen SPK pengadaan belanja modal dan rincian fisik barang sekolah periode <strong>Bulan {bulanNames[bulan - 1]}</strong>.
+                            Pengelolaan dokumen SPK pengadaan belanja modal dan rincian fisik barang sekolah periode <strong>Bulan {BULAN_LIST[bulan - 1]}</strong>.
                         </p>
                     </div>
 
@@ -252,30 +244,18 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                 </div>
 
                 {/* Live Filter Input Bar */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm flex items-center gap-3">
-                    <Search className="w-5 h-5 text-slate-400 ml-2 shrink-0" />
-                    <input
-                        type="text"
-                        placeholder="Cari Data SPJ / Barang (Nomor SPK, Nama Barang, Kode, atau Merk)..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-transparent border-none text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-0"
-                    />
-                    {searchQuery && (
-                        <button
-                            type="button"
-                            onClick={() => setSearchQuery('')}
-                            className="text-slate-400 hover:text-slate-600 p-1 mr-1 cursor-pointer"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
+                <SearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Cari Data SPJ / Barang (Nomor SPK, Nama Barang, Kode, atau Merk)..."
+                    ariaLabel="Cari data SPJ atau barang"
+                    className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm"
+                />
 
                 {/* Tabel Grouped SPJ */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left">
+                        <table className="w-full min-w-[1100px] text-xs text-left">
                             <thead className="bg-[#1e3a8a] text-white font-extrabold uppercase tracking-wider text-[11px] sticky top-0 z-10">
                                 <tr>
                                     <th className="py-3.5 px-4 w-[240px]">Dokumen SPK</th>
@@ -430,9 +410,20 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan={7} className="py-12 text-center text-slate-400">
-                                            <Box className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                                            Belum ada berkas data barang / SPJ pada periode bulan ini.
+                                        <td colSpan={7}>
+                                            <EmptyState
+                                                icon={<Box className="w-10 h-10 text-slate-300" />}
+                                                title={
+                                                    items.length === 0
+                                                        ? 'Belum ada data barang'
+                                                        : 'Tidak ada yang cocok'
+                                                }
+                                                description={
+                                                    items.length === 0
+                                                        ? `Belum ada berkas data barang / SPJ pada periode bulan ${BULAN_LIST[bulan - 1]}.`
+                                                        : 'Tidak ada dokumen SPK atau barang yang cocok dengan pencarian.'
+                                                }
+                                            />
                                         </td>
                                     </tr>
                                 )}
@@ -440,7 +431,7 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                             <tfoot className="bg-slate-100 border-t-2 border-slate-300 font-extrabold text-xs">
                                 <tr>
                                     <td colSpan={4} className="py-3 px-4 text-right uppercase tracking-wider text-slate-700">
-                                        Total Keseluruhan SPJ Bulan {bulanNames[bulan - 1]} :
+                                        Total Keseluruhan SPJ Bulan {BULAN_LIST[bulan - 1]} :
                                     </td>
                                     <td colSpan={3} className="py-3 px-4 text-right font-mono font-black text-blue-700 text-sm bg-blue-100/50">
                                         Rp {grandTotal.toLocaleString('id-ID')}
@@ -453,123 +444,100 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
             </div>
 
             {/* Modal Import Excel */}
-            {showImportModal && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-                            <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-                                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                                Import SPJ dari Excel
-                            </h3>
-                            <button
-                                type="button"
-                                onClick={() => setShowImportModal(false)}
-                                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <p className="text-slate-500 text-xs mb-4 leading-relaxed">
-                            Unggah berkas sesuai template. Data bulan <strong>Bulan {bulanNames[bulan - 1]}</strong>.
-                            Import bersifat all-or-nothing: jika ada satu baris tidak valid, seluruh impor dibatalkan.
-                        </p>
-                        <div className="flex justify-end mb-4">
-                            <a
-                                href="/templates/template_import_spj.xlsx"
-                                download
-                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition"
-                            >
-                                <Download className="w-3.5 h-3.5" /> Download Template
-                            </a>
-                        </div>
-                        <form onSubmit={handleImportSubmit}>
-                            <div className="border-2 border-dashed border-emerald-200 bg-slate-50 hover:bg-emerald-50/40 rounded-xl p-5 text-center transition mb-4">
-                                <Upload className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-                                <p className="text-[11px] text-slate-500 mb-2">Mendukung berkas .xlsx atau .xls</p>
-                                <input
-                                    type="file"
-                                    accept=".xlsx,.xls"
-                                    onChange={(e) => setImportData('file', e.target.files?.[0] || null)}
-                                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-                                />
-                                {importErrors.file && (
-                                    <p className="text-red-500 text-xs mt-2">{importErrors.file}</p>
-                                )}
-                            </div>
-                            <div className="flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowImportModal(false)}
-                                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
-                                >
-                                    Batal
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={importProcessing}
-                                    className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm disabled:opacity-50 cursor-pointer"
-                                >
-                                    <Upload className="w-4 h-4" />
-                                    {importProcessing ? 'Memproses...' : 'Proses Import'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+            <Modal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                title="Import SPJ dari Excel"
+                maxWidth="lg"
+            >
+                <p className="text-slate-500 text-xs mb-4 leading-relaxed">
+                    Unggah berkas sesuai template. Data bulan <strong>Bulan {BULAN_LIST[bulan - 1]}</strong>.
+                    Import bersifat all-or-nothing: jika ada satu baris tidak valid, seluruh impor dibatalkan.
+                </p>
+                <div className="flex justify-end mb-4">
+                    <a
+                        href="/templates/template_import_spj.xlsx"
+                        download
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition"
+                    >
+                        <Download className="w-3.5 h-3.5" /> Download Template
+                    </a>
                 </div>
-            )}
+                <form onSubmit={handleImportSubmit}>
+                    <div className="border-2 border-dashed border-emerald-200 bg-slate-50 hover:bg-emerald-50/40 rounded-xl p-5 text-center transition mb-4">
+                        <Upload className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                        <p className="text-[11px] text-slate-500 mb-2">Mendukung berkas .xlsx atau .xls</p>
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            required
+                            onChange={(e) => setImportData('file', e.target.files?.[0] || null)}
+                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                        />
+                        {importErrors.file && (
+                            <p className="text-red-500 text-xs mt-2">{importErrors.file}</p>
+                        )}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowImportModal(false)}
+                            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={importProcessing}
+                            className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm disabled:opacity-50 cursor-pointer"
+                        >
+                            <Upload className="w-4 h-4" />
+                            {importProcessing ? 'Memproses...' : 'Proses Import'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
 
             {/* Modal Kategori Belanja (Sesuai legacy data_barang.php) */}
-            {showKategoriModal && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-                            <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-                                <Box className="w-5 h-5 text-blue-600" />
-                                Pilih Kategori Belanja
-                            </h3>
-                            <button
-                                type="button"
-                                onClick={() => setShowKategoriModal(false)}
-                                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+            <Modal
+                isOpen={showKategoriModal}
+                onClose={() => setShowKategoriModal(false)}
+                title="Pilih Kategori Belanja"
+                maxWidth="md"
+            >
+                <p className="text-slate-500 text-xs mb-5 leading-relaxed">
+                    Silakan pilih jenis kategori belanja terlebih dahulu untuk menyesuaikan aturan dokumen SPK pengadaan.
+                </p>
+                <div className="space-y-3">
+                    <button
+                        type="button"
+                        onClick={() => openCreateWithKategori('Peralatan & Mesin')}
+                        className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 flex items-center gap-4 transition text-left cursor-pointer"
+                    >
+                        <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+                            <Wrench className="w-5 h-5" />
                         </div>
-                        <p className="text-slate-500 text-xs mb-5 leading-relaxed">
-                            Silakan pilih jenis kategori belanja terlebih dahulu untuk menyesuaikan aturan dokumen SPK pengadaan.
-                        </p>
-                        <div className="space-y-3">
-                            <button
-                                type="button"
-                                onClick={() => openCreateWithKategori('Peralatan & Mesin')}
-                                className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 flex items-center gap-4 transition text-left cursor-pointer"
-                            >
-                                <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                                    <Wrench className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="font-bold text-slate-800 text-sm">Peralatan & Mesin</div>
-                                    <div className="text-slate-400 text-xs">Komputer, Mebel, Alat Lab, dll.</div>
-                                </div>
-                            </button>
+                        <div>
+                            <div className="font-bold text-slate-800 text-sm">Peralatan & Mesin</div>
+                            <div className="text-slate-400 text-xs">Komputer, Mebel, Alat Lab, dll.</div>
+                        </div>
+                    </button>
 
-                            <button
-                                type="button"
-                                onClick={() => openCreateWithKategori('Buku')}
-                                className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-teal-600 hover:bg-teal-50/50 flex items-center gap-4 transition text-left cursor-pointer"
-                            >
-                                <div className="w-11 h-11 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0">
-                                    <BookOpen className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="font-bold text-slate-800 text-sm">Buku Perpustakaan / Umum</div>
-                                    <div className="text-slate-400 text-xs">Wajib isi No. Sertifikat / Pabrik saat input.</div>
-                                </div>
-                            </button>
+                    <button
+                        type="button"
+                        onClick={() => openCreateWithKategori('Buku')}
+                        className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-teal-600 hover:bg-teal-50/50 flex items-center gap-4 transition text-left cursor-pointer"
+                    >
+                        <div className="w-11 h-11 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0">
+                            <BookOpen className="w-5 h-5" />
                         </div>
-                    </div>
+                        <div>
+                            <div className="font-bold text-slate-800 text-sm">Buku Perpustakaan / Umum</div>
+                            <div className="text-slate-400 text-xs">Wajib isi No. Sertifikat / Pabrik saat input.</div>
+                        </div>
+                    </button>
                 </div>
-            )}
+            </Modal>
 
             {/* Dialog Konfirmasi Hapus SPK */}
             <ConfirmDialog

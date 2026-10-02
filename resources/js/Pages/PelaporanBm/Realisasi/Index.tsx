@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import Pagination from '@/Components/Pagination';
+import { BULAN_LIST } from '@/Utils/format';
 import {
     Table as TableIcon,
     Filter,
@@ -65,11 +66,6 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
     const [filterBarang, setFilterBarang] = useState(filters.filter_barang || '');
     const [filterBulan, setFilterBulan] = useState(filters.filter_bulan ? String(filters.filter_bulan) : '');
     const [filterTahun, setFilterTahun] = useState(filters.filter_tahun ? String(filters.filter_tahun) : '');
-
-    const bulanNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
 
     const handleFilter = (e: React.FormEvent) => {
         e.preventDefault();
@@ -159,7 +155,7 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="">-- Semua Bulan --</option>
-                            {bulanNames.map((nama, idx) => (
+                            {BULAN_LIST.map((nama, idx) => (
                                 <option key={idx + 1} value={idx + 1}>
                                     {nama}
                                 </option>
@@ -304,7 +300,7 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                                                 {thn}
                                             </td>
                                             <td className="p-3 border-r border-slate-100 text-center font-bold text-sky-600">
-                                                {bulanNames[row.bulan_realisasi - 1] || row.bulan_realisasi}
+                                                {BULAN_LIST[row.bulan_realisasi - 1] || row.bulan_realisasi}
                                             </td>
                                             <td className="p-3 border-r border-slate-100 font-mono text-[11px]">
                                                 {row.kode_barang}
