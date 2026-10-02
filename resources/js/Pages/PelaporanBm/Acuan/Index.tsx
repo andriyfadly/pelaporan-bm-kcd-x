@@ -1,18 +1,20 @@
-import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 import React, { useState, useRef } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import Pagination from '@/Components/Pagination';
-import { formatRupiah } from '@/Utils/format';
+import Modal from '@/Components/Modal';
+import ConfirmDialog from '@/Components/ConfirmDialog';
+import SearchInput from '@/Components/SearchInput';
+import EmptyState from '@/Components/EmptyState';
+import { BULAN_LIST, getNamaBulan } from '@/Utils/format';
 import {
     Plus,
     Trash2,
-    X,
     Download,
     Upload,
     FileSpreadsheet,
     Building2,
     Coins,
-    Search,
     Calendar,
     AlertTriangle,
 } from 'lucide-react';
@@ -68,12 +70,16 @@ export default function Index({
     listBulan = [],
     sekolahs = [],
 }: Props) {
-    const { auth } = usePage<any>().props;
+    const { auth } = usePage<{ auth?: { user?: { roles?: string[]; sekolah_id?: string | null } } }>().props;
     const user = auth?.user;
     const isAdmin = user?.roles?.includes('admin_kcd') || !user?.sekolah_id;
     const roleName = isAdmin ? 'Admin' : 'User';
 
     const [showModal, setShowModal] = useState(false);
+    const [confirmTarget, setConfirmTarget] = useState<AcuanItem | null>(null);
+    const [showKosongkan, setShowKosongkan] = useState(false);
+    const [kosongkanMessage, setKosongkanMessage] = useState('');
+    const [importError, setImportError] = useState('');
     const [suggestions, setSuggestions] = useState<{ kode_barang: string; nama_barang: string }[]>([]);
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -110,12 +116,6 @@ export default function Index({
         nominal: 0,
         bulan: filterBulan || (new Date().getMonth() === 0 ? 12 : new Date().getMonth()),
     });
-
-    const bulanNames: Record<number, string> = {
-        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
-        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
-        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember',
-    };
 
     // Filter handlers
     const handleSearchChange = (val: string) => {
@@ -180,9 +180,10 @@ export default function Index({
     const handleImportSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!importData.file) {
-            alert('Silakan pilih berkas template terlebih dahulu.');
+            setImportError('Silakan pilih berkas template terlebih dahulu.');
             return;
         }
+        setImportError('');
         postImport('/pelaporan-bm/acuan/import', {
             forceFormData: true,
             onSuccess: () => {
@@ -191,23 +192,24 @@ export default function Index({
         });
     };
 
-    const handleDelete = (id: string) => {
-        if (confirm('Hapus baris acuan ini?')) {
-            router.delete(`/pelaporan-bm/acuan/${id}`);
-        }
+    const handleDelete = () => {
+        if (!confirmTarget) return;
+        router.delete(`/pelaporan-bm/acuan/${confirmTarget.id}`, { preserveScroll: true });
+        setConfirmTarget(null);
     };
 
     const handleKosongkanSemua = () => {
-        const teksBulan = filterBulan ? `bulan "${bulanNames[Number(filterBulan)] || filterBulan}"` : 'SEMUA BULAN';
-        if (
-            confirm(
-                `⚠️ PERINGATAN KERAS!\n\nApakah Anda benar-benar yakin ingin MENGHAPUS data acuan khusus untuk ${teksBulan.toUpperCase()}?\n\nData yang dihapus tidak bisa dikembalikan.`
-            )
-        ) {
-            router.post('/pelaporan-bm/acuan/destroy-all', {
-                bulan: filterBulan,
-            });
-        }
+        const teksBulan = filterBulan ? `bulan "${getNamaBulan(Number(filterBulan))}"` : 'SEMUA BULAN';
+        setKosongkanMessage(`Menghapus SELURUH data acuan untuk ${teksBulan}. Data yang dihapus tidak bisa dikembalikan.`);
+        setShowKosongkan(true);
+    };
+
+    const handleKosongkanConfirm = () => {
+        router.post('/pelaporan-bm/acuan/destroy-all', {
+            bulan: filterBulan,
+        });
+        setShowKosongkan(false);
+        setKosongkanMessage('');
     };
 
     return (
@@ -254,7 +256,10 @@ export default function Index({
                                 />
                             </div>
                             {importErrors.file && (
-                                <p className="text-red-500 text-xs mt-2">{importErrors.file}</p>
+                                <p className="text-red-600 text-xs mt-2">{importErrors.file}</p>
+                            )}
+                            {importError && (
+                                <p className="text-red-600 text-xs mt-2" role="alert">{importError}</p>
                             )}
                         </div>
 
@@ -302,7 +307,7 @@ export default function Index({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div className="bg-gradient-to-br from-blue-50 to-blue-100/60 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
                             <div>
-                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
                                     <Coins className="w-3.5 h-3.5 text-[#2563eb]" />
                                     Total Akumulasi Nominal Acuan
                                 </span>
@@ -334,16 +339,11 @@ export default function Index({
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
                                     Cari Satuan Pendidikan
                                 </label>
-                                <div className="relative">
-                                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        type="text"
-                                        value={searchInput}
-                                        onChange={(e) => handleSearchChange(e.target.value)}
-                                        placeholder="Ketik nama sekolah vendor... (Contoh: SMKN 1 KUNINGAN)"
-                                        className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                    />
-                                </div>
+                                <SearchInput
+                                    value={searchInput}
+                                    onChange={handleSearchChange}
+                                    placeholder="Ketik nama sekolah vendor... (Contoh: SMKN 1 KUNINGAN)"
+                                />
                             </div>
                             <div className="md:col-span-5">
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
@@ -357,9 +357,9 @@ export default function Index({
                                         className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
                                     >
                                         <option value="">-- Semua Bulan --</option>
-                                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                                            <option key={m} value={m}>
-                                                {bulanNames[m]}
+                                        {BULAN_LIST.map((name, i) => (
+                                            <option key={i + 1} value={i + 1}>
+                                                {name}
                                             </option>
                                         ))}
                                     </select>
@@ -370,7 +370,7 @@ export default function Index({
 
                     {/* Table View */}
                     <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                        <table className="w-full text-left text-xs border-collapse">
+                        <table className="w-full min-w-[1024px] text-left text-xs border-collapse">
                             <thead>
                                 <tr className="bg-blue-50 text-[#1e3a8a] border-b-2 border-blue-100 font-bold uppercase text-[11px]">
                                     <th className="py-3 px-3 text-center w-12">No</th>
@@ -414,11 +414,12 @@ export default function Index({
                                                 Rp {Number(item.nominal).toLocaleString('id-ID')}
                                             </td>
                                             <td className="py-3 px-3 text-center text-slate-600 font-semibold">
-                                                {bulanNames[item.bulan] || item.bulan}
+                                                {getNamaBulan(item.bulan)}
                                             </td>
                                             <td className="py-3 px-3 text-center">
                                                 <button
-                                                    onClick={() => handleDelete(item.id)}
+                                                    onClick={() => setConfirmTarget(item)}
+                                                    aria-label={`Hapus acuan ${item.uraian}`}
                                                     className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition cursor-pointer"
                                                     title="Hapus Baris Ini"
                                                 >
@@ -429,8 +430,12 @@ export default function Index({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={10} className="py-8 text-center text-slate-400 italic">
-                                            Tidak ada data barang acuan di sistem untuk filter bulan ini.
+                                        <td colSpan={10}>
+                                            <EmptyState
+                                                icon={<AlertTriangle className="w-10 h-10 text-slate-300" />}
+                                                title="Tidak ada data acuan"
+                                                description={`Belum ada barang acuan untuk ${filterBulan ? `bulan ${getNamaBulan(Number(filterBulan))}` : 'filter ini'}. Import template atau tambah manual.`}
+                                            />
                                         </td>
                                     </tr>
                                 )}
@@ -448,21 +453,12 @@ export default function Index({
             </div>
 
             {/* Modal Tambah Manual */}
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-base font-bold text-slate-800">
-                                Tambah Manual Data Acuan
-                            </h3>
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title="Tambah Manual Data Acuan"
+                maxWidth="lg"
+            >
                         <form onSubmit={handleSubmit} className="space-y-3 text-xs">
                             {isAdmin && sekolahs.length > 0 && (
                                 <div>
@@ -548,9 +544,9 @@ export default function Index({
                                         onChange={(e) => setData('bulan', Number(e.target.value))}
                                         className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     >
-                                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                                            <option key={m} value={m}>
-                                                {bulanNames[m]}
+                                        {BULAN_LIST.map((name, i) => (
+                                            <option key={i + 1} value={i + 1}>
+                                                {name}
                                             </option>
                                         ))}
                                     </select>
@@ -597,9 +593,29 @@ export default function Index({
                                 </button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            )}
+            </Modal>
+
+            {/* Konfirmasi Hapus Baris */}
+            <ConfirmDialog
+                isOpen={confirmTarget !== null}
+                onClose={() => setConfirmTarget(null)}
+                onConfirm={handleDelete}
+                title="Hapus Baris Acuan"
+                message={`Hapus acuan "${confirmTarget?.uraian ?? ''}"${confirmTarget?.sekolah ? ` atas nama ${confirmTarget.sekolah.nama_sekolah}` : ''}? Tindakan ini tidak dapat dibatalkan.`}
+                confirmText="Ya, Hapus"
+                isDestructive={true}
+            />
+
+            {/* Konfirmasi Kosongkan Semua */}
+            <ConfirmDialog
+                isOpen={showKosongkan}
+                onClose={() => setShowKosongkan(false)}
+                onConfirm={handleKosongkanConfirm}
+                title="Kosongkan Data Acuan"
+                message={kosongkanMessage}
+                confirmText="Ya, Kosongkan"
+                isDestructive={true}
+            />
         </AppLayout>
     );
 }
