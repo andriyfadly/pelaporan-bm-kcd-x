@@ -58,7 +58,8 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
   - Return: Inertia `PelaporanBm/InputRealisasi/PilihBulan` (Pilih bulan input realisasi identik legacy).
 - **`GET /pelaporan-bm/input-realisasi`**
   - Parameter: `bulan_realisasi` (1-12, default bulan berjalan).
-  - Return: Inertia `PelaporanBm/InputRealisasi/Index` — rekap acuan per kodering (nominal acuan, realisasi, kekurangan) + status kunci/kirim.
+  - Return: Inertia `PelaporanBm/InputRealisasi/Index` — rekap acuan per kodering (nominal acuan, realisasi, kekurangan) + status kunci/kirim dan `canEditApproved`.
+  - `canEditApproved = true` hanya untuk user dengan role `super_admin` ketika `status_kirim = disetujui`. Prop ini mengatur affordance UI; otorisasi mutasi tetap diperiksa di controller.
 - **`GET /pelaporan-bm/input-realisasi/tambah`**
   - Parameter: `kodering`, `bulan_realisasi`.
   - Return: Inertia `PelaporanBm/InputRealisasi/Tambah` — daftar item SPJ bulan tersebut yang belum dialokasikan ke kodering.
@@ -67,10 +68,12 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
   - Result: Membuat row `pelaporan_bm_realisasi` per item (transaksi DB; status realisasi di-derive dari row ini). Diblokir jika bulan dikunci/`menunggu_approval`/`disetujui`, atau bila total nilai item terpilih melebihi sisa anggaran kodering (acuan - realisasi berjalan).
 - **`GET /pelaporan-bm/input-realisasi/edit`**
   - Parameter: `kodering`, `bulan_realisasi`.
-  - Return: Inertia `PelaporanBm/InputRealisasi/Edit` — item yang sudah dialokasikan ke kodering tersebut.
+  - Return: Inertia `PelaporanBm/InputRealisasi/Edit` — item yang sudah dialokasikan ke kodering tersebut, `isReadOnly`, dan `canEditApproved`.
+  - Laporan terkunci atau berstatus `menunggu_approval`/`disetujui` read-only untuk role selain `super_admin`. `super_admin` boleh mengedit hanya status `disetujui`, termasuk saat `status_kunci = true`.
 - **`POST /pelaporan-bm/input-realisasi/update`**
   - Payload: `kodering`, `bulan_realisasi`, `uncheck_ids` (array id `pelaporan_bm_realisasi` yang dilepas).
   - Result: Menghapus row realisasi terpilih (status realisasi SPJ asal otomatis kembali belum-teralisasi karena derive).
+  - Guard: request biasa ditolak untuk laporan terkunci atau berstatus `menunggu_approval`/`disetujui`. Role `super_admin` boleh menghapus alokasi pada laporan `disetujui`; `uncheck_ids` tetap dibatasi oleh sekolah, bulan, dan kodering. Status `KunciLaporan.status_kirim` dan `status_kunci` tidak diubah.
 - **`POST /pelaporan-bm/input-realisasi/kirim-laporan`**
   - Payload: `bulan_realisasi` (1-12).
   - Result: Validasi server-side total realisasi &ge; total acuan (balance), lalu mengunci status laporan menjadi `menunggu_approval` + `status_kunci = true` (upsert `pelaporan_bm_kunci_laporan` per sekolah+bulan).

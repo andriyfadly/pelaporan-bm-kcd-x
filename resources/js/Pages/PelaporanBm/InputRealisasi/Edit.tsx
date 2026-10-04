@@ -29,9 +29,10 @@ interface Props {
     paguAcuan: number;
     items: RealisasiItem[];
     isReadOnly: boolean;
+    canEditApproved: boolean;
 }
 
-export default function Edit({ kodering, bulan, paguAcuan, items = [], isReadOnly }: Props) {
+export default function Edit({ kodering, bulan, paguAcuan, items = [], isReadOnly, canEditApproved }: Props) {
     // unchecked IDs are tracked for deletion
     const [uncheckedIds, setUncheckedIds] = useState<string[]>([]);
     const [processing, setProcessing] = useState(false);

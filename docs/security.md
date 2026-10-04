@@ -12,6 +12,7 @@
 | Unduh & cetak (`unduh-rekap-bm`, `cetak-laporan-bm`) | ✅ | ✅ | ✅ (sekolah sendiri) |
 | Kunci laporan (`kunci-laporan-bm`) | ✅ | ✅ | ❌ |
 | Verifikasi (`verifikasi-laporan-bm`) | ✅ | ✅ | ❌ |
+| Edit alokasi realisasi setelah disetujui | ✅ | ❌ | ❌ |
 | Kelola user (`kelola-user`) | ✅ | ✅* | ❌ |
 | Lihat log aktivitas (`lihat-log-aktivitas`) | ✅ | ✅\*\* | ❌ |
 
@@ -45,6 +46,15 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 - `InputRealisasi::update` menghapus `uncheck_ids` **hanya** dalam scope
   `bulan_realisasi` + `kodering_belanja` (anti hapus realisasi periode lain
   via ID tebakan).
+- Laporan dengan `status_kirim` `menunggu_approval` atau `disetujui` tetap
+  read-only untuk `admin_kcd`, operator sekolah, dan bendahara sekolah.
+  Role `super_admin` adalah pengecualian untuk laporan `disetujui`: boleh
+  membuka halaman edit dan melepas alokasi realisasi melalui
+  `InputRealisasiController::update`. Status tetap `disetujui`; perubahan
+  tidak otomatis mengembalikan laporan ke `draft`.
+- Izin tersebut dihitung server-side melalui `hasRole('super_admin')`, bukan
+  username. Prop Inertia `canEditApproved` hanya mengendalikan tampilan UI;
+  guard backend tetap wajib memvalidasi setiap request mutasi.
 - `acuan_id` lintas sekolah ditolak ("Acuan tidak valid untuk sekolah ini").
 - Import Excel SPJ dibatasi allowlist NPSN (`SpjController::NPSN_IMPORT_SPJ`):
   sekolah di luar daftar ditolak di backend (flash error) dan tombol Import
@@ -105,5 +115,5 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 - [ ] `TURNSTILE_ENABLED=true` + key valid; HTTPS + cookie secure
 - [ ] `composer audit` bersih; `npm audit` ditinjau
 - [ ] Backup DB terjadwal & pernah diuji restore
-- [x] Test regresi: `php artisan test --compact` (204 test, 1104 assertion), `npx tsc --noEmit`, Pint
+- [x] Test regresi: `php artisan test --compact` (207 test, 1134 assertion), `npx tsc --noEmit`, Pint
 - [ ] `composer test-coverage` tetap wajib dijalankan sebagai gate coverage sebelum merge

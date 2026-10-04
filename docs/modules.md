@@ -1,6 +1,6 @@
 # Alur & Modul Fungsional Per Role
 
-Sistem Pelaporan Belanja Modal KCD Wilayah X membagi akses ke dalam 2 peran utama: **Admin KCD** dan **Operator Sekolah**.
+Sistem Pelaporan Belanja Modal KCD Wilayah X membagi akses fungsional ke dalam tiga kelompok: **Super Admin**, **Admin KCD**, dan **Operator/Bendahara Sekolah**.
 
 ---
 
@@ -50,7 +50,9 @@ Khusus role Operator Sekolah dengan alur yang identik dengan legacy:
    - Rekapitulasi target acuan vs realisasi per kode rekening (identik `legacy/input_realisasi.php`).
    - Accordion daftar uraian belanja per kodering, nominal acuan, realisasi, dan kekurangan.
    - Tombol alokasi SPJ ke kodering dan edit alokasi; alokasi dibatasi sisa anggaran kodering (diblokir bila melebihi).
-   - Panel status pengajuan laporan di bagian bawah: tombol Kirim Laporan ke KCD Wilayah X yang hanya aktif jika total kekurangan anggaran terpenuhi (= 0), dikonfirmasi via ConfirmDialog. Mengubah status menjadi `menunggu_approval` + mengunci laporan.
+    - Panel status pengajuan laporan di bagian bawah: tombol Kirim Laporan ke KCD Wilayah X yang hanya aktif jika total kekurangan anggaran terpenuhi (= 0), dikonfirmasi via ConfirmDialog. Mengubah status menjadi `menunggu_approval` + mengunci laporan.
+    - Setelah `status_kirim` menjadi `menunggu_approval` atau `disetujui`, halaman menjadi read-only untuk Admin KCD dan akun sekolah.
+    - Role `super_admin` tetap dapat membuka halaman edit dan melepas alokasi item pada laporan `disetujui`, termasuk ketika `status_kunci = true`. Perubahan hanya menghapus baris realisasi yang dipilih dalam scope bulan+kodering; status laporan tetap `disetujui`.
 
 ---
 
@@ -91,7 +93,8 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
   - Rekapitulasi laporan seluruh sekolah per bulan, perbandingan acuan vs realisasi per kodering, serta toggle gembok laporan.
   - Paritas `legacy/rekapan_admin.php`: baris tabel = sekolah dengan acuan pada bulan terpilih (tanpa fallback ke semua sekolah); realisasi & log fisik dihitung dari baris `pelaporan_bm_realisasi` yang dialokasikan ke acuan (`acuan_id`), bukan dari seluruh SPJ bulan tersebut.
   - Detail drill-down dua tab: REKENING ACUAN (badge SESUAI/BELUM SESUAI ditentukan `kekurangan <= 0`) dan INPUT REALISASI (log fisik dengan kolom bulan realisasi).
-  - Aksi admin: ACC Laporan (status → Disetujui) dan Buka Kunci Edit (status → draft) via `/pelaporan-bm/kunci-laporan/status`.
+   - Aksi admin: ACC Laporan (status → Disetujui) dan Buka Kunci Edit (status → draft) via `/pelaporan-bm/kunci-laporan/status`.
+   - `super_admin` memiliki jalur koreksi langsung untuk edit alokasi realisasi yang sudah disetujui; Admin KCD tetap menggunakan alur Buka Kunci Edit sebelum koreksi.
 
 ---
 

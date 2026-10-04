@@ -44,6 +44,19 @@ class InputRealisasiTest extends TestCase
         return $user;
     }
 
+    private function superAdmin(string $username = 'super_real'): User
+    {
+        $user = activity()->withoutLogging(fn () => User::create([
+            'name' => 'Super Admin',
+            'username' => $username,
+            'password' => bcrypt('Password123!'),
+            'password_changed_at' => now(),
+        ]));
+        $user->assignRole('super_admin');
+
+        return $user;
+    }
+
     private function acuan(Sekolah $sekolah, int $bulan, string $kodering, float $nominal): Acuan
     {
         return activity()->withoutLogging(fn () => Acuan::create([
@@ -321,6 +334,59 @@ class InputRealisasiTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('PelaporanBm/InputRealisasi/Edit')
                 ->where('isReadOnly', true));
+    }
+
+    public function test_super_admin_dapat_mengedit_realisasi_yang_sudah_disetujui(): void
+    {
+        $sekolah = $this->sekolah();
+        $superAdmin = $this->superAdmin();
+        $this->acuan($sekolah, 5, '5.2.02.01', 1_000_000);
+        $spj = $this->spj($sekolah, 5, '1.3.2.01', 400_000);
+        $realisasi = activity()->withoutLogging(fn () => Realisasi::create([
+            'spj_id' => $spj->id,
+            'sekolah_id' => $sekolah->id,
+            'kodering_belanja' => '5.2.02.01',
+            'bulan_realisasi' => 5,
+            'kode_barang' => '1.3.2.01',
+            'nama_barang' => 'Barang',
+            'volume' => 1,
+            'harga_satuan' => 400_000,
+            'nilai_perolehan' => 400_000,
+        ]));
+        KunciLaporan::create([
+            'sekolah_id' => $sekolah->id,
+            'bulan' => 5,
+            'status_kunci' => true,
+            'status_kirim' => 'disetujui',
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->get(route('pelaporan-bm.input-realisasi.edit', [
+                'sekolah_id' => $sekolah->id,
+                'kodering' => '5.2.02.01',
+                'bulan_realisasi' => 5,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('isReadOnly', false)
+                ->where('canEditApproved', true));
+
+        $this->actingAs($superAdmin)
+            ->post(route('pelaporan-bm.input-realisasi.update'), [
+                'sekolah_id' => $sekolah->id,
+                'kodering' => '5.2.02.01',
+                'bulan_realisasi' => 5,
+                'uncheck_ids' => [$realisasi->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('pelaporan_bm_realisasi', ['id' => $realisasi->id]);
+        $this->assertDatabaseHas('pelaporan_bm_kunci_laporan', [
+            'sekolah_id' => $sekolah->id,
+            'bulan' => 5,
+            'status_kirim' => 'disetujui',
+            'status_kunci' => true,
+        ]);
     }
 
     public function test_update_menolak_parameter_tidak_valid(): void

@@ -103,6 +103,7 @@ class InputRealisasiController extends Controller
             'bulan' => $bulan,
             'isLocked' => $isLocked,
             'statusKirim' => $statusKirim,
+            'canEditApproved' => $user->hasRole('super_admin') && $statusKirim === 'disetujui',
         ]);
     }
 
@@ -119,7 +120,8 @@ class InputRealisasiController extends Controller
 
         // Cek lock
         $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
-        if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
+        $canEditApproved = $user->hasRole('super_admin') && $kunci?->status_kirim === 'disetujui';
+        if (! $canEditApproved && ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true))) {
             return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
                 ->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
@@ -198,7 +200,8 @@ class InputRealisasiController extends Controller
 
         // Cek kunci
         $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
-        if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
+        $canEditApproved = $user->hasRole('super_admin') && $kunci?->status_kirim === 'disetujui';
+        if (! $canEditApproved && ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true))) {
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
@@ -331,7 +334,8 @@ class InputRealisasiController extends Controller
         }
 
         $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
-        $isReadOnly = (bool) ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true));
+        $canEditApproved = $user->hasRole('super_admin') && $kunci?->status_kirim === 'disetujui';
+        $isReadOnly = ! $canEditApproved && (bool) ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true));
 
         // Pagu acuan
         $paguAcuan = (float) Acuan::where('bulan', $bulan)
@@ -353,6 +357,7 @@ class InputRealisasiController extends Controller
             'paguAcuan' => $paguAcuan,
             'items' => $items,
             'isReadOnly' => $isReadOnly,
+            'canEditApproved' => $canEditApproved,
         ]);
     }
 
@@ -370,7 +375,8 @@ class InputRealisasiController extends Controller
         }
 
         $kunci = KunciLaporan::where('sekolah_id', $sekolahId)->where('bulan', $bulan)->first();
-        if ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
+        $canEditApproved = $user->hasRole('super_admin') && $kunci?->status_kirim === 'disetujui';
+        if (! $canEditApproved && ($kunci?->status_kunci || in_array($kunci?->status_kirim, ['menunggu_approval', 'disetujui'], true))) {
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 

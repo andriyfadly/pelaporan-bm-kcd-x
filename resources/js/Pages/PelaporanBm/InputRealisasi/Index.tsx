@@ -35,6 +35,7 @@ interface Props {
     bulan: number;
     isLocked: boolean;
     statusKirim: string;
+    canEditApproved: boolean;
 }
 
 export default function Index({
@@ -45,10 +46,11 @@ export default function Index({
     bulan,
     isLocked,
     statusKirim,
+    canEditApproved,
 }: Props) {
     const [expandedKodering, setExpandedKodering] = useState<string[]>([]);
     const [showKirimConfirm, setShowKirimConfirm] = useState(false);
-    const isReadOnly = isLocked || statusKirim === 'menunggu_approval' || statusKirim === 'disetujui';
+    const isReadOnly = !canEditApproved && (isLocked || statusKirim === 'menunggu_approval' || statusKirim === 'disetujui');
 
     const { post, processing } = useForm({
         bulan_realisasi: bulan,
