@@ -271,6 +271,32 @@ class InputRealisasiTest extends TestCase
         ]);
     }
 
+    public function test_simpan_tidak_mengalokasikan_item_spj_yang_sudah_teralokasi(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->operator($sekolah, 'op_duplicate_allocation');
+        $this->acuan($sekolah, 5, '5.2.02.01', 1_000_000);
+        $spj = $this->spj($sekolah, 5, '1.3.2.01', 400_000);
+
+        $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.simpan'), [
+                'kodering' => '5.2.02.01',
+                'bulan_realisasi' => 5,
+                'item_ids' => [$spj->id],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.simpan'), [
+                'kodering' => '5.2.02.01',
+                'bulan_realisasi' => 5,
+                'item_ids' => [$spj->id],
+            ])
+            ->assertSessionHas('error', 'Sebagian barang sudah dialokasikan ke realisasi.');
+
+        $this->assertDatabaseCount('pelaporan_bm_realisasi', 1);
+    }
+
     public function test_edit_menolak_parameter_tidak_valid_dan_menandai_readonly_saat_terkunci(): void
     {
         $sekolah = $this->sekolah();
@@ -467,6 +493,33 @@ class InputRealisasiTest extends TestCase
             'status_kirim' => 'menunggu_approval',
             'status_kunci' => true,
         ]);
+    }
+
+    public function test_kirim_laporan_tidak_bisa_dikirim_ulang(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->operator($sekolah, 'op_submit_once');
+        $this->acuan($sekolah, 5, '5.2.02.01', 500_000);
+        $spj = $this->spj($sekolah, 5, '1.3.2.01', 500_000);
+        activity()->withoutLogging(fn () => Realisasi::create([
+            'spj_id' => $spj->id,
+            'sekolah_id' => $sekolah->id,
+            'kodering_belanja' => '5.2.02.01',
+            'bulan_realisasi' => 5,
+            'kode_barang' => '1.3.2.01',
+            'nama_barang' => 'Barang',
+            'volume' => 1,
+            'harga_satuan' => 500_000,
+            'nilai_perolehan' => 500_000,
+        ]));
+
+        $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.kirim-laporan'), ['bulan_realisasi' => 5])
+            ->assertRedirect();
+
+        $this->actingAs($user)
+            ->post(route('pelaporan-bm.input-realisasi.kirim-laporan'), ['bulan_realisasi' => 5])
+            ->assertSessionHas('error', 'Laporan bulan ini telah dikirim atau sedang menunggu persetujuan.');
     }
 
     public function test_index_menormalkan_bulan_di_luar_rentang_ke_bulan_berjalan(): void

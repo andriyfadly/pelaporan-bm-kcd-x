@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,6 +37,8 @@ class UserController extends Controller
             'sekolah_id' => 'nullable|uuid|exists:master_data_sekolah,id',
             'role' => 'required|string|in:admin_kcd,operator_sekolah,bendahara_sekolah',
         ]);
+
+        $this->validateRoleSchoolPair($validated['role'], $validated['sekolah_id'] ?? null);
 
         $user = activity()->withoutLogging(fn () => User::create([
             'name' => $validated['name'],
@@ -76,6 +79,10 @@ class UserController extends Controller
 
         $menonaktifkan = array_key_exists('is_active', $validated) && ! (bool) $validated['is_active'];
 
+        if (array_key_exists('role', $validated)) {
+            $this->validateRoleSchoolPair($validated['role'], $validated['sekolah_id'] ?? null);
+        }
+
         if ($menonaktifkan && $user->id === auth()->id()) {
             return back()->with('error', 'Anda tidak dapat menonaktifkan akun Anda sendiri!');
         }
@@ -90,6 +97,8 @@ class UserController extends Controller
 
         if (array_key_exists('sekolah_id', $validated)) {
             $data['sekolah_id'] = $validated['sekolah_id'];
+        } elseif (($validated['role'] ?? null) === 'admin_kcd') {
+            $data['sekolah_id'] = null;
         }
 
         if (! empty($validated['password'])) {
@@ -132,6 +141,17 @@ class UserController extends Controller
             ->log('ubah-user');
 
         return back()->with('success', 'Data user berhasil diperbarui!');
+    }
+
+    private function validateRoleSchoolPair(string $role, ?string $sekolahId): void
+    {
+        $requiresSchool = in_array($role, ['operator_sekolah', 'bendahara_sekolah'], true);
+
+        if ($requiresSchool !== ($sekolahId !== null)) {
+            throw ValidationException::withMessages([
+                'sekolah_id' => 'Role admin tidak boleh terhubung ke sekolah, sedangkan role sekolah wajib memiliki sekolah.',
+            ]);
+        }
     }
 
     public function destroy(User $user): RedirectResponse

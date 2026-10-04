@@ -16,12 +16,16 @@ trait ResolvesSekolah
     {
         $user = $request->user();
 
-        if ($user->sekolah_id) {
-            return $user->sekolah_id;
+        if ($this->isSekolahUser($user)) {
+            if ($user->sekolah_id) {
+                return $user->sekolah_id;
+            }
+
+            abort(403, 'Akun Anda belum terhubung ke sekolah mana pun.');
         }
 
-        if ($this->isSekolahUser($user)) {
-            abort(403, 'Akun Anda belum terhubung ke sekolah mana pun.');
+        if ($user->sekolah_id) {
+            return $user->sekolah_id;
         }
 
         return $request->input('sekolah_id') ?: null;
@@ -29,6 +33,6 @@ trait ResolvesSekolah
 
     protected function isSekolahUser(User $user): bool
     {
-        return $user->hasRole(['operator_sekolah', 'bendahara_sekolah']);
+        return $user->hasRole(['operator_sekolah', 'bendahara_sekolah']) || (bool) $user->sekolah_id;
     }
 }

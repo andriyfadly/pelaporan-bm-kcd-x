@@ -89,11 +89,17 @@ class PasswordExpiryTest extends TestCase
 
     public function test_operator_can_update_expired_password_with_complex_password(): void
     {
+        $sekolah = Sekolah::create([
+            'nama_sekolah' => 'SMKN Password Test',
+            'kota_kab' => 'Kota Bandung',
+        ]);
+
         $user = User::create([
             'name' => 'Operator Test 2',
             'username' => '20222004-admin',
             'password' => Hash::make('#SidiptaKCD10'),
             'password_changed_at' => null,
+            'sekolah_id' => $sekolah->id,
         ]);
         $user->assignRole('operator_sekolah');
 

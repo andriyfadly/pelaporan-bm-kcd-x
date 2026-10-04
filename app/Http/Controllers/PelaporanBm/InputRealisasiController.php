@@ -224,6 +224,14 @@ class InputRealisasiController extends Controller
             return back()->with('error', 'Data barang tidak valid.');
         }
 
+        $sudahTeralokasi = Realisasi::where('sekolah_id', $sekolahId)
+            ->whereIn('spj_id', $items->modelKeys())
+            ->exists();
+
+        if ($sudahTeralokasi) {
+            return back()->with('error', 'Sebagian barang sudah dialokasikan ke realisasi.');
+        }
+
         // Proteksi batas anggaran: total item yang dipilih tidak boleh melebihi sisa anggaran kodering
         $totalPilihan = (float) $items->sum('nilai_perolehan');
         $totalRealisasiSaatIni = (float) Realisasi::where('sekolah_id', $sekolahId)
@@ -236,7 +244,46 @@ class InputRealisasiController extends Controller
             return back()->with('error', 'Gagal Simpan: Jumlah inputan Rekening '.$kodering.' (Rp '.number_format($totalPilihan, 0, ',', '.').') melebihi sisa anggaran acuan target (Rp '.number_format(max($sisaAnggaran, 0), 0, ',', '.').').');
         }
 
-        DB::transaction(function () use ($items, $sekolahId, $kodering, $bulan, $acuan) {
+        $allocationError = null;
+
+        DB::transaction(function () use ($itemIds, $sekolahId, $kodering, $bulan, $acuanRows, $acuan, &$allocationError) {
+            $items = Spj::where('sekolah_id', $sekolahId)
+                ->where('bulan_realisasi', $bulan)
+                ->whereIn('id', $itemIds)
+                ->lockForUpdate()
+                ->get();
+
+            if ($items->count() !== count(array_unique($itemIds))) {
+                $allocationError = 'Data barang tidak valid.';
+
+                return;
+            }
+
+            if (Realisasi::where('sekolah_id', $sekolahId)
+                ->whereIn('spj_id', $items->modelKeys())
+                ->lockForUpdate()
+                ->exists()) {
+                $allocationError = 'Sebagian barang sudah dialokasikan ke realisasi.';
+
+                return;
+            }
+
+            $lockedAcuanRows = Acuan::whereIn('id', $acuanRows->modelKeys())
+                ->lockForUpdate()
+                ->get();
+
+            $totalRealisasiSaatIni = (float) Realisasi::where('sekolah_id', $sekolahId)
+                ->where('bulan_realisasi', $bulan)
+                ->where('kodering_belanja', $kodering)
+                ->lockForUpdate()
+                ->sum('nilai_perolehan');
+
+            if ((float) $items->sum('nilai_perolehan') > (float) $lockedAcuanRows->sum('nominal') - $totalRealisasiSaatIni + 0.01) {
+                $allocationError = 'Gagal Simpan: Jumlah inputan melebihi sisa anggaran acuan target.';
+
+                return;
+            }
+
             foreach ($items as $item) {
                 // Buat record di pelaporan_bm_realisasi
                 Realisasi::create([
@@ -263,6 +310,10 @@ class InputRealisasiController extends Controller
                 ]);
             }
         });
+
+        if ($allocationError !== null) {
+            return back()->with('error', $allocationError);
+        }
 
         return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
             ->with('success', 'Barang SPJ berhasil dialokasikan ke rekening realisasi.');
@@ -345,6 +396,14 @@ class InputRealisasiController extends Controller
 
         if (! $sekolahId || $bulan < 1 || $bulan > 12) {
             return back()->with('error', 'Parameter tidak valid.');
+        }
+
+        $kunciSaatIni = KunciLaporan::where('sekolah_id', $sekolahId)
+            ->where('bulan', $bulan)
+            ->first();
+
+        if (in_array($kunciSaatIni?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
+            return back()->with('error', 'Laporan bulan ini telah dikirim atau sedang menunggu persetujuan.');
         }
 
         $acuanList = Acuan::where('bulan', $bulan)

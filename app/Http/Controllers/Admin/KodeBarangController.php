@@ -20,10 +20,12 @@ class KodeBarangController extends Controller
         $query = KodeBarang::query()
             ->when($search, function ($q) use ($search) {
                 $escaped = addcslashes($search, '%_\\');
-                $q->where('kode_barang', 'like', "%{$escaped}%")
-                    ->orWhere('uraian', 'like', "%{$escaped}%")
-                    ->orWhere('kodering_aset', 'like', "%{$escaped}%")
-                    ->orWhere('jenis_aset', 'like', "%{$escaped}%");
+                $q->where(function ($q) use ($escaped) {
+                    $q->where('kode_barang', 'like', "%{$escaped}%")
+                        ->orWhere('uraian', 'like', "%{$escaped}%")
+                        ->orWhere('kodering_aset', 'like', "%{$escaped}%")
+                        ->orWhere('jenis_aset', 'like', "%{$escaped}%");
+                });
             })
             ->orderBy('kode_barang', 'asc');
 

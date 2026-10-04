@@ -116,10 +116,15 @@ class UserManagementTest extends TestCase
         ]);
         $target->assignRole('operator_sekolah');
 
+        $sekolah = Sekolah::create([
+            'nama_sekolah' => 'SMKN Role Mapping',
+            'kota_kab' => 'Kota Bandung',
+        ]);
+
         // admin_kcd -> peran admin_kcd
         $this->actingAs($admin)
             ->put(route('admin.user.update', $target), [
-                'username' => 'target_map', 'role' => 'admin_kcd',
+                'username' => 'target_map', 'role' => 'admin_kcd', 'sekolah_id' => null,
             ])
             ->assertRedirect();
         $this->assertTrue($target->fresh()->hasRole('admin_kcd'));
@@ -127,7 +132,7 @@ class UserManagementTest extends TestCase
         // bendahara_sekolah -> peran bendahara_sekolah
         $this->actingAs($admin)
             ->put(route('admin.user.update', $target), [
-                'username' => 'target_map', 'role' => 'bendahara_sekolah',
+                'username' => 'target_map', 'role' => 'bendahara_sekolah', 'sekolah_id' => $sekolah->id,
             ])
             ->assertRedirect();
         $this->assertTrue($target->fresh()->hasRole('bendahara_sekolah'));
@@ -150,5 +155,39 @@ class UserManagementTest extends TestCase
             ->assertRedirect();
 
         $this->assertTrue($target->fresh()->hasRole('operator_sekolah'));
+    }
+
+    public function test_store_menolak_role_admin_dengan_sekolah_dan_role_sekolah_tanpa_sekolah(): void
+    {
+        $admin = User::create([
+            'name' => 'Admin KCD', 'username' => 'admin_validation', 'password' => bcrypt('password'),
+        ]);
+        $admin->assignRole('admin_kcd');
+        $sekolah = Sekolah::create([
+            'nama_sekolah' => 'SMKN Validasi',
+            'kota_kab' => 'Kota Bandung',
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.user.store'), [
+                'name' => 'Admin Salah',
+                'username' => 'admin_salah',
+                'password' => 'Secret123!',
+                'role' => 'admin_kcd',
+                'sekolah_id' => $sekolah->id,
+            ])
+            ->assertSessionHasErrors('sekolah_id');
+
+        $this->actingAs($admin)
+            ->post(route('admin.user.store'), [
+                'name' => 'Operator Salah',
+                'username' => 'operator_salah',
+                'password' => 'Secret123!',
+                'role' => 'operator_sekolah',
+            ])
+            ->assertSessionHasErrors('sekolah_id');
+
+        $this->assertDatabaseMissing('users', ['username' => 'admin_salah']);
+        $this->assertDatabaseMissing('users', ['username' => 'operator_salah']);
     }
 }

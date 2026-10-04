@@ -526,7 +526,7 @@ class SpjController extends Controller
     {
         $user = $request->user();
 
-        if ($user->sekolah_id && $spj->sekolah_id !== $user->sekolah_id) {
+        if ($this->isSekolahUser($user) && $spj->sekolah_id !== $user->sekolah_id) {
             abort(403, 'Tidak memiliki akses');
         }
 
@@ -590,7 +590,7 @@ class SpjController extends Controller
     {
         $user = $request->user();
 
-        if ($user->sekolah_id && $spj->sekolah_id !== $user->sekolah_id) {
+        if ($this->isSekolahUser($user) && $spj->sekolah_id !== $user->sekolah_id) {
             abort(403, 'Tidak memiliki akses');
         }
 
@@ -673,6 +673,7 @@ class SpjController extends Controller
 
     public function cariBarang(Request $request): JsonResponse
     {
+        $sekolahId = $this->resolveSekolahId($request);
         $q = trim((string) $request->input('q', ''));
         if ($q === '') {
             return response()->json([]);
@@ -704,7 +705,7 @@ class SpjController extends Controller
         }
 
         $results = Spj::select('kode_barang', 'nama_barang', 'jenis_aset', 'satuan')
-            ->when($request->user()->sekolah_id, fn ($q) => $q->where('sekolah_id', $request->user()->sekolah_id))
+            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
             ->where(function ($query) use ($searchParam) {
                 $query->whereRaw('LOWER(kode_barang) LIKE ?', [$searchParam])
                     ->orWhereRaw('LOWER(nama_barang) LIKE ?', [$searchParam]);

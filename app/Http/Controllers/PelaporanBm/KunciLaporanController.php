@@ -63,6 +63,8 @@ class KunciLaporanController extends Controller
             $kunci->dikunci_oleh = $request->user()->id;
         } elseif ($statusKirim === 'draft') {
             $kunci->status_kunci = false;
+            $kunci->dikunci_pada = null;
+            $kunci->dikunci_oleh = null;
         }
         $kunci->save();
 

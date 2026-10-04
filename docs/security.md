@@ -38,6 +38,10 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
   `Acuan`, `Realisasi`, `Rekapan`, `Cetak`, `InputRealisasi`, `Spj`.
 - `AcuanController::store` memaksa `sekolah_id` ke sekolah user, mengabaikan
   kiriman request (anti cross-tenant write).
+- User dengan role `operator_sekolah` atau `bendahara_sekolah` wajib memiliki
+  `sekolah_id`; akun sekolah tanpa tenant ditolak 403 dan tidak masuk jalur
+  admin. Manajemen user juga menolak role admin yang terhubung ke sekolah atau
+  role sekolah tanpa sekolah.
 - `InputRealisasi::update` menghapus `uncheck_ids` **hanya** dalam scope
   `bulan_realisasi` + `kodering_belanja` (anti hapus realisasi periode lain
   via ID tebakan).
@@ -47,6 +51,11 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
   tidak dirender di UI (prop `canImportSpj`). Verifikasi: `SpjImportTest`.
 - `like` search di-escape (`addcslashes %_\`) anti wildcard-injection — termasuk
   `search_satuan` (`AcuanController::index`).
+- Alokasi realisasi menolak `spj_id` yang sudah dialokasikan. Pemeriksaan item,
+  pagu, dan realisasi berjalan di dalam transaction dengan `lockForUpdate()`
+  untuk mencegah duplicate submit dan overspending akibat request bersamaan.
+- Pengiriman laporan yang sudah `menunggu_approval` atau `disetujui` ditolak;
+  pengembalian ke `draft` juga membersihkan metadata penguncian.
 - Terverifikasi `SecurityHardeningTest` + `AcuanImportGapTest` + `CetakControllerEdgeTest`
   (cross-tenant 403, kunci diblokir, operator tanpa sekolah ditolak).
 
@@ -71,7 +80,8 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 | CSRF | Middleware web Laravel + token Inertia |
 | XSS / formula injection | Blade escape default; React escape default; unduhan teks via `safeCell` di `CetakBmSheet` **dan** `RealisasiBmSheet` (prefix anti formula-injection `=+-@\t\r`), terverifikasi `CetakBmSheetTest` + `ExportSafeCellTest` |
 | Mass assignment | `$fillable` eksplisit; validasi per-controller |
-| Data terkunci diubah | Guard status di tiap aksi tulis (kunci/menunggu/disetujui) |
+| Data terkunci diubah | Guard status di tiap aksi tulis (kunci/menunggu/disetujui); metadata lock dibersihkan saat kembali ke draft |
+| Duplicate allocation / overspending | Guard `spj_id` + transaction dan `lockForUpdate()` pada item, pagu acuan, dan realisasi |
 | Secret bocor ke log | `logExcept` password/token di model User; test `password_tidak_bocor_di_log` |
 | DB error bocor ke user | Handler `QueryException` di `bootstrap/app.php`: Inertia `Error` 500 (XHR) / flash ramah (web biasa) + `Log::error` konteks; tanpa SQL ke respons |
 | Error page default Laravel | Handler `Throwable` 4xx → Inertia `Error` (navigasi) / `errors.page` Blade (load awal); tanpa stack trace ke user |
@@ -95,4 +105,5 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 - [ ] `TURNSTILE_ENABLED=true` + key valid; HTTPS + cookie secure
 - [ ] `composer audit` bersih; `npm audit` ditinjau
 - [ ] Backup DB terjadwal & pernah diuji restore
-- [ ] Test hijau: `composer test-coverage`, `tsc --noEmit`, Pint
+- [x] Test regresi: `php artisan test --compact` (204 test, 1104 assertion), `npx tsc --noEmit`, Pint
+- [ ] `composer test-coverage` tetap wajib dijalankan sebagai gate coverage sebelum merge

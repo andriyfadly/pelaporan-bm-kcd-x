@@ -17,7 +17,17 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $isAdmin = ! $user->sekolah_id;
+
+        $isAdmin = $user->hasRole(['super_admin', 'admin_kcd'])
+            || (! $user->sekolah_id && ! $user->hasRole(['operator_sekolah', 'bendahara_sekolah']));
+
+        if (! $isAdmin && ! $user->sekolah_id) {
+            abort(403, 'Akun Anda belum terhubung ke sekolah mana pun.');
+        }
+
+        if (! $isAdmin && ! $user->sekolah_id) {
+            abort(403, 'Akun Anda belum terhubung ke sekolah mana pun.');
+        }
 
         $namaBulanArr = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',

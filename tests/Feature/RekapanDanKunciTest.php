@@ -97,5 +97,7 @@ class RekapanDanKunciTest extends TestCase
         $kunci->refresh();
         $this->assertEquals('draft', $kunci->status_kirim);
         $this->assertFalse((bool) $kunci->status_kunci);
+        $this->assertNull($kunci->dikunci_pada);
+        $this->assertNull($kunci->dikunci_oleh);
     }
 }

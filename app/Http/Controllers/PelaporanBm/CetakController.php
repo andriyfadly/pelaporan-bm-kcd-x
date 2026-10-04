@@ -26,6 +26,7 @@ class CetakController extends Controller
         $bulan = (int) ($request->input('bulan') ?: date('n'));
 
         $years = Realisasi::whereNotNull('ba_tgl')
+            ->when($sekolahId, fn ($query) => $query->where('sekolah_id', $sekolahId))
             ->pluck('ba_tgl')
             ->map(fn ($d) => (int) date('Y', strtotime((string) $d)))
             ->unique()
@@ -51,7 +52,7 @@ class CetakController extends Controller
             ->orderBy('no_spk')
             ->get() : collect();
 
-        $sekolahs = ! $user->sekolah_id
+        $sekolahs = $user->hasRole(['super_admin', 'admin_kcd'])
             ? Sekolah::orderBy('nama_sekolah')->select('id', 'nama_sekolah')->get()
             : [];
 

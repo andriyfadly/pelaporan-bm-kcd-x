@@ -77,6 +77,25 @@ class SecurityHardeningTest extends TestCase
         $this->actingAs($user)->get(route('admin.user.index'))->assertForbidden();
     }
 
+    public function test_role_sekolah_tanpa_tenant_tidak_masuk_jalur_admin(): void
+    {
+        $user = User::create([
+            'name' => 'Operator Tanpa Sekolah',
+            'username' => 'operator_tanpa_sekolah',
+            'password' => bcrypt('Password123!'),
+            'password_changed_at' => now(),
+        ]);
+        $user->assignRole('operator_sekolah');
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('pelaporan-bm.spj.index'))
+            ->assertForbidden();
+    }
+
     public function test_operator_tidak_bisa_akses_admin(): void
     {
         $operator = $this->operator($this->sekolah());
@@ -245,6 +264,14 @@ class SecurityHardeningTest extends TestCase
         $sekolahOperator = $this->sekolah('SMKN Sendiri');
         $sekolahLain = $this->sekolah('SMKN Rahasia');
         $operator = $this->operator($sekolahOperator);
+
+        Acuan::create([
+            'sekolah_id' => $sekolahOperator->id,
+            'bulan' => 5,
+            'kodering' => '5.2.02.01',
+            'uraian' => 'Acuan sekolah sendiri',
+            'nominal' => 1_000_000,
+        ]);
 
         $this->actingAs($operator)
             ->get(route('pelaporan-bm.rekapan.index', ['bulan' => 5]))
