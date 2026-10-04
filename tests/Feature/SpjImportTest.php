@@ -101,6 +101,7 @@ class SpjImportTest extends TestCase
             'satuan' => 'UNIT',
             'vol' => 2,
             'harga' => 7500000,
+            'jenis' => 'Peralatan & Mesin',
         ], $override));
     }
 
@@ -110,6 +111,7 @@ class SpjImportTest extends TestCase
             'No. SP2D', 'Sumber Perolehan *', 'No. SPK / Kwitansi *',
             'BA NO *', 'BA TGL *', 'Kode Barang', 'Merk / Tipe *',
             'No. Sertifikat', 'Ukuran', 'Satuan *', 'Volume *', 'Harga Satuan *',
+            'Jenis *',
         ];
     }
 
@@ -122,7 +124,7 @@ class SpjImportTest extends TestCase
         $file = $this->xlsx([
             $this->header(),
             $this->barisValid(),
-            $this->barisValid(['no_spk' => '001/SPK/2026', 'kode' => '5.2.02.02.001', 'satuan' => 'BUAH', 'vol' => 10, 'harga' => 250000]),
+            $this->barisValid(['no_spk' => '001/SPK/2026', 'kode' => '5.2.02.02.001', 'satuan' => 'BUAH', 'vol' => 10, 'harga' => 250000, 'jenis' => 'Buku']),
         ]);
 
         $this->actingAs($operator)
@@ -146,12 +148,14 @@ class SpjImportTest extends TestCase
             'harga_satuan' => 7500000,
             'nilai_perolehan' => 15000000,
             'bulan_realisasi' => 5,
+            'kategori' => 'Peralatan & Mesin',
         ]);
         $this->assertDatabaseHas('pelaporan_bm_spj', [
             'kode_barang' => '5.2.02.02.001',
             'nama_barang' => 'Kursi',
             'satuan' => 'BUAH',
             'nilai_perolehan' => 2500000,
+            'kategori' => 'Buku',
         ]);
     }
 
@@ -227,6 +231,25 @@ class SpjImportTest extends TestCase
         $file = $this->xlsx([
             $this->header(),
             $this->barisValid(['tgl' => 'tanggal-ngawur']),
+        ]);
+
+        $this->actingAs($operator)
+            ->post(route('pelaporan-bm.spj.import'), ['file' => $file, 'bulan' => 5])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('pelaporan_bm_spj', 0);
+    }
+
+    public function test_import_menolak_jenis_yang_tidak_dikenal(): void
+    {
+        $sekolah = $this->sekolah('SMKN Jenis Invalid');
+        $operator = $this->operator($sekolah, 'op_jenis_invalid');
+        $this->buatKatalog();
+
+        $file = $this->xlsx([
+            $this->header(),
+            $this->barisValid(['jenis' => 'Kendaraan']),
         ]);
 
         $this->actingAs($operator)

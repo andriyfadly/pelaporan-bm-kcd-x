@@ -362,6 +362,11 @@ class SpjController extends Controller
             $noBaris = $i + 2;
             $get = fn (int $idx): string => trim((string) ($row[$idx] ?? ''));
 
+            $kategori = $get(12);
+            if (! in_array($kategori, ['Peralatan & Mesin', 'Buku'], true)) {
+                $errors[] = "Baris {$noBaris}: Jenis wajib diisi dengan Peralatan & Mesin atau Buku.";
+            }
+
             foreach ([1 => 'Sumber Perolehan', 2 => 'No. SPK/Kwitansi', 3 => 'BA NO', 6 => 'Merk/Tipe', 9 => 'Satuan'] as $idx => $label) {
                 if ($get($idx) === '') {
                     $errors[] = "Baris {$noBaris}: {$label} wajib diisi.";
@@ -404,6 +409,7 @@ class SpjController extends Controller
                 $get = fn (int $idx): string => trim((string) ($row[$idx] ?? ''));
                 $kode = $get(5);
                 $barang = $katalog->get($kode);
+                $kategori = $get(12);
                 $volume = (float) str_replace([',', ' '], '', $get(10));
                 $harga = (float) str_replace([',', ' '], '', $get(11));
 
@@ -415,7 +421,7 @@ class SpjController extends Controller
                     'ba_no' => $get(3),
                     'ba_tgl' => $this->parseTanggalXlsx($row[4] ?? ''),
                     'bulan_realisasi' => $bulan,
-                    'kategori' => null,
+                    'kategori' => $kategori,
                     'kode_barang' => $kode,
                     'nama_barang' => $barang->uraian,
                     'jenis_aset' => $barang->jenis_aset ?: 'Peralatan dan Mesin',
