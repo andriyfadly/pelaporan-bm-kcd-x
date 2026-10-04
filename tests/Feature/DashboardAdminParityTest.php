@@ -93,4 +93,46 @@ class DashboardAdminParityTest extends TestCase
                 ->where('totalBelum', 1)
             );
     }
+
+    public function test_acuan_dan_realisasi_dari_tahun_lain_tidak_masuk_monitoring(): void
+    {
+        $admin = $this->admin();
+        $sekolah = activity()->withoutLogging(fn () => Sekolah::create([
+            'nama_sekolah' => 'SMKN Lintas Tahun',
+            'kota_kab' => 'Kota Bandung',
+        ]));
+
+        activity()->withoutLogging(fn () => Acuan::create([
+            'sekolah_id' => $sekolah->id,
+            'tanggal' => '2025-09-10',
+            'bulan' => 9,
+            'kodering' => '5.2.02.05',
+            'uraian' => 'Acuan Tahun Lama',
+            'nominal' => 1_000_000,
+            'created_at' => '2025-09-10 00:00:00',
+            'updated_at' => '2025-09-10 00:00:00',
+        ]));
+
+        activity()->withoutLogging(fn () => Realisasi::create([
+            'sekolah_id' => $sekolah->id,
+            'ba_tgl' => '2025-09-20',
+            'kodering_belanja' => '5.2.02.05',
+            'bulan_realisasi' => 9,
+            'kode_barang' => '1.3.2.05',
+            'nama_barang' => 'Laptop Tahun Lama',
+            'volume' => 1,
+            'harga_satuan' => 1_000_000,
+            'nilai_perolehan' => 1_000_000,
+            'created_at' => '2025-09-20 00:00:00',
+            'updated_at' => '2025-09-20 00:00:00',
+        ]));
+
+        $this->actingAs($admin)
+            ->get(route('dashboard', ['bulan' => 9, 'tahun' => 2026]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('totalTarget', 0)
+                ->where('totalSelesai', 0)
+                ->where('totalBelum', 0));
+    }
 }

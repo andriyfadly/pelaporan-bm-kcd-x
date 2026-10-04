@@ -3,7 +3,7 @@
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
 > sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
 > **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
-> Status terakhir: 204 passed / 1104 assertions. Coverage gate tetap wajib
+> Status terakhir: 205 passed / 1117 assertions. Coverage gate tetap wajib
 > dijalankan sebelum merge.
 
 ## 1. Perintah
@@ -69,7 +69,7 @@ Status kini: **100% total, semua file 100%**.
 | `AcuanIndexEdgeTest` | Default bulan Januari→Desember (unit `defaultBulan`), `search_satuan` by nama/NPSN + escape wildcard `%`, `parseTanggal` kosong, `parseXlsx` zip rusak + rich-text/inlineStr, daftar sekolah untuk admin, bulan kosong tanpa filter |
 | `CetakControllerEdgeTest` | `show()` stub "Belum Ada Sekolah" saat DB sekolah kosong, daftar sekolah admin, `check()` terfilter per sekolah & hitung `ba_tgl` null |
 | `RekapanEdgeTest` | Label status menunggu/disetujui, realisasi per `acuan_id`, sort TUNTAS dulu + alfabetis, grup `TANPA KODERING` tak masuk progres, paritas legacy (baris dari acuan, realisasi dari alokasi `pelaporan_bm_realisasi`, SPJ tanpa acuan tak muncul/dihitung) |
-| `DashboardEdgeTest` | Admin listSelesai/listBelum, fallback target semua sekolah, status `menunggu_approval`→SELESAI, unit `bulanLapor` Januari→Desember |
+| `DashboardEdgeTest` / `DashboardAdminParityTest` | Admin listSelesai/listBelum, fallback target semua sekolah, status `menunggu_approval`→SELESAI, unit `bulanLapor` Januari→Desember, dan data acuan/realisasi tahun lain tidak masuk monitoring |
 | `ActivityLogFilterTest` | Filter `subject_type`, `dari`/`sampai`, `event`, `q` (description), `sekolah_id` (properties) |
 | `ExportSafeCellTest` | `RealisasiBmSheet::safeCell` netralkan formula + null/kosong, `CetakBmSheet::formatKotaKab` kosong/spasi |
 | `RekapanDanKunciTest` | Rekapan, toggle kunci, status draft→disetujui, metadata lock dibersihkan saat kembali ke draft |

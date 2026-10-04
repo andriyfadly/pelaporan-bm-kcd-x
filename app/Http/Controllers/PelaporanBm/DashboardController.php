@@ -53,8 +53,9 @@ class DashboardController extends Controller
                 ->whereNotNull('sekolah_id')
                 ->where(function ($q) use ($filterTahun) {
                     $q->whereYear('tanggal', $filterTahun)
-                        ->orWhereNull('tanggal')
-                        ->orWhereYear('created_at', $filterTahun);
+                        ->orWhere(function ($q) use ($filterTahun) {
+                            $q->whereNull('tanggal')->whereYear('created_at', $filterTahun);
+                        });
                 });
 
             $targetSekolah = Sekolah::query()
@@ -68,8 +69,9 @@ class DashboardController extends Controller
                 ->where('bulan_realisasi', $filterBulan)
                 ->where(function ($q) use ($filterTahun) {
                     $q->whereYear('ba_tgl', $filterTahun)
-                        ->orWhereNull('ba_tgl')
-                        ->orWhereYear('created_at', $filterTahun);
+                        ->orWhere(function ($q) use ($filterTahun) {
+                            $q->whereNull('ba_tgl')->whereYear('created_at', $filterTahun);
+                        });
                 })
                 ->whereNotNull('sekolah_id')
                 ->distinct()
