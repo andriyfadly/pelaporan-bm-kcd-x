@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
+use App\Models\DistribusiBhp\Pengajuan;
+use App\Models\DistribusiBhp\PengajuanDetail;
 use App\Models\DistribusiBhp\Penyedia;
 use App\Models\Master\Sekolah;
 use App\Models\User;
@@ -321,5 +323,135 @@ class BhpPenerimaanTest extends TestCase
             ->get(route('distribusi-bhp.penerimaan.index', ['sumber_dana' => 'BOS']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('items.data', 0));
+    }
+
+    public function test_saldo_awal_bisa_dihapus_sebelum_dipakai(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 30, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertRedirect();
+
+        $penerimaan = Penerimaan::firstOrFail();
+
+        $this->actingAs($operator)
+            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->assertRedirect();
+
+        $this->assertSame(0, Penerimaan::count());
+        $this->assertSame(0, PenerimaanDetail::count());
+        $this->assertSame(0, app(StokService::class)->fisik($barang));
+    }
+
+    public function test_saldo_awal_yang_sudah_dipakai_tidak_bisa_dihapus(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = User::create(['name' => 'Divisi', 'username' => 'divisi.del', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 30, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertRedirect();
+
+        // Pengajuan approved yang memakai barang dari saldo awal.
+        $pengajuan = Pengajuan::create([
+            'sekolah_id' => $sekolah->id,
+            'user_id' => $user->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'approved',
+            'tanggal' => '2026-06-17',
+        ]);
+        PengajuanDetail::create([
+            'bhp_pengajuan_id' => $pengajuan->id,
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 5,
+            'jumlah_disetujui' => 5,
+        ]);
+
+        $penerimaan = Penerimaan::firstOrFail();
+
+        $this->actingAs($operator)
+            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->assertSessionHasErrors();
+
+        $this->assertSame(1, Penerimaan::count());
+    }
+
+    public function test_operator_sekolah_lain_tidak_bisa_menghapus_saldo_awal(): void
+    {
+        $sekolahA = $this->sekolah();
+        $sekolahB = Sekolah::create(['nama_sekolah' => 'SMKN Hapus Lain', 'kota_kab' => 'Kota Cimahi']);
+        $operatorA = $this->operator($sekolahA);
+        $barang = $this->barang($sekolahA);
+
+        $this->actingAs($operatorA)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 30, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertRedirect();
+
+        $penerimaan = Penerimaan::firstOrFail();
+
+        $operatorB = User::create([
+            'name' => 'Operator B',
+            'username' => 'op.del.b',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolahB->id,
+            'password_changed_at' => now(),
+        ]);
+        $operatorB->assignRole('operator_sekolah');
+
+        $this->actingAs($operatorB)
+            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->assertForbidden();
+
+        $this->assertSame(1, Penerimaan::count());
+    }
+
+    public function test_penerimaan_biasa_tidak_bisa_dihapus_via_flow_saldo_awal(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertRedirect();
+
+        $penerimaan = Penerimaan::firstOrFail();
+
+        $this->actingAs($operator)
+            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->assertSessionHasErrors();
+
+        $this->assertSame(1, Penerimaan::count());
     }
 }
