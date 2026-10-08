@@ -10,12 +10,108 @@ import {
     LogOut,
     Menu,
     ChevronDown,
+    Boxes,
+    PackageCheck,
     User as UserIcon,
 } from 'lucide-react';
 
 interface Props {
     title?: string;
     children: ReactNode;
+}
+
+interface BhpMenuProps {
+    currentPath: string;
+    collapsed: boolean;
+    openBhp: boolean;
+    setOpenBhp: (open: boolean) => void;
+    permissions: string[];
+}
+
+/** Menu navigasi domain Distribusi BHP, dipisah dari menu Pelaporan BM. */
+function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions }: BhpMenuProps) {
+    const canMaster = permissions.includes('kelola-master-bhp');
+    const canTerima = permissions.includes('kelola-penerimaan-bhp');
+    const canPengajuan = permissions.includes('kelola-pengajuan-bhp');
+    const canReview = permissions.includes('review-pengajuan-bhp');
+
+    const isBhpActive = currentPath.startsWith('/distribusi-bhp');
+
+    const itemClass = (active: boolean) =>
+        `block px-3 py-2 text-[13.5px] rounded-lg transition ${
+            active
+                ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+        }`;
+
+    return (
+        <div className="pt-4">
+            {!collapsed && (
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-2">
+                    Distribusi BHP
+                </div>
+            )}
+            <button
+                type="button"
+                onClick={() => setOpenBhp(!openBhp)}
+                aria-expanded={openBhp}
+                aria-controls="nav-bhp"
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${
+                    isBhpActive ? 'text-[#2563eb] bg-blue-50/30' : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                }`}
+                title={collapsed ? 'Distribusi BHP' : undefined}
+            >
+                <div className="flex items-center gap-3">
+                    <Boxes className="w-5 h-5 shrink-0" />
+                    {!collapsed && <span>Distribusi BHP</span>}
+                </div>
+                {!collapsed && (
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openBhp ? 'rotate-180' : ''}`} />
+                )}
+            </button>
+
+            {!collapsed && openBhp && (
+                <div id="nav-bhp" className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
+                    <Link href="/distribusi-bhp/dashboard" className={itemClass(currentPath.startsWith('/distribusi-bhp/dashboard'))}>
+                        Dashboard BHP
+                    </Link>
+                    {canMaster && (
+                        <>
+                            <Link href="/distribusi-bhp/master/kode-rekening" className={itemClass(currentPath.startsWith('/distribusi-bhp/master/kode-rekening'))}>
+                                Kode Rekening
+                            </Link>
+                            <Link href="/distribusi-bhp/master/barang" className={itemClass(currentPath.startsWith('/distribusi-bhp/master/barang'))}>
+                                Data Barang
+                            </Link>
+                            <Link href="/distribusi-bhp/master/penyedia" className={itemClass(currentPath.startsWith('/distribusi-bhp/master/penyedia'))}>
+                                Penyedia
+                            </Link>
+                        </>
+                    )}
+                    {canTerima && (
+                        <Link href="/distribusi-bhp/penerimaan" className={itemClass(currentPath.startsWith('/distribusi-bhp/penerimaan'))}>
+                            Penerimaan
+                        </Link>
+                    )}
+                    {canPengajuan && (
+                        <Link href="/distribusi-bhp/pengajuan" className={itemClass(currentPath.startsWith('/distribusi-bhp/pengajuan'))}>
+                            Pengajuan
+                        </Link>
+                    )}
+                    {canReview && (
+                        <Link href="/distribusi-bhp/review-pengajuan" className={itemClass(currentPath.startsWith('/distribusi-bhp/review-pengajuan'))}>
+                            Review Pengajuan
+                        </Link>
+                    )}
+                    <Link href="/distribusi-bhp/laporan" className={itemClass(currentPath.startsWith('/distribusi-bhp/laporan'))}>
+                        <span className="inline-flex items-center gap-2">
+                            <PackageCheck className="w-4 h-4" /> Laporan BHP
+                        </span>
+                    </Link>
+                </div>
+            )}
+        </div>
+    );
 }
 
 export default function AppLayout({ title = 'Dashboard', children }: Props) {
@@ -31,8 +127,12 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const currentPath = window.location.pathname;
 
     const roles: string[] = user?.roles || [];
+    const permissions: string[] = user?.permissions || [];
     const isAdmin = roles.includes('admin_kcd') || roles.includes('super_admin') || !user?.sekolah_id;
     const isSuperAdmin = roles.includes('super_admin');
+
+    const canBhp = permissions.includes('lihat-distribusi-bhp');
+    const [openBhp, setOpenBhp] = useState(true);
 
     const isMasterActive =
         currentPath.startsWith('/admin/kode-barang') ||
@@ -256,6 +356,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                     </div>
                                 )}
                             </div>
+
+                            {canBhp && <BhpHtmlMenu currentPath={currentPath} collapsed={collapsed} openBhp={openBhp} setOpenBhp={setOpenBhp} permissions={permissions} />}
                         </>
                     ) : (
                         <>
@@ -311,6 +413,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 <FileSpreadsheet className="w-5 h-5 shrink-0" />
                                 {!collapsed && <span>Data Realisasi</span>}
                             </Link>
+
+                            {canBhp && <BhpHtmlMenu currentPath={currentPath} collapsed={collapsed} openBhp={openBhp} setOpenBhp={setOpenBhp} permissions={permissions} />}
                         </>
                     )}
                 </div>

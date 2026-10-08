@@ -8,6 +8,7 @@ use App\Http\Controllers\DistribusiBhp\BarangController as BhpBarangController;
 use App\Http\Controllers\DistribusiBhp\DashboardController as BhpDashboardController;
 use App\Http\Controllers\DistribusiBhp\DokumenController as BhpDokumenController;
 use App\Http\Controllers\DistribusiBhp\KodeRekeningController as BhpKodeRekeningController;
+use App\Http\Controllers\DistribusiBhp\LaporanController as BhpLaporanController;
 use App\Http\Controllers\DistribusiBhp\PenerimaanController as BhpPenerimaanController;
 use App\Http\Controllers\DistribusiBhp\PengajuanController as BhpPengajuanController;
 use App\Http\Controllers\DistribusiBhp\PenyediaController as BhpPenyediaController;
@@ -125,6 +126,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pengajuan/{pengajuan}/dokumen', [BhpDokumenController::class, 'show'])
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('dokumen.show');
+
+        Route::get('/laporan', [BhpLaporanController::class, 'index'])
+            ->middleware('permission:lihat-distribusi-bhp')
+            ->name('laporan.index');
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:super_admin|admin_kcd')->group(function () {
