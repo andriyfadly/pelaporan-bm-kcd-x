@@ -7,16 +7,22 @@ use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\BatchDokumen;
 use App\Models\DistribusiBhp\Dokumen;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Services\DistribusiBhp\DokumenService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class DokumenController extends Controller
 {
     use ResolvesSekolah;
+
+    public function __construct(private readonly DokumenService $dokumenService) {}
 
     /** Label jenis dokumen dalam Bahasa Indonesia. */
     private const JUDUL = [
@@ -106,6 +112,24 @@ class DokumenController extends Controller
             ->log('batch-dokumen-bhp');
 
         return $pdf->download("batch_dokumen_bhp_{$pengajuan->sumber_dana}.pdf");
+    }
+
+    public function tambahan(Request $request, Pengajuan $pengajuan): RedirectResponse
+    {
+        $this->authorizeSekolah($request, $pengajuan);
+
+        $validated = $request->validate([
+            'jenis' => ['required', Rule::in(DokumenService::JENIS_TAMBAHAN)],
+            'tanggal' => ['nullable', 'date'],
+        ]);
+
+        try {
+            $dokumen = $this->dokumenService->generateTambahan($pengajuan, $validated['jenis'], $validated['tanggal'] ?? null);
+        } catch (InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', "Dokumen {$dokumen->nomor} berhasil dibuat.");
     }
 
     private function render(Pengajuan $pengajuan, Dokumen $dokumen)

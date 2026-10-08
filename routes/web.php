@@ -135,6 +135,10 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:cetak-dokumen-bhp')
             ->name('dokumen.batch');
 
+        Route::post('/pengajuan/{pengajuan}/dokumen/tambahan', [BhpDokumenController::class, 'tambahan'])
+            ->middleware('permission:cetak-dokumen-bhp')
+            ->name('dokumen.tambahan');
+
         Route::get('/laporan', [BhpLaporanController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('laporan.index');

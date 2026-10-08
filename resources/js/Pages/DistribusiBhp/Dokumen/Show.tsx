@@ -29,6 +29,11 @@ const labelJenis: Record<string, string> = {
     nota_permintaan: 'Nota Permintaan Barang',
     surat_permintaan: 'Surat Permintaan Barang',
     surat_penyaluran: 'Surat Perintah Penyaluran Barang',
+    bast: 'Berita Acara Serah Terima',
+    bap: 'Berita Acara Pemeriksaan',
+    stok_opname: 'Berita Acara Stok Opname',
+    buku_pengeluaran: 'Buku Pengeluaran Barang',
+    buku_penyaluran: 'Buku Penyaluran Barang',
 };
 
 export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
@@ -48,6 +53,22 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
                         <Link href="/distribusi-bhp/review-pengajuan" className="text-sm font-semibold text-blue-600">
                             ← Kembali
                         </Link>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-4">
+                        {[
+                            { jenis: 'bast', label: 'BAST' },
+                            { jenis: 'bap', label: 'BAP' },
+                            { jenis: 'stok_opname', label: 'Stok Opname' },
+                        ].map((opt) => (
+                            <button
+                                key={opt.jenis}
+                                type="button"
+                                onClick={() => router.post(`/distribusi-bhp/pengajuan/${pengajuan.id}/dokumen/tambahan`, { jenis: opt.jenis })}
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            >
+                                + {opt.label}
+                            </button>
+                        ))}
                     </div>
                     {pengajuan.dokumen.length > 0 && (
                         <button
