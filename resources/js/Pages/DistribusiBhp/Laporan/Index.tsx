@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import { FileSpreadsheet } from 'lucide-react';
 
 interface StokRow {
     barang_id: string;
@@ -55,6 +56,21 @@ export default function Index({
                             </Link>
                         ))}
                     </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                    <a
+                        href={`/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=stok`}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
+                    >
+                        <FileSpreadsheet className="w-4 h-4" /> Export Stok
+                    </a>
+                    <a
+                        href={`/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=pengeluaran`}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
+                    >
+                        <FileSpreadsheet className="w-4 h-4" /> Export Buku Pengeluaran
+                    </a>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

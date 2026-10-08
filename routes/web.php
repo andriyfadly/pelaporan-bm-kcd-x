@@ -130,6 +130,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/laporan', [BhpLaporanController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('laporan.index');
+        Route::get('/laporan/export', [BhpLaporanController::class, 'export'])
+            ->middleware('permission:cetak-dokumen-bhp')
+            ->name('laporan.export');
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:super_admin|admin_kcd')->group(function () {

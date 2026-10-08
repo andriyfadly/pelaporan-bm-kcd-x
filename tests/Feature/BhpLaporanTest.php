@@ -209,4 +209,53 @@ class BhpLaporanTest extends TestCase
             ->get(route('distribusi-bhp.laporan.index'))
             ->assertForbidden();
     }
+
+    public function test_operator_dapat_export_laporan_stok_excel(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->user($sekolah, 'op.lap5');
+        $barang = $this->barang('Semen');
+        $this->terima($barang, 100, $sekolah);
+
+        $response = $this->actingAs($user)
+            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'stok']));
+
+        $response->assertOk();
+        $this->assertStringContainsString('spreadsheet', strtolower((string) $response->headers->get('content-type')));
+    }
+
+    public function test_operator_dapat_export_buku_pengeluaran_excel(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->user($sekolah, 'op.lap6');
+        $barang = $this->barang('Semen');
+        $this->terima($barang, 100, $sekolah);
+
+        $response = $this->actingAs($user)
+            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'pengeluaran']));
+
+        $response->assertOk();
+        $this->assertStringContainsString('spreadsheet', strtolower((string) $response->headers->get('content-type')));
+    }
+
+    public function test_export_menolak_jenis_tidak_dikenal(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->user($sekolah, 'op.lap7');
+
+        $this->actingAs($user)
+            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'sembarang']))
+            ->assertSessionHasErrors('jenis');
+    }
+
+    public function test_user_tanpa_permission_cetak_tidak_dapat_export(): void
+    {
+        $sekolah = $this->sekolah();
+        // bendahara_sekolah punya lihat-distribusi-bhp tetapi tidak cetak-dokumen-bhp.
+        $user = $this->user($sekolah, 'bend.lap', 'bendahara_sekolah');
+
+        $this->actingAs($user)
+            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'stok']))
+            ->assertForbidden();
+    }
 }
