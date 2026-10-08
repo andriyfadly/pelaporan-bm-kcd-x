@@ -137,6 +137,7 @@ permission BHP. Prefix ini tidak menyentuh `/pelaporan-bm` (lihat
 | POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-master-bhp` | `BarangController::storeHarga` |
 | GET/POST | `/distribusi-bhp/master/penyedia` | `kelola-master-bhp` | `PenyediaController` |
 | GET/POST | `/distribusi-bhp/penerimaan` | `kelola-penerimaan-bhp` | `PenerimaanController` |
+| DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hanya saldo awal milik sekolah sendiri yang belum dipakai |
 | GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen` | `lihat-distribusi-bhp` | `DokumenController::show` |
 | GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/{dokumen}/pdf` | `cetak-dokumen-bhp` | `DokumenController::pdf` |
 | POST | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/batch` | `cetak-dokumen-bhp` | `DokumenController::batch` |

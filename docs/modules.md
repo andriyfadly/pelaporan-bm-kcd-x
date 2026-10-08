@@ -143,6 +143,15 @@ divisi.
   menambah stok fisik. Mendukung penandaan **saldo awal** (`is_saldo_awal`,
   `periode_tahun`).
 - Permission: `kelola-penerimaan-bhp`.
+- **Saldo awal** adalah flow khusus (`SaldoAwalService`), bukan sekadar flag:
+  - kombinasi `is_saldo_awal × periode_tahun` wajib konsisten — saldo awal
+    wajib menyebut periode (2000–2100), penerimaan biasa dilarang mengisinya;
+  - unik per **sekolah + sumber dana + periode + barang** (duplikat ditolak,
+    termasuk barang ganda dalam satu request);
+  - **`DELETE /distribusi-bhp/penerimaan/{penerimaan}`** hanya menghapus saldo
+    awal (bukan penerimaan biasa), milik sekolah sendiri, dan belum dipakai
+    pengajuan `submitted`/`approved` — header + detail dihapus atomic dengan
+    activity log `kelola-saldo-awal` / `hapus-saldo-awal`.
 
 ### 7.3 Pengajuan
 
@@ -167,6 +176,11 @@ divisi.
   plus **snapshot penandatangan** di payload (immutable terhadap pergantian
   pejabat).
 - Permission: lihat `review-pengajuan-bhp`; approve/reject `approve-pengajuan-bhp`.
+- **Hardening approval**: sumber dana barang direvalidasi saat approve (bukan
+  hanya saat submit), semua barang terlibat dikunci `lockForUpdate` dengan
+  urutan ID deterministik (anti-deadlock, anti-oversell concurrent), payload
+  approval ditolak bila memuat `detail_id` asing atau quantity non-integer/
+  melebihi diminta.
 
 ### 7.5 Pejabat Sekolah (`/master-data/pejabat`)
 
