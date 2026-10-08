@@ -15,6 +15,7 @@ class Penerimaan extends Model
     protected $table = 'bhp_penerimaan';
 
     protected $fillable = [
+        'source_id',
         'sekolah_id',
         'no_nota_invoice',
         'no_bast',

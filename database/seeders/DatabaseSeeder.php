@@ -19,5 +19,9 @@ class DatabaseSeeder extends Seeder
             KodeSekolahSeeder::class,
             UserSeeder::class,
         ]);
+
+        // Impor data legacy Distribusi BHP (master + penerimaan) bila DB sumber
+        // tersedia. Aman diulang; lihat DistribusiBhpImportSeeder untuk detail.
+        $this->call(DistribusiBhpImportSeeder::class);
     }
 }
