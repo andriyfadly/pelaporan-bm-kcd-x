@@ -168,6 +168,16 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 - **Viewer log**: filter 6 dimensi, diff JSON dalam `<details>`,
   waktu `toLocaleString('id-ID')`.
 - **Flash**: `success` hijau / `error` merah dari session, tampil tiap redirect.
+- **BHP — pilih sumber dana dulu**: semua halaman BHP (master, penerimaan,
+  laporan) memakai toggle `BOS`/`BOPD` di header; data tidak pernah bercampur.
+- **BHP — aksi mutasi stok**: tombol Submit/Approve/Reject mengirim POST dan
+  kembali dengan flash; status pengajuan ditampilkan sebagai badge
+  (`draft` abu, `submitted` kuning, `approved` hijau, `rejected` merah).
+- **BHP — dokumen**: tabel dokumen + tombol PDF per baris, tombol
+  "+ BAST/BAP/Stok Opname" untuk dokumen tambahan, dan "Unduh Batch PDF".
+- **BHP — kartu persediaan**: pilih barang dari dropdown → tabel mutasi dengan
+  kolom Masuk/Keluar/Saldo; kartu ringkasan (saldo awal, total masuk/keluar,
+  saldo akhir) di atas tabel.
 
 ## 7. Format Data Tampilan
 

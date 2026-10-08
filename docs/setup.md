@@ -43,8 +43,18 @@ php artisan migrate --seed
 # - Akun Developer: username `developer` (password: `#SidiptaBeuKCD10`, role: `super_admin`)
 # - Akun Admin KCD: username `admin_kcd` (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
 # - Akun Operator Sekolah: username `[npsn]-admin` (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
+# - Permission & role BHP (17 permission, 5 role termasuk `operator_divisi`)
+#
+# Seeder juga memanggil DistribusiBhpImportSeeder: mengimpor master + penerimaan
+# BHP dari DB SQLite sumber. Default path:
+#   ../sistem-manajemen-aset/prisma/dev.db.backup.db
+# Bila file sumber tidak ada, impor dilewati dengan peringatan (tidak error).
+# Arahkan ke sumber lain / jalankan manual:
+#   php artisan db:seed --class=DistribusiBhpImportSeeder
+# atau via tinker:
+#   (new Database\Seeders\DistribusiBhpImportSeeder)->setSourcePath('/path/db')->run();
 
-# 5b. (Opsional) Impor data legacy: dump transaksional + katalog kode barang
+# 5b. (Opsional) Impor data legacy BM: dump transaksional + katalog kode barang
 # Letakkan file storage/bm-kcd-x.sql dan storage/db_inventaris.sql, lalu:
 php artisan app:migrasi-data-lama
 

@@ -49,8 +49,15 @@ TURNSTILE_SECRET_KEY=...
    `developer` bila tak diperlukan.
 2. Verifikasi: dashboard admin terbuka, unduh 1 file XLSX, viewer log
    (`/admin/log-aktivitas`) mencatat login.
-3. Aktifkan backup DB harian + uji restore (lihat §6).
-4. Aktifkan monitor log Laravel (`storage/logs/`) & error web server.
+3. Verifikasi domain BHP: buka `/distribusi-bhp/dashboard`, cek master &
+   penerimaan terisi (hasil impor), dan coba buka satu laporan stok.
+   - Bila seeder impor dilewati (sumber tidak ada), jalankan manual:
+     `php artisan db:seed --class=DistribusiBhpImportSeeder`
+     dengan path sumber yang benar.
+   - Periksa tidak ada error rendering PDF:
+     buka satu dokumen pengajuan → unduh PDF.
+4. Aktifkan backup DB harian + uji restore (lihat §6).
+5. Aktifkan monitor log Laravel (`storage/logs/`) & error web server.
 
 ## 5. Update Rilis (tanpa downtime besar)
 

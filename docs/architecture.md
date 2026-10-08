@@ -44,19 +44,31 @@ app/
   Actions/Fortify/            # Create/Reset/Update password & profil
   Console/Commands/MigrasiDataLamaCommand.php   # migrasi legacy (logging dimatikan)
   Exports/                    # SpjRekapExport, RealisasiBmExport(+Sheet),
-                              # CetakBmExport(+Sheet), KodeBarangSheet, SpjRekapExport
+                              # CetakBmExport(+Sheet), KodeBarangSheet
+    DistribusiBhp/            # BhpStokExport, BhpPengeluaranExport,
+                              # BhpKartuPersediaanExport
   Http/Controllers/
     Admin/                    # ActivityLog, KodeBarang, User
     Auth/PasswordExpiredController.php
     Concerns/ResolvesSekolah.php   # resolusi tenant sekolah_id
     PelaporanBm/              # Acuan, Cetak, Dashboard, InputRealisasi,
                               # KunciLaporan, Realisasi, Rekapan, Spj
+    DistribusiBhp/            # Dashboard, Pengajuan, ReviewPengajuan, Barang,
+                              # KodeRekening, Penyedia, Penerimaan, Dokumen, Laporan
   Listeners/CatatLoginLogout.php   # log login/logout (Event::listen di provider)
-  Models/ (User + Master/{Sekolah,KodeBarang} + PelaporanBm/{Spj,Realisasi,Acuan,KunciLaporan})
+  Models/
+    Master/{Sekolah,KodeBarang}
+    PelaporanBm/{Spj,Realisasi,Acuan,KunciLaporan}
+    DistribusiBhp/            # Barang, KodeRekening, HargaBarang, Penyedia,
+                              # Penerimaan(+Detail), Pengajuan(+Detail),
+                              # Dokumen, NomorSequence, BatchDokumen
   Providers/ (AppServiceProvider: Gate super_admin + event auth; FortifyServiceProvider)
-  Services/TurnstileService.php
+  Services/
+    TurnstileService.php
+    DistribusiBhp/            # StokService, NomorDokumenService,
+                              # DokumenService, LaporanService
 bootstrap/app.php             # middleware alias role/permission, web group
-routes/web.php                # ~40 rute (lihat docs/api.md)
+routes/web.php                # ~63 rute (lihat docs/api.md)
 config/activitylog.php        # log default `default`, auth driver default
 public/
   favicon.ico                 # favicon multi-res (16/32/48/64)
@@ -65,6 +77,12 @@ public/
   icons/                      # apple-touch, PWA 72–512, mstile-150
   images/logolog.jpeg         # master logo (sumber semua ikon)
 resources/views/app.blade.php # <head> global: favicon, manifest, @inertia
+resources/views/distribusi-bhp/
+  dokumen.blade.php           # template PDF satu dokumen
+  dokumen-kompilasi.blade.php # template PDF batch
+database/seeders/
+  PeranDanHakAksesSeeder.php  # 17 permission, 5 role (termasuk operator_divisi)
+  DistribusiBhpImportSeeder.php  # impor legacy BHP (idempotent)
 ```
 
 ## 4. Pola Kunci Implementasi
@@ -147,16 +165,49 @@ KunciLaporan unique(sekolah_id, bulan); dikunci_oleh → User
 Activity: morph subject/causer (UUID), log_name `sistem`
 ```
 
+### Distribusi BHP (domain terpisah)
+
+```text
+KodeRekening 1──N Barang          (unique kode+sumber_dana)
+Barang 1──N HargaBarang | PenerimaanDetail | PengajuanDetail
+Penyedia 1──N Penerimaan
+Penerimaan 1──N PenerimaanDetail
+Pengajuan 1──N PengajuanDetail
+Pengajuan 1──N Dokumen 1──N BatchDokumen
+NomorSequence: counter per (jenis, sumber_dana, tahun, bulan), tanpa FK
+```
+
 Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
+Model BHP **tidak** memiliki relasi ke model BM.
+
+## 5a. Service Domain BHP
+
+| Service | Tanggung jawab |
+|---|---|
+| `StokService` | Hitung stok 4-tier; `submit` (buat reservasi), `applyApprove` (tanpa transaction sendiri), `approve`, `reject` |
+| `NomorDokumenService` | Generate nomor atomic `{urut:3}/BHP/{kode}/{dana}/{romawi}/{tahun}` dengan `lockForUpdate` |
+| `DokumenService` | `approveDanGenerate` (approve + dokumen wajib dalam satu transaction), `generateTambahan` (idempotent per jenis) |
+| `LaporanService` | `laporanStok`, `bukuPengeluaran`, `kartuBarang`, `kartuPersediaan` (saldo berjalan) |
+
+Aturan: semua mutasi stok lewat `StokService`; `applyApprove` tidak membuka
+transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
++ generate dokumen dalam satu transaction.
 
 ## 6. Frontend
 
 - `AppLayout`: sidebar collapsible + mobile drawer, menu admin vs sekolah,
   link Log Aktivitas hanya super_admin; header status sekolah; logout confirm.
+- `BhpHtmlMenu` (`AppLayout.tsx`): section **Distribusi BHP** terpisah dari
+  menu BM, dirender hanya bila user punya `lihat-distribusi-bhp`; tiap item
+  menu difilter per permission BHP.
 - Komponen reuse: `Pagination`, `SearchInput`, `EmptyState`, `Modal`,
   `ConfirmDialog`, `StatusBadge`, `CardStat`.
 - Form SPK: accordion item, live search katalog, draft autosave
   (`draft_spj_barang_{sekolah}_{bulan}`), datalist history merk/sertifikat/satuan.
+- Halaman BHP: `resources/js/Pages/DistribusiBhp/` — `Dashboard`,
+  `Pengajuan/Index`, `Review/Index`, `Dokumen/Show`,
+  `Laporan/Index`, `Laporan/KartuPersediaan`,
+  `Master/{KodeRekening,Barang,Penyedia}/Index`, `Penerimaan/Index`.
 - Import SPJ: tombol "Import Excel" + modal unggah di `Spj/Index.tsx`
   (kondisional `canImportSpj`), link template `template_import_spj.xlsx`.
 - Cetak: pre-flight check, cegah unduh kosong, modal progres (cookie status).
@@ -164,12 +215,14 @@ Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
 
 ## 7. Testing & Kualitas
 
-- 200 test / 1087 assertions (line coverage 100%, semua file 100%): Feature per
-  modul + Unit (Fortify, relasi, gate, rate limit). DB SQLite in-memory
-  (`phpunit.xml`), seed `PeranDanHakAksesSeeder` per test.
+- 282 test / 1348 assertions (44 file Feature+Unit, 11 di antaranya BHP):
+  Feature per modul + Unit (Fortify, relasi, gate, rate limit). DB SQLite
+  in-memory (`phpunit.xml`), seed `PeranDanHakAksesSeeder` per test.
 - Gate: `composer test` (cepat), `composer test-coverage` (Xdebug; total ≥ 80%
   via `--min` **dan** tiap file ≥ 80% via `tests/coverage-per-file.php`).
 - `vendor/bin/pint`, `npx tsc --noEmit` wajib hijau sebelum merge.
+- Domain BHP dijaga `BhpDomainBoundaryTest` (tidak ada pencampuran tabel/model/
+  route antara BM dan BHP).
 
 ## 8. Keputusan Arsitektur Penting (ADL ringkas)
 
@@ -184,3 +237,8 @@ Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
 | Morph activity UUID | Seluruh model ber-UUID |
 | Tanpa purge log | Keputusan produk: simpan permanen |
 | Ikon brand statis di `public/` + `site.webmanifest` | Tanpa pipeline build; disajikan langsung, cacheable, PWA-ready |
+| BHP sebagai domain terpisah (bukan modul BM) | Stok, status, dan laporan berbeda; dicegah bercampur lewat test batas domain |
+| Dokumen BHP satu tabel `bhp_dokumen` + kolom `jenis` | Lifecycle, penomoran, dan batch PDF identik untuk semua jenis dokumen |
+| Stok 4-tier dihitung, bukan kolom | Hindari stok basi; satu sumber kebenaran `StokService` |
+| `applyApprove` tanpa transaction sendiri | Agar approve + generate dokumen bisa atomic dalam satu transaction |
+| `source_id` pada penerimaan | `no_bast` tidak unik di data legacy; jadikan kunci idempotensi impor |
