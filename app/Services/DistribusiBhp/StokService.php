@@ -149,6 +149,13 @@ class StokService
                 throw new RuntimeException('Pengajuan tidak memiliki item.');
             }
 
+            // Kunci semua barang dulu (urutan ID deterministik, anti-deadlock)
+            // sebelum agregasi stok, agar submit concurrent tidak oversell.
+            Barang::whereIn('id', $details->pluck('barang_id')->filter()->all())
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
             foreach ($details as $detail) {
                 $barang = Barang::whereKey($detail->barang_id)->lockForUpdate()->first();
                 if (! $barang) {
@@ -239,10 +246,34 @@ class StokService
 
         $details = $pengajuan->details()->lockForUpdate()->get();
 
+        // Kunci semua barang yang terlibat dengan urutan ID deterministik
+        // untuk mencegah deadlock antar approval concurrent.
+        Barang::whereIn('id', $details->pluck('barang_id')->filter()->all())
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        $detailIds = $details->pluck('id')->all();
+        foreach ($jumlahDisetujui as $detailId => $qty) {
+            if (! in_array((string) $detailId, $detailIds, true)) {
+                throw new RuntimeException('Detail ID tidak dikenal pada pengajuan ini: '.$detailId);
+            }
+
+            if (! is_int($qty) || $qty < 0) {
+                throw new RuntimeException('Jumlah disetujui harus berupa angka bulat tidak negatif.');
+            }
+        }
+
         foreach ($details as $detail) {
             $barang = Barang::whereKey($detail->barang_id)->lockForUpdate()->first();
             if (! $barang) {
                 throw new RuntimeException('Barang pada pengajuan tidak ditemukan.');
+            }
+
+            // Revalidasi sumber dana saat approval — jangan hanya andalkan
+            // validasi submit (barang bisa berubah status dana setelahnya).
+            if ($barang->sumber_dana !== $pengajuan->sumber_dana) {
+                throw new RuntimeException('Sumber dana barang tidak sesuai dengan pengajuan.');
             }
 
             $disetujui = array_key_exists($detail->id, $jumlahDisetujui)

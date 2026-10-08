@@ -196,4 +196,79 @@ class BhpStokDanPengajuanTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $service->approve($pengajuan->fresh('details'), $admin, [$detail->id => 10]);
     }
+
+    public function test_approve_menolak_barang_sumber_dana_berbeda(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = User::create(['name' => 'Divisi', 'username' => 'divisi.dana', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $admin = User::create(['name' => 'Admin', 'username' => 'admin.dana', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $barang = $this->barang('BOS', 100);
+
+        // Pengajuan BOS dengan detail barang BOPD — data dibuat langsung
+        // untuk mensimulasikan inkonsistensi setelah submit.
+        $pengajuan = $this->pengajuan($sekolah, $user, 'BOS', 'submitted');
+        $detail = PengajuanDetail::create([
+            'bhp_pengajuan_id' => $pengajuan->id,
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 10,
+            'status_reservasi' => 'direservasi',
+            'jumlah_direservasi' => 10,
+        ]);
+        // Paksa barang jadi BOPD setelah reservasi dibuat.
+        $barang->update(['sumber_dana' => 'BOPD']);
+
+        $this->expectException(\RuntimeException::class);
+        app(StokService::class)->approve($pengajuan->fresh('details'), $admin, [$detail->id => 10]);
+    }
+
+    public function test_approve_menolak_detail_id_asing(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = User::create(['name' => 'Divisi', 'username' => 'divisi.asing', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $admin = User::create(['name' => 'Admin', 'username' => 'admin.asing', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $barang = $this->barang('BOS', 100);
+
+        $pengajuan = $this->pengajuan($sekolah, $user);
+        PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 10]);
+
+        $this->lengkapiPejabat($sekolah, $admin);
+        app(StokService::class)->submit($pengajuan->fresh('details'));
+
+        $this->expectException(\RuntimeException::class);
+        app(StokService::class)->approve($pengajuan->fresh('details'), $admin, ['id-palsu' => 5]);
+    }
+
+    public function test_approve_menolak_quantity_melebihi_diminta(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = User::create(['name' => 'Divisi', 'username' => 'divisi.qty', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $admin = User::create(['name' => 'Admin', 'username' => 'admin.qty', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $barang = $this->barang('BOS', 100);
+
+        $pengajuan = $this->pengajuan($sekolah, $user);
+        $detail = PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 10]);
+
+        $this->lengkapiPejabat($sekolah, $admin);
+        app(StokService::class)->submit($pengajuan->fresh('details'));
+
+        $this->expectException(\RuntimeException::class);
+        app(StokService::class)->approve($pengajuan->fresh('details'), $admin, [$detail->id => 11]);
+    }
+
+    public function test_approve_menolak_quantity_non_integer(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = User::create(['name' => 'Divisi', 'username' => 'divisi.str', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $admin = User::create(['name' => 'Admin', 'username' => 'admin.str', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
+        $barang = $this->barang('BOS', 100);
+
+        $pengajuan = $this->pengajuan($sekolah, $user);
+        $detail = PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 10]);
+
+        $this->lengkapiPejabat($sekolah, $admin);
+        app(StokService::class)->submit($pengajuan->fresh('details'));
+
+        $this->expectException(\RuntimeException::class);
+        app(StokService::class)->approve($pengajuan->fresh('details'), $admin, [$detail->id => 'banyak']);
+    }
 }
