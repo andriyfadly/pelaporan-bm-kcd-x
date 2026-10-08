@@ -9,6 +9,9 @@ use App\Models\Master\Sekolah;
 use App\Models\User;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
 class BhpSaldoAwalTest extends TestCase
@@ -40,10 +43,10 @@ class BhpSaldoAwalTest extends TestCase
         return $user;
     }
 
-    private function barang(string $sumberDana = 'BOS', string $nama = 'Kertas HVS'): Barang
+    private function barang(string $sumberDana = 'BOS', string $nama = 'Kertas HVS', ?string $kode = null): Barang
     {
         return Barang::create([
-            'kode_barang' => '1.1.7.09.'.$sumberDana,
+            'kode_barang' => $kode ?? '1.1.7.09.'.substr(md5($nama), 0, 6),
             'nama_barang' => $nama,
             'satuan' => 'Rim',
             'sumber_dana' => $sumberDana,
@@ -257,5 +260,133 @@ class BhpSaldoAwalTest extends TestCase
                 ->has('items', 1)
                 ->where('availablePeriods', fn ($periods) => collect($periods)->contains(2026))
             );
+    }
+
+    public function test_template_dapat_diunduh_berisi_kode_barang_sumber_dana(): void
+    {
+        $barang = $this->barang('BOS', 'Pulpen Biru');
+
+        $response = $this->actingAs($this->operator($this->sekolah()))
+            ->get(route('distribusi-bhp.saldo-awal.template', ['sumber_dana' => 'BOS']));
+
+        $response->assertOk();
+        $this->assertStringContainsString('attachment', (string) $response->headers->get('content-disposition'));
+        // Header + contoh barang BOS.
+        $this->assertTrue($barang->exists);
+    }
+
+    public function test_import_saldo_awal_berhasil_semua_atau_batal(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $kertas = $this->barang('BOS', 'Kertas HVS');
+        $pulpen = $this->barang('BOS', 'Pulpen Biru');
+
+        $file = $this->xlsx([
+            ['Kode Barang*', 'Jumlah*', 'Harga Satuan*', 'Merek/Tipe', 'Keterangan'],
+            [$kertas->kode_barang, 20, 50000, 'Sinar Dunia', ''],
+            [$pulpen->kode_barang, 100, 3000, '', 'stok awal'],
+        ]);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.saldo-awal.import'), [
+                'file' => $file,
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2026,
+            ])
+            ->assertRedirect(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]));
+
+        $this->assertSame(2, PenerimaanDetail::count());
+        $this->assertSame(1, Penerimaan::count());
+    }
+
+    public function test_import_batal_semua_saat_ada_baris_invalid(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $kertas = $this->barang('BOS', 'Kertas HVS');
+
+        $file = $this->xlsx([
+            ['Kode Barang*', 'Jumlah*', 'Harga Satuan*', 'Merek/Tipe', 'Keterangan'],
+            [$kertas->kode_barang, 20, 50000, '', ''],
+            ['KODE-TIDAK-ADA', 5, 1000, '', ''],
+        ]);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.saldo-awal.import'), [
+                'file' => $file,
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2026,
+            ])
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Penerimaan::count());
+        $this->assertSame(0, PenerimaanDetail::count());
+    }
+
+    public function test_import_menolak_barang_beda_sumber_dana(): void
+    {
+        $operator = $this->operator($this->sekolah());
+        $barangBopd = $this->barang('BOPD', 'Barang BOPD');
+
+        $file = $this->xlsx([
+            ['Kode Barang*', 'Jumlah*', 'Harga Satuan*', 'Merek/Tipe', 'Keterangan'],
+            [$barangBopd->kode_barang, 5, 1000, '', ''],
+        ]);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.saldo-awal.import'), [
+                'file' => $file,
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2026,
+            ])
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_import_menolak_duplikat_dari_data_yang_sudah_ada(): void
+    {
+        $operator = $this->operator($this->sekolah());
+        $barang = $this->barang();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.saldo-awal.store'), [
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2026,
+                'details' => [['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 1000]],
+            ])
+            ->assertRedirect();
+
+        $file = $this->xlsx([
+            ['Kode Barang*', 'Jumlah*', 'Harga Satuan*', 'Merek/Tipe', 'Keterangan'],
+            [$barang->kode_barang, 10, 1000, '', ''],
+        ]);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.saldo-awal.import'), [
+                'file' => $file,
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2026,
+            ])
+            ->assertSessionHas('error');
+
+        $this->assertSame(1, PenerimaanDetail::count());
+    }
+
+    /**
+     * Bangun file .xlsx asli via PhpSpreadsheet agar lolos reader maatwebsite.
+     *
+     * @param  array<int, array<int, string|int|float|null>>  $rows
+     */
+    private function xlsx(array $rows): UploadedFile
+    {
+        $ss = new Spreadsheet;
+        $ss->getActiveSheet()->fromArray($rows, null, 'A1');
+
+        $path = tempnam(sys_get_temp_dir(), 'saldo-awal').'.xlsx';
+        (new Xlsx($ss))->save($path);
+
+        return new UploadedFile($path, 'saldo-awal.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
     }
 }

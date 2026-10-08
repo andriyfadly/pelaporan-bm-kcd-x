@@ -2,6 +2,7 @@
 
 namespace App\Services\DistribusiBhp;
 
+use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\User;
@@ -26,7 +27,7 @@ class SaldoAwalService
      *
      * @param  array<string,mixed>  $data  payload penerimaan tervalidasi dari controller
      * @param  array<int, array{barang_id:string,jumlah:int,harga_satuan:int,merek_type?:?string,keterangan?:?string}>  $details
-     * @param  array<string, \App\Models\DistribusiBhp\Barang>  $barangs  map barang_id => Barang hasil isolasi sumber dana
+     * @param  array<string, Barang>  $barangs  map barang_id => Barang hasil isolasi sumber dana
      */
     public function create(array $data, string $sekolahId, User $actor, array $details, array $barangs): Penerimaan
     {
@@ -83,7 +84,6 @@ class SaldoAwalService
                 ]);
             }
 
-
             activity()
                 ->performedOn($penerimaan)
                 ->causedBy($actor)
@@ -128,6 +128,11 @@ class SaldoAwalService
                 ->withProperties(['periode_tahun' => $penerimaan->periode_tahun, 'sumber_dana' => $penerimaan->sumber_dana])
                 ->log('hapus-saldo-awal');
         });
+    }
+
+    public function sudahAdaUntuk(string $barangId, string $sekolahId, string $sumberDana, int $periode): bool
+    {
+        return $this->sudahAda($barangId, $sekolahId, $sumberDana, $periode);
     }
 
     private function sudahAda(string $barangId, string $sekolahId, string $sumberDana, int $periode): bool

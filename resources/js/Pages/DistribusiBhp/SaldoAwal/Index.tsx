@@ -40,10 +40,16 @@ export default function Index({
     const periods = Array.from(new Set([...availablePeriods, tahunIni, tahunIni + 1])).sort((a, b) => b - a);
 
     const [hapus, setHapus] = useState<SaldoAwalItem | null>(null);
+    const [file, setFile] = useState<File | null>(null);
     const form = useForm({
         sumber_dana: sumberDana,
         periode_tahun: periode,
         details: [{ barang_id: '', jumlah: 1, harga_satuan: 0 }],
+    });
+    const importForm = useForm<{ file: File | null; sumber_dana: string; periode_tahun: number }>({
+        file: null,
+        sumber_dana: sumberDana,
+        periode_tahun: periode,
     });
 
     const pindah = (patch: Record<string, string | number>) =>
@@ -142,6 +148,61 @@ export default function Index({
                         </ul>
                     )}
                 </form>
+
+                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 className="text-sm font-bold text-slate-900">Import Saldo Awal</h2>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Unggah berkas Excel sesuai template. Satu baris invalid membatalkan seluruh import.
+                            </p>
+                        </div>
+                        <a
+                            href={`/distribusi-bhp/saldo-awal/template?sumber_dana=${sumberDana}`}
+                            className="px-3 py-2 text-sm font-semibold text-blue-600 border border-blue-200 rounded-xl"
+                        >
+                            Unduh Template
+                        </a>
+                    </div>
+
+                    <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                        className="block w-full text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-xl file:border-0 file:bg-slate-100 file:text-sm file:font-semibold"
+                    />
+
+                    <button
+                        type="button"
+                        disabled={!file || importForm.processing}
+                        onClick={() => {
+                            if (!file) return;
+                            importForm.transform(() => ({
+                                file,
+                                sumber_dana: sumberDana,
+                                periode_tahun: periode,
+                            }));
+                            importForm.post('/distribusi-bhp/saldo-awal/import', {
+                                forceFormData: true,
+                                onSuccess: () => {
+                                    setFile(null);
+                                    importForm.reset();
+                                },
+                            });
+                        }}
+                        className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold disabled:opacity-50"
+                    >
+                        Import
+                    </button>
+
+                    {Object.keys(importForm.errors).length > 0 && (
+                        <ul className="text-xs text-rose-600 list-disc list-inside space-y-1">
+                            {Object.values(importForm.errors).map((pesan, i) => (
+                                <li key={i}>{pesan}</li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">

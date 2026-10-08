@@ -140,6 +140,8 @@ permission BHP. Prefix ini tidak menyentuh `/pelaporan-bm` (lihat
 | DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hanya saldo awal milik sekolah sendiri yang belum dipakai |
 | GET/POST | `/distribusi-bhp/saldo-awal` | `kelola-penerimaan-bhp` | `SaldoAwalController` — halaman saldo awal (filter `sumber_dana`, `periode`) |
 | DELETE | `/distribusi-bhp/saldo-awal/{detail}` | `kelola-penerimaan-bhp` | `SaldoAwalController` — hapus satu barang saldo awal |
+| POST | `/distribusi-bhp/saldo-awal/import` | `kelola-penerimaan-bhp` | `SaldoAwalController` — import Excel (all-or-nothing, throttle 10/menit) |
+| GET | `/distribusi-bhp/saldo-awal/template` | `kelola-penerimaan-bhp` | `SaldoAwalController` — unduh template import |
 | GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen` | `lihat-distribusi-bhp` | `DokumenController::show` |
 | GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/{dokumen}/pdf` | `cetak-dokumen-bhp` | `DokumenController::pdf` |
 | POST | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/batch` | `cetak-dokumen-bhp` | `DokumenController::batch` |

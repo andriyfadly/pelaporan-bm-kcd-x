@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\DistribusiBhp;
 
+use App\Exports\DistribusiBhp\BhpSaldoAwalTemplateExport;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Barang;
@@ -10,10 +11,13 @@ use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Services\DistribusiBhp\SaldoAwalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Flow saldo awal terpisah dari penerimaan biasa — mengikuti pola
@@ -148,5 +152,149 @@ class SaldoAwalController extends Controller
         $this->saldoAwal->delete($penerimaan, $request->user());
 
         return back()->with('success', 'Barang saldo awal berhasil dihapus.');
+    }
+
+    /**
+     * Impor saldo awal dari Excel (all-or-nothing: satu baris invalid = batal semua).
+     *
+     * Kolom (index berbasis 0): [0] Kode Barang*, [1] Jumlah*, [2] Harga Satuan*,
+     * [3] Merek/Tipe, [4] Keterangan.
+     */
+    public function import(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'file' => 'required|file|max:10240|mimes:xlsx,xls',
+            'sumber_dana' => ['required', Rule::in(['BOS', 'BOPD'])],
+            'periode_tahun' => ['required', 'integer', 'between:2000,2100'],
+        ]);
+
+        $sekolahId = (string) $this->resolveSekolahId($request);
+        $sumberDana = $validated['sumber_dana'];
+        $periode = (int) $validated['periode_tahun'];
+
+        $rows = Excel::toCollection(null, $request->file('file'))->first();
+        $dataRows = $rows instanceof Collection ? $rows->slice(1)->values() : collect();
+
+        // ponytail: batas 2000 baris per import, naikkan jika kebutuhan riil melebihi
+        if ($dataRows->count() > 2000) {
+            return back()->with('error', 'Berkas terlalu besar: maksimal 2000 baris data per impor.');
+        }
+
+        if ($dataRows->isEmpty()) {
+            return back()->with('error', 'Berkas tidak berisi data untuk diimpor.');
+        }
+
+        // Pre-validasi semua baris sebelum menyentuh DB (all-or-nothing).
+        $errors = [];
+        $kodeList = $dataRows->pluck(0)->map(fn ($v) => trim((string) $v))->filter()->unique()->values();
+        $barangPerKode = Barang::whereIn('kode_barang', $kodeList)
+            ->get()
+            ->keyBy(fn (Barang $b): string => (string) $b->kode_barang);
+
+        $terlihat = [];
+        foreach ($dataRows as $i => $row) {
+            $noBaris = $i + 2;
+            $get = fn (int $idx): string => trim((string) ($row[$idx] ?? ''));
+
+            $kode = $get(0);
+            $barang = $kode !== '' ? $barangPerKode->get($kode) : null;
+
+            if ($kode === '') {
+                $errors[] = "Baris {$noBaris}: Kode Barang wajib diisi.";
+
+                continue;
+            }
+
+            if (! $barang) {
+                $errors[] = "Baris {$noBaris}: Kode Barang \"{$kode}\" tidak ditemukan di master barang.";
+
+                continue;
+            }
+
+            if ((string) $barang->sumber_dana !== $sumberDana) {
+                $errors[] = "Baris {$noBaris}: Barang \"{$barang->nama_barang}\" bukan sumber dana {$sumberDana}.";
+
+                continue;
+            }
+
+            if (isset($terlihat[$barang->id])) {
+                $errors[] = "Baris {$noBaris}: Barang \"{$barang->nama_barang}\" muncul lebih dari satu kali di berkas.";
+
+                continue;
+            }
+            $terlihat[$barang->id] = true;
+
+            if (app(SaldoAwalService::class)->sudahAdaUntuk($barang->id, $sekolahId, $sumberDana, $periode)) {
+                $errors[] = "Baris {$noBaris}: Saldo awal \"{$barang->nama_barang}\" periode {$periode} sudah ada.";
+            }
+
+            if ((int) $get(1) <= 0) {
+                $errors[] = "Baris {$noBaris}: Jumlah harus lebih dari 0.";
+            }
+
+            if ($get(2) === '' || (int) str_replace([',', ' ', '.'], '', $get(2)) < 0) {
+                $errors[] = "Baris {$noBaris}: Harga Satuan wajib diisi dan tidak boleh negatif.";
+            }
+        }
+
+        if ($errors !== []) {
+            $ringkasan = count($errors) > 5
+                ? implode(' ', array_slice($errors, 0, 5)).' (dan '.(count($errors) - 5).' kesalahan lain)'
+                : implode(' ', $errors);
+
+            return back()->with('error', "Impor dibatalkan, tidak ada data tersimpan. {$ringkasan}");
+        }
+
+        $details = [];
+        $barangs = [];
+        foreach ($dataRows as $row) {
+            $get = fn (int $idx): string => trim((string) ($row[$idx] ?? ''));
+            /** @var Barang $barang */
+            $barang = $barangPerKode->get($get(0));
+
+            $barangs[$barang->id] = $barang;
+            $details[] = [
+                'barang_id' => $barang->id,
+                'jumlah' => (int) $get(1),
+                'harga_satuan' => (int) str_replace([',', ' ', '.'], '', $get(2)),
+                'merek_type' => $get(3) ?: null,
+                'keterangan' => $get(4) ?: null,
+            ];
+        }
+
+        $this->saldoAwal->create(
+            ['sumber_dana' => $sumberDana, 'periode_tahun' => $periode],
+            $sekolahId,
+            $request->user(),
+            $details,
+            $barangs,
+        );
+
+        return redirect()
+            ->route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => $sumberDana, 'periode' => $periode])
+            ->with('success', count($details).' barang saldo awal berhasil diimpor.');
+    }
+
+    public function template(Request $request): BinaryFileResponse
+    {
+        $sumberDana = strtoupper((string) $request->query('sumber_dana', 'BOS'));
+
+        $contoh = Barang::where('sumber_dana', $sumberDana)
+            ->orderBy('nama_barang')
+            ->limit(3)
+            ->get()
+            ->map(fn (Barang $b): array => [
+                'kode_barang' => (string) $b->kode_barang,
+                'jumlah' => 0,
+                'harga_satuan' => 0,
+                'merek_type' => '',
+                'keterangan' => '',
+            ])
+            ->all();
+
+        return Excel::download(
+            new BhpSaldoAwalTemplateExport($contoh),
+            "template-saldo-awal-{$sumberDana}.xlsx",
+        );
     }
 }

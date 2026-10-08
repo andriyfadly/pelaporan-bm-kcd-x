@@ -132,6 +132,12 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/saldo-awal', [BhpSaldoAwalController::class, 'index'])->name('saldo-awal.index');
             Route::post('/saldo-awal', [BhpSaldoAwalController::class, 'store'])->name('saldo-awal.store');
             Route::delete('/saldo-awal/{detail}', [BhpSaldoAwalController::class, 'destroy'])->name('saldo-awal.destroy');
+            Route::post('/saldo-awal/import', [BhpSaldoAwalController::class, 'import'])
+                ->middleware('throttle:10,1')
+                ->name('saldo-awal.import');
+            Route::get('/saldo-awal/template', [BhpSaldoAwalController::class, 'template'])
+                ->middleware('throttle:30,1')
+                ->name('saldo-awal.template');
         });
 
         Route::get('/pengajuan/{pengajuan}/dokumen', [BhpDokumenController::class, 'show'])
