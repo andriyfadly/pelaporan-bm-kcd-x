@@ -454,4 +454,77 @@ class BhpPenerimaanTest extends TestCase
 
         $this->assertSame(1, Penerimaan::count());
     }
+
+    public function test_guest_tidak_bisa_mengakses_penerimaan(): void
+    {
+        $this->get(route('distribusi-bhp.penerimaan.index'))->assertRedirect(route('login'));
+        $this->post(route('distribusi-bhp.penerimaan.store'))->assertRedirect(route('login'));
+    }
+
+    public function test_bendahara_tanpa_permission_ditolak_penerimaan(): void
+    {
+        $sekolah = $this->sekolah();
+        $bendahara = User::create([
+            'name' => 'Bendahara',
+            'username' => 'bendahara.terima',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolah->id,
+            'password_changed_at' => now(),
+        ]);
+        $bendahara->assignRole('bendahara_sekolah');
+
+        $this->actingAs($bendahara)
+            ->post(route('distribusi-bhp.penerimaan.store'), ['sumber_dana' => 'BOS'])
+            ->assertForbidden();
+    }
+
+    public function test_sumber_dana_invalid_ditolak(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'APBN',
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors('sumber_dana');
+    }
+
+    public function test_penyedia_invalid_ditolak(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'penyedia_id' => '00000000-0000-0000-0000-000000000000',
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors('penyedia_id');
+    }
+
+    public function test_barang_invalid_ditolak(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'details' => [
+                    ['barang_id' => '00000000-0000-0000-0000-000000000000', 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors('details.0.barang_id');
+
+        $this->assertSame(0, Penerimaan::count());
+    }
 }
