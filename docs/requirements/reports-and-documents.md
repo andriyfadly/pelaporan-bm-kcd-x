@@ -13,19 +13,23 @@
 
 ## 2. Distribusi BHP
 
-- Daftar saldo awal.
-- Buku penerimaan.
-- Nota permintaan.
-- Surat permintaan.
-- Surat perintah penyaluran.
-- BAST.
-- BAP.
-- Stok opname.
-- Buku pengeluaran.
-- Buku penyaluran.
-- Kartu barang.
-- Kartu persediaan.
-- Batch PDF dan histori batch.
+Status: L = laporan, D = dokumen.
+
+| Item | Status |
+|---|---|
+| Daftar saldo awal | ✅ Sudah (flag `is_saldo_awal` pada penerimaan) |
+| Buku penerimaan | ✅ Sudah |
+| Nota permintaan | ✅ Sudah (dokumen auto saat approve) |
+| Surat permintaan | ✅ Sudah (dokumen auto) |
+| Surat perintah penyaluran | ✅ Sudah (dokumen auto) |
+| BAST | ✅ Sudah (dokumen tambahan) |
+| BAP | ✅ Sudah (dokumen tambahan) |
+| Stok opname | ✅ Sudah (dokumen tambahan) |
+| Buku pengeluaran | ✅ Sudah (laporan + dokumen) |
+| Buku penyaluran | 🟡 Sebagian (dokumen ada; laporan penyaluran khusus belum) |
+| Kartu barang | ✅ Sudah (runtime, tanpa tabel) |
+| Kartu persediaan | ✅ Sudah (runtime dengan saldo berjalan + export) |
+| Batch PDF dan histori batch | ✅ Sudah (`bhp_batch_dokumen`) |
 
 ## 3. Numbering
 

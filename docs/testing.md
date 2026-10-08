@@ -3,7 +3,8 @@
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
 > sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
 > **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
-> Status terakhir: 207 passed / 1134 assertions. Coverage gate tetap wajib
+> Status terakhir: 282 passed / 1348 assertions (44 file Feature+Unit, 11
+> di antaranya domain Distribusi BHP). Coverage gate tetap wajib
 > dijalankan sebelum merge.
 
 ## 1. Perintah
@@ -50,7 +51,7 @@ Status kini: **100% total, semua file 100%**.
   (`AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`)
   agar deterministik tanpa mengunci jam sistem.
 
-## 3. Matriks Cakupan (24 Feature + 4 Unit)
+## 3. Matriks Cakupan (40 Feature + 4 Unit, termasuk 11 file BHP)
 
 | File | Menjamin |
 |------|----------|
@@ -80,6 +81,22 @@ Status kini: **100% total, semua file 100%**.
 | `MigrasiLegacyTest` | 77 sekolah, 717 acuan, 490 SPJ, 42 realisasi, 13 kunci, users, katalog |
 | `SekolahFlowFixTest` | Regresi alur sekolah |
 | Unit: `FortifyActionsTest`, `ModelRelationsTest`, `ProvidersTest` | Action reset/update, relasi & accessor `is_realisasi`, gate super_admin |
+
+### Distribusi BHP (11 file, 75 kasus)
+
+| File | Menjamin |
+|------|----------|
+| `BhpDomainBoundaryTest` | Pemisahan domain: tidak ada tabel/model/route BM yang tercampur BHP (dan sebaliknya) |
+| `BhpStokDanPengajuanTest` | Stok 4-tier, submit→reservasi, approve konversi ke pemakaian, reject lepas reservasi, stok tidak negatif |
+| `BhpHttpFlowTest` | Alur HTTP pengajuan→review→approve, guard permission, cross-tenant 403 |
+| `BhpMasterDataTest` | CRUD kode rekening/barang/penyedia, validasi sumber dana, riwayat harga |
+| `BhpPenerimaanTest` | Penerimaan + detail, saldo awal, validasi sumber dana/sekolah |
+| `BhpDokumenTest` | Auto-generate dokumen wajib saat approve, penomoran atomic per jenis/dana/periode, reject bila dokumen sudah ada |
+| `BhpDokumenTambahanTest` | `generateTambahan` BAST/BAP/stok opname/buku, idempotent, tolak jenis tak dikenal, snapshot payload, guard permission |
+| `BhpPdfDokumenTest` | Rendering PDF per dokumen + batch kompilasi, `safeFilename`, histori `bhp_batch_dokumen` |
+| `BhpLaporanTest` | `laporanStok` 4-tier, isolasi per sumber dana, `bukuPengeluaran`, `kartuBarang`, export XLSX stok/pengeluaran |
+| `BhpKartuPersediaanTest` | Saldo berjalan kronologis, masuk-didahului pada tanggal sama, hanya mutasi dana terkait, abaikan pengajuan non-approved, pakai `jumlah_disetujui`, export + validasi `barang_id` |
+| `BhpImportSeederTest` | Impor master + penerimaan: skip soft-delete, hanya detail `cart_status=saved`, relasi rekening, `source_id` unik (no_bast duplikat/NULL tetap terpisah), tabel tanpa `deleted_at`, idempotensi, sumber tidak ada → dilewati |
 
 ## 4. Menambah Test Baru
 

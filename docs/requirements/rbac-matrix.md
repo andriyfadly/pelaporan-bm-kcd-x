@@ -1,5 +1,9 @@
 # RBAC Matrix BM dan BHP
 
+> **Kolom aktual:** `## Implementasi Saat Ini` di bawah memuat permission dan
+> role yang benar-benar terpasang (`PeranDanHakAksesSeeder`). Tabel di atasnya
+> adalah target/rencana.
+
 | Kemampuan | Super Admin | Admin KCD | Operator/Bendahara Sekolah | User Divisi BHP |
 |---|:---:|:---:|:---:|:---:|
 | Lihat dashboard BM | Ya | Ya | Sekolah sendiri | Sesuai akses |
@@ -22,3 +26,36 @@
 - Semua mutation memeriksa role, permission, dan tenant.
 - User sekolah tidak boleh mengirim `sekolah_id` milik sekolah lain untuk mengubah scope query.
 - Permission BM tidak otomatis memberi permission BHP, dan sebaliknya.
+
+## Implementasi Saat Ini
+
+**5 role:** `super_admin`, `admin_kcd`, `operator_sekolah`,
+`bendahara_sekolah`, `operator_divisi`.
+
+**17 permission** (10 BM + 7 BHP):
+
+```text
+BM : lihat-laporan-bm, input-spj-bm, edit-spj-bm, hapus-spj-bm,
+     verifikasi-laporan-bm, kunci-laporan-bm, unduh-rekap-bm,
+     cetak-laporan-bm, kelola-user, lihat-log-aktivitas
+BHP: lihat-distribusi-bhp, kelola-master-bhp, kelola-penerimaan-bhp,
+     kelola-pengajuan-bhp, review-pengajuan-bhp, approve-pengajuan-bhp,
+     cetak-dokumen-bhp
+```
+
+Pemetaan role → permission BHP:
+
+| Permission BHP | super_admin | admin_kcd | operator_sekolah | bendahara_sekolah | operator_divisi |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `lihat-distribusi-bhp` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `kelola-master-bhp` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `kelola-penerimaan-bhp` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `kelola-pengajuan-bhp` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `review-pengajuan-bhp` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `approve-pengajuan-bhp` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `cetak-dokumen-bhp` | ✅ | ✅ | ✅ | ❌ | ❌ |
+
+Catatan: matriks target di atas mengasumsikan pemisahan review/approve dan
+pembatasan operator pada master; implementasi sekarang memberi operator_sekolah
+permission BHP penuh (setara admin) untuk memudahkan operasional sekolah.
+Tinjau ulang sebelum go-live bila ingin pengetatan.

@@ -116,3 +116,62 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
    - Cakupan (terverifikasi test `MigrasiLegacyTest`): 77 `kode_sekolah` → `Sekolah`, 717 `data_barang_acuan` (3 batch) → `Acuan` + backfill `npsn`, 490 `master_barang_sekolah` (4 batch) → `Spj`, 42 `realisasi_barang_sekolah` → `Realisasi`, 13 `laporan_realisasi` → `KunciLaporan` (status `disetujui` + `tanggal_kirim` terbawa), katalog kode barang via `upsert` chunk 500. Users legacy **tidak** dimigrasi (dilewati; akun dikelola `UserSeeder`).
   - Idempoten (`updateOrCreate` by id lama) — aman dijalankan ulang.
   - Wajib dijalankan sekali setelah `migrate --seed` pada instalasi baru yang menginginkan data legacy.
+
+### H. Distribusi BHP (`app/Http/Controllers/DistribusiBhp/*`)
+
+Semua rute ber-prefix `/distribusi-bhp`, name `distribusi-bhp.*`, dan dijaga
+permission BHP. Prefix ini tidak menyentuh `/pelaporan-bm` (lihat
+`docs/requirements/domain-boundaries.md`).
+
+| Method | Path | Permission | Controller::method |
+|---|---|---|---|
+| GET | `/distribusi-bhp/dashboard` | `lihat-distribusi-bhp` | `DashboardController::index` |
+| GET | `/distribusi-bhp/pengajuan` | `lihat-distribusi-bhp` | `PengajuanController::index` |
+| POST | `/distribusi-bhp/pengajuan` | `kelola-pengajuan-bhp` | `PengajuanController::store` |
+| POST | `/distribusi-bhp/pengajuan/{pengajuan}/submit` | `kelola-pengajuan-bhp` | `PengajuanController::submit` |
+| GET | `/distribusi-bhp/review-pengajuan` | `review-pengajuan-bhp` | `ReviewPengajuanController::index` |
+| POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/approve` | `approve-pengajuan-bhp` | `ReviewPengajuanController::approve` |
+| POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/reject` | `approve-pengajuan-bhp` | `ReviewPengajuanController::reject` |
+| GET/POST | `/distribusi-bhp/master/kode-rekening` | `kelola-master-bhp` | `KodeRekeningController` |
+| GET/POST | `/distribusi-bhp/master/barang` | `kelola-master-bhp` | `BarangController` |
+| POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-master-bhp` | `BarangController::storeHarga` |
+| GET/POST | `/distribusi-bhp/master/penyedia` | `kelola-master-bhp` | `PenyediaController` |
+| GET/POST | `/distribusi-bhp/penerimaan` | `kelola-penerimaan-bhp` | `PenerimaanController` |
+| GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen` | `lihat-distribusi-bhp` | `DokumenController::show` |
+| GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/{dokumen}/pdf` | `cetak-dokumen-bhp` | `DokumenController::pdf` |
+| POST | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/batch` | `cetak-dokumen-bhp` | `DokumenController::batch` |
+| POST | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/tambahan` | `cetak-dokumen-bhp` | `DokumenController::tambahan` |
+| GET | `/distribusi-bhp/laporan` | `lihat-distribusi-bhp` | `LaporanController::index` |
+| GET | `/distribusi-bhp/laporan/kartu-persediaan` | `lihat-distribusi-bhp` | `LaporanController::kartuPersediaan` |
+| GET | `/distribusi-bhp/laporan/export` | `cetak-dokumen-bhp` | `LaporanController::export` |
+
+Total: **23 rute**.
+
+Payload penting:
+
+- `POST pengajuan`: `sumber_dana` (`BOS`/`BOPD`), `tanggal`, `details[]`
+  (`barang_id`, `jumlah_diminta`, `keperluan`).
+- `POST dokumen/tambahan`: `jenis` ∈ {`bast`, `bap`, `stok_opname`,
+  `buku_pengeluaran`, `buku_penyaluran`}, `tanggal` (opsional). Idempotent per
+  jenis.
+- `GET laporan/export`: `sumber_dana`, `jenis` ∈ {`stok`, `pengeluaran`,
+  `kartu_persediaan`}; `barang_id` **wajib** bila `jenis=kartu_persediaan`.
+- `GET laporan/kartu-persediaan`: `barang_id`, `sumber_dana` (opsional;
+  default `BOS`). Mengembalikan `kartu` berisi `barang` (saldo awal/masuk/
+  keluar/akhir) + `mutasi[]` dengan saldo berjalan.
+
+### I. Migrasi Data Legacy BHP (seeder)
+
+- **`php artisan db:seed --class=DistribusiBhpImportSeeder`**
+  (`database/seeders/DistribusiBhpImportSeeder.php`)
+  - Membaca DB SQLite sumber (Next/Prisma). Default:
+    `../sistem-manajemen-aset/prisma/dev.db.backup.db`; dapat diarahkan via
+    `setSourcePath()`.
+  - Cakupan: `bhp_kode_rekening`, `bhp_penyedia`, `bhp_barang`,
+    `bhp_harga_barang`, `bhp_penerimaan` + `bhp_penerimaan_detail`.
+  - Melewati baris `deleted_at` (bila kolom ada) dan detail
+    `cart_status != 'saved'`.
+  - Idempotent (upsert berbasis `source_id` untuk penerimaan, natural key untuk
+    master). Terdaftar di `DatabaseSeeder`, jadi ikut `migrate --seed`; bila
+    sumber tidak ada, seeder hanya memberi peringatan dan dilewati.
+  - Terverifikasi `BhpImportSeederTest`.

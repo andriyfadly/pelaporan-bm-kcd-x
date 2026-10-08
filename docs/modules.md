@@ -104,3 +104,85 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
 - **Middleware Interseptor (`EnsurePasswordNotExpired`)**: Mencegah akses ke menu lain jika password operator berstatus kedaluwarsa (`password_changed_at = null` pada login awal, atau berusia &ge; 90 hari).
 - **Dedicated Page (`/ubah-password`)**: Halaman khusus mandiri untuk pembaruan password dengan validasi password rumit (min. 8 karakter, huruf besar/kecil, angka, simbol).
 - **Update Timestamp**: Menyimpan waktu perubahan password (`password_changed_at = now()`) dan mengembalikan hak akses penuh ke dashboard.
+
+---
+
+## 7. Modul Distribusi BHP (`/distribusi-bhp`)
+
+Domain **Barang Habis Pakai** yang berdiri sendiri, terpisah dari Pelaporan BM
+(tidak berbagi tabel transaksi/status/stok). Menu BHP muncul sebagai section
+terpisah di navigasi (`AppLayout`).
+
+**Sumber dana.** Setiap data terikat `BOS` atau `BOPD`. BOS dan BOPD tidak
+pernah tercampur pada stok maupun laporan; stok dihitung per sumber dana.
+
+**Stok 4-tier.** `Tersedia = Fisik − Terpakai − Reservasi` (di-`max(0,…)`).
+`Fisik` dari penerimaan, `Terpakai` dari pengajuan `approved`, `Reservasi` dari
+pengajuan `submitted`. Semua mutasi lewat `StokService` dengan `lockForUpdate`.
+
+### 7.1 Master Data
+
+- **Kode Rekening (`/distribusi-bhp/master/kode-rekening`)**: unik per
+  `(kode, sumber_dana)`.
+- **Barang (`/distribusi-bhp/master/barang`)**: kode, nama, spesifikasi,
+  satuan, kode rekening, sumber dana; riwayat harga (harga terakhir tampil).
+- **Penyedia (`/distribusi-bhp/master/penyedia`)**: nama unik, alamat/telepon/email.
+- Permission: `kelola-master-bhp`.
+
+### 7.2 Penerimaan
+
+- **`/distribusi-bhp/penerimaan`**: catat penerimaan barang (nota/invoice,
+  BAST, kwitansi, penyedia, titimangsa) + detail barang & jumlah. Barang masuk
+  menambah stok fisik. Mendukung penandaan **saldo awal** (`is_saldo_awal`,
+  `periode_tahun`).
+- Permission: `kelola-penerimaan-bhp`.
+
+### 7.3 Pengajuan
+
+- **`/distribusi-bhp/pengajuan`**: buat draft pengajuan (sumber dana, tanggal,
+  daftar barang & jumlah diminta), lalu **Submit** yang memvalidasi stok
+  tersedia dan membuat **reservasi**.
+- Permission: lihat `lihat-distribusi-bhp`; buat/submit `kelola-pengajuan-bhp`.
+- Role `operator_divisi` hanya sampai di sini (tanpa approve).
+
+### 7.4 Review & Approval
+
+- **`/distribusi-bhp/review-pengajuan`**: admin membuka pengajuan `submitted`,
+  lalu **Approve** (boleh mengoreksi `jumlah_disetujui`) atau **Reject**
+  (wajib alasan).
+- Approve dan pembuatan dokumen berjalan dalam **satu transaction**: reservasi
+  dikonversi ke pemakaian, status `approved`, dan dokumen wajib (nota
+  permintaan, surat permintaan, surat penyaluran) digenerate dengan nomor atomic.
+- Permission: lihat `review-pengajuan-bhp`; approve/reject `approve-pengajuan-bhp`.
+
+### 7.5 Dokumen & PDF (`/distribusi-bhp/pengajuan/{id}/dokumen`)
+
+- Daftar dokumen per pengajuan dengan nomor resmi. Format nomor:
+  `{urut:3}/BHP/{kode}/{sumber_dana}/{bulan_romawi}/{tahun}`, counter atomic
+  per (jenis, sumber dana, tahun, bulan) — aman untuk request bersamaan.
+- **Unduh PDF** per dokumen, atau **Batch PDF** (semua dokumen dalam satu file;
+  histori generasi tersimpan di `bhp_batch_dokumen` dengan status
+  selesai/sebagian/gagal).
+- **Dokumen tambahan**: BAST, BAP, Stok Opname, Buku Pengeluaran, Buku
+  Penyaluran — idempotent per jenis (nomor tidak berubah saat dibuat ulang),
+  dengan snapshot laporan pada payload.
+- Permission: lihat `lihat-distribusi-bhp`; cetak/export `cetak-dokumen-bhp`.
+
+### 7.6 Laporan (`/distribusi-bhp/laporan`)
+
+- **Laporan Stok**: tabel 4-tier per barang untuk sumber dana terpilih.
+- **Buku Pengeluaran**: item yang sudah approved beserta keperluan.
+- **Kartu Barang**: profil barang + mutasi masuk/keluar (tanpa saldo berjalan).
+- **Kartu Persediaan (`/distribusi-bhp/laporan/kartu-persediaan`)**: mutasi
+  masuk/keluar kronologis dengan **saldo berjalan** per barang; pada tanggal
+  sama, masuk didahulukan; hanya mutasi sumber dana terkait yang dihitung.
+- **Export Excel**: jenis `stok`, `pengeluaran`, atau `kartu_persediaan`
+  (wajib `barang_id`).
+- Permission: lihat `lihat-distribusi-bhp`; export `cetak-dokumen-bhp`.
+
+### 7.7 Impor Data Legacy
+
+- `DistribusiBhpImportSeeder` mengimpor master (kode rekening, penyedia,
+  barang, harga) + penerimaan/detail dari DB SQLite aplikasi sumber. Melewati
+  baris soft-deleted dan detail keranjang (`cart_status != 'saved'`), dan
+  idempotent. Detail: `docs/api.md` §I.

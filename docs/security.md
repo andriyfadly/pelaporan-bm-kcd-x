@@ -3,7 +3,9 @@
 > Cakupan: RBAC, isolasi tenant, auth, proteksi input, logging audit.
 > Operasional produksi: `docs/deployment.md`.
 
-## 1. Matriks RBAC (aktual, 10 permission)
+## 1. Matriks RBAC (aktual, 17 permission + 5 role)
+
+### Pelaporan BM (10 permission)
 
 | Kemampuan | super_admin | admin_kcd | operator/bendahara |
 |-----------|:-----------:|:---------:|:------------------:|
@@ -15,6 +17,22 @@
 | Edit alokasi realisasi setelah disetujui | ✅ | ❌ | ❌ |
 | Kelola user (`kelola-user`) | ✅ | ✅* | ❌ |
 | Lihat log aktivitas (`lihat-log-aktivitas`) | ✅ | ✅\*\* | ❌ |
+
+### Distribusi BHP (7 permission)
+
+| Kemampuan | super_admin | admin_kcd | operator_sekolah | bendahara_sekolah | operator_divisi |
+|-----------|:-----------:|:---------:|:----------------:|:----------------:|:---------------:|
+| Lihat modul BHP (`lihat-distribusi-bhp`) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Kelola master (`kelola-master-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Kelola penerimaan (`kelola-penerimaan-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Buat/submit pengajuan (`kelola-pengajuan-bhp`) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Review (`review-pengajuan-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Approve/reject (`approve-pengajuan-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Cetak/export (`cetak-dokumen-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
+
+Role `operator_divisi` adalah role baru khusus BHP (pemohon lintas sekolah,
+tanpa akses master/approval). Wewenang dihitung server-side via middleware
+`permission:*`, bukan dari UI.
 
 \* Grup rute `/admin` memakai `role:super_admin|admin_kcd`; halaman user
 menyembunyikan super_admin dari daftar dan menolak hapus diri. `Gate::before`
@@ -69,6 +87,24 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 - Terverifikasi `SecurityHardeningTest` + `AcuanImportGapTest` + `CetakControllerEdgeTest`
   (cross-tenant 403, kunci diblokir, operator tanpa sekolah ditolak).
 
+### Isolasi tenant Distribusi BHP
+
+- Halaman/aksi BHP memakai `resolveSekolahId` yang sama; pengajuan dan
+  penerimaan difilter `sekolah_id`.
+- Dokumen (`DokumenController::authorizeSekolah`) menolak 403 jika
+  `pengajuan.sekolah_id` bukan milik user, dan `authorizeDokumen` menolak 404
+  bila dokumen bukan milik pengajuan tersebut (anti IDOR).
+- Validasi sumber dana wajib: `sumber_dana` ∈ {BOS, BOPD}; kode rekening dan
+  barang harus sealiran sumber dana dengan pengajuan/penerimaan — BOS dan BOPD
+  tidak boleh tercampur (`LaporanService::kartuPersediaan` melempar
+  `RuntimeException` bila tidak cocok).
+- Stok tidak bisa dipakai melebihi `tersedia`; submit approve dan reject
+  berjalan dalam satu transaction dengan `lockForUpdate` pada pengajuan,
+  detail, dan barang (`StokService`) sehingga request bersamaan tidak
+  menghasilkan stok negatif.
+- Terverifikasi `BhpDomainBoundaryTest`, `BhpStokDanPengajuanTest`,
+  `BhpHttpFlowTest`, `BhpLaporanTest`, `BhpKartuPersediaanTest`.
+
 ## 3. Autentikasi & Akun
 
 - Fortify session + bcrypt; login username-only (tanpa email).
@@ -115,5 +151,5 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 - [ ] `TURNSTILE_ENABLED=true` + key valid; HTTPS + cookie secure
 - [ ] `composer audit` bersih; `npm audit` ditinjau
 - [ ] Backup DB terjadwal & pernah diuji restore
-- [x] Test regresi: `php artisan test --compact` (207 test, 1134 assertion), `npx tsc --noEmit`, Pint
+- [x] Test regresi: `php artisan test --compact` (282 test, 1348 assertion), `npx tsc --noEmit`, Pint
 - [ ] `composer test-coverage` tetap wajib dijalankan sebagai gate coverage sebelum merge
