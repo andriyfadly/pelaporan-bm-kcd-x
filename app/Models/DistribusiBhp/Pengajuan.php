@@ -42,6 +42,11 @@ class Pengajuan extends Model
         return $this->hasMany(PengajuanDetail::class, 'bhp_pengajuan_id');
     }
 
+    public function dokumen(): HasMany
+    {
+        return $this->hasMany(Dokumen::class, 'bhp_pengajuan_id');
+    }
+
     public function pemohon(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

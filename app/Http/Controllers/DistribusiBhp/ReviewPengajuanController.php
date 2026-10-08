@@ -5,6 +5,7 @@ namespace App\Http\Controllers\DistribusiBhp;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\StokService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,10 @@ class ReviewPengajuanController extends Controller
 {
     use ResolvesSekolah;
 
-    public function __construct(private readonly StokService $stok) {}
+    public function __construct(
+        private readonly StokService $stok,
+        private readonly DokumenService $dokumen,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -45,7 +49,7 @@ class ReviewPengajuanController extends Controller
         ]);
 
         try {
-            $this->stok->approve(
+            $this->dokumen->approveDanGenerate(
                 $pengajuan->load('details'),
                 $request->user(),
                 $validated['jumlah_disetujui'] ?? [],
@@ -58,7 +62,7 @@ class ReviewPengajuanController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Pengajuan disetujui dan stok diperbarui.');
+        return back()->with('success', 'Pengajuan disetujui, stok diperbarui, dan dokumen dibuat.');
     }
 
     public function reject(Request $request, Pengajuan $pengajuan): RedirectResponse

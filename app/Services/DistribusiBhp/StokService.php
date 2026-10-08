@@ -149,57 +149,66 @@ class StokService
      */
     public function approve(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui = []): Pengajuan
     {
-        return DB::transaction(function () use ($pengajuan, $reviewer, $jumlahDisetujui) {
-            $pengajuan = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
+        return DB::transaction(fn () => $this->applyApprove($pengajuan, $reviewer, $jumlahDisetujui));
+    }
 
-            if ($pengajuan->status !== 'submitted') {
-                throw new RuntimeException('Hanya pengajuan berstatus submitted yang dapat disetujui.');
+    /**
+     * Inti approval tanpa membuka transaction sendiri, agar dapat dipanggil
+     * di dalam transaction milik caller (mis. DokumenService).
+     *
+     * @param  array<string,int>  $jumlahDisetujui
+     */
+    public function applyApprove(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui = []): Pengajuan
+    {
+        $pengajuan = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
+
+        if ($pengajuan->status !== 'submitted') {
+            throw new RuntimeException('Hanya pengajuan berstatus submitted yang dapat disetujui.');
+        }
+
+        $details = $pengajuan->details()->lockForUpdate()->get();
+
+        foreach ($details as $detail) {
+            $barang = Barang::whereKey($detail->barang_id)->lockForUpdate()->first();
+            if (! $barang) {
+                throw new RuntimeException('Barang pada pengajuan tidak ditemukan.');
             }
 
-            $details = $pengajuan->details()->lockForUpdate()->get();
+            $disetujui = array_key_exists($detail->id, $jumlahDisetujui)
+                ? (int) $jumlahDisetujui[$detail->id]
+                : (int) $detail->jumlah_direservasi;
 
-            foreach ($details as $detail) {
-                $barang = Barang::whereKey($detail->barang_id)->lockForUpdate()->first();
-                if (! $barang) {
-                    throw new RuntimeException('Barang pada pengajuan tidak ditemukan.');
-                }
-
-                $disetujui = array_key_exists($detail->id, $jumlahDisetujui)
-                    ? (int) $jumlahDisetujui[$detail->id]
-                    : (int) $detail->jumlah_direservasi;
-
-                if ($disetujui < 0) {
-                    throw new RuntimeException('Jumlah disetujui tidak boleh negatif.');
-                }
-
-                if ($disetujui > (int) $detail->jumlah_diminta) {
-                    throw new RuntimeException('Jumlah disetujui tidak boleh melebihi jumlah diminta.');
-                }
-
-                // Reservasi item ini dilepas, lalu divalidasi terhadap sisa tersedia
-                // setelah reservasi sendiri dilepas.
-                $sisaTanpaReservasiIni = $this->fisik($barang)
-                    - $this->terpakai($barang)
-                    - ($this->reservasi($barang) - (int) $detail->jumlah_direservasi);
-
-                if ($disetujui > $sisaTanpaReservasiIni) {
-                    throw new RuntimeException("Jumlah disetujui melebihi stok tersedia {$barang->nama_barang}.");
-                }
-
-                $detail->update([
-                    'jumlah_disetujui' => $disetujui,
-                    'status_reservasi' => 'tidak_direservasi',
-                    'jumlah_direservasi' => 0,
-                ]);
+            if ($disetujui < 0) {
+                throw new RuntimeException('Jumlah disetujui tidak boleh negatif.');
             }
 
-            $pengajuan->update([
-                'status' => 'approved',
-                'reviewed_by' => $reviewer->id,
-                'reviewed_at' => now(),
+            if ($disetujui > (int) $detail->jumlah_diminta) {
+                throw new RuntimeException('Jumlah disetujui tidak boleh melebihi jumlah diminta.');
+            }
+
+            // Reservasi item ini dilepas, lalu divalidasi terhadap sisa tersedia
+            // setelah reservasi sendiri dilepas.
+            $sisaTanpaReservasiIni = $this->fisik($barang)
+                - $this->terpakai($barang)
+                - ($this->reservasi($barang) - (int) $detail->jumlah_direservasi);
+
+            if ($disetujui > $sisaTanpaReservasiIni) {
+                throw new RuntimeException("Jumlah disetujui melebihi stok tersedia {$barang->nama_barang}.");
+            }
+
+            $detail->update([
+                'jumlah_disetujui' => $disetujui,
+                'status_reservasi' => 'tidak_direservasi',
+                'jumlah_direservasi' => 0,
             ]);
+        }
 
-            return $pengajuan;
-        });
+        $pengajuan->update([
+            'status' => 'approved',
+            'reviewed_by' => $reviewer->id,
+            'reviewed_at' => now(),
+        ]);
+
+        return $pengajuan;
     }
 }

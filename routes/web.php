@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\PasswordExpiredController;
 use App\Http\Controllers\DistribusiBhp\BarangController as BhpBarangController;
 use App\Http\Controllers\DistribusiBhp\DashboardController as BhpDashboardController;
+use App\Http\Controllers\DistribusiBhp\DokumenController as BhpDokumenController;
 use App\Http\Controllers\DistribusiBhp\KodeRekeningController as BhpKodeRekeningController;
 use App\Http\Controllers\DistribusiBhp\PenerimaanController as BhpPenerimaanController;
 use App\Http\Controllers\DistribusiBhp\PengajuanController as BhpPengajuanController;
@@ -120,6 +121,10 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/penerimaan', [BhpPenerimaanController::class, 'index'])->name('penerimaan.index');
             Route::post('/penerimaan', [BhpPenerimaanController::class, 'store'])->name('penerimaan.store');
         });
+
+        Route::get('/pengajuan/{pengajuan}/dokumen', [BhpDokumenController::class, 'show'])
+            ->middleware('permission:lihat-distribusi-bhp')
+            ->name('dokumen.show');
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:super_admin|admin_kcd')->group(function () {
