@@ -91,6 +91,7 @@ Status kini: **100% total, semua file 100%**.
 | `BhpHttpFlowTest` | Alur HTTP pengajuan→review→approve, guard permission, cross-tenant 403 |
 | `BhpSettingsTest` | Format nomor default/kustom, singleton satu baris, preferensi PDF, 403 role tanpa `kelola-master-bhp`, placeholder asing/tanpa `{urut:N}` ditolak |
 | `BhpMasterDataTest` | CRUD kode rekening/barang/penyedia, validasi sumber dana, riwayat harga |
+| `BhpSaldoAwalTest` | Halaman saldo awal terpisah: akses per role, tambah manual, statistik, isolasi per sekolah, periode, hapus per barang |
 | `BhpPenerimaanTest` | Penerimaan + detail, saldo awal (periode wajib, duplikat per barang ditolak, BOS≠BOPD, hapus sebelum/sesudah dipakai, ownership), boundary guest/bendahara/sumber dana/penyedia/barang invalid |
 | `BhpDokumenTest` | Auto-generate dokumen wajib saat approve (dengan pejabat lengkap), penomoran atomic per jenis/dana/periode, reject bila dokumen sudah ada, rollback stok saat generate gagal, gate pejabat tidak mengubah state |
 | `BhpPejabatSekolahTest` | **Gate pejabat**: approval gagal bila pejabat belum lengkap (status tetap submitted, reservasi utuh, tanpa dokumen), snapshot penandatangan di payload, reprint pakai snapshot saat pejabat berganti, approval backdate pakai pejabat berlaku pada tanggal pengajuan, satu pejabat aktif per jabatan (auto-close H-1), overlap periode ditolak, isolasi sekolah 403, `generateTambahan` menolak pengajuan non-approved. Rute `/master-data/pejabat` |

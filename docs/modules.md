@@ -143,6 +143,10 @@ divisi.
   menambah stok fisik. Mendukung penandaan **saldo awal** (`is_saldo_awal`,
   `periode_tahun`).
 - Permission: `kelola-penerimaan-bhp`.
+- **Saldo awal** punya **halaman terpisah** `/distribusi-bhp/saldo-awal`
+  (pola sistem-manajemen-aset): filter sumber dana + periode, kartu statistik
+  (jumlah barang, total unit, total nilai saldo), tabel per barang, tambah
+  manual, dan hapus per barang dengan konfirmasi.
 - **Saldo awal** adalah flow khusus (`SaldoAwalService`), bukan sekadar flag:
   - kombinasi `is_saldo_awal × periode_tahun` wajib konsisten — saldo awal
     wajib menyebut periode (2000–2100), penerimaan biasa dilarang mengisinya;

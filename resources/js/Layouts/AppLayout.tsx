@@ -94,6 +94,11 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                             Penerimaan
                         </Link>
                     )}
+                    {canTerima && (
+                        <Link href="/distribusi-bhp/saldo-awal" className={itemClass(currentPath.startsWith('/distribusi-bhp/saldo-awal'))}>
+                            Saldo Awal
+                        </Link>
+                    )}
                     {canPengajuan && (
                         <Link href="/distribusi-bhp/pengajuan" className={itemClass(currentPath.startsWith('/distribusi-bhp/pengajuan'))}>
                             Pengajuan

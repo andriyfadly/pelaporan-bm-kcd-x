@@ -14,6 +14,7 @@ use App\Http\Controllers\DistribusiBhp\PenerimaanController as BhpPenerimaanCont
 use App\Http\Controllers\DistribusiBhp\PengajuanController as BhpPengajuanController;
 use App\Http\Controllers\DistribusiBhp\PenyediaController as BhpPenyediaController;
 use App\Http\Controllers\DistribusiBhp\ReviewPengajuanController as BhpReviewPengajuanController;
+use App\Http\Controllers\DistribusiBhp\SaldoAwalController as BhpSaldoAwalController;
 use App\Http\Controllers\DistribusiBhp\SettingsController as BhpSettingsController;
 use App\Http\Controllers\Master\PejabatSekolahController as MasterPejabatSekolahController;
 use App\Http\Controllers\Master\ProfilSekolahController as MasterProfilSekolahController;
@@ -126,6 +127,11 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/penerimaan', [BhpPenerimaanController::class, 'index'])->name('penerimaan.index');
             Route::post('/penerimaan', [BhpPenerimaanController::class, 'store'])->name('penerimaan.store');
             Route::delete('/penerimaan/{penerimaan}', [BhpPenerimaanController::class, 'destroy'])->name('penerimaan.destroy');
+
+            // Flow saldo awal terpisah (pola sistem-manajemen-aset).
+            Route::get('/saldo-awal', [BhpSaldoAwalController::class, 'index'])->name('saldo-awal.index');
+            Route::post('/saldo-awal', [BhpSaldoAwalController::class, 'store'])->name('saldo-awal.store');
+            Route::delete('/saldo-awal/{detail}', [BhpSaldoAwalController::class, 'destroy'])->name('saldo-awal.destroy');
         });
 
         Route::get('/pengajuan/{pengajuan}/dokumen', [BhpDokumenController::class, 'show'])
