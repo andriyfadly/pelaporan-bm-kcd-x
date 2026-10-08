@@ -14,7 +14,10 @@ class KodeRekeningController extends Controller
 {
     public function index(Request $request): Response
     {
-        $sumberDana = strtoupper((string) $request->input('sumber_dana', 'BOS'));
+        $sumberDana = $request->validate([
+            'sumber_dana' => ['nullable', Rule::in(['BOS', 'BOPD'])],
+        ])['sumber_dana'] ?? 'BOS';
+        $sumberDana = strtoupper((string) $sumberDana);
 
         $items = KodeRekening::query()
             ->where('sumber_dana', $sumberDana)

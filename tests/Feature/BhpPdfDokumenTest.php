@@ -7,9 +7,11 @@ use App\Models\DistribusiBhp\BatchDokumen;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Models\Master\PejabatSekolah;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use App\Services\DistribusiBhp\DokumenService;
+use App\Services\PejabatSekolahService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -46,6 +48,18 @@ class BhpPdfDokumenTest extends TestCase
 
     private function approvedPengajuan(Sekolah $sekolah, User $operator, User $reviewer): Pengajuan
     {
+        // Approval mensyaratkan pejabat penandatangan lengkap.
+        $pejabat = app(PejabatSekolahService::class);
+        foreach (PejabatSekolah::JABATAN as $i => $jabatan) {
+            $pejabat->simpan((string) $sekolah->id, (string) $reviewer->id, [
+                'jabatan' => $jabatan,
+                'nama' => 'Pejabat '.$jabatan,
+                'pangkat_golongan' => 'III/d',
+                'nip' => '19800101201001100'.$i,
+                'mulai_menjabat' => '2026-01-01',
+            ]);
+        }
+
         $barang = Barang::create([
             'kode_barang' => '1.1.7.40.BOS',
             'nama_barang' => 'Semen Portland',

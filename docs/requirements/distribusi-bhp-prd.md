@@ -22,7 +22,12 @@ Semua master dan transaksi BHP wajib memiliki sumber dana. Item dengan sumber da
 - Divisi.
 - Keperluan.
 - Koordinator.
-- Jabatan/penandatangan dokumen.
+- Penandatangan dokumen: master pejabat sekolah per jabatan
+  (kepala sekolah, wakasek sarpras, pembantu pengurus barang) dengan nama,
+  pangkat/golongan, NIP, jenis jabatan (definitif/plt/plh), dan riwayat masa
+  jabatan. Approval pengajuan mensyaratkan ketiga jabatan terisi dan berlaku
+  pada tanggal pengajuan; snapshot pejabat tersimpan pada payload dokumen
+  sehingga reprint tidak berubah saat pejabat berganti.
 
 ## 4. Penerimaan dan Saldo Awal
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\DistribusiBhp;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Models\Master\PejabatSekolah;
 use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\StokService;
 use Illuminate\Http\RedirectResponse;
@@ -33,8 +34,23 @@ class ReviewPengajuanController extends Controller
             ->paginate(25)
             ->withQueryString();
 
+        // Peringatan dini bila pejabat penandatangan belum lengkap (approval
+        // tetap divalidasi ulang di service).
+        $pejabatWarning = null;
+        if ($sekolahId && $items->isNotEmpty()) {
+            $kurang = collect(PejabatSekolah::JABATAN)
+                ->filter(fn ($jabatan) => ! PejabatSekolah::aktif($sekolahId, $jabatan)->exists())
+                ->map(fn ($jabatan) => PejabatSekolah::LABEL_JABATAN[$jabatan])
+                ->values();
+
+            if ($kurang->isNotEmpty()) {
+                $pejabatWarning = 'Pejabat penandatangan belum lengkap: '.$kurang->implode(', ');
+            }
+        }
+
         return Inertia::render('DistribusiBhp/Review/Index', [
             'items' => $items,
+            'pejabatWarning' => $pejabatWarning,
         ]);
     }
 
@@ -53,11 +69,8 @@ class ReviewPengajuanController extends Controller
                 $pengajuan->load('details'),
                 $request->user(),
                 $validated['jumlah_disetujui'] ?? [],
+                $validated['review_notes'] ?? null,
             );
-
-            if (! empty($validated['review_notes'])) {
-                $pengajuan->update(['review_notes' => $validated['review_notes']]);
-            }
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -88,6 +101,11 @@ class ReviewPengajuanController extends Controller
 
         if ($sekolahId && $pengajuan->sekolah_id !== $sekolahId) {
             abort(403, 'Tidak memiliki akses ke pengajuan ini.');
+        }
+
+        $divisiId = $request->user()->divisi_id;
+        if ($divisiId && $pengajuan->divisi_id !== $divisiId) {
+            abort(403, 'Pengajuan ini bukan milik divisi Anda.');
         }
     }
 }

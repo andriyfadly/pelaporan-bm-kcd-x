@@ -6,9 +6,11 @@ use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Models\Master\PejabatSekolah;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use App\Services\DistribusiBhp\DokumenService;
+use App\Services\PejabatSekolahService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -44,6 +46,18 @@ class BhpDokumenTambahanTest extends TestCase
 
     private function approvedPengajuan(Sekolah $sekolah, User $operator, User $reviewer, string $sumberDana = 'BOS'): Pengajuan
     {
+        // Approval mensyaratkan pejabat penandatangan lengkap.
+        $service = app(PejabatSekolahService::class);
+        foreach (PejabatSekolah::JABATAN as $jabatan) {
+            $service->simpan((string) $sekolah->id, (string) $reviewer->id, [
+                'jabatan' => $jabatan,
+                'nama' => 'Pejabat '.$jabatan,
+                'pangkat_golongan' => 'III/d',
+                'nip' => '198001012010011000'.strlen($jabatan),
+                'mulai_menjabat' => '2026-01-01',
+            ]);
+        }
+
         $barang = Barang::create([
             'kode_barang' => '1.1.7.50.'.$sumberDana,
             'nama_barang' => 'Semen Portland',
@@ -113,6 +127,58 @@ class BhpDokumenTambahanTest extends TestCase
         $this->assertNotEmpty($so->payload['items']);
         // Snapshot stok: tersedia = fisik - terpakai - reservasi.
         $this->assertSame(80, $so->payload['items'][0]['tersedia']);
+    }
+
+    public function test_payload_snapshot_tidak_mencampur_data_sekolah_lain(): void
+    {
+        $sekolahA = $this->sekolah('SMKN A Tambahan');
+        $sekolahB = $this->sekolah('SMKN B Tambahan');
+        $operator = $this->user($sekolahA, 'op.isolasi');
+        $reviewer = $this->user($sekolahA, 'rev.isolasi');
+        $pengajuan = $this->approvedPengajuan($sekolahA, $operator, $reviewer);
+
+        // Sekolah B punya penerimaan dan pengeluaran pada sumber dana yang sama.
+        $barang = Barang::create([
+            'kode_barang' => '1.1.7.50.BOS-B',
+            'nama_barang' => 'Kertas HVS B',
+            'satuan' => 'Rim',
+            'sumber_dana' => 'BOS',
+        ]);
+        $penerimaan = Penerimaan::create(['sekolah_id' => $sekolahB->id, 'sumber_dana' => 'BOS', 'is_saldo_awal' => true, 'periode_tahun' => 2026]);
+        PenerimaanDetail::create([
+            'bhp_penerimaan_id' => $penerimaan->id,
+            'barang_id' => $barang->id,
+            'jumlah' => 999,
+            'harga_satuan' => 10000,
+            'nilai_total' => 999 * 10000,
+        ]);
+
+        $pengajuanB = Pengajuan::create([
+            'sekolah_id' => $sekolahB->id,
+            'user_id' => $this->user($sekolahB, 'op.b2')->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'approved',
+            'tanggal' => '2026-06-18',
+        ]);
+        $pengajuanB->details()->create([
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 500,
+            'jumlah_disetujui' => 500,
+        ]);
+
+        app(DokumenService::class)->generateTambahan($pengajuan, 'stok_opname', '2026-06-30');
+        app(DokumenService::class)->generateTambahan($pengajuan, 'buku_pengeluaran', '2026-06-30');
+
+        $so = $pengajuan->dokumen()->where('jenis', 'stok_opname')->firstOrFail();
+        $itemSekolahA = collect($so->payload['items'])->firstWhere('barang_id', $pengajuan->details->first()->barang_id);
+        $this->assertNotNull($itemSekolahA);
+        // Stok sekolah A: fisik 100, terpakai 20 → tersedia 80 (bukan 999 dari sekolah B).
+        $this->assertSame(100, $itemSekolahA['fisik']);
+        $this->assertSame(80, $itemSekolahA['tersedia']);
+
+        $buku = $pengajuan->dokumen()->where('jenis', 'buku_pengeluaran')->firstOrFail();
+        // Buku pengeluaran hanya memuat pengeluaran sekolah A, bukan 500 milik sekolah B.
+        $this->assertSame(20, collect($buku->payload['items'])->sum('jumlah'));
     }
 
     public function test_generate_tambahan_menolak_jenis_tidak_dikenal(): void

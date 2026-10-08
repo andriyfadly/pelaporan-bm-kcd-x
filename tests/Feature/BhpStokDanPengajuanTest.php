@@ -7,9 +7,11 @@ use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Models\DistribusiBhp\PengajuanDetail;
+use App\Models\Master\PejabatSekolah;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use App\Services\DistribusiBhp\StokService;
+use App\Services\PejabatSekolahService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -58,6 +60,19 @@ class BhpStokDanPengajuanTest extends TestCase
             'status' => $status,
             'tanggal' => '2026-06-17',
         ]);
+    }
+
+    /** Approval mensyaratkan pejabat penandatangan lengkap. */
+    private function lengkapiPejabat(Sekolah $sekolah, User $oleh): void
+    {
+        $service = app(PejabatSekolahService::class);
+        foreach (PejabatSekolah::JABATAN as $i => $jabatan) {
+            $service->simpan((string) $sekolah->id, (string) $oleh->id, [
+                'jabatan' => $jabatan,
+                'nama' => 'Pejabat '.$jabatan,
+                'mulai_menjabat' => '2026-01-01',
+            ]);
+        }
     }
 
     public function test_stok_tersedia_menggunakan_rumus_fisik_minus_terpakai_minus_reservasi(): void
@@ -112,6 +127,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $pengajuan = $this->pengajuan($sekolah, $user);
         $detail = PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 25]);
 
+        $this->lengkapiPejabat($sekolah, $admin);
         $service = app(StokService::class);
         $service->submit($pengajuan->fresh('details'));
 
@@ -172,6 +188,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $pengajuan = $this->pengajuan($sekolah, $user);
         $detail = PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 10]);
 
+        $this->lengkapiPejabat($sekolah, $admin);
         $service = app(StokService::class);
         $service->submit($pengajuan->fresh('details'));
         $service->approve($pengajuan->fresh('details'), $admin, [$detail->id => 10]);

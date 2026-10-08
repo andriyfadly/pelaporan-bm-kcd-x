@@ -31,6 +31,8 @@ class PeranDanHakAksesSeeder extends Seeder
             'review-pengajuan-bhp',
             'approve-pengajuan-bhp',
             'cetak-dokumen-bhp',
+            'kelola-divisi-bhp',
+            'kelola-master-data-sekolah',
         ];
 
         foreach ($hakAkses as $hak) {
@@ -57,6 +59,8 @@ class PeranDanHakAksesSeeder extends Seeder
             'review-pengajuan-bhp',
             'approve-pengajuan-bhp',
             'cetak-dokumen-bhp',
+            'kelola-divisi-bhp',
+            'kelola-master-data-sekolah',
         ]);
 
         $bendaharaSekolah = Role::firstOrCreate(['name' => 'bendahara_sekolah', 'guard_name' => 'web']);

@@ -176,12 +176,13 @@ class BhpLaporanTest extends TestCase
             'jumlah_disetujui' => 25,
         ]);
 
-        $kartu = app(LaporanService::class)->kartuBarang($barang->id);
+        $kartu = app(LaporanService::class)->kartuPersediaan($barang->id, 'BOS');
         $jenis = array_column($kartu['mutasi'], 'jenis');
 
         $this->assertContains('masuk', $jenis);
         $this->assertContains('keluar', $jenis);
-        $this->assertSame(100, $kartu['barang']['fisik']);
+        // 100 masuk - 25 keluar (approved) = 75
+        $this->assertSame(75, $kartu['barang']['saldo_akhir']);
     }
 
     public function test_operator_dapat_membuka_halaman_laporan_bhp(): void

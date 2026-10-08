@@ -49,6 +49,8 @@ Format dan sequence dokumen disimpan pada konfigurasi BHP. Generator harus:
 ## 4. PDF
 
 - Template BHP tidak boleh digunakan pada laporan BM.
-- Data tanggal dan penandatangan berasal dari domain/config yang sesuai.
+- Data tanggal dan penandatangan berasal dari snapshot pejabat sekolah pada
+  payload dokumen (bukan pejabat aktif saat cetak), sehingga reprint dokumen
+  lama tidak berubah ketika pejabat berganti.
 - PDF dapat dibuka/diunduh tanpa membocorkan tenant lain.
 - Batch generation menyimpan status per file dan error message.

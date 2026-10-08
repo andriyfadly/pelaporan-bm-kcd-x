@@ -58,6 +58,11 @@ class Pengajuan extends Model
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
     }
 
+    public function divisi(): BelongsTo
+    {
+        return $this->belongsTo(Divisi::class, 'divisi_id');
+    }
+
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');

@@ -116,6 +116,12 @@ BOS dan BOPD **tidak pernah tercampur**.
 2. **Barang** (`/distribusi-bhp/master/barang`) — isi kode, nama, satuan, kode
    rekening, dan harga satuan.
 3. **Penyedia** (`/distribusi-bhp/master/penyedia`) — data rekanan/supplier.
+4. **Pejabat Sekolah** (`/master-data/pejabat`, menu Master Data sekolah — di luar menu BHP) — data penandatangan
+   dokumen: **Kepala Sekolah**, **Wakasek Sarana Prasarana**, dan **Pembantu
+   Pengurus Barang**. Isi nama, pangkat/golongan, NIP, jenis jabatan
+   (definitif/Plt./Plh.), dan masa jabatan. **Wajib lengkap ketiga jabatan
+   sebelum pengajuan dapat disetujui.** Riwayat pejabat lama tetap tersimpan;
+   menambah pejabat aktif otomatis menutup masa jabatan pejabat sebelumnya.
 
 ### 6.3 Mencatat Penerimaan Barang
 
@@ -138,8 +144,13 @@ BOS dan BOPD **tidak pernah tercampur**.
    pengajuan berstatus `submitted`.
 2. **Approve** — boleh mengoreksi jumlah yang disetujui (tidak boleh melebihi
    yang diminta atau stok tersedia), atau **Reject** dengan alasan wajib.
-3. Saat approve, sistem otomatis membuat dokumen wajib (Nota Permintaan, Surat
-   Permintaan, Surat Perintah Penyaluran) lengkap dengan nomor resmi.
+3. Approval ditolak bila pejabat penandatangan (kepala sekolah, wakasek
+   sarpras, pembantu pengurus barang) belum lengkap pada tanggal pengajuan;
+   halaman review menampilkan peringatannya.
+4. Saat approve, sistem otomatis membuat dokumen wajib (Nota Permintaan, Surat
+   Permintaan, Surat Perintah Penyaluran) lengkap dengan nomor resmi dan
+   snapshot nama pejabat saat itu — dokumen lama tidak berubah meski pejabat
+   berganti kemudian.
 
 ### 6.6 Mencetak Dokumen
 
@@ -147,7 +158,10 @@ BOS dan BOPD **tidak pernah tercampur**.
 2. **PDF** untuk mengunduh satu dokumen, atau **Unduh Batch PDF** untuk semua
    dokumen sekaligus.
 3. Tombol **+ BAST / BAP / Stok Opname** membuat dokumen tambahan (sekali saja
-   per jenis; nomornya tetap bila diklik ulang).
+   per jenis; nomornya tetap bila diklik ulang). Snapshot pada dokumen stok
+   opname/buku hanya berisi data sekolah pengajuan.
+4. Operator divisi hanya dapat membuka dokumen pengajuan divisinya sendiri;
+   dokumen divisi lain ditolak (403).
 
 ### 6.7 Melihat Laporan
 
@@ -156,8 +170,12 @@ BOS dan BOPD **tidak pernah tercampur**.
    sudah disetujui).
 3. Buka **Kartu Persediaan** (`/distribusi-bhp/laporan/kartu-persediaan`),
    pilih barang untuk melihat mutasi masuk/keluar dengan **saldo berjalan**.
-4. **Export Excel** tersedia untuk stok, buku pengeluaran, dan kartu persediaan.
+4. **Export Excel** tersedia untuk stok, buku pengeluaran, dan kartu
+   persediaan. Kartu persediaan wajib memilih barang yang sealiran sumber
+   dana laporan; jika tidak cocok, sistem menampilkan pesan error (bukan
+   halaman rusak).
 
-> Catatan peran: `operator_divisi` hanya dapat membuat dan mensubmit pengajuan;
-> review, approval, master, dan cetak dikerjakan role sekolah/admin yang
-> berwenang (`docs/security.md` §1).
+> Catatan peran: `operator_divisi` hanya dapat membuat dan mensubmit pengajuan
+> divisinya; review, approval, master, dan cetak dikerjakan role sekolah/admin
+> yang berwenang (`docs/security.md` §1). Dashboard operator divisi menampilkan
+> statistik pengajuan divisinya saja.

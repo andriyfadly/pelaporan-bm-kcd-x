@@ -8,6 +8,7 @@ use App\Models\DistribusiBhp\BatchDokumen;
 use App\Models\DistribusiBhp\Dokumen;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Services\DistribusiBhp\DokumenService;
+use App\Services\DistribusiBhp\SettingsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,10 @@ class DokumenController extends Controller
 {
     use ResolvesSekolah;
 
-    public function __construct(private readonly DokumenService $dokumenService) {}
+    public function __construct(
+        private readonly DokumenService $dokumenService,
+        private readonly SettingsService $settings,
+    ) {}
 
     /** Label jenis dokumen dalam Bahasa Indonesia. */
     private const JUDUL = [
@@ -86,14 +90,15 @@ class DokumenController extends Controller
         }
 
         // Gabungkan semua dokumen menjadi satu PDF untuk diunduh.
-        $pdf = Pdf::loadView('distribusi-bhp.dokumen-kompilasi', [
+        $pdf = $this->loadPdf('distribusi-bhp.dokumen-kompilasi', [
             'pengajuan' => $pengajuan->load('details.barang'),
             'dokumenList' => $dokumenList,
             'judulMap' => self::JUDUL,
             'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
             'pemohon' => $pengajuan->pemohon?->name ?? '-',
-            'penyetuju' => $pengajuan->reviewer?->name ?? '-',
-        ])->setPaper('a4', 'portrait');
+            'penandatangan' => $dokumenList->first()?->payload['penandatangan'] ?? [],
+            'settings' => $this->settings->get(),
+        ]);
 
         DB::transaction(function () use ($batch, $files, $berhasil, $gagal) {
             $batch->update([
@@ -134,14 +139,25 @@ class DokumenController extends Controller
 
     private function render(Pengajuan $pengajuan, Dokumen $dokumen)
     {
-        return Pdf::loadView('distribusi-bhp.dokumen', [
+        return $this->loadPdf('distribusi-bhp.dokumen', [
             'judul' => self::JUDUL[$dokumen->jenis] ?? ucwords(str_replace('_', ' ', $dokumen->jenis)),
             'dokumen' => $dokumen,
             'pengajuan' => $pengajuan,
             'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
             'pemohon' => $pengajuan->pemohon?->name ?? '-',
-            'penyetuju' => $pengajuan->reviewer?->name ?? '-',
-        ])->setPaper('a4', 'portrait');
+            // Snapshot penandatangan dari payload (bukan pejabat aktif kini),
+            // sehingga reprint dokumen lama tetap konsisten.
+            'penandatangan' => $dokumen->payload['penandatangan'] ?? [],
+            'settings' => $this->settings->get(),
+        ]);
+    }
+
+    /** Load PDF dengan paper/orientasi dari settings BHP. */
+    private function loadPdf(string $view, array $data)
+    {
+        ['paper' => $paper, 'orientation' => $orientation] = $this->settings->pdf();
+
+        return Pdf::loadView($view, $data)->setPaper($paper, $orientation);
     }
 
     /** Ubah nomor dokumen menjadi nama file yang aman (tanpa '/' atau '\'). */
@@ -156,6 +172,12 @@ class DokumenController extends Controller
 
         if ($sekolahId && $pengajuan->sekolah_id !== $sekolahId) {
             abort(403, 'Tidak memiliki akses ke dokumen ini.');
+        }
+
+        // Operator divisi hanya boleh menyentuh dokumen pengajuan divisinya sendiri.
+        $divisiId = $request->user()->divisi_id;
+        if ($divisiId && $pengajuan->divisi_id !== $divisiId) {
+            abort(403, 'Dokumen ini bukan milik divisi Anda.');
         }
     }
 

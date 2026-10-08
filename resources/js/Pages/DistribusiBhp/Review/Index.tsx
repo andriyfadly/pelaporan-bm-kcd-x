@@ -21,7 +21,12 @@ interface Paginated<T> {
     data: T[];
 }
 
-export default function Index({ items }: { items: Paginated<PengajuanItem> }) {
+interface Props {
+    items: Paginated<PengajuanItem>;
+    pejabatWarning: string | null;
+}
+
+export default function Index({ items, pejabatWarning }: Props) {
     const [active, setActive] = useState<PengajuanItem | null>(null);
     const [qty, setQty] = useState<Record<string, number>>({});
     const [alasan, setAlasan] = useState('');
@@ -48,6 +53,12 @@ export default function Index({ items }: { items: Paginated<PengajuanItem> }) {
 
             <div className="space-y-6">
                 <h1 className="text-lg font-bold text-slate-900">Review Pengajuan BHP</h1>
+
+                {pejabatWarning && (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl px-4 py-3 text-sm">
+                        {pejabatWarning} — approval akan ditolak sampai data pejabat dilengkapi di menu <strong>Pejabat Sekolah</strong>.
+                    </div>
+                )}
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <table className="w-full text-sm">

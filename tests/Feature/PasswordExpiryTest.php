@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DistribusiBhp\Divisi;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use Database\Seeders\PeranDanHakAksesSeeder;
@@ -130,6 +131,41 @@ class PasswordExpiryTest extends TestCase
 
         $response = $this->actingAs($admin)->get(route('dashboard'));
         $response->assertStatus(200);
+    }
+
+    public function test_operator_divisi_with_null_password_changed_at_is_forced_to_change_password(): void
+    {
+        $this->seed(PeranDanHakAksesSeeder::class);
+
+        $sekolah = Sekolah::create([
+            'nama_sekolah' => 'SMKN Divisi Password',
+            'kota_kab' => 'Kota Bandung',
+            'npsn' => '20221001',
+        ]);
+        $divisi = Divisi::create(['sekolah_id' => $sekolah->id, 'nama' => 'Sarpras']);
+
+        $user = User::create([
+            'name' => 'Operator Divisi',
+            'username' => '20221001-sarpras',
+            'password' => Hash::make('#SidiptaKCD10'),
+            'sekolah_id' => $sekolah->id,
+            'divisi_id' => $divisi->id,
+            'password_changed_at' => null,
+        ]);
+        $user->assignRole('operator_divisi');
+
+        $this->assertTrue($user->isPasswordExpired());
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('password.change'));
+
+        // Setelah ganti password, akses normal.
+        $user->forceFill(['password_changed_at' => now()])->save();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk();
     }
 
     public function test_change_password_page_renders(): void

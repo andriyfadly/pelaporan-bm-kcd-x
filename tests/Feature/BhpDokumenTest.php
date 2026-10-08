@@ -6,11 +6,13 @@ use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Models\Master\PejabatSekolah;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\NomorDokumenService;
 use App\Services\DistribusiBhp\StokService;
+use App\Services\PejabatSekolahService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -66,6 +68,21 @@ class BhpDokumenTest extends TestCase
         return $barang;
     }
 
+    /** Approval mensyaratkan pejabat penandatangan lengkap. */
+    private function lengkapiPejabat(Sekolah $sekolah, User $oleh): void
+    {
+        $service = app(PejabatSekolahService::class);
+        foreach (PejabatSekolah::JABATAN as $i => $jabatan) {
+            $service->simpan((string) $sekolah->id, (string) $oleh->id, [
+                'jabatan' => $jabatan,
+                'nama' => 'Pejabat '.$jabatan,
+                'pangkat_golongan' => 'III/d',
+                'nip' => '19800101201001100'.$i,
+                'mulai_menjabat' => '2026-01-01',
+            ]);
+        }
+    }
+
     public function test_nomor_dokumen_berurutan_dan_unik_per_sumber_dana_bulan_tahun(): void
     {
         $service = app(NomorDokumenService::class);
@@ -108,6 +125,7 @@ class BhpDokumenTest extends TestCase
             'jumlah_direservasi' => 30,
         ]);
 
+        $this->lengkapiPejabat($sekolah, $admin);
         app(DokumenService::class)->approveDanGenerate($pengajuan->load('details'), $admin, [$detail->id => 30]);
 
         $dokumen = $pengajuan->fresh()->dokumen;
@@ -142,6 +160,7 @@ class BhpDokumenTest extends TestCase
             'jumlah_direservasi' => 10,
         ]);
 
+        $this->lengkapiPejabat($sekolah, $admin);
         $service = app(DokumenService::class);
         $service->approveDanGenerate($pengajuan->load('details'), $admin, [$detail->id => 10]);
         $jumlahAwal = $pengajuan->fresh()->dokumen()->count();
@@ -177,6 +196,7 @@ class BhpDokumenTest extends TestCase
             'jumlah_direservasi' => 100,
         ]);
 
+        $this->lengkapiPejabat($sekolah, $admin);
         try {
             app(DokumenService::class)->approveDanGenerate($pengajuan->load('details'), $admin, [$detail->id => 100]);
             $this->fail('Approval seharusnya gagal karena stok tidak cukup.');
@@ -212,6 +232,7 @@ class BhpDokumenTest extends TestCase
             'jumlah_direservasi' => 5,
         ]);
 
+        $this->lengkapiPejabat($sekolah, $admin);
         app(DokumenService::class)->approveDanGenerate($pengajuan->load('details'), $admin, [$detail->id => 5]);
 
         $this->actingAs($operator)

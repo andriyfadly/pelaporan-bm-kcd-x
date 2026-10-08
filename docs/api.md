@@ -144,23 +144,46 @@ permission BHP. Prefix ini tidak menyentuh `/pelaporan-bm` (lihat
 | GET | `/distribusi-bhp/laporan` | `lihat-distribusi-bhp` | `LaporanController::index` |
 | GET | `/distribusi-bhp/laporan/kartu-persediaan` | `lihat-distribusi-bhp` | `LaporanController::kartuPersediaan` |
 | GET | `/distribusi-bhp/laporan/export` | `cetak-dokumen-bhp` | `LaporanController::export` |
+Total: **23 rute** (prefix distribusi-bhp).
 
-Total: **23 rute**.
+### I. Master Data Sekolah (`app/Http/Controllers/Master/*`, prefix `/master-data`)
+
+Rute generic lintas domain (di luar `distribusi-bhp`). Dijaga permission
+`kelola-master-data-sekolah` (admin KCD, super admin, operator sekolah).
+`sekolah_id` selalu dari user login — operator hanya menyentuh sekolahnya.
+
+| Method | Path | Controller::method |
+|---|---|---|
+| GET | `/master-data/pejabat` | `PejabatSekolahController::index` |
+| POST | `/master-data/pejabat` | `PejabatSekolahController::store` |
+| PUT | `/master-data/pejabat/{pejabat}` | `PejabatSekolahController::update` |
+| PUT | `/master-data/pejabat/{pejabat}/akhiri` | `PejabatSekolahController::akhiri` |
+| GET | `/master-data/profil-sekolah` | `ProfilSekolahController::edit` |
+| PUT | `/master-data/profil-sekolah` | `ProfilSekolahController::update` |
 
 Payload penting:
 
 - `POST pengajuan`: `sumber_dana` (`BOS`/`BOPD`), `tanggal`, `details[]`
   (`barang_id`, `jumlah_diminta`, `keperluan`).
+- `POST pejabat` / `PUT pejabat/{pejabat}`: `jabatan` ∈ {`kepala_sekolah`,
+  `wakasek_sarpras`, `pembantu_pengurus_barang`}, `jenis_jabatan` ∈
+  {`definitif`, `plt`, `plh`}, `nama`, `pangkat_golongan`, `nip`,
+  `mulai_menjabat`, `selesai_menjabat` (opsional). `PUT pejabat/{pejabat}/akhiri`:
+  `selesai_menjabat` (wajib). Menambah pejabat aktif otomatis menutup pejabat
+  aktif lama (H-1); periode overlap ditolak.
 - `POST dokumen/tambahan`: `jenis` ∈ {`bast`, `bap`, `stok_opname`,
   `buku_pengeluaran`, `buku_penyaluran`}, `tanggal` (opsional). Idempotent per
   jenis.
 - `GET laporan/export`: `sumber_dana`, `jenis` ∈ {`stok`, `pengeluaran`,
-  `kartu_persediaan`}; `barang_id` **wajib** bila `jenis=kartu_persediaan`.
-- `GET laporan/kartu-persediaan`: `barang_id`, `sumber_dana` (opsional;
-  default `BOS`). Mengembalikan `kartu` berisi `barang` (saldo awal/masuk/
-  keluar/akhir) + `mutasi[]` dengan saldo berjalan.
+  `kartu_persediaan`}; `barang_id` **wajib** bila `jenis=kartu_persediaan`
+  (divalidasi `uuid` + `exists:bhp_barang,id`). Barang dengan sumber dana
+  berbeda dari `sumber_dana` laporan → redirect + flash `error` (bukan 500).
+- `GET laporan/kartu-persediaan`: `barang_id` (`uuid` + `exists`,
+  opsional), `sumber_dana` (opsional; default `BOS`). Mengembalikan `kartu`
+  berisi `barang` (saldo awal/masuk/keluar/akhir) + `mutasi[]` dengan saldo
+  berjalan.
 
-### I. Migrasi Data Legacy BHP (seeder)
+### J. Migrasi Data Legacy BHP (seeder)
 
 - **`php artisan db:seed --class=DistribusiBhpImportSeeder`**
   (`database/seeders/DistribusiBhpImportSeeder.php`)

@@ -34,6 +34,7 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
     const canTerima = permissions.includes('kelola-penerimaan-bhp');
     const canPengajuan = permissions.includes('kelola-pengajuan-bhp');
     const canReview = permissions.includes('review-pengajuan-bhp');
+    const canDivisi = permissions.includes('kelola-divisi-bhp');
 
     const isBhpActive = currentPath.startsWith('/distribusi-bhp');
 
@@ -108,6 +109,21 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                             <PackageCheck className="w-4 h-4" /> Laporan BHP
                         </span>
                     </Link>
+                    {canMaster && (
+                        <>
+                            <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
+                                Pejabat Sekolah
+                            </Link>
+                            <Link href="/distribusi-bhp/settings" className={itemClass(currentPath.startsWith('/distribusi-bhp/settings'))}>
+                                Settings BHP
+                            </Link>
+                        </>
+                    )}
+                    {canDivisi && (
+                        <Link href="/distribusi-bhp/divisi" className={itemClass(currentPath.startsWith('/distribusi-bhp/divisi'))}>
+                            Divisi & Operator
+                        </Link>
+                    )}
                 </div>
             )}
         </div>
@@ -132,6 +148,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const isSuperAdmin = roles.includes('super_admin');
 
     const canBhp = permissions.includes('lihat-distribusi-bhp');
+    const canMasterData = permissions.includes('kelola-master-bhp');
     const [openBhp, setOpenBhp] = useState(true);
 
     const isMasterActive =
@@ -139,6 +156,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
         currentPath.startsWith('/pelaporan-bm/acuan') ||
         currentPath.startsWith('/pelaporan-bm/rekapan') ||
         currentPath.startsWith('/admin/user');
+
+    const isMasterDataActive = currentPath.startsWith('/master-data');
 
     const isLaporanActive = currentPath.startsWith('/pelaporan-bm/cetak');
 
@@ -358,6 +377,20 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                             </div>
 
                             {canBhp && <BhpHtmlMenu currentPath={currentPath} collapsed={collapsed} openBhp={openBhp} setOpenBhp={setOpenBhp} permissions={permissions} />}
+
+                            {canMasterData && (
+                                <Link
+                                    href="/master-data/profil-sekolah"
+                                    className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${isMasterDataActive
+                                            ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
+                                            : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                                        }`}
+                                    title={collapsed ? 'Profil Sekolah' : undefined}
+                                >
+                                    <UserIcon className="w-5 h-5 shrink-0" />
+                                    {!collapsed && <span>Profil Sekolah</span>}
+                                </Link>
+                            )}
                         </>
                     ) : (
                         <>
@@ -415,6 +448,20 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                             </Link>
 
                             {canBhp && <BhpHtmlMenu currentPath={currentPath} collapsed={collapsed} openBhp={openBhp} setOpenBhp={setOpenBhp} permissions={permissions} />}
+
+                            {canMasterData && (
+                                <Link
+                                    href="/master-data/profil-sekolah"
+                                    className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${isMasterDataActive
+                                            ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
+                                            : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                                        }`}
+                                    title={collapsed ? 'Profil Sekolah' : undefined}
+                                >
+                                    <UserIcon className="w-5 h-5 shrink-0" />
+                                    {!collapsed && <span>Profil Sekolah</span>}
+                                </Link>
+                            )}
                         </>
                     )}
                 </div>

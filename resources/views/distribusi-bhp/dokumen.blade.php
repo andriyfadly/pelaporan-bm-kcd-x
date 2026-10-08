@@ -82,10 +82,37 @@
                 Pemohon,<div class="space"></div>
                 <strong>{{ $pemohon }}</strong>
             </td>
-            <td>
-                Penyetuju,<div class="space"></div>
-                <strong>{{ $penyetuju }}</strong>
-            </td>
+            @if (isset($penandatangan['pembantu_pengurus_barang']))
+                <td>
+                    {{ $penandatangan['pembantu_pengurus_barang']['jabatan'] }},<div class="space"></div>
+                    <strong>{{ $penandatangan['pembantu_pengurus_barang']['nama'] }}</strong>
+                    @if (!empty($penandatangan['pembantu_pengurus_barang']['nip']))
+                        <br>NIP. {{ $penandatangan['pembantu_pengurus_barang']['nip'] }}
+                    @endif
+                </td>
+            @else
+                <td>
+                    Pembantu Pengurus Barang,<div class="space"></div>
+                    <strong>-</strong>
+                </td>
+            @endif
+        </tr>
+        <tr>
+            <td></td>
+            @if (isset($penandatangan['kepala_sekolah']))
+                <td>
+                    <div class="space" style="height: 30px;"></div>
+                    Mengetahui/Menyetujui,<br>
+                    {{ $penandatangan['kepala_sekolah']['jabatan'] }},<div class="space"></div>
+                    <strong>{{ $penandatangan['kepala_sekolah']['nama'] }}</strong>
+                    @if (!empty($penandatangan['kepala_sekolah']['pangkat_golongan']))
+                        <br>{{ $penandatangan['kepala_sekolah']['pangkat_golongan'] }}
+                    @endif
+                    @if (!empty($penandatangan['kepala_sekolah']['nip']))
+                        <br>NIP. {{ $penandatangan['kepala_sekolah']['nip'] }}
+                    @endif
+                </td>
+            @endif
         </tr>
     </table>
 </body>

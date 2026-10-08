@@ -2,8 +2,8 @@
 
 > Engine: **PostgreSQL**. Seluruh id entitas bisnis memakai UUID
 > (`HasUuids`); tabel bawaan Spatie memakai bigint. Sumber kebenaran:
-> `database/migrations/`. Di bawah ini ringkasan per 2026-10-01
-> (24 migrasi + `activity_log`; 20 migrasi BM/shared + 4 migrasi Distribusi BHP).
+> `database/migrations/`. Di bawah ini ringkasan per 2026-10-08
+> (26 migrasi + `activity_log`; 20 migrasi BM/shared + 6 migrasi Distribusi BHP).
 
 ## 1. Diagram Relasi (tekstual)
 
@@ -34,26 +34,37 @@ model_has_roles, model_has_permissions, role_has_permissions)
 
 ```text
 master_data_sekolah
-  ├── 1──N bhp_penerimaan
-  └── 1──N bhp_pengajuan
+  ├── 1──N bhp_penerimaan            [FK restrict]
+  └── 1──N bhp_pengajuan             [FK restrict]
+
+bhp_divisi [unique(sekolah_id, nama)]
+  ├── 1──N bhp_pengajuan             [FK restrict]
+  └── 1──N users (divisi_id)         [FK set null saat divisi dihapus]
 
 bhp_kode_rekening (unique kode+sumber_dana)
   └── 1──N bhp_barang
 
 bhp_barang
-  ├── 1──N bhp_harga_barang
-  ├── 1──N bhp_penerimaan_detail
-  └── 1──N bhp_pengajuan_detail
+  ├── 1──N bhp_harga_barang          [FK cascade]
+  ├── 1──N bhp_penerimaan_detail     [FK restrict]
+  └── 1──N bhp_pengajuan_detail      [FK restrict]
 
 bhp_penyedia ──1──N bhp_penerimaan (penyedia_id)
 
-bhp_penerimaan ──1──N bhp_penerimaan_detail
+bhp_penerimaan ──1──N bhp_penerimaan_detail [FK cascade]
+  └── 1──N bhp_pengajuan ──1──N bhp_pengajuan_detail [FK cascade]
+        ├── 1──N bhp_dokumen         [FK cascade; unique(pengajuan, jenis)]
+        └── 1──N bhp_batch_dokumen   [FK set null; histori generasi batch; files json]
 
-bhp_pengajuan ──1──N bhp_pengajuan_detail
-  └── 1──N bhp_dokumen            (jenis: nota/surat/BAST/BAP/buku/stok opname)
-        └── 1──N bhp_batch_dokumen (histori generasi batch; files json)
+bhp_settings: singleton (kolom `is_singleton` + partial unique index —
+              hanya satu baris boleh bernilai true)
 
-bhp_nomor_sequence: counter atomic per (jenis, sumber_dana, tahun, bulan), tanpa FK
+pejabat_sekolah ──N──1 master_data_sekolah
+              (riwayat pejabat penandatangan; satu pejabat aktif per
+              (sekolah, jabatan) via partial unique index)
+
+bhp_nomor_sequence: counter atomic per (jenis, sumber_dana, tahun, bulan),
+              unique(jenis, sumber_dana, tahun, bulan), tanpa FK
 ```
 
 ## 2. Kamus Tabel
@@ -73,7 +84,9 @@ Catatan: migrasi `drop_email_and_email_verified_at` menghapus kolom email.
 
 ### `master_data_sekolah`
 `id` uuid PK · `no_urut` int · `nama_sekolah` (150) · `kota_kab` (100) ·
-`kode_sub_pengguna` (20) · `kode_wilayah` (10) · `npsn` (20) · `id_sekolah_lama` int (jejak migrasi legacy).
+`kode_sub_pengguna` (20) · `kode_wilayah` (10) · `npsn` (20) · `id_sekolah_lama` int (jejak migrasi legacy) ·
+profil kontak: `alamat` (500), `telepon` (30), `website` (255), `email` (255) —
+diisi operator sekolah sendiri via `/master-data/profil-sekolah`.
 
 ### `master_data_kode_barang`
 `id` uuid PK · `kode_barang` (50, unique) · `uraian` (255) ·
@@ -130,6 +143,11 @@ Domain BHP terpisah total dari `pelaporan_bm_*` (lihat
 | `2026_10_01_000002_create_distribusi_bhp_dokumen_tables` | `bhp_dokumen`, `bhp_nomor_sequence` |
 | `2026_10_01_000003_create_distribusi_bhp_batch_tables` | `bhp_batch_dokumen` |
 | `2026_10_01_000004_add_source_id_to_bhp_penerimaan` | `source_id` unik (jejak impor) |
+| `2026_10_08_160849_add_singleton_key_to_bhp_settings_table` | `bhp_settings.is_singleton` + partial unique index (anti-race singleton) |
+| `2026_10_08_161500_add_foreign_keys_to_bhp_tables` | 10 foreign key relasi BHP (lihat §6) |
+| `2026_10_08_163932_create_pejabat_sekolah_table` | Master pejabat penandatangan + partial unique index satu-aktif |
+| `2026_10_08_163940_drop_penyetuju_from_bhp_settings_table` | Hapus `nama_penyetuju`/`jabatan_penyetuju` global (diganti pejabat sekolah) |
+| `2026_10_08_170000_add_profil_kontak_to_master_data_sekolah_table` | `master_data_sekolah.alamat/telepon/website/email` (profil kontak, diisi operator) |
 
 ### Master
 
@@ -156,9 +174,11 @@ dihitung (`StokService`).
 
 | Tabel | Kolom penting |
 |---|---|
-| `bhp_dokumen` | `bhp_pengajuan_id` FK · `jenis` (nota_permintaan, surat_permintaan, surat_penyaluran, bast, bap, stok_opname, buku_pengeluaran, buku_penyaluran) · `nomor` · `tanggal_titimangsa` date · `payload` json (snapshot) |
-| `bhp_nomor_sequence` | `jenis` · `sumber_dana` · `tahun` · `bulan` · `counter` — dikunci `lockForUpdate` saat generate |
-| `bhp_batch_dokumen` | `jenis` · `sumber_dana` · `bhp_pengajuan_id` FK · `status` (`pending`/`selesai`/`sebagian`/`gagal`) · `total`/`berhasil`/`gagal` · `files` json · `created_by` · `error_message` |
+| `bhp_dokumen` | `bhp_pengajuan_id` FK cascade · `jenis` (nota_permintaan, surat_permintaan, surat_penyaluran, bast, bap, stok_opname, buku_pengeluaran, buku_penyaluran) · `nomor` · `tanggal_titimangsa` date · `payload` json (snapshot, **ter-scope sekolah pengajuan**) — unique `(bhp_pengajuan_id, jenis)` |
+| `bhp_nomor_sequence` | `jenis` · `sumber_dana` · `tahun` · `bulan` · `counter` — dikunci `lockForUpdate` saat generate; insert row pertama aman terhadap race (catch `UniqueConstraintViolationException` lalu lock row pemenang) |
+| `bhp_batch_dokumen` | `jenis` · `sumber_dana` · `bhp_pengajuan_id` FK set null · `status` (`pending`/`selesai`/`sebagian`/`gagal`) · `total`/`berhasil`/`gagal` · `files` json · `created_by` · `error_message` |
+| `bhp_settings` | `format_nomor` · `paper_size` · `orientation` · `is_singleton` (partial unique index: maks satu baris). Penandatangan TIDAK lagi di sini — lihat `pejabat_sekolah` |
+| `pejabat_sekolah` *(generic, non-BHP)* | `sekolah_id` FK · `jabatan` enum `kepala_sekolah`/`wakasek_sarpras`/`pembantu_pengurus_barang` · `jenis_jabatan` enum `definitif`/`plt`/`plh` · `nama` · `pangkat_golongan` · `nip` · `mulai_menjabat`/`selesai_menjabat` date · `created_by`/`updated_by` · soft deletes · unique `(sekolah_id, jabatan, mulai_menjabat)` + partial unique satu-aktif `(sekolah_id, jabatan) WHERE selesai_menjabat IS NULL AND deleted_at IS NULL` |
 
 ## 6. Konvensi & Batasan
 
@@ -168,13 +188,31 @@ dihitung (`StokService`).
 - **Stok BHP 4-tier:** `Tersedia = Fisik − Terpakai − Reservasi`, di-`max(0,…)`.
   `Fisik` = Σ detail penerimaan; `Terpakai` = Σ `jumlah_disetujui` pengajuan
   `approved`; `Reservasi` = Σ `jumlah_direservasi` pengajuan `submitted`.
-- Semua mutasi stok lewat `StokService` dengan `lockForUpdate`.
+- Semua mutasi stok lewat `StokService` dengan `lockForUpdate`. Untuk laporan
+  stok massal, `StokService::rekapPerBarang()` mengagregasi seluruh barang
+  dalam 3 query grouped (fisik/terpakai/reservasi) — tanpa N+1.
 - Sumber dana (`BOS`/`BOPD`) selalu menjadi filter wajib; BOS dan BOPD tidak
   boleh tercampur pada stok/laporan.
+- **Foreign key BHP** (migrasi 2026-10-08): detail & dokumen cascade mengikuti
+  parent; `barang_id` pada detail transaksi dan `divisi_id` pada pengajuan
+  `restrict` (histori tidak boleh yatim); `bhp_pengajuan.user_id` dan
+  `users.divisi_id` `set null` saat referensi dihapus.
+- Snapshot payload dokumen (`bhp_dokumen.payload`) selalu ter-scope
+  `sekolah_id` milik pengajuan — tidak pernah memuat data sekolah lain.
+- **Penandatangan dokumen BHP**: approval mensyaratkan ketiga jabatan
+  (`kepala_sekolah`, `wakasek_sarpras`, `pembantu_pengurus_barang`) terisi dan
+  berlaku pada tanggal pengajuan
+  (`App\Services\PejabatSekolahService::snapshotPenandatangan`). Master
+  `pejabat_sekolah` generic (lintas domain, di `app/Models/Master`), snapshot
+  tersimpan di `payload.penandatangan` tiap dokumen; reprint tidak
+  berubah meski pejabat master berganti. Riwayat pejabat tidak dihapus permanen.
 - Hapus SPJ/SPK BM: cascade manual (`realisasi` by `spj_id` dulu) dalam transaksi.
 - Unique: `kode_barang`, `username`, `(sekolah_id, bulan)` di kunci,
   `bhp_penyedia.nama`, `bhp_kode_rekening(kode, sumber_dana)`,
-  `bhp_penerimaan.source_id`.
+  `bhp_penerimaan.source_id`, `(bhp_pengajuan_id, jenis)` di dokumen,
+  `(jenis, sumber_dana, tahun, bulan)` di nomor sequence,
+  `bhp_settings.is_singleton` (partial),
+  `pejabat_sekolah` satu pejabat aktif per `(sekolah_id, jabatan)` (partial).
 - Migrasi legacy: kolom `*_lama` (BM) dan `source_id` (BHP) + `updateOrCreate`
   idempoten.
 

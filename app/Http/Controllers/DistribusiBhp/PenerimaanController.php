@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\Penyedia;
+use App\Services\DistribusiBhp\SaldoAwalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,10 +20,15 @@ class PenerimaanController extends Controller
 {
     use ResolvesSekolah;
 
+    public function __construct(private readonly SaldoAwalService $saldoAwal) {}
+
     public function index(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = strtoupper((string) $request->input('sumber_dana', 'BOS'));
+        $sumberDana = $request->validate([
+            'sumber_dana' => ['nullable', Rule::in(['BOS', 'BOPD'])],
+        ])['sumber_dana'] ?? 'BOS';
+        $sumberDana = strtoupper((string) $sumberDana);
 
         $items = Penerimaan::with(['penyedia', 'details.barang'])
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
@@ -61,20 +67,73 @@ class PenerimaanController extends Controller
             'details.*.keterangan' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // Isolasi sumber dana sebelum transaksi.
+        // Kombinasi is_saldo_awal × periode_tahun harus konsisten:
+        // saldo awal wajib menyebut periode, penerimaan biasa dilarang.
+        if (($validated['is_saldo_awal'] ?? false) xor (bool) ($validated['periode_tahun'] ?? false)) {
+            throw ValidationException::withMessages([
+                'periode_tahun' => 'Periode tahun wajib diisi untuk saldo awal dan tidak boleh diisi untuk penerimaan biasa.',
+            ]);
+        }
+
+        // Isolasi sumber dana sebelum transaksi. Barang wajib ada — exists
+        // di validasi menjaminnya, tetapi guard ini tetap memutus bila tidak.
         $barangIds = collect($validated['details'])->pluck('barang_id')->all();
         $barangs = Barang::whereIn('id', $barangIds)->get()->keyBy('id');
 
         foreach ($validated['details'] as $index => $detail) {
             $barang = $barangs->get($detail['barang_id']);
-            if ($barang && $barang->sumber_dana !== $validated['sumber_dana']) {
+            if (! $barang) {
+                throw ValidationException::withMessages([
+                    "details.{$index}.barang_id" => 'Barang tidak ditemukan.',
+                ]);
+            }
+
+            if ($barang->sumber_dana !== $validated['sumber_dana']) {
                 throw ValidationException::withMessages([
                     "details.{$index}.barang_id" => 'Barang '.$barang->nama_barang.' tidak sesuai dengan sumber dana '.$validated['sumber_dana'].'.',
                 ]);
             }
         }
 
-        DB::transaction(function () use ($validated, $sekolahId, $barangs) {
+        $details = collect($validated['details'])
+            ->map(fn (array $d): array => [
+                'barang_id' => $d['barang_id'],
+                'jumlah' => (int) $d['jumlah'],
+                'harga_satuan' => (int) $d['harga_satuan'],
+                'nilai_total' => (int) $d['jumlah'] * (int) $d['harga_satuan'],
+                'merek_type' => $d['merek_type'] ?? null,
+                'keterangan' => $d['keterangan'] ?? null,
+            ])
+            ->all();
+
+        if ($validated['is_saldo_awal'] ?? false) {
+            $this->saldoAwal->create($validated, (string) $sekolahId, $request->user(), $details, $barangs->all());
+        } else {
+            $this->simpanPenerimaanBiasa($validated, $sekolahId, $details);
+        }
+
+        return back()->with('success', 'Penerimaan barang berhasil disimpan.');
+    }
+
+    public function destroy(Request $request, Penerimaan $penerimaan): RedirectResponse
+    {
+        $this->authorizeSekolah($request, $penerimaan);
+
+        $this->saldoAwal->delete($penerimaan, $request->user());
+
+        return back()->with('success', 'Saldo awal berhasil dihapus.');
+    }
+
+    /**
+     * Penerimaan biasa (bukan saldo awal): tanpa aturan uniqueness,
+     * cukup header + detail dalam satu transaction.
+     *
+     * @param  array<string,mixed>  $validated
+     * @param  array<int, array{barang_id:string,jumlah:int,harga_satuan:int,merek_type:?string,keterangan:?string}>  $details
+     */
+    private function simpanPenerimaanBiasa(array $validated, ?string $sekolahId, array $details): void
+    {
+        DB::transaction(function () use ($validated, $sekolahId, $details) {
             $penerimaan = Penerimaan::create([
                 'sekolah_id' => $sekolahId,
                 'no_nota_invoice' => $validated['no_nota_invoice'] ?? null,
@@ -83,26 +142,23 @@ class PenerimaanController extends Controller
                 'no_kwitansi' => $validated['no_kwitansi'] ?? null,
                 'penyedia_id' => $validated['penyedia_id'] ?? null,
                 'tanggal_titimangsa' => $validated['tanggal_titimangsa'] ?? null,
-                'is_saldo_awal' => $validated['is_saldo_awal'] ?? false,
-                'periode_tahun' => $validated['periode_tahun'] ?? null,
+                'is_saldo_awal' => false,
+                'periode_tahun' => null,
                 'sumber_dana' => $validated['sumber_dana'],
             ]);
 
-            foreach ($validated['details'] as $detail) {
-                /** @var Barang $barang */
-                $barang = $barangs->get($detail['barang_id']);
-
-                $penerimaan->details()->create([
-                    'barang_id' => $barang->id,
-                    'jumlah' => $detail['jumlah'],
-                    'harga_satuan' => $detail['harga_satuan'],
-                    'nilai_total' => $detail['jumlah'] * $detail['harga_satuan'],
-                    'merek_type' => $detail['merek_type'] ?? null,
-                    'keterangan' => $detail['keterangan'] ?? null,
-                ]);
+            foreach ($details as $detail) {
+                $penerimaan->details()->create($detail);
             }
         });
+    }
 
-        return back()->with('success', 'Penerimaan barang berhasil disimpan.');
+    private function authorizeSekolah(Request $request, Penerimaan $penerimaan): void
+    {
+        $sekolahId = $this->resolveSekolahId($request);
+
+        if ($sekolahId !== null && (string) $penerimaan->sekolah_id !== (string) $sekolahId) {
+            abort(403, 'Akses ditolak: data ini milik sekolah lain.');
+        }
     }
 }

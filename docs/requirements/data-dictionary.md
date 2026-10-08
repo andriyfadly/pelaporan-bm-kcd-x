@@ -59,8 +59,11 @@ entitas source digabung atau belum dibuat; lihat kolom Status.
 | `KartuBarangPersediaan` | `bhp_kartu_persediaan` | 🟡 Sebagian | Dihitung runtime dengan saldo berjalan (`LaporanService::kartuPersediaan`), tanpa tabel |
 | `BatchPdfGeneration` | `bhp_batch_pdf_generation` | 🟡 Sebagian | Dipetakan ke `bhp_batch_dokumen` |
 | `BatchPdfFile` | `bhp_batch_pdf_file` | 🟡 Sebagian | Detail batch disimpan sebagai kolom `files` (json) di `bhp_batch_dokumen` |
-| `MonthlySequence` / `DocumentSequence` | `bhp_nomor_sequence` | ✅ Sudah | Counter atomic per (jenis, sumber dana, tahun, bulan) |
-| — | `bhp_dokumen` | ✅ Sudah | Tabel dokumen hasil generate (jenis, nomor, payload) |
+| `MonthlySequence` / `DocumentSequence` | `bhp_nomor_sequence` | ✅ Sudah | Counter atomic per (jenis, sumber dana, tahun, bulan); insert row pertama anti-race |
+| — | `bhp_dokumen` | ✅ Sudah | Tabel dokumen hasil generate (jenis, nomor, payload); payload ter-scope sekolah pengajuan |
+| — | `bhp_settings` | ✅ Sudah | Singleton (`is_singleton` + partial unique index): format nomor, preferensi PDF |
+| — | `pejabat_sekolah` | ✅ Sudah | Riwayat pejabat penandatangan per sekolah (kepala sekolah, wakasek sarpras, pembantu pengurus barang): nama, pangkat/golongan, NIP, masa jabatan; snapshot disimpan di `bhp_dokumen.payload.penandatangan` |
+| — | Foreign key BHP | ✅ Sudah | 10 FK (migrasi 2026-10-08): cascade detail/dokumen, restrict master historis, set null `users.divisi_id` |
 
 Perubahan pemetaan dari rencana awal (keputusan implementasi):
 

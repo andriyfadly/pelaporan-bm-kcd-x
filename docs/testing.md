@@ -3,7 +3,7 @@
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
 > sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
 > **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
-> Status terakhir: 282 passed / 1348 assertions (44 file Feature+Unit, 11
+> Status terakhir: 308 passed / 1465 assertions (44 file Feature+Unit, 11
 > di antaranya domain Distribusi BHP). Coverage gate tetap wajib
 > dijalankan sebelum merge.
 
@@ -51,7 +51,7 @@ Status kini: **100% total, semua file 100%**.
   (`AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`)
   agar deterministik tanpa mengunci jam sistem.
 
-## 3. Matriks Cakupan (40 Feature + 4 Unit, termasuk 11 file BHP)
+## 3. Matriks Cakupan (40 Feature + 4 Unit, termasuk 14 file BHP)
 
 | File | Menjamin |
 |------|----------|
@@ -82,7 +82,7 @@ Status kini: **100% total, semua file 100%**.
 | `SekolahFlowFixTest` | Regresi alur sekolah |
 | Unit: `FortifyActionsTest`, `ModelRelationsTest`, `ProvidersTest` | Action reset/update, relasi & accessor `is_realisasi`, gate super_admin |
 
-### Distribusi BHP (11 file, 75 kasus)
+### Distribusi BHP (14 file, 110 kasus)
 
 | File | Menjamin |
 |------|----------|
@@ -91,12 +91,15 @@ Status kini: **100% total, semua file 100%**.
 | `BhpHttpFlowTest` | Alur HTTP pengajuan→review→approve, guard permission, cross-tenant 403 |
 | `BhpMasterDataTest` | CRUD kode rekening/barang/penyedia, validasi sumber dana, riwayat harga |
 | `BhpPenerimaanTest` | Penerimaan + detail, saldo awal, validasi sumber dana/sekolah |
-| `BhpDokumenTest` | Auto-generate dokumen wajib saat approve, penomoran atomic per jenis/dana/periode, reject bila dokumen sudah ada |
-| `BhpDokumenTambahanTest` | `generateTambahan` BAST/BAP/stok opname/buku, idempotent, tolak jenis tak dikenal, snapshot payload, guard permission |
+| `BhpDokumenTest` | Auto-generate dokumen wajib saat approve (dengan pejabat lengkap), penomoran atomic per jenis/dana/periode, reject bila dokumen sudah ada |
+| `BhpPejabatSekolahTest` | **Gate pejabat**: approval gagal bila pejabat belum lengkap (status tetap submitted, reservasi utuh, tanpa dokumen), snapshot penandatangan di payload, reprint pakai snapshot saat pejabat berganti, approval backdate pakai pejabat berlaku pada tanggal pengajuan, satu pejabat aktif per jabatan (auto-close H-1), overlap periode ditolak, isolasi sekolah 403, `generateTambahan` menolak pengajuan non-approved. Rute `/master-data/pejabat` |
+| `ProfilSekolahTest` | Operator sekolah edit profil kontak (alamat/telepon/website/email) sekolahnya sendiri, nama/NPSN tidak bisa diubah operator, ter-isolasi antar sekolah, permission `kelola-master-data-sekolah` (bendahara 403), email invalid ditolak |
+| `BhpDokumenTambahanTest` | `generateTambahan` BAST/BAP/stok opname/buku, idempotent, tolak jenis tak dikenal, snapshot payload **ter-scope sekolah pengajuan** (payload sekolah A tidak memuat stok/pengeluaran sekolah B), guard permission |
 | `BhpPdfDokumenTest` | Rendering PDF per dokumen + batch kompilasi, `safeFilename`, histori `bhp_batch_dokumen` |
-| `BhpLaporanTest` | `laporanStok` 4-tier, isolasi per sumber dana, `bukuPengeluaran`, `kartuBarang`, export XLSX stok/pengeluaran |
-| `BhpKartuPersediaanTest` | Saldo berjalan kronologis, masuk-didahului pada tanggal sama, hanya mutasi dana terkait, abaikan pengajuan non-approved, pakai `jumlah_disetujui`, export + validasi `barang_id` |
+| `BhpLaporanTest` | `laporanStok` 4-tier (agregasi `rekapPerBarang` tanpa N+1), isolasi per sumber dana, `bukuPengeluaran`, `kartuBarang`, export XLSX stok/pengeluaran |
+| `BhpKartuPersediaanTest` | Saldo berjalan kronologis, masuk-didahului pada tanggal sama, hanya mutasi dana terkait, abaikan pengajuan non-approved, pakai `jumlah_disetujui`, export + validasi `barang_id` (`uuid` + `exists`), UUID tak dikenal → validation error, barang sumber dana lain → redirect + flash (bukan 500) |
 | `BhpImportSeederTest` | Impor master + penerimaan: skip soft-delete, hanya detail `cart_status=saved`, relasi rekening, `source_id` unik (no_bast duplikat/NULL tetap terpisah), tabel tanpa `deleted_at`, idempotensi, sumber tidak ada → dilewati |
+| `BhpDivisiTest` | Buat divisi + akun operator (suffix NPSN), validasi prefix/suffix/username duplikat, isolasi pengajuan per divisi, submit/divisi lain 403, **dokumen divisi lain 403 (show/PDF/batch/tambahan)**, dashboard operator divisi hanya menghitung divisinya, reset password + toggle ter-scope sekolah |
 
 ## 4. Menambah Test Baru
 

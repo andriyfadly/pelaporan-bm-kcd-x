@@ -30,18 +30,20 @@
 ## 3. Acceptance BHP
 
 - [ ] BOS dan BOPD tidak bercampur dalam satu transaksi.
-- [ ] Barang BHP terikat sumber dana.
-- [ ] Stok tersedia memakai formula fisik - terpakai - reservasi.
-- [ ] Pengajuan melebihi stok ditolak.
-- [ ] Submit membuat reservasi tepat satu kali.
-- [ ] Reject/cancel melepaskan reservasi.
-- [ ] Approval mengubah reservasi menjadi pemakaian.
-- [ ] Concurrent approval tidak membuat stok negatif.
-- [ ] Approval ulang ditolak/idempotent.
-- [ ] Auto-generation dokumen atomic.
-- [ ] Nomor dokumen tidak duplikat.
-- [ ] User divisi hanya melihat pengajuan sesuai divisinya.
-- [ ] Permission BHP tidak memberi akses mutation BM secara otomatis.
+- [x] Barang BHP terikat sumber dana.
+- [x] Stok tersedia memakai formula fisik - terpakai - reservasi.
+- [x] Pengajuan melebihi stok ditolak.
+- [x] Submit membuat reservasi tepat satu kali.
+- [x] Reject/cancel melepaskan reservasi.
+- [x] Approval mengubah reservasi menjadi pemakaian.
+- [x] Concurrent approval tidak membuat stok negatif.
+- [x] Approval ulang ditolak/idempotent.
+- [x] Auto-generation dokumen atomic.
+- [x] Nomor dokumen tidak duplikat (termasuk race pembuatan row sequence pertama).
+- [x] User divisi hanya melihat pengajuan sesuai divisinya (termasuk dokumen & dashboard).
+- [x] Snapshot payload dokumen ter-scope sekolah pengajuan, tanpa data sekolah lain.
+- [x] Foreign key database mencegah orphan record relasi BHP.
+- [x] Permission BHP tidak memberi akses mutation BM secara otomatis.
 
 ## 4. Quality Gates
 

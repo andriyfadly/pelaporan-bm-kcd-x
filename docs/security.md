@@ -93,17 +93,46 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
   penerimaan difilter `sekolah_id`.
 - Dokumen (`DokumenController::authorizeSekolah`) menolak 403 jika
   `pengajuan.sekolah_id` bukan milik user, dan `authorizeDokumen` menolak 404
-  bila dokumen bukan milik pengajuan tersebut (anti IDOR).
+  bila dokumen bukan milik pengajuan tersebut (anti IDOR). Controller yang sama
+  juga memeriksa `divisi_id`: operator divisi hanya dapat melihat/mencetak/
+  membuat dokumen untuk pengajuan divisinya sendiri (403 lintas divisi) —
+  terverifikasi `BhpDivisiTest`.
+- Snapshot payload dokumen tambahan (`DokumenService::payloadFor`) selalu
+  mengirim `sekolah_id` milik pengajuan ke `laporanStok`/`bukuPengeluaran`,
+  sehingga stok opname dan buku pengeluaran tidak pernah memuat data sekolah
+  lain pada sumber dana yang sama — terverifikasi
+  `BhpDokumenTambahanTest::test_payload_snapshot_tidak_mencampur_data_sekolah_lain`.
+- Dashboard BHP menghitung statistik pengajuan per `divisi_id` untuk operator
+  divisi (divisi lain tidak terlihat di angka draft/submitted/approved);
+  penerimaan tetap scope sekolah karena stok bukan milik divisi.
 - Validasi sumber dana wajib: `sumber_dana` ∈ {BOS, BOPD}; kode rekening dan
   barang harus sealiran sumber dana dengan pengajuan/penerimaan — BOS dan BOPD
   tidak boleh tercampur (`LaporanService::kartuPersediaan` melempar
-  `RuntimeException` bila tidak cocok).
+  `RuntimeException` bila tidak cocok; `LaporanController` mengubahnya menjadi
+  redirect + flash error, bukan 500).
+- `barang_id` pada kartu persediaan divalidasi `uuid` + `exists:bhp_barang,id`
+  (UUID asing/tak dikenal → validation error, bukan error server).
 - Stok tidak bisa dipakai melebihi `tersedia`; submit approve dan reject
   berjalan dalam satu transaction dengan `lockForUpdate` pada pengajuan,
   detail, dan barang (`StokService`) sehingga request bersamaan tidak
   menghasilkan stok negatif.
+- Race condition penomoran dokumen tertangani: insert row sequence pertama
+  menangkap `UniqueConstraintViolationException` lalu lock row pemenang
+  (`NomorDokumenService`) — nomor tetap unik dan berurutan.
+- `bhp_settings` singleton dilindungi partial unique index
+  (`is_singleton`); `firstOrCreate` bersamaan tidak menghasilkan dua baris.
+- **Pejabat sekolah ter-isolasi tenant**: `sekolah_id` selalu dari user login
+  (`resolveSekolahId`), update/akhiri pejabat sekolah lain → 403. Satu pejabat
+  aktif per `(sekolah_id, jabatan)` dijaga partial unique index di level DB;
+  periode overlap ditolak di service (`lockForUpdate`).
+- **Gate pejabat pada approval**: approval pengajuan ditolak (rollback penuh)
+  bila pejabat penandatangan belum lengkap; snapshot pejabat tersimpan di
+  payload dokumen sehingga dokumen lama tidak berubah saat master diubah
+  (immutability historis).
+- Foreign key database (10 relasi BHP) mencegah orphan record pada level DB.
 - Terverifikasi `BhpDomainBoundaryTest`, `BhpStokDanPengajuanTest`,
-  `BhpHttpFlowTest`, `BhpLaporanTest`, `BhpKartuPersediaanTest`.
+  `BhpHttpFlowTest`, `BhpLaporanTest`, `BhpKartuPersediaanTest`,
+  `BhpDivisiTest`, `BhpDokumenTambahanTest`, `BhpPejabatSekolahTest`.
 
 ## 3. Autentikasi & Akun
 
@@ -151,5 +180,5 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 - [ ] `TURNSTILE_ENABLED=true` + key valid; HTTPS + cookie secure
 - [ ] `composer audit` bersih; `npm audit` ditinjau
 - [ ] Backup DB terjadwal & pernah diuji restore
-- [x] Test regresi: `php artisan test --compact` (282 test, 1348 assertion), `npx tsc --noEmit`, Pint
+- [x] Test regresi: `php artisan test --compact` (308 test, 1465 assertion), `npx tsc --noEmit`, Pint
 - [ ] `composer test-coverage` tetap wajib dijalankan sebagai gate coverage sebelum merge

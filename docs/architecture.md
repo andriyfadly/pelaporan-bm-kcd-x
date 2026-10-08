@@ -171,23 +171,33 @@ Activity: morph subject/causer (UUID), log_name `sistem`
 KodeRekening 1──N Barang          (unique kode+sumber_dana)
 Barang 1──N HargaBarang | PenerimaanDetail | PengajuanDetail
 Penyedia 1──N Penerimaan
-Penerimaan 1──N PenerimaanDetail
-Pengajuan 1──N PengajuanDetail
-Pengajuan 1──N Dokumen 1──N BatchDokumen
+Penerimaan 1──N PenerimaanDetail   [FK cascade]
+Pengajuan 1──N PengajuanDetail     [FK cascade]
+Pengajuan 1──N Dokumen 1──N BatchDokumen  [Dokumen FK cascade; Batch set null]
+Divisi 1──N Pengajuan | User.divisi_id  [pengajuan restrict, user set null]
 NomorSequence: counter per (jenis, sumber_dana, tahun, bulan), tanpa FK
 ```
 
 Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
-Model BHP **tidak** memiliki relasi ke model BM.
+Model BHP **tidak** memiliki relasi ke model BM. Relasi antar tabel BHP kini
+dijaga foreign key di level database (lihat `docs/database.md` §6).
 
 ## 5a. Service Domain BHP
 
 | Service | Tanggung jawab |
 |---|---|
-| `StokService` | Hitung stok 4-tier; `submit` (buat reservasi), `applyApprove` (tanpa transaction sendiri), `approve`, `reject` |
-| `NomorDokumenService` | Generate nomor atomic `{urut:3}/BHP/{kode}/{dana}/{romawi}/{tahun}` dengan `lockForUpdate` |
-| `DokumenService` | `approveDanGenerate` (approve + dokumen wajib dalam satu transaction), `generateTambahan` (idempotent per jenis) |
-| `LaporanService` | `laporanStok`, `bukuPengeluaran`, `kartuBarang`, `kartuPersediaan` (saldo berjalan) |
+| `StokService` | Hitung stok 4-tier; `submit` (buat reservasi), `applyApprove` (tanpa transaction sendiri), `approve`, `reject`, `rekapPerBarang` (agregasi 4-tier semua barang dalam 3 query grouped untuk laporan, anti N+1) |
+| `NomorDokumenService` | Generate nomor atomic `{urut:3}/BHP/{kode}/{dana}/{romawi}/{tahun}` dengan `lockForUpdate`; insert row sequence pertama anti-race (catch `UniqueConstraintViolationException` → lock row pemenang) |
+| `DokumenService` | `approveDanGenerate` (validasi pejabat + approve + dokumen wajib dalam satu transaction), `generateTambahan` (idempotent per jenis, hanya untuk pengajuan `approved`); snapshot payload selalu ter-scope `sekolah_id` pengajuan dan menyertakan snapshot `penandatangan` |
+| `LaporanService` | `laporanStok` (via `rekapPerBarang`), `bukuPengeluaran`, `kartuBarang`, `kartuPersediaan` (saldo berjalan; filter sumber dana + sekolah di query DB, bukan collection PHP) |
+| `SettingsService` | Singleton `bhp_settings` via `firstOrCreate(['is_singleton' => true])` dalam transaction; dilindungi partial unique index |
+
+Service generic (lintas domain): `App\Services\PejabatSekolahService` +
+`App\Models\Master\PejabatSekolah` (tabel `pejabat_sekolah`) — master pejabat
+penandatangan: `snapshotPenandatangan` (gate approval — tiga jabatan wajib
+berlaku pada tanggal pengajuan), `simpan` (auto-close pejabat aktif lama H-1,
+guard overlap periode), `akhiriMasaJabatan`; snapshot pejabat tersimpan
+immutable di payload dokumen pemanggil.
 
 Aturan: semua mutasi stok lewat `StokService`; `applyApprove` tidak membuka
 transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
@@ -215,7 +225,7 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 
 ## 7. Testing & Kualitas
 
-- 282 test / 1348 assertions (44 file Feature+Unit, 11 di antaranya BHP):
+- 308 test / 1465 assertions (44 file Feature+Unit, 14 di antaranya BHP):
   Feature per modul + Unit (Fortify, relasi, gate, rate limit). DB SQLite
   in-memory (`phpunit.xml`), seed `PeranDanHakAksesSeeder` per test.
 - Gate: `composer test` (cepat), `composer test-coverage` (Xdebug; total ≥ 80%
@@ -242,3 +252,7 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 | Stok 4-tier dihitung, bukan kolom | Hindari stok basi; satu sumber kebenaran `StokService` |
 | `applyApprove` tanpa transaction sendiri | Agar approve + generate dokumen bisa atomic dalam satu transaction |
 | `source_id` pada penerimaan | `no_bast` tidak unik di data legacy; jadikan kunci idempotensi impor |
+| Foreign key DB untuk seluruh relasi BHP (2026-10-08) | Mencegah orphan record di level database: detail/dokumen cascade, histori master restrict, `users.divisi_id` set null |
+| Snapshot payload dokumen ter-scope sekolah pengajuan | Payload stok opname/buku tidak pernah memuat data sekolah lain (audit 2026-10-08) |
+| Singleton `bhp_settings` via partial unique index | `firstOrCreate` bersamaan tidak menghasilkan dua baris settings |
+| Agregasi laporan stok grouped (`rekapPerBarang`) | Laporan stok dari ~7N query menjadi 3 query grouped — aman untuk katalog besar |

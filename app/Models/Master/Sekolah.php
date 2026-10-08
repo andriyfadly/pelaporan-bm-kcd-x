@@ -2,6 +2,7 @@
 
 namespace App\Models\Master;
 
+use App\Models\DistribusiBhp\Divisi;
 use App\Models\PelaporanBm\Acuan;
 use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
@@ -23,6 +24,10 @@ class Sekolah extends Model
         'nama_sekolah',
         'npsn',
         'kota_kab',
+        'alamat',
+        'telepon',
+        'website',
+        'email',
         'kode_sub_pengguna',
         'kode_wilayah',
         'id_sekolah_lama',
@@ -31,6 +36,11 @@ class Sekolah extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'sekolah_id');
+    }
+
+    public function divisiBhp(): HasMany
+    {
+        return $this->hasMany(Divisi::class, 'sekolah_id');
     }
 
     public function acuan(): HasMany

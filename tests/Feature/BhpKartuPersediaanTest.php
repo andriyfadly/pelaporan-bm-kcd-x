@@ -240,4 +240,40 @@ class BhpKartuPersediaanTest extends TestCase
             ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'kartu_persediaan']))
             ->assertSessionHasErrors('barang_id');
     }
+
+    public function test_barang_id_tidak_valid_ditolak_sebagai_validation_error(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->user($sekolah, 'op.kartubad');
+
+        $this->actingAs($user)
+            ->get(route('distribusi-bhp.laporan.kartu-persediaan', ['barang_id' => 'bukan-uuid', 'sumber_dana' => 'BOS']))
+            ->assertSessionHasErrors('barang_id');
+    }
+
+    public function test_barang_id_tidak_dikenal_ditolak_sebagai_validation_error(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->user($sekolah, 'op.kartuunknown');
+
+        $this->actingAs($user)
+            ->get(route('distribusi-bhp.laporan.kartu-persediaan', ['barang_id' => '00000000-0000-0000-0000-000000000000', 'sumber_dana' => 'BOS']))
+            ->assertSessionHasErrors('barang_id');
+    }
+
+    public function test_barang_sumber_dana_lain_pada_export_tidak_menghasilkan_error_server(): void
+    {
+        $sekolah = $this->sekolah();
+        $user = $this->user($sekolah, 'op.kartumismatch');
+        $barangBopd = $this->barang('Barang Mismatch', 'BOPD');
+
+        $this->actingAs($user)
+            ->get(route('distribusi-bhp.laporan.export', [
+                'sumber_dana' => 'BOS',
+                'jenis' => 'kartu_persediaan',
+                'barang_id' => $barangBopd->id,
+            ]))
+            ->assertRedirect()
+            ->assertSessionHas('error');
+    }
 }

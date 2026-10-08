@@ -156,4 +156,170 @@ class BhpPenerimaanTest extends TestCase
             ])
             ->assertSessionHasErrors('details');
     }
+
+    public function test_saldo_awal_wajib_memiliki_periode_tahun(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors('periode_tahun');
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_penerimaan_biasa_tidak_boleh_memiliki_periode_tahun(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors('periode_tahun');
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_saldo_awal_duplikat_per_barang_ditolak(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $payload = [
+            'sumber_dana' => 'BOS',
+            'is_saldo_awal' => true,
+            'periode_tahun' => 2026,
+            'details' => [
+                ['barang_id' => $barang->id, 'jumlah' => 30, 'harga_satuan' => 45000],
+            ],
+        ];
+
+        $this->actingAs($operator)->post(route('distribusi-bhp.penerimaan.store'), $payload)->assertRedirect();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), $payload)
+            ->assertSessionHasErrors();
+
+        $this->assertSame(1, Penerimaan::count());
+    }
+
+    public function test_saldo_awal_bos_dan_bopd_tidak_saling_menghalangi(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barangBos = $this->barang($sekolah, 'BOS');
+        $barangBopd = $this->barang($sekolah, 'BOPD');
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $barangBos->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOPD',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $barangBopd->id, 'jumlah' => 5, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(2, Penerimaan::count());
+    }
+
+    public function test_saldo_awal_dengan_jumlah_nol_ditolak(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 0, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors();
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_saldo_awal_duplikat_dalam_satu_request_ditolak(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                    ['barang_id' => $barang->id, 'jumlah' => 5, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors();
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_operator_sekolah_lain_tidak_melihat_penerimaan(): void
+    {
+        $sekolahA = $this->sekolah();
+        $sekolahB = Sekolah::create(['nama_sekolah' => 'SMKN Lain', 'kota_kab' => 'Kota Cimahi']);
+        $operatorA = $this->operator($sekolahA);
+        $barang = $this->barang($sekolahA);
+
+        $this->actingAs($operatorA)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertRedirect();
+
+        $operatorB = User::create([
+            'name' => 'Operator B',
+            'username' => 'op.terima.b',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolahB->id,
+            'password_changed_at' => now(),
+        ]);
+        $operatorB->assignRole('operator_sekolah');
+
+        $this->actingAs($operatorB)
+            ->get(route('distribusi-bhp.penerimaan.index', ['sumber_dana' => 'BOS']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('items.data', 0));
+    }
 }

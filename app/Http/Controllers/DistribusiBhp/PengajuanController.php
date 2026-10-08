@@ -25,10 +25,15 @@ class PengajuanController extends Controller
     public function index(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = strtoupper((string) $request->input('sumber_dana', 'BOS'));
+        $sumberDana = $request->validate([
+            'sumber_dana' => ['nullable', Rule::in(['BOS', 'BOPD'])],
+        ])['sumber_dana'] ?? 'BOS';
+        $sumberDana = strtoupper((string) $sumberDana);
 
         $items = Pengajuan::with(['details'])
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+            // Operator divisi hanya melihat pengajuan divisinya sendiri.
+            ->when($request->user()->divisi_id, fn ($q, $divisiId) => $q->where('divisi_id', $divisiId))
             ->where('sumber_dana', $sumberDana)
             ->latest('id')
             ->paginate(25)
@@ -70,6 +75,8 @@ class PengajuanController extends Controller
         $pengajuan = DB::transaction(function () use ($validated, $sekolahId, $request, $barangs) {
             $pengajuan = Pengajuan::create([
                 'sekolah_id' => $sekolahId,
+                // divisi_id selalu dari user login; input request tidak pernah dipercaya.
+                'divisi_id' => $request->user()->divisi_id,
                 'user_id' => $request->user()->id,
                 'tanggal' => $validated['tanggal'],
                 'sumber_dana' => $validated['sumber_dana'],
@@ -114,6 +121,12 @@ class PengajuanController extends Controller
 
         if ($sekolahId && $pengajuan->sekolah_id !== $sekolahId) {
             abort(403, 'Tidak memiliki akses ke pengajuan ini.');
+        }
+
+        // Operator divisi hanya boleh menyentuh pengajuan divisinya sendiri.
+        $divisiId = $request->user()->divisi_id;
+        if ($divisiId && $pengajuan->divisi_id !== $divisiId) {
+            abort(403, 'Pengajuan ini bukan milik divisi Anda.');
         }
     }
 }

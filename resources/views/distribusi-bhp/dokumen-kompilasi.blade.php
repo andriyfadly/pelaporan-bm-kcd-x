@@ -18,6 +18,9 @@
         table.data th, table.data td { border: 1px solid #cbd5e1; padding: 5px 6px; }
         table.data th { background: #eff6ff; text-transform: uppercase; font-size: 10px; }
         .right { text-align: right; }
+        .ttd { width: 100%; margin-top: 40px; }
+        .ttd td { width: 50%; text-align: center; vertical-align: top; }
+        .ttd .space { height: 60px; }
     </style>
 </head>
 <body>
@@ -67,6 +70,23 @@
                     @endforeach
                 </tbody>
             </table>
+
+            @if (isset($penandatangan['kepala_sekolah']))
+                <table class="ttd">
+                    <tr>
+                        <td></td>
+                        <td>
+                            <div class="space" style="height: 40px;"></div>
+                            Mengetahui/Menyetujui,<br>
+                            {{ $penandatangan['kepala_sekolah']['jabatan'] }},<div class="space"></div>
+                            <strong>{{ $penandatangan['kepala_sekolah']['nama'] }}</strong>
+                            @if (!empty($penandatangan['kepala_sekolah']['nip']))
+                                <br>NIP. {{ $penandatangan['kepala_sekolah']['nip'] }}
+                            @endif
+                        </td>
+                    </tr>
+                </table>
+            @endif
         </div>
     @endforeach
 </body>

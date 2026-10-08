@@ -6,8 +6,10 @@ use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Models\Master\PejabatSekolah;
 use App\Models\Master\Sekolah;
 use App\Models\User;
+use App\Services\PejabatSekolahService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -110,6 +112,16 @@ class BhpHttpFlowTest extends TestCase
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'operator_sekolah', 'op.bhp3');
         $barang = $this->barang('BOS', 100);
+
+        // Approval mensyaratkan pejabat penandatangan lengkap.
+        $pejabat = app(PejabatSekolahService::class);
+        foreach (PejabatSekolah::JABATAN as $i => $jabatan) {
+            $pejabat->simpan((string) $sekolah->id, (string) $operator->id, [
+                'jabatan' => $jabatan,
+                'nama' => 'Pejabat '.$jabatan,
+                'mulai_menjabat' => '2026-01-01',
+            ]);
+        }
 
         $pengajuan = Pengajuan::create([
             'sekolah_id' => $sekolah->id,

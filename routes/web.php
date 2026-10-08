@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\PasswordExpiredController;
 use App\Http\Controllers\DistribusiBhp\BarangController as BhpBarangController;
 use App\Http\Controllers\DistribusiBhp\DashboardController as BhpDashboardController;
+use App\Http\Controllers\DistribusiBhp\DivisiController as BhpDivisiController;
 use App\Http\Controllers\DistribusiBhp\DokumenController as BhpDokumenController;
 use App\Http\Controllers\DistribusiBhp\KodeRekeningController as BhpKodeRekeningController;
 use App\Http\Controllers\DistribusiBhp\LaporanController as BhpLaporanController;
@@ -13,6 +14,9 @@ use App\Http\Controllers\DistribusiBhp\PenerimaanController as BhpPenerimaanCont
 use App\Http\Controllers\DistribusiBhp\PengajuanController as BhpPengajuanController;
 use App\Http\Controllers\DistribusiBhp\PenyediaController as BhpPenyediaController;
 use App\Http\Controllers\DistribusiBhp\ReviewPengajuanController as BhpReviewPengajuanController;
+use App\Http\Controllers\DistribusiBhp\SettingsController as BhpSettingsController;
+use App\Http\Controllers\Master\PejabatSekolahController as MasterPejabatSekolahController;
+use App\Http\Controllers\Master\ProfilSekolahController as MasterProfilSekolahController;
 use App\Http\Controllers\PelaporanBm\AcuanController;
 use App\Http\Controllers\PelaporanBm\CetakController;
 use App\Http\Controllers\PelaporanBm\DashboardController;
@@ -121,6 +125,7 @@ Route::middleware(['auth'])->group(function () {
         Route::middleware('permission:kelola-penerimaan-bhp')->group(function () {
             Route::get('/penerimaan', [BhpPenerimaanController::class, 'index'])->name('penerimaan.index');
             Route::post('/penerimaan', [BhpPenerimaanController::class, 'store'])->name('penerimaan.store');
+            Route::delete('/penerimaan/{penerimaan}', [BhpPenerimaanController::class, 'destroy'])->name('penerimaan.destroy');
         });
 
         Route::get('/pengajuan/{pengajuan}/dokumen', [BhpDokumenController::class, 'show'])
@@ -148,6 +153,37 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/laporan/export', [BhpLaporanController::class, 'export'])
             ->middleware('permission:cetak-dokumen-bhp')
             ->name('laporan.export');
+
+        Route::get('/settings', [BhpSettingsController::class, 'edit'])
+            ->middleware('permission:kelola-master-bhp')
+            ->name('settings.edit');
+        Route::put('/settings', [BhpSettingsController::class, 'update'])
+            ->middleware('permission:kelola-master-bhp')
+            ->name('settings.update');
+
+        Route::get('/divisi', [BhpDivisiController::class, 'index'])
+            ->middleware('permission:kelola-divisi-bhp')
+            ->name('divisi.index');
+        Route::post('/divisi', [BhpDivisiController::class, 'store'])
+            ->middleware('permission:kelola-divisi-bhp')
+            ->name('divisi.store');
+        Route::put('/divisi/operator/{operator}/password', [BhpDivisiController::class, 'resetPassword'])
+            ->middleware('permission:kelola-divisi-bhp')
+            ->name('divisi.operator.password');
+        Route::put('/divisi/operator/{operator}/toggle', [BhpDivisiController::class, 'toggleActive'])
+            ->middleware('permission:kelola-divisi-bhp')
+            ->name('divisi.operator.toggle');
+    });
+
+    // Master data generic lintas domain — di luar prefix distribusi-bhp.
+    Route::prefix('master-data')->name('master-data.')->middleware('permission:kelola-master-data-sekolah')->group(function () {
+        Route::get('/pejabat', [MasterPejabatSekolahController::class, 'index'])->name('pejabat.index');
+        Route::post('/pejabat', [MasterPejabatSekolahController::class, 'store'])->name('pejabat.store');
+        Route::put('/pejabat/{pejabat}', [MasterPejabatSekolahController::class, 'update'])->name('pejabat.update');
+        Route::put('/pejabat/{pejabat}/akhiri', [MasterPejabatSekolahController::class, 'akhiri'])->name('pejabat.akhiri');
+
+        Route::get('/profil-sekolah', [MasterProfilSekolahController::class, 'edit'])->name('profil-sekolah.edit');
+        Route::put('/profil-sekolah', [MasterProfilSekolahController::class, 'update'])->name('profil-sekolah.update');
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:super_admin|admin_kcd')->group(function () {

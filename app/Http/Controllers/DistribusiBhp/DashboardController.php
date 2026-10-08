@@ -19,14 +19,18 @@ class DashboardController extends Controller
     {
         $sekolahId = $this->resolveSekolahId($request);
 
-        $baseBarang = Barang::query()->when($sekolahId, fn ($q) => $q);
-        $pengajuan = Pengajuan::query()->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId));
+        // Operator divisi hanya melihat statistik divisinya sendiri; penerimaan
+        // tetap scope sekolah karena stok bukan milik divisi.
+        $divisiId = $request->user()->divisi_id;
+
+        $pengajuan = Pengajuan::query()
+            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->when($divisiId, fn ($q) => $q->where('divisi_id', $divisiId));
         $penerimaan = Penerimaan::query()->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId));
 
         return Inertia::render('DistribusiBhp/Dashboard', [
             'stats' => [
-                'totalBarangBos' => (clone $baseBarang)->where('sumber_dana', 'BOS')->count(),
-                'totalBarangBopd' => (clone $baseBarang)->where('sumber_dana', 'BOPD')->count(),
+                'totalBarang' => Barang::count(),
                 'pengajuanDraft' => (clone $pengajuan)->where('status', 'draft')->count(),
                 'pengajuanSubmitted' => (clone $pengajuan)->where('status', 'submitted')->count(),
                 'pengajuanApproved' => (clone $pengajuan)->where('status', 'approved')->count(),

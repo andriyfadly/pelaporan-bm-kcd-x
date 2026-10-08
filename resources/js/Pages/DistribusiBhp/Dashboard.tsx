@@ -1,10 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { Boxes, ClipboardList, PackageCheck, Wallet } from 'lucide-react';
+import { Boxes, ClipboardList, PackageCheck } from 'lucide-react';
 
 interface Stats {
-    totalBarangBos: number;
-    totalBarangBopd: number;
+    totalBarang: number;
     pengajuanDraft: number;
     pengajuanSubmitted: number;
     pengajuanApproved: number;
@@ -13,8 +12,7 @@ interface Stats {
 
 export default function Dashboard({ stats }: { stats: Stats }) {
     const cards = [
-        { label: 'Barang BOS', value: stats.totalBarangBos, icon: Boxes, color: 'text-blue-600 bg-blue-50' },
-        { label: 'Barang BOPD', value: stats.totalBarangBopd, icon: Wallet, color: 'text-indigo-600 bg-indigo-50' },
+        { label: 'Total Barang', value: stats.totalBarang, icon: Boxes, color: 'text-blue-600 bg-blue-50' },
         { label: 'Pengajuan Draft', value: stats.pengajuanDraft, icon: ClipboardList, color: 'text-amber-600 bg-amber-50' },
         { label: 'Menunggu Review', value: stats.pengajuanSubmitted, icon: ClipboardList, color: 'text-orange-600 bg-orange-50' },
         { label: 'Pengajuan Disetujui', value: stats.pengajuanApproved, icon: PackageCheck, color: 'text-emerald-600 bg-emerald-50' },

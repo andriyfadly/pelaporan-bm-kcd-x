@@ -19,40 +19,44 @@ class LaporanService
     public function __construct(private readonly StokService $stok) {}
 
     /**
-     * Laporan stok 4-tier per barang untuk satu sumber dana.
+     * Laporan stok 4-tier per barang untuk satu sumber dana, scoped sekolah.
+     * $sekolahId null = tanpa filter (admin lintas sekolah).
      *
      * @return array<int,array<string,mixed>>
      */
-    public function laporanStok(string $sumberDana): array
+    public function laporanStok(string $sumberDana, ?string $sekolahId = null): array
     {
-        return Barang::where('sumber_dana', $sumberDana)
+        $barangs = Barang::where('sumber_dana', $sumberDana)
             ->orderBy('nama_barang')
-            ->get()
+            ->get();
+
+        $rekap = $this->stok->rekapPerBarang($barangs, $sekolahId);
+
+        return $barangs
             ->map(fn (Barang $barang) => [
                 'barang_id' => $barang->id,
                 'kode_barang' => $barang->kode_barang,
                 'nama_barang' => $barang->nama_barang,
                 'satuan' => $barang->satuan,
-                'fisik' => $this->stok->fisik($barang),
-                'terpakai' => $this->stok->terpakai($barang),
-                'reservasi' => $this->stok->reservasi($barang),
-                'tersedia' => $this->stok->tersedia($barang),
+                ...$rekap[$barang->id],
             ])
             ->all();
     }
 
     /**
-     * Buku pengeluaran: barang yang sudah disetujui (approved) per sumber dana.
+     * Buku pengeluaran: barang yang sudah disetujui (approved) per sumber dana, scoped sekolah.
+     * $sekolahId null = tanpa filter (admin lintas sekolah).
      *
      * @return array<int,array<string,mixed>>
      */
-    public function bukuPengeluaran(string $sumberDana): array
+    public function bukuPengeluaran(string $sumberDana, ?string $sekolahId = null): array
     {
         return DB::table('bhp_pengajuan_detail as d')
             ->join('bhp_pengajuan as p', 'p.id', '=', 'd.bhp_pengajuan_id')
             ->join('bhp_barang as b', 'b.id', '=', 'd.barang_id')
             ->where('p.status', 'approved')
             ->where('p.sumber_dana', $sumberDana)
+            ->when($sekolahId !== null, fn ($q) => $q->where('p.sekolah_id', $sekolahId))
             ->orderBy('p.tanggal')
             ->get([
                 'p.tanggal',
@@ -84,7 +88,7 @@ class LaporanService
      *
      * @throws RuntimeException bila barang tidak ditemukan atau sumber dana tidak cocok.
      */
-    public function kartuPersediaan(string $barangId, string $sumberDana): array
+    public function kartuPersediaan(string $barangId, string $sumberDana, ?string $sekolahId = null): array
     {
         $barang = Barang::find($barangId);
 
@@ -96,11 +100,17 @@ class LaporanService
             throw new RuntimeException('Sumber dana barang tidak sesuai dengan laporan.');
         }
 
-        // Mutasi masuk: setiap detail penerimaan menambah stok fisik.
+        // Mutasi masuk: setiap detail penerimaan menambah stok fisik, scoped sekolah
+        // (penerimaan milik sekolah + pool pusat tanpa sekolah). Filter sumber dana
+        // dan sekolah dikerjakan di database, bukan collection PHP.
         $masuk = PenerimaanDetail::where('barang_id', $barang->id)
-            ->with('penerimaan:id,tanggal_bast,created_at,no_bast,sumber_dana')
+            ->whereHas('penerimaan', fn ($p) => $p
+                ->where('sumber_dana', $sumberDana)
+                ->when($sekolahId !== null, fn ($q) => $q->where(function ($w) use ($sekolahId) {
+                    $w->where('sekolah_id', $sekolahId)->orWhereNull('sekolah_id');
+                })))
+            ->with('penerimaan:id,tanggal_bast,created_at,no_bast,sumber_dana,sekolah_id')
             ->get()
-            ->filter(fn (PenerimaanDetail $d) => $d->penerimaan?->sumber_dana === $sumberDana)
             ->map(fn (PenerimaanDetail $d) => [
                 'tanggal' => $d->penerimaan?->tanggal_bast?->toDateString()
                     ?? $d->penerimaan?->created_at?->toDateString(),
@@ -112,12 +122,13 @@ class LaporanService
                 'keterangan' => $d->keterangan,
             ]);
 
-        // Mutasi keluar: hanya pengajuan berstatus approved.
+        // Mutasi keluar: hanya pengajuan berstatus approved, scoped sekolah.
         $keluar = DB::table('bhp_pengajuan_detail as d')
             ->join('bhp_pengajuan as p', 'p.id', '=', 'd.bhp_pengajuan_id')
             ->where('d.barang_id', $barang->id)
             ->where('p.status', 'approved')
             ->where('p.sumber_dana', $sumberDana)
+            ->when($sekolahId !== null, fn ($q) => $q->where('p.sekolah_id', $sekolahId))
             ->orderBy('p.tanggal')
             ->get(['p.tanggal', 'p.nomor_pengajuan', 'p.id as pengajuan_id', 'd.jumlah_disetujui as jumlah', 'd.keperluan'])
             ->map(fn ($row) => [
@@ -162,59 +173,6 @@ class LaporanService
                 'saldo_akhir' => $saldo,
             ],
             'mutasi' => $rows,
-        ];
-    }
-
-    /**
-     * Kartu barang: profil barang + mutasi masuk (penerimaan) dan keluar (approved).
-     *
-     * @return array{barang:array<string,mixed>,mutasi:array<int,array<string,mixed>>}
-     */
-    public function kartuBarang(string $barangId): array
-    {
-        $barang = Barang::findOrFail($barangId);
-
-        $masuk = PenerimaanDetail::where('barang_id', $barang->id)
-            ->orderBy('created_at')
-            ->get()
-            ->map(fn (PenerimaanDetail $d) => [
-                'tanggal' => $d->created_at?->toDateString(),
-                'jenis' => 'masuk',
-                'referensi' => 'Penerimaan',
-                'jumlah' => (int) $d->jumlah,
-            ]);
-
-        $keluar = DB::table('bhp_pengajuan_detail as d')
-            ->join('bhp_pengajuan as p', 'p.id', '=', 'd.bhp_pengajuan_id')
-            ->where('d.barang_id', $barang->id)
-            ->where('p.status', 'approved')
-            ->orderBy('p.tanggal')
-            ->get(['p.tanggal', 'p.nomor_pengajuan', 'd.jumlah_disetujui as jumlah'])
-            ->map(fn ($row) => [
-                'tanggal' => $row->tanggal ? substr((string) $row->tanggal, 0, 10) : null,
-                'jenis' => 'keluar',
-                'referensi' => $row->nomor_pengajuan,
-                'jumlah' => (int) $row->jumlah,
-            ]);
-
-        $mutasi = $masuk->concat($keluar)
-            ->sortBy('tanggal')
-            ->values()
-            ->all();
-
-        return [
-            'barang' => [
-                'id' => $barang->id,
-                'kode_barang' => $barang->kode_barang,
-                'nama_barang' => $barang->nama_barang,
-                'satuan' => $barang->satuan,
-                'sumber_dana' => $barang->sumber_dana,
-                'fisik' => $this->stok->fisik($barang),
-                'terpakai' => $this->stok->terpakai($barang),
-                'reservasi' => $this->stok->reservasi($barang),
-                'tersedia' => $this->stok->tersedia($barang),
-            ],
-            'mutasi' => $mutasi,
         ];
     }
 }

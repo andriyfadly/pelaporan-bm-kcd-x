@@ -16,7 +16,10 @@ class BarangController extends Controller
 {
     public function index(Request $request): Response
     {
-        $sumberDana = strtoupper((string) $request->input('sumber_dana', 'BOS'));
+        $sumberDana = $request->validate([
+            'sumber_dana' => ['nullable', Rule::in(['BOS', 'BOPD'])],
+        ])['sumber_dana'] ?? 'BOS';
+        $sumberDana = strtoupper((string) $sumberDana);
 
         $items = Barang::with(['kodeRekening', 'harga'])
             ->where('sumber_dana', $sumberDana)

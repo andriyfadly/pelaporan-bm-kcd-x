@@ -3,6 +3,7 @@
 namespace App\Services\DistribusiBhp;
 
 use App\Models\DistribusiBhp\NomorSequence;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -11,7 +12,8 @@ use Illuminate\Support\Facades\DB;
  * Nomor bersifat atomic dan berurutan per (jenis, sumber dana, tahun, bulan),
  * memakai row lock agar aman terhadap request bersamaan.
  *
- * Format: "{urut:3}/{kode}/BHP/{sumber_dana}/{bulan_romawi}/{tahun}"
+ * Format diambil dari settings BHP (bhp_settings.format_nomor), default:
+ * "{urut:3}/{kode}/BHP/{sumber_dana}/{bulan_romawi}/{tahun}"
  */
 class NomorDokumenService
 {
@@ -27,15 +29,11 @@ class NomorDokumenService
         'buku_penyaluran' => 'BP',
     ];
 
-    private const ROMAWI = [
-        1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
-        7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII',
-    ];
+    public function __construct(private readonly SettingsService $settings) {}
 
     public function generate(string $jenis, string $sumberDana, int $tahun, int $bulan): string
     {
         $kode = self::KODE[$jenis] ?? strtoupper($jenis);
-        $romawi = self::ROMAWI[$bulan] ?? (string) $bulan;
 
         $sequence = DB::transaction(function () use ($jenis, $sumberDana, $tahun, $bulan) {
             $row = NomorSequence::where('jenis', $jenis)
@@ -46,13 +44,27 @@ class NomorDokumenService
                 ->first();
 
             if (! $row) {
-                $row = NomorSequence::create([
-                    'jenis' => $jenis,
-                    'sumber_dana' => $sumberDana,
-                    'tahun' => $tahun,
-                    'bulan' => $bulan,
-                    'counter' => 0,
-                ]);
+                // Dua request bersamaan bisa sama-sama melihat "belum ada row".
+                // unique constraint (jenis, sumber_dana, tahun, bulan) menolak
+                // duplikat; pemenang race adalah yang insert berhasil, yang kalah
+                // retry dan lock row milik pemenang.
+                try {
+                    $row = NomorSequence::create([
+                        'jenis' => $jenis,
+                        'sumber_dana' => $sumberDana,
+                        'tahun' => $tahun,
+                        'bulan' => $bulan,
+                        'counter' => 0,
+                    ]);
+                } catch (UniqueConstraintViolationException) {
+                    $row = NomorSequence::where('jenis', $jenis)
+                        ->where('sumber_dana', $sumberDana)
+                        ->where('tahun', $tahun)
+                        ->where('bulan', $bulan)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+                }
+
                 $row = NomorSequence::whereKey($row->id)->lockForUpdate()->firstOrFail();
             }
 
@@ -61,6 +73,6 @@ class NomorDokumenService
             return $row->fresh()->counter;
         });
 
-        return sprintf('%03d/BHP/%s/%s/%s/%d', $sequence, $kode, $sumberDana, $romawi, $tahun);
+        return $this->settings->formatNomor($jenis, $kode, $sumberDana, $tahun, $bulan, $sequence);
     }
 }

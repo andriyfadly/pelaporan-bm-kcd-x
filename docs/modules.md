@@ -118,7 +118,14 @@ pernah tercampur pada stok maupun laporan; stok dihitung per sumber dana.
 
 **Stok 4-tier.** `Tersedia = Fisik − Terpakai − Reservasi` (di-`max(0,…)`).
 `Fisik` dari penerimaan, `Terpakai` dari pengajuan `approved`, `Reservasi` dari
-pengajuan `submitted`. Semua mutasi lewat `StokService` dengan `lockForUpdate`.
+pengajuan `submitted`. Semua mutasi lewat `StokService` dengan `lockForUpdate`;
+laporan stok memakai agregasi grouped (`rekapPerBarang`, 3 query untuk semua
+barang).
+
+**Dashboard BHP.** Statistik pengajuan difilter `divisi_id` untuk operator
+divisi (hanya divisinya sendiri); operator sekolah/admin melihat seluruh divisi
+di sekolahnya. `totalPenerimaan` tetap scope sekolah karena stok bukan milik
+divisi.
 
 ### 7.1 Master Data
 
@@ -150,37 +157,65 @@ pengajuan `submitted`. Semua mutasi lewat `StokService` dengan `lockForUpdate`.
 - **`/distribusi-bhp/review-pengajuan`**: admin membuka pengajuan `submitted`,
   lalu **Approve** (boleh mengoreksi `jumlah_disetujui`) atau **Reject**
   (wajib alasan).
+- **Gate pejabat**: approval ditolak (status tetap `submitted`, reservasi utuh,
+  tanpa dokumen) bila salah satu dari kepala sekolah, wakasek sarpras, atau
+  pembantu pengurus barang belum terisi/berlaku pada tanggal pengajuan. Halaman
+  review menampilkan peringatan pejabat yang belum lengkap.
 - Approve dan pembuatan dokumen berjalan dalam **satu transaction**: reservasi
   dikonversi ke pemakaian, status `approved`, dan dokumen wajib (nota
-  permintaan, surat permintaan, surat penyaluran) digenerate dengan nomor atomic.
+  permintaan, surat permintaan, surat penyaluran) digenerate dengan nomor atomic
+  plus **snapshot penandatangan** di payload (immutable terhadap pergantian
+  pejabat).
 - Permission: lihat `review-pengajuan-bhp`; approve/reject `approve-pengajuan-bhp`.
 
-### 7.5 Dokumen & PDF (`/distribusi-bhp/pengajuan/{id}/dokumen`)
+### 7.5 Pejabat Sekolah (`/master-data/pejabat`)
+
+- Master penandatangan dokumen per sekolah: kepala sekolah, wakasek sarana
+  prasarana, pembantu pengurus barang — nama, pangkat/golongan, NIP, jenis
+  (definitif/Plt./Plh.), dan masa jabatan.
+- Riwayat pejabat terdahulu tetap tersimpan; pejabat aktif tunggal per jabatan
+  (partial unique index). Menambah pejabat aktif otomatis menutup masa jabatan
+  pejabat lama (H-1); periode tumpang tindih ditolak.
+- Indikator kelengkapan tiga jabatan; approval pengajuan menuntut kelengkapan
+  ini pada tanggal pengajuan (mendukung approval backdate via riwayat masa
+  jabatan).
+
+### 7.6 Dokumen & PDF (`/distribusi-bhp/pengajuan/{id}/dokumen`)
 
 - Daftar dokumen per pengajuan dengan nomor resmi. Format nomor:
   `{urut:3}/BHP/{kode}/{sumber_dana}/{bulan_romawi}/{tahun}`, counter atomic
-  per (jenis, sumber dana, tahun, bulan) — aman untuk request bersamaan.
+  per (jenis, sumber dana, tahun, bulan) — aman untuk request bersamaan
+  termasuk saat row sequence pertama kali dibuat (unique constraint + retry).
 - **Unduh PDF** per dokumen, atau **Batch PDF** (semua dokumen dalam satu file;
   histori generasi tersimpan di `bhp_batch_dokumen` dengan status
   selesai/sebagian/gagal).
 - **Dokumen tambahan**: BAST, BAP, Stok Opname, Buku Pengeluaran, Buku
   Penyaluran — idempotent per jenis (nomor tidak berubah saat dibuat ulang),
-  dengan snapshot laporan pada payload.
+  dengan snapshot laporan pada payload. Snapshot **ter-scope sekolah
+  pengajuan**: stok opname/buku pengeluaran sekolah A tidak pernah memuat data
+  sekolah lain pada sumber dana yang sama.
+- Akses dokumen dua lapis: cek `sekolah_id` (lintas tenant 403) dan
+  `divisi_id` (operator divisi hanya untuk pengajuan divisinya sendiri, 403
+  lintas divisi).
 - Permission: lihat `lihat-distribusi-bhp`; cetak/export `cetak-dokumen-bhp`.
 
-### 7.6 Laporan (`/distribusi-bhp/laporan`)
+### 7.7 Laporan (`/distribusi-bhp/laporan`)
 
-- **Laporan Stok**: tabel 4-tier per barang untuk sumber dana terpilih.
+- **Laporan Stok**: tabel 4-tier per barang untuk sumber dana terpilih
+  (agregasi grouped `rekapPerBarang` — tetap cepat untuk katalog besar).
 - **Buku Pengeluaran**: item yang sudah approved beserta keperluan.
 - **Kartu Barang**: profil barang + mutasi masuk/keluar (tanpa saldo berjalan).
 - **Kartu Persediaan (`/distribusi-bhp/laporan/kartu-persediaan`)**: mutasi
   masuk/keluar kronologis dengan **saldo berjalan** per barang; pada tanggal
-  sama, masuk didahulukan; hanya mutasi sumber dana terkait yang dihitung.
+  sama, masuk didahulukan; hanya mutasi sumber dana terkait yang dihitung
+  (filter sumber dana + sekolah di level query). `barang_id` divalidasi
+  `uuid` + `exists`; barang lintas sumber dana pada export menghasilkan
+  redirect + flash error, bukan error server.
 - **Export Excel**: jenis `stok`, `pengeluaran`, atau `kartu_persediaan`
   (wajib `barang_id`).
 - Permission: lihat `lihat-distribusi-bhp`; export `cetak-dokumen-bhp`.
 
-### 7.7 Impor Data Legacy
+### 7.8 Impor Data Legacy
 
 - `DistribusiBhpImportSeeder` mengimpor master (kode rekening, penyedia,
   barang, harga) + penerimaan/detail dari DB SQLite aplikasi sumber. Melewati

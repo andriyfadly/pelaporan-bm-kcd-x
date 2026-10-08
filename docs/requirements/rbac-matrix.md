@@ -32,7 +32,7 @@
 **5 role:** `super_admin`, `admin_kcd`, `operator_sekolah`,
 `bendahara_sekolah`, `operator_divisi`.
 
-**17 permission** (10 BM + 7 BHP):
+**18 permission** (10 BM + 7 BHP + 1 master generic):
 
 ```text
 BM : lihat-laporan-bm, input-spj-bm, edit-spj-bm, hapus-spj-bm,
@@ -41,6 +41,8 @@ BM : lihat-laporan-bm, input-spj-bm, edit-spj-bm, hapus-spj-bm,
 BHP: lihat-distribusi-bhp, kelola-master-bhp, kelola-penerimaan-bhp,
      kelola-pengajuan-bhp, review-pengajuan-bhp, approve-pengajuan-bhp,
      cetak-dokumen-bhp
+GEN: kelola-master-data-sekolah (pejabat + profil sekolah,
+     prefix /master-data — lintas domain, di luar BHP)
 ```
 
 Pemetaan role → permission BHP:
@@ -54,8 +56,18 @@ Pemetaan role → permission BHP:
 | `review-pengajuan-bhp` | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `approve-pengajuan-bhp` | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `cetak-dokumen-bhp` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `kelola-master-data-sekolah` | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Catatan: matriks target di atas mengasumsikan pemisahan review/approve dan
 pembatasan operator pada master; implementasi sekarang memberi operator_sekolah
 permission BHP penuh (setara admin) untuk memudahkan operasional sekolah.
 Tinjau ulang sebelum go-live bila ingin pengetatan.
+
+Guard tambahan di luar permission (server-side, terverifikasi test):
+
+- `operator_divisi` di-scope ganda: `sekolah_id` (via `ResolvesSekolah`) dan
+  `divisi_id` — pengajuan, dokumen (show/PDF/batch/tambahan), dan statistik
+  dashboard hanya untuk divisinya sendiri (403 lintas divisi,
+  `BhpDivisiTest`).
+- Snapshot payload dokumen tambahan ter-scope sekolah pengajuan
+  (`DokumenService::payloadFor`), tidak memuat data sekolah lain.

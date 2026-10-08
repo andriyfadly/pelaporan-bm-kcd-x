@@ -67,8 +67,18 @@ Approval harus menjalankan urutan berikut dalam satu transaction:
 5. Validasi jumlah approved.
 6. Update detail approved.
 7. Konversi reservasi menjadi pemakaian.
-8. Buat nomor dokumen.
+8. Buat nomor dokumen (lock row sequence; insert row pertama anti-race via
+   unique constraint + retry).
 9. Buat dokumen distribusi.
 10. Catat audit log.
 
 Jika satu langkah gagal, seluruh langkah rollback.
+
+## 6. Isolasi Scope (tambahan, hasil audit 2026-10-08)
+
+- Snapshot payload dokumen tambahan (`stok_opname`, `buku_pengeluaran`,
+  `buku_penyaluran`) selalu difilter `sekolah_id` milik pengajuan — dokumen
+  sekolah A tidak menyimpan stok/pengeluaran sekolah B.
+- Operator divisi hanya dapat mengakses dokumen (lihat, PDF, batch, tambahan)
+  untuk pengajuan divisinya sendiri.
+- Statistik dashboard operator divisi difilter `divisi_id`.
