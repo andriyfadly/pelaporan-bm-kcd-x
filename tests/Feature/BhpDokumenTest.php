@@ -239,4 +239,39 @@ class BhpDokumenTest extends TestCase
             ->get(route('distribusi-bhp.dokumen.show', $pengajuan))
             ->assertOk();
     }
+
+    public function test_pejabat_tidak_lengkap_tidak_mengubah_state_pengajuan(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->user($sekolah, 'op.dok5');
+        $admin = $this->user($sekolah, 'admin.dok5');
+        $barang = $this->barang('BOS', 100);
+
+        $pengajuan = Pengajuan::create([
+            'sekolah_id' => $sekolah->id,
+            'user_id' => $operator->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'submitted',
+            'tanggal' => '2026-06-17',
+        ]);
+        $detail = $pengajuan->details()->create([
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 5,
+            'status_reservasi' => 'direservasi',
+            'jumlah_direservasi' => 5,
+        ]);
+
+        // Tanpa lengkapiPejabat — gate harus menolak sebelum apa pun berubah.
+        try {
+            app(DokumenService::class)->approveDanGenerate($pengajuan->load('details'), $admin, [$detail->id => 5]);
+            $this->fail('Approval seharusnya gagal karena pejabat belum lengkap.');
+        } catch (\RuntimeException) {
+            // diharapkan
+        }
+
+        $this->assertSame('submitted', $pengajuan->fresh()->status);
+        $this->assertSame(5, app(StokService::class)->reservasi($barang));
+        $this->assertSame(0, $pengajuan->fresh()->dokumen()->count());
+        $this->assertNull($pengajuan->fresh()->reviewed_at);
+    }
 }
