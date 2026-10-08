@@ -127,6 +127,14 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('dokumen.show');
 
+        Route::get('/pengajuan/{pengajuan}/dokumen/{dokumen}/pdf', [BhpDokumenController::class, 'pdf'])
+            ->middleware('permission:cetak-dokumen-bhp')
+            ->name('dokumen.pdf');
+
+        Route::post('/pengajuan/{pengajuan}/dokumen/batch', [BhpDokumenController::class, 'batch'])
+            ->middleware('permission:cetak-dokumen-bhp')
+            ->name('dokumen.batch');
+
         Route::get('/laporan', [BhpLaporanController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('laporan.index');

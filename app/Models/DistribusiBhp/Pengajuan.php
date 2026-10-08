@@ -2,6 +2,7 @@
 
 namespace App\Models\DistribusiBhp;
 
+use App\Models\Master\Sekolah;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -50,6 +51,11 @@ class Pengajuan extends Model
     public function pemohon(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function sekolah(): BelongsTo
+    {
+        return $this->belongsTo(Sekolah::class, 'sekolah_id');
     }
 
     public function reviewer(): BelongsTo

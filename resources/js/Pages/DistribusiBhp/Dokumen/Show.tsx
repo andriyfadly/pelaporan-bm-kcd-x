@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import { FileDown, Printer } from 'lucide-react';
 
 interface DokumenItem {
     id: string;
@@ -48,6 +49,15 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
                             ← Kembali
                         </Link>
                     </div>
+                    {pengajuan.dokumen.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => router.post(`/distribusi-bhp/pengajuan/${pengajuan.id}/dokumen/batch`)}
+                            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
+                        >
+                            <Printer className="w-4 h-4" /> Unduh Batch PDF
+                        </button>
+                    )}
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -58,17 +68,26 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
                                 <th className="text-left py-3 px-4">Jenis</th>
                                 <th className="text-left py-3 px-4">Nomor</th>
                                 <th className="text-left py-3 px-4">Tanggal Titimangsa</th>
+                                <th className="text-center py-3 px-4">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {pengajuan.dokumen.length === 0 ? (
-                                <tr><td colSpan={3} className="py-10 text-center text-slate-400 text-xs">Belum ada dokumen.</td></tr>
+                                <tr><td colSpan={4} className="py-10 text-center text-slate-400 text-xs">Belum ada dokumen.</td></tr>
                             ) : (
                                 pengajuan.dokumen.map((doc) => (
                                     <tr key={doc.id}>
                                         <td className="py-3 px-4">{labelJenis[doc.jenis] ?? doc.jenis}</td>
                                         <td className="py-3 px-4 font-mono text-slate-700">{doc.nomor}</td>
                                         <td className="py-3 px-4">{doc.tanggal_titimangsa ?? '-'}</td>
+                                        <td className="py-3 px-4 text-center">
+                                            <a
+                                                href={`/distribusi-bhp/pengajuan/${pengajuan.id}/dokumen/${doc.id}/pdf`}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                                            >
+                                                <FileDown className="w-3.5 h-3.5" /> PDF
+                                            </a>
+                                        </td>
                                     </tr>
                                 ))
                             )}
