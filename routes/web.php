@@ -4,6 +4,13 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\KodeBarangController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\PasswordExpiredController;
+use App\Http\Controllers\DistribusiBhp\BarangController as BhpBarangController;
+use App\Http\Controllers\DistribusiBhp\DashboardController as BhpDashboardController;
+use App\Http\Controllers\DistribusiBhp\KodeRekeningController as BhpKodeRekeningController;
+use App\Http\Controllers\DistribusiBhp\PenerimaanController as BhpPenerimaanController;
+use App\Http\Controllers\DistribusiBhp\PengajuanController as BhpPengajuanController;
+use App\Http\Controllers\DistribusiBhp\PenyediaController as BhpPenyediaController;
+use App\Http\Controllers\DistribusiBhp\ReviewPengajuanController as BhpReviewPengajuanController;
 use App\Http\Controllers\PelaporanBm\AcuanController;
 use App\Http\Controllers\PelaporanBm\CetakController;
 use App\Http\Controllers\PelaporanBm\DashboardController;
@@ -69,6 +76,50 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/acuan/{acuan}', [AcuanController::class, 'destroy'])->name('acuan.destroy');
 
         Route::get('/rekapan', [RekapanController::class, 'index'])->name('rekapan.index');
+    });
+
+    // Domain Distribusi BHP — terpisah dari Pelaporan BM (lihat docs/requirements/domain-boundaries.md).
+    Route::prefix('distribusi-bhp')->name('distribusi-bhp.')->group(function () {
+        Route::get('/dashboard', [BhpDashboardController::class, 'index'])
+            ->middleware('permission:lihat-distribusi-bhp')
+            ->name('dashboard');
+
+        Route::get('/pengajuan', [BhpPengajuanController::class, 'index'])
+            ->middleware('permission:lihat-distribusi-bhp')
+            ->name('pengajuan.index');
+        Route::post('/pengajuan', [BhpPengajuanController::class, 'store'])
+            ->middleware('permission:kelola-pengajuan-bhp')
+            ->name('pengajuan.store');
+        Route::post('/pengajuan/{pengajuan}/submit', [BhpPengajuanController::class, 'submit'])
+            ->middleware('permission:kelola-pengajuan-bhp')
+            ->name('pengajuan.submit');
+
+        Route::get('/review-pengajuan', [BhpReviewPengajuanController::class, 'index'])
+            ->middleware('permission:review-pengajuan-bhp')
+            ->name('review-pengajuan.index');
+        Route::post('/review-pengajuan/{pengajuan}/approve', [BhpReviewPengajuanController::class, 'approve'])
+            ->middleware('permission:approve-pengajuan-bhp')
+            ->name('review-pengajuan.approve');
+        Route::post('/review-pengajuan/{pengajuan}/reject', [BhpReviewPengajuanController::class, 'reject'])
+            ->middleware('permission:approve-pengajuan-bhp')
+            ->name('review-pengajuan.reject');
+
+        Route::middleware('permission:kelola-master-bhp')->group(function () {
+            Route::get('/master/kode-rekening', [BhpKodeRekeningController::class, 'index'])->name('kode-rekening.index');
+            Route::post('/master/kode-rekening', [BhpKodeRekeningController::class, 'store'])->name('kode-rekening.store');
+
+            Route::get('/master/barang', [BhpBarangController::class, 'index'])->name('barang.index');
+            Route::post('/master/barang', [BhpBarangController::class, 'store'])->name('barang.store');
+            Route::post('/master/barang/{barang}/harga', [BhpBarangController::class, 'storeHarga'])->name('barang.harga.store');
+
+            Route::get('/master/penyedia', [BhpPenyediaController::class, 'index'])->name('penyedia.index');
+            Route::post('/master/penyedia', [BhpPenyediaController::class, 'store'])->name('penyedia.store');
+        });
+
+        Route::middleware('permission:kelola-penerimaan-bhp')->group(function () {
+            Route::get('/penerimaan', [BhpPenerimaanController::class, 'index'])->name('penerimaan.index');
+            Route::post('/penerimaan', [BhpPenerimaanController::class, 'store'])->name('penerimaan.store');
+        });
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:super_admin|admin_kcd')->group(function () {
