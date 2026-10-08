@@ -60,6 +60,12 @@ export default function Index({
 
                 <div className="flex flex-wrap gap-2">
                     <a
+                        href={`/distribusi-bhp/laporan/kartu-persediaan?sumber_dana=${sumberDana}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                    >
+                        Kartu Persediaan
+                    </a>
+                    <a
                         href={`/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=stok`}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
                     >

@@ -142,6 +142,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/laporan', [BhpLaporanController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('laporan.index');
+        Route::get('/laporan/kartu-persediaan', [BhpLaporanController::class, 'kartuPersediaan'])
+            ->middleware('permission:lihat-distribusi-bhp')
+            ->name('laporan.kartu-persediaan');
         Route::get('/laporan/export', [BhpLaporanController::class, 'export'])
             ->middleware('permission:cetak-dokumen-bhp')
             ->name('laporan.export');

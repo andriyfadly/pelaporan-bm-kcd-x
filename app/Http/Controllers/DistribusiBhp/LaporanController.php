@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\DistribusiBhp;
 
+use App\Exports\DistribusiBhp\BhpKartuPersediaanExport;
 use App\Exports\DistribusiBhp\BhpPengeluaranExport;
 use App\Exports\DistribusiBhp\BhpStokExport;
 use App\Http\Controllers\Controller;
+use App\Models\DistribusiBhp\Barang;
 use App\Services\DistribusiBhp\LaporanService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -30,11 +32,27 @@ class LaporanController extends Controller
         ]);
     }
 
+    public function kartuPersediaan(Request $request): Response
+    {
+        $sumberDana = strtoupper((string) $request->input('sumber_dana', 'BOS'));
+        $barangId = (string) $request->input('barang_id', '');
+
+        return Inertia::render('DistribusiBhp/Laporan/KartuPersediaan', [
+            'sumberDana' => $sumberDana,
+            'barangId' => $barangId,
+            'kartu' => $barangId !== '' ? $this->laporan->kartuPersediaan($barangId, $sumberDana) : null,
+            'daftarBarang' => Barang::where('sumber_dana', $sumberDana)
+                ->orderBy('nama_barang')
+                ->get(['id', 'kode_barang', 'nama_barang']),
+        ]);
+    }
+
     public function export(Request $request): BinaryFileResponse
     {
         $validated = $request->validate([
             'sumber_dana' => ['required', Rule::in(['BOS', 'BOPD'])],
-            'jenis' => ['required', Rule::in(['stok', 'pengeluaran'])],
+            'jenis' => ['required', Rule::in(['stok', 'pengeluaran', 'kartu_persediaan'])],
+            'barang_id' => ['required_if:jenis,kartu_persediaan', 'uuid'],
         ]);
 
         $sumberDana = strtoupper($validated['sumber_dana']);
@@ -44,6 +62,11 @@ class LaporanController extends Controller
             $rows = $this->laporan->laporanStok($sumberDana);
             $export = new BhpStokExport($rows);
             $filename = "laporan_stok_bhp_{$sumberDana}.xlsx";
+        } elseif ($jenis === 'kartu_persediaan') {
+            $kartu = $this->laporan->kartuPersediaan($validated['barang_id'], $sumberDana);
+            $rows = $kartu['mutasi'];
+            $export = new BhpKartuPersediaanExport($kartu['barang'], $rows);
+            $filename = "kartu_persediaan_bhp_{$sumberDana}.xlsx";
         } else {
             $rows = $this->laporan->bukuPengeluaran($sumberDana);
             $export = new BhpPengeluaranExport($rows);
