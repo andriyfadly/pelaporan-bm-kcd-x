@@ -3,7 +3,7 @@
 namespace App\Services\DistribusiBhp;
 
 use App\Models\DistribusiBhp\Settings;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * Settings BHP: format nomor dokumen + preferensi PDF.
@@ -22,9 +22,22 @@ class SettingsService
 
     public function get(): Settings
     {
-        return DB::transaction(fn (): Settings => Settings::firstOrCreate(
-            ['is_singleton' => true],
-        ));
+        // # ponytail: singleton race-safe tanpa transaksi panjang — bila dua
+        // request concurrent sama-sama insert, yang kalah menangkap unique
+        // violation (partial index bhp_settings_singleton_unique) lalu reload.
+        // Query ulang di luar transaction yang aborted oleh pgsql.
+        $settings = Settings::query()->first();
+        if ($settings !== null) {
+            return $settings;
+        }
+
+        try {
+            Settings::create();
+
+            return Settings::query()->firstOrFail();
+        } catch (UniqueConstraintViolationException) {
+            return Settings::query()->firstOrFail();
+        }
     }
 
     public function update(array $data): Settings
