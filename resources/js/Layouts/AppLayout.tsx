@@ -41,6 +41,7 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
     const canPengajuan = permissions.includes('kelola-pengajuan-bhp');
     const canReview = permissions.includes('review-pengajuan-bhp');
     const canDivisi = permissions.includes('kelola-divisi-bhp');
+    const canKelolaPenyedia = permissions.includes('kelola-penyedia-bhp');
     const canCetak = permissions.includes('cetak-dokumen-bhp');
 
     const isBhpActive = currentPath.startsWith('/distribusi-bhp');
@@ -216,7 +217,7 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                             Divisi
                         </Link>
                     )}
-                    {canMaster && (
+                    {canKelolaPenyedia && (
                         <Link href="/distribusi-bhp/penyedia" className={itemClass(currentPath.startsWith('/distribusi-bhp/penyedia'))}>
                             Penyedia
                         </Link>

@@ -200,11 +200,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/penyedia', [BhpPenyediaController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')->name('penyedia.index');
         Route::post('/penyedia', [BhpPenyediaController::class, 'store'])
-            ->middleware('permission:kelola-master-bhp')->name('penyedia.store');
+            ->middleware('permission:kelola-penyedia-bhp')->name('penyedia.store');
         Route::put('/penyedia/{penyedia}', [BhpPenyediaController::class, 'update'])
-            ->middleware('permission:kelola-master-bhp')->name('penyedia.update');
+            ->middleware('permission:kelola-penyedia-bhp')->name('penyedia.update');
         Route::delete('/penyedia/{penyedia}', [BhpPenyediaController::class, 'destroy'])
-            ->middleware('permission:kelola-master-bhp')->name('penyedia.destroy');
+            ->middleware('permission:kelola-penyedia-bhp')->name('penyedia.destroy');
 
         // Per-sumber-dana routes — middleware baca sumber dana dari prefix
         Route::prefix('bos')->name('bos.')->middleware('sumber-dana-bhp')->group($bhpRoutes);

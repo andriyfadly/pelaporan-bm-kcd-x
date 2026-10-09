@@ -146,7 +146,7 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 | POST | `/distribusi-bhp/master/kode-rekening/batch-assign` | `lihat-distribusi-bhp` | `KodeRekeningController::batchAssign` |
 | GET/POST | `/distribusi-bhp/master/barang` | `lihat-distribusi-bhp` / `kelola-master-bhp` | `BarangController` |
 | POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-master-bhp` | `BarangController::storeHarga` — `sumber_dana` wajib & harus cocok dengan barang ter-binding |
-| GET/POST | `/distribusi-bhp/master/penyedia` | `lihat-distribusi-bhp` / `kelola-master-bhp` | `PenyediaController` |
+| GET/POST/PUT/DELETE | `/distribusi-bhp/penyedia` | `lihat-distribusi-bhp` (read) / `kelola-penyedia-bhp` (write) | `PenyediaController` |
 | GET/POST | `/distribusi-bhp/penerimaan` | `kelola-penerimaan-bhp` | `PenerimaanController` |
 | DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hapus **seluruh** saldo awal (header + semua detail) milik sekolah sendiri yang belum dipakai |
 | GET/POST | `/distribusi-bhp/saldo-awal` | `kelola-penerimaan-bhp` | `SaldoAwalController` — halaman saldo awal (filter `sumber_dana`, `periode`) |

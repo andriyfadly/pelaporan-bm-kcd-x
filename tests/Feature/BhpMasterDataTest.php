@@ -28,8 +28,8 @@ class BhpMasterDataTest extends TestCase
     }
 
     /**
-     * Admin KCD — satu-satunya role yang memegang `kelola-master-bhp`
-     * (tulis master kode rekening/barang/penyedia).
+     * Admin KCD — memegang `kelola-master-bhp` (tulis master kode rekening/barang)
+     * sekaligus `kelola-penyedia-bhp`.
      */
     private function admin(): User
     {
@@ -183,6 +183,17 @@ class BhpMasterDataTest extends TestCase
         $this->assertSame(1, Penyedia::where('nama', 'CV Sumber Rejeki')->count());
     }
 
+    public function test_operator_sekolah_dapat_mengelola_penyedia(): void
+    {
+        $operator = $this->operator();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penyedia.store'), ['nama' => 'CV Sekolah Jaya'])
+            ->assertRedirect();
+
+        $this->assertSame(1, Penyedia::where('nama', 'CV Sekolah Jaya')->count());
+    }
+
     public function test_operator_sekolah_tidak_dapat_menulis_master_bhp(): void
     {
         $operator = $this->operator();
@@ -193,10 +204,6 @@ class BhpMasterDataTest extends TestCase
                 'nama' => 'X',
                 'sumber_dana' => 'BOS',
             ])
-            ->assertForbidden();
-
-        $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penyedia.store'), ['nama' => 'CV Terlarang'])
             ->assertForbidden();
     }
 
