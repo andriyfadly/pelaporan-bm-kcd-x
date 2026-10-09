@@ -16,20 +16,31 @@
         .meta .label { width: 130px; color: #475569; }
         table.data { width: 100%; border-collapse: collapse; margin-top: 8px; }
         table.data th, table.data td { border: 1px solid #cbd5e1; padding: 5px 6px; }
-        table.data th { background: #eff6ff; text-transform: uppercase; font-size: 10px; }
+        table.data th { background: #eff6ff; text-transform: uppercase; font-size: 10px; text-align: center; }
         .right { text-align: right; }
+        .center { text-align: center; }
         .ttd { width: 100%; margin-top: 40px; }
         .ttd td { width: 50%; text-align: center; vertical-align: top; }
         .ttd .space { height: 60px; }
+        .muted { color: #64748b; }
+        .judul-dokumen { text-align: center; text-transform: uppercase; font-size: 13px; font-weight: bold; margin: 0 0 4px; }
     </style>
 </head>
 <body>
     @foreach ($dokumenList as $dokumen)
         <div class="page">
-            <div class="kop">
-                <h1>{{ $judulMap[$dokumen->jenis] ?? ucwords(str_replace('_', ' ', $dokumen->jenis)) }}</h1>
-                <h2>Sistem Digitalisasi Pelaporan Aset — Distribusi BHP</h2>
-            </div>
+            @if(in_array($dokumen->jenis, ['nota_permintaan', 'surat_penyaluran', 'bast', 'bap', 'stok_opname']))
+                @include('distribusi-bhp.partials.kop-surat', [
+                    'sekolah' => $sekolah,
+                    'alamat' => $alamat ?? '',
+                    'telepon' => $telepon ?? '',
+                    'website' => $website ?? '',
+                    'email' => $email ?? '',
+                    'kodePos' => $kodePos ?? '',
+                ])
+            @endif
+            <p class="judul-dokumen">{{ $judulMap[$dokumen->jenis] ?? ucwords(str_replace('_', ' ', $dokumen->jenis)) }}</p>
+            <p style="text-align:center;margin:0 0 12px;font-weight:bold;">{{ $dokumen->nomor }}</p>
 
             <table class="meta">
                 <tr>
@@ -39,17 +50,45 @@
                     <td>: {{ $pengajuan->sumber_dana }}</td>
                 </tr>
                 <tr>
-                    <td class="label">Tanggal Titimangsa</td>
+                    <td class="label">Tanggal</td>
                     <td>: {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? '-' }}</td>
                     <td class="label">Sekolah</td>
                     <td>: {{ $sekolah }}</td>
                 </tr>
             </table>
 
+            @php
+                $ppb = $penandatangan['pembantu_pengurus_barang'] ?? [];
+                $ws = $penandatangan['wakasek_sarpras'] ?? [];
+                $kasek = $penandatangan['kepala_sekolah'] ?? [];
+            @endphp
+
+            @if($dokumen->jenis === 'nota_permintaan')
+                <p style="margin:0 0 8px;"><strong>Pihak yang meminta:</strong> {{ $pengajuan->divisi->nama ?? '-' }}</p>
+            @endif
+
+            @if($dokumen->jenis === 'bast')
+                @php $sppb = $pengajuan->dokumen->where('jenis','surat_penyaluran')->first(); @endphp
+                <table class="meta">
+                    <tr><td class="label"><strong>PIHAK KESATU</strong></td><td>: {{ $ws['nama'] ?? '-' }}</td></tr>
+                    <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ws['jabatan'] ?? 'Wakasek Sarpras' }}</td></tr>
+                    <tr><td class="label"><strong>PIHAK KEDUA</strong></td><td>: {{ $ppb['nama'] ?? '-' }}</td></tr>
+                    <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ppb['jabatan'] ?? 'Pembantu Pengurus Barang' }}</td></tr>
+                </table>
+            @endif
+
+            @if($dokumen->jenis === 'stok_opname')
+                <table class="meta">
+                    <tr><td class="label">Kepala Sekolah</td><td>: {{ $kasek['nama'] ?? '-' }} ({{ $kasek['nip'] ?? '-' }})</td></tr>
+                    <tr><td class="label">Wakasek Sarpras</td><td>: {{ $ws['nama'] ?? '-' }} ({{ $ws['nip'] ?? '-' }})</td></tr>
+                    <tr><td class="label">Pembantu Pengurus Barang</td><td>: {{ $ppb['nama'] ?? '-' }} ({{ $ppb['nip'] ?? '-' }})</td></tr>
+                </table>
+            @endif
+
             <table class="data">
                 <thead>
                     <tr>
-                        <th style="width: 34px;">No</th>
+                        <th style="width:34px;">No</th>
                         <th>Kode Barang</th>
                         <th>Nama Barang</th>
                         <th>Satuan</th>
@@ -58,7 +97,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($pengajuan->details as $index => $detail)
+                    @forelse ($pengajuan->details as $index => $detail)
                         <tr>
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $detail->barang->kode_barang ?? '-' }}</td>
@@ -67,23 +106,40 @@
                             <td class="right">{{ $detail->jumlah_diminta }}</td>
                             <td class="right">{{ $detail->jumlah_disetujui ?? '-' }}</td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr><td colspan="6" class="muted">Tidak ada item.</td></tr>
+                    @endforelse
                 </tbody>
             </table>
 
-            @if (isset($penandatangan['kepala_sekolah']))
+            @if(in_array($dokumen->jenis, ['nota_permintaan', 'bast', 'bap', 'surat_penyaluran']))
                 <table class="ttd">
                     <tr>
-                        <td></td>
-                        <td>
-                            <div class="space" style="height: 40px;"></div>
-                            Mengetahui/Menyetujui,<br>
-                            {{ $penandatangan['kepala_sekolah']['jabatan'] }},<div class="space"></div>
-                            <strong>{{ $penandatangan['kepala_sekolah']['nama'] }}</strong>
-                            @if (!empty($penandatangan['kepala_sekolah']['nip']))
-                                <br>NIP. {{ $penandatangan['kepala_sekolah']['nip'] }}
-                            @endif
-                        </td>
+                        @if(in_array($dokumen->jenis, ['nota_permintaan']))
+                            <td></td>
+                            <td>
+                                {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}
+                                <div class="space"></div>
+                                <strong>{{ $ppb['nama'] ?? $pemohon }}</strong>
+                            </td>
+                        @elseif(in_array($dokumen->jenis, ['bast']))
+                            <td>PIHAK KEDUA,<div class="space"></div><strong>{{ $ppb['nama'] ?? '-' }}</strong></td>
+                            <td>PIHAK KESATU,<div class="space"></div><strong>{{ $ws['nama'] ?? '-' }}</strong></td>
+                        @elseif(in_array($dokumen->jenis, ['bap']))
+                            <td></td>
+                            <td>
+                                {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}
+                                <div class="space"></div>
+                                <strong>{{ $ppb['nama'] ?? '-' }}</strong>
+                            </td>
+                        @else
+                            <td></td>
+                            <td>
+                                {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}
+                                <div class="space"></div>
+                                <strong>{{ $ws['nama'] ?? '-' }}</strong>
+                            </td>
+                        @endif
                     </tr>
                 </table>
             @endif

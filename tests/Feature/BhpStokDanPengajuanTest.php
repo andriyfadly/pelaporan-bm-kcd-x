@@ -24,7 +24,7 @@ class BhpStokDanPengajuanTest extends TestCase
         return Sekolah::create(['nama_sekolah' => 'SMKN 1 BHP', 'kota_kab' => 'Kota Bandung']);
     }
 
-    private function barang(string $sumberDana = 'BOS', int $stok = 100): Barang
+    private function barang(Sekolah $sekolah, string $sumberDana = 'BOS', int $stok = 100): Barang
     {
         $barang = Barang::create([
             'kode_barang' => '1.1.7.01.0'.$stok.$sumberDana,
@@ -34,7 +34,9 @@ class BhpStokDanPengajuanTest extends TestCase
         ]);
 
         if ($stok > 0) {
+            // Tidak ada pool pusat: saldo awal selalu milik satu sekolah.
             $penerimaan = Penerimaan::create([
+                'sekolah_id' => $sekolah->id,
                 'sumber_dana' => $sumberDana,
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -79,7 +81,7 @@ class BhpStokDanPengajuanTest extends TestCase
     {
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.tkj', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $submitted = $this->pengajuan($sekolah, $user, 'BOS', 'submitted');
         PengajuanDetail::create(['bhp_pengajuan_id' => $submitted->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 30, 'status_reservasi' => 'direservasi', 'jumlah_direservasi' => 30]);
@@ -99,7 +101,7 @@ class BhpStokDanPengajuanTest extends TestCase
     {
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.rpl', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 20);
+        $barang = $this->barang($sekolah, 'BOS', 20);
 
         $approved = $this->pengajuan($sekolah, $user, 'BOS', 'approved');
         PengajuanDetail::create(['bhp_pengajuan_id' => $approved->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 50, 'jumlah_disetujui' => 50]);
@@ -109,8 +111,9 @@ class BhpStokDanPengajuanTest extends TestCase
 
     public function test_sumber_dana_terisolasi_pada_stok(): void
     {
-        $bos = $this->barang('BOS', 40);
-        $bopd = $this->barang('BOPD', 10);
+        $sekolah = $this->sekolah();
+        $bos = $this->barang($sekolah, 'BOS', 40);
+        $bopd = $this->barang($sekolah, 'BOPD', 10);
         $service = app(StokService::class);
 
         $this->assertSame(40, $service->tersedia($bos));
@@ -122,7 +125,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.mm', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
         $admin = User::create(['name' => 'Admin', 'username' => 'admin.bhp2', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = $this->pengajuan($sekolah, $user);
         $detail = PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 25]);
@@ -148,7 +151,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.akl', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
         $admin = User::create(['name' => 'Admin', 'username' => 'admin.bhp3', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = $this->pengajuan($sekolah, $user);
         PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 25]);
@@ -169,7 +172,7 @@ class BhpStokDanPengajuanTest extends TestCase
     {
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.tkr', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 10);
+        $barang = $this->barang($sekolah, 'BOS', 10);
 
         $pengajuan = $this->pengajuan($sekolah, $user);
         PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 999]);
@@ -183,7 +186,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.titl', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
         $admin = User::create(['name' => 'Admin', 'username' => 'admin.bhp4', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = $this->pengajuan($sekolah, $user);
         $detail = PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 10]);
@@ -202,7 +205,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.dana', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
         $admin = User::create(['name' => 'Admin', 'username' => 'admin.dana', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         // Pengajuan BOS dengan detail barang BOPD — data dibuat langsung
         // untuk mensimulasikan inkonsistensi setelah submit.
@@ -226,7 +229,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.asing', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
         $admin = User::create(['name' => 'Admin', 'username' => 'admin.asing', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = $this->pengajuan($sekolah, $user);
         PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 10]);
@@ -243,7 +246,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.qty', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
         $admin = User::create(['name' => 'Admin', 'username' => 'admin.qty', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = $this->pengajuan($sekolah, $user);
         $detail = PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 10]);
@@ -260,7 +263,7 @@ class BhpStokDanPengajuanTest extends TestCase
         $sekolah = $this->sekolah();
         $user = User::create(['name' => 'Divisi', 'username' => 'divisi.str', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
         $admin = User::create(['name' => 'Admin', 'username' => 'admin.str', 'password' => bcrypt('password'), 'sekolah_id' => $sekolah->id]);
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = $this->pengajuan($sekolah, $user);
         $detail = PengajuanDetail::create(['bhp_pengajuan_id' => $pengajuan->id, 'barang_id' => $barang->id, 'jumlah_diminta' => 10]);

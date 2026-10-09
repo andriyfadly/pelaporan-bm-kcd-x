@@ -124,4 +124,85 @@ class ProfilSekolahTest extends TestCase
             ->put(route('master-data.profil-sekolah.update'), ['email' => 'bukan-email'])
             ->assertSessionHasErrors('email');
     }
+
+    private function adminKcd(string $username = 'admin.kcd.profil'): User
+    {
+        $admin = User::create([
+            'name' => 'Admin KCD',
+            'username' => $username,
+            'password' => bcrypt('password'),
+            'sekolah_id' => null,
+            'password_changed_at' => now(),
+        ]);
+        $admin->assignRole('admin_kcd');
+
+        return $admin;
+    }
+
+    public function test_admin_tanpa_sekolah_diminta_memilih_dulu(): void
+    {
+        $this->sekolah('SMKN Pilihan A');
+        $this->sekolah('SMKN Pilihan B');
+
+        $this->actingAs($this->adminKcd())
+            ->get(route('master-data.profil-sekolah.edit'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('MasterData/ProfilSekolah/Edit')
+                ->where('sekolah', null)
+                ->has('sekolahOptions', 2)
+            );
+    }
+
+    public function test_admin_tanpa_sekolah_tidak_bisa_menyimpan(): void
+    {
+        $sekolah = $this->sekolah('SMKN Belum Dipilih');
+
+        $this->actingAs($this->adminKcd('admin.kcd.2'))
+            ->put(route('master-data.profil-sekolah.update'), ['alamat' => 'Alamat Entah'])
+            ->assertSessionHasErrors('sekolah_id');
+
+        $sekolah->refresh();
+        $this->assertNull($sekolah->alamat);
+    }
+
+    public function test_admin_dengan_sekolah_terpilih_dapat_mengubah_profil(): void
+    {
+        $sekolah = $this->sekolah('SMKN Dipilih');
+        $admin = $this->adminKcd('admin.kcd.3');
+
+        $this->actingAs($admin)
+            ->get(route('master-data.profil-sekolah.edit', ['sekolah_id' => $sekolah->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('sekolah.id', $sekolah->id)
+                ->where('sekolahTerpilih', $sekolah->id)
+            );
+
+        $this->actingAs($admin)
+            ->put(route('master-data.profil-sekolah.update'), [
+                'sekolah_id' => $sekolah->id,
+                'alamat' => 'Alamat Pilihan',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('Alamat Pilihan', $sekolah->refresh()->alamat);
+    }
+
+    public function test_admin_tidak_bisa_mengubah_profil_sekolah_di_luar_pilihannya(): void
+    {
+        $sekolahA = $this->sekolah('SMKN A Pilih');
+        $sekolahB = $this->sekolah('SMKN B Pilih');
+
+        $this->actingAs($this->adminKcd('admin.kcd.4'))
+            ->put(route('master-data.profil-sekolah.update'), [
+                'sekolah_id' => $sekolahA->id,
+                'alamat' => 'Alamat A',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('Alamat A', $sekolahA->refresh()->alamat);
+        $this->assertNull($sekolahB->refresh()->alamat);
+    }
 }

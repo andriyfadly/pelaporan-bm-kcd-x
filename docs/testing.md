@@ -3,7 +3,7 @@
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
 > sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
 > **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
-> Status terakhir: 308 passed / 1465 assertions (44 file Feature+Unit, 11
+> Status terakhir: 418 passed / 1948 assertions (50 file Feature+Unit, 16
 > di antaranya domain Distribusi BHP). Coverage gate tetap wajib
 > dijalankan sebelum merge.
 
@@ -51,7 +51,7 @@ Status kini: **100% total, semua file 100%**.
   (`AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`)
   agar deterministik tanpa mengunci jam sistem.
 
-## 3. Matriks Cakupan (40 Feature + 4 Unit, termasuk 14 file BHP)
+## 3. Matriks Cakupan (46 Feature + 4 Unit, termasuk 16 file BHP)
 
 | File | Menjamin |
 |------|----------|
@@ -82,24 +82,25 @@ Status kini: **100% total, semua file 100%**.
 | `SekolahFlowFixTest` | Regresi alur sekolah |
 | Unit: `FortifyActionsTest`, `ModelRelationsTest`, `ProvidersTest` | Action reset/update, relasi & accessor `is_realisasi`, gate super_admin |
 
-### Distribusi BHP (14 file, 110 kasus)
+### Distribusi BHP (16 file, 114 kasus)
 
 | File | Menjamin |
 |------|----------|
-| `BhpDomainBoundaryTest` | Pemisahan domain: tidak ada tabel/model/route BM yang tercampur BHP (dan sebaliknya) |
+| `BhpDomainBoundaryTest` | Pemisahan domain: tidak ada tabel/model/route BM yang tercampur BHP (dan sebaliknya); `sumber_dana` invalid di middleware → 422 (fail-closed), default BOS bila kosong, state sumber dana kembali setelah request, `availablePeriods` saldo awal hanya menampilkan periode sumber dana aktif |
 | `BhpStokDanPengajuanTest` | Stok 4-tier, submit→reservasi, approve konversi ke pemakaian, reject lepas reservasi, stok tidak negatif, revalidasi sumber dana saat approve, detail_id asing/quantity invalid ditolak |
-| `BhpHttpFlowTest` | Alur HTTP pengajuan→review→approve, guard permission, cross-tenant 403 |
-| `BhpSettingsTest` | Format nomor default/kustom, singleton satu baris, preferensi PDF, 403 role tanpa `kelola-master-bhp`, placeholder asing/tanpa `{urut:N}` ditolak |
+| `BhpIsolasiSekolahTest` | **Regresi P0 tanpa pool pusat**: stok sekolah A tak terlihat sekolah B, dua sekolah tak bisa oversell stok yang sama, saldo awal wajib sekolah |
+| `BhpHttpFlowTest` | Alur HTTP pengajuan→review→approve, guard permission, cross-tenant 403, update/hapus draft, sekolah_id palsu diabaikan, divisi lintas sekolah ditolak, approve/reject/dokumen sekolah lain 403, **operator tidak dapat approve pengajuan sendiri (403)** |
+| `BhpSettingsTest` | Format nomor default/kustom, singleton satu baris **per sumber dana** (BOS & BOPD independen), preferensi PDF, 403 role tanpa `kelola-master-bhp`, placeholder asing/tanpa `{urut:N}` ditolak, sequence terpisah per (jenis × sumber dana × tahun × bulan), nomor berurutan tidak duplikat, padding `{urut:N}` |
 | `BhpMasterDataTest` | CRUD kode rekening/barang/penyedia, validasi sumber dana, riwayat harga |
-| `BhpSaldoAwalTest` | Halaman saldo awal terpisah: akses per role, tambah manual, statistik, isolasi per sekolah, periode, hapus per barang, import Excel (sukses, batal total saat invalid, beda sumber dana, duplikat), unduh template |
+| `BhpSaldoAwalTest` | Halaman saldo awal terpisah: akses per role, tambah manual, statistik, isolasi per sekolah, periode, **hapus per barang tanpa menghapus barang lain** (regresi P0), hapus barang terakhir membersihkan header, tolak hapus saat dipakai pengajuan aktif, pengajuan beda sumber dana tidak mengunci, import Excel (sukses, batal total, beda sumber dana, duplikat DB/berkas, kode kosong/tak dikenal, jumlah desimal `1.5` ditolak, harga desimal/teks, ribuan `1.500`, nol/negatif, >2000 baris, trailing kosong, bukan Excel, periode di luar rentang), unduh template, isolasi import antar sekolah |
 | `BhpPenerimaanTest` | Penerimaan + detail, saldo awal (periode wajib, duplikat per barang ditolak, BOS≠BOPD, hapus sebelum/sesudah dipakai, ownership), boundary guest/bendahara/sumber dana/penyedia/barang invalid |
 | `BhpDokumenTest` | Auto-generate dokumen wajib saat approve (dengan pejabat lengkap), penomoran atomic per jenis/dana/periode, reject bila dokumen sudah ada, rollback stok saat generate gagal, gate pejabat tidak mengubah state |
 | `BhpPejabatSekolahTest` | **Gate pejabat**: approval gagal bila pejabat belum lengkap (status tetap submitted, reservasi utuh, tanpa dokumen), snapshot penandatangan di payload, reprint pakai snapshot saat pejabat berganti, approval backdate pakai pejabat berlaku pada tanggal pengajuan, satu pejabat aktif per jabatan (auto-close H-1), overlap periode ditolak, isolasi sekolah 403, `generateTambahan` menolak pengajuan non-approved. Rute `/master-data/pejabat` |
-| `ProfilSekolahTest` | Operator sekolah edit profil kontak (alamat/telepon/website/email) sekolahnya sendiri, nama/NPSN tidak bisa diubah operator, ter-isolasi antar sekolah, permission `kelola-master-data-sekolah` (bendahara 403), email invalid ditolak |
+| `ProfilSekolahTest` | Operator sekolah edit profil kontak (alamat/telepon/website/email) sekolahnya sendiri, nama/NPSN tidak bisa diubah operator, ter-isolasi antar sekolah, permission `kelola-master-data-sekolah` (bendahara 403), email invalid ditolak, admin KCD tanpa `sekolah_id` diminta pilih sekolah dulu (tidak bisa simpan tanpa pilih), admin dengan sekolah terpilih bisa edit hanya sekolah itu |
 | `BhpDokumenTambahanTest` | `generateTambahan` BAST/BAP/stok opname/buku, idempotent, tolak jenis tak dikenal, snapshot payload **ter-scope sekolah pengajuan** (payload sekolah A tidak memuat stok/pengeluaran sekolah B), guard permission |
-| `BhpPdfDokumenTest` | Rendering PDF per dokumen + batch kompilasi, `safeFilename`, histori `bhp_batch_dokumen` |
+| `BhpPdfDokumenTest` | Rendering PDF per dokumen + batch kompilasi, `safeFilename`, histori `bhp_{bos,bopd}_batch_dokumen` |
 | `BhpLaporanTest` | `laporanStok` 4-tier (agregasi `rekapPerBarang` tanpa N+1), isolasi per sumber dana, `bukuPengeluaran`, `kartuBarang`, export XLSX stok/pengeluaran |
-| `BhpKartuPersediaanTest` | Saldo berjalan kronologis, masuk-didahului pada tanggal sama, hanya mutasi dana terkait, abaikan pengajuan non-approved, pakai `jumlah_disetujui`, export + validasi `barang_id` (`uuid` + `exists`), UUID tak dikenal → validation error, barang sumber dana lain → redirect + flash (bukan 500) |
+| `BhpKartuPersediaanTest` | Saldo berjalan kronologis, masuk-didahului pada tanggal sama, hanya mutasi dana terkait, abaikan pengajuan non-approved, pakai `jumlah_disetujui`, export + validasi `barang_id` (`uuid` + `exists` ke tabel sumber dana laporan), UUID tak dikenal → validation error, barang sumber dana lain → redirect + flash (bukan 500) |
 | `BhpImportSeederTest` | Impor master + penerimaan: skip soft-delete, hanya detail `cart_status=saved`, relasi rekening, `source_id` unik (no_bast duplikat/NULL tetap terpisah), tabel tanpa `deleted_at`, idempotensi, sumber tidak ada → dilewati |
 | `BhpDivisiTest` | Buat divisi + akun operator (suffix NPSN), validasi prefix/suffix/username duplikat, isolasi pengajuan per divisi, submit/divisi lain 403, **dokumen divisi lain 403 (show/PDF/batch/tambahan)**, dashboard operator divisi hanya menghitung divisinya, reset password + toggle ter-scope sekolah |
 

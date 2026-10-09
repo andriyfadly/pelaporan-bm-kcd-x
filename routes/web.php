@@ -86,7 +86,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Domain Distribusi BHP — terpisah dari Pelaporan BM (lihat docs/requirements/domain-boundaries.md).
-    Route::prefix('distribusi-bhp')->name('distribusi-bhp.')->group(function () {
+    // Tabel BHP dipisah per sumber dana; middleware ini menyetel sumber dana aktif.
+    Route::prefix('distribusi-bhp')->name('distribusi-bhp.')->middleware('sumber-dana-bhp')->group(function () {
         Route::get('/dashboard', [BhpDashboardController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('dashboard');
@@ -97,6 +98,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pengajuan', [BhpPengajuanController::class, 'store'])
             ->middleware('permission:kelola-pengajuan-bhp')
             ->name('pengajuan.store');
+        Route::put('/pengajuan/{pengajuan}', [BhpPengajuanController::class, 'update'])
+            ->middleware('permission:kelola-pengajuan-bhp')
+            ->name('pengajuan.update');
+        Route::delete('/pengajuan/{pengajuan}', [BhpPengajuanController::class, 'destroy'])
+            ->middleware('permission:kelola-pengajuan-bhp')
+            ->name('pengajuan.destroy');
         Route::post('/pengajuan/{pengajuan}/submit', [BhpPengajuanController::class, 'submit'])
             ->middleware('permission:kelola-pengajuan-bhp')
             ->name('pengajuan.submit');

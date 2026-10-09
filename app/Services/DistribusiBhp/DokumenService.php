@@ -6,6 +6,7 @@ use App\Models\DistribusiBhp\Dokumen;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Models\User;
 use App\Services\PejabatSekolahService;
+use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -51,7 +52,7 @@ class DokumenService
      */
     public function approveDanGenerate(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui = [], ?string $reviewNotes = null): Pengajuan
     {
-        return DB::transaction(function () use ($pengajuan, $reviewer, $jumlahDisetujui, $reviewNotes) {
+        return SumberDana::dengan($pengajuan->sumber_dana, fn () => DB::transaction(function () use ($pengajuan, $reviewer, $jumlahDisetujui, $reviewNotes) {
             // Gate pejabat: tiga penandatangan wajib berlaku pada tanggal
             // pengajuan SEBELUM status/reservasi/dokumen berubah.
             $penandatangan = $this->pejabat->snapshotPenandatangan(
@@ -90,7 +91,7 @@ class DokumenService
             }
 
             return $pengajuan;
-        });
+        }));
     }
 
     /**
@@ -104,7 +105,7 @@ class DokumenService
             throw new InvalidArgumentException("Jenis dokumen tambahan tidak dikenal: {$jenis}.");
         }
 
-        return DB::transaction(function () use ($pengajuan, $jenis, $tanggal) {
+        return SumberDana::dengan($pengajuan->sumber_dana, fn () => DB::transaction(function () use ($pengajuan, $jenis, $tanggal) {
             $existing = $pengajuan->dokumen()->where('jenis', $jenis)->first();
             if ($existing) {
                 return $existing;
@@ -130,7 +131,7 @@ class DokumenService
                 'tanggal_titimangsa' => $tanggalObj,
                 'payload' => $this->payloadFor($pengajuan, $jenis, $tanggalObj),
             ]);
-        });
+        }));
     }
 
     /**

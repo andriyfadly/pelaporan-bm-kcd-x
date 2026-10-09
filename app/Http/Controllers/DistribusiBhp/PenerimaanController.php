@@ -8,6 +8,7 @@ use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\Penyedia;
 use App\Services\DistribusiBhp\SaldoAwalService;
+use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,31 +27,35 @@ class PenerimaanController extends Controller
     {
         $sekolahId = $this->resolveSekolahId($request);
         $sumberDana = $request->validate([
-            'sumber_dana' => ['nullable', Rule::in(['BOS', 'BOPD'])],
-        ])['sumber_dana'] ?? 'BOS';
-        $sumberDana = strtoupper((string) $sumberDana);
+            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
+        ])['sumber_dana'] ?? SumberDana::BOS;
+        $sumberDana = SumberDana::normalisasi($sumberDana);
 
-        $items = Penerimaan::with(['penyedia', 'details.barang'])
-            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
-            ->where('sumber_dana', $sumberDana)
-            ->latest('id')
-            ->paginate(25)
-            ->withQueryString();
+        return SumberDana::dengan($sumberDana, function () use ($sekolahId, $sumberDana): Response {
+            $items = Penerimaan::with(['penyedia', 'details.barang'])
+                ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+                ->latest('id')
+                ->paginate(25)
+                ->withQueryString();
 
-        return Inertia::render('DistribusiBhp/Penerimaan/Index', [
-            'items' => $items,
-            'sumberDana' => $sumberDana,
-            'barang' => Barang::where('sumber_dana', $sumberDana)->orderBy('nama_barang')->get(['id', 'kode_barang', 'nama_barang', 'satuan']),
-            'penyedia' => Penyedia::orderBy('nama')->get(['id', 'nama']),
-        ]);
+            return Inertia::render('DistribusiBhp/Penerimaan/Index', [
+                'items' => $items,
+                'sumberDana' => $sumberDana,
+                'barang' => Barang::orderBy('nama_barang')->get(['id', 'kode_barang', 'nama_barang', 'satuan']),
+                'penyedia' => Penyedia::orderBy('nama')->get(['id', 'nama']),
+            ]);
+        });
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $sekolahId = $this->resolveSekolahId($request);
+        // Tidak ada pool pusat: penerimaan/saldo awal wajib milik satu sekolah.
+        $sekolahId = $this->resolveSekolahIdWajib($request);
+
+        $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana'));
 
         $validated = $request->validate([
-            'sumber_dana' => ['required', Rule::in(['BOS', 'BOPD'])],
+            'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
             'no_nota_invoice' => ['nullable', 'string', 'max:150'],
             'no_bast' => ['nullable', 'string', 'max:150'],
             'tanggal_bast' => ['nullable', 'date'],
@@ -60,7 +65,7 @@ class PenerimaanController extends Controller
             'is_saldo_awal' => ['boolean'],
             'periode_tahun' => ['nullable', 'integer', 'between:2000,2100'],
             'details' => 'required|array|min:1',
-            'details.*.barang_id' => 'required|uuid|exists:bhp_barang,id',
+            'details.*.barang_id' => ['required', 'uuid', SumberDana::existsRule('barang', $sumberDana)],
             'details.*.jumlah' => 'required|integer|min:1',
             'details.*.harga_satuan' => 'required|integer|min:0',
             'details.*.merek_type' => ['nullable', 'string', 'max:255'],
@@ -75,51 +80,50 @@ class PenerimaanController extends Controller
             ]);
         }
 
-        // Isolasi sumber dana sebelum transaksi. Barang wajib ada — exists
-        // di validasi menjaminnya, tetapi guard ini tetap memutus bila tidak.
-        $barangIds = collect($validated['details'])->pluck('barang_id')->all();
-        $barangs = Barang::whereIn('id', $barangIds)->get()->keyBy('id');
+        return SumberDana::dengan($sumberDana, function () use ($validated, $sekolahId, $request, $sumberDana): RedirectResponse {
+            // Isolasi sumber dana: barang wajib ada di tabel sumber dana ini.
+            $barangIds = collect($validated['details'])->pluck('barang_id')->all();
+            $barangs = Barang::whereIn('id', $barangIds)->get()->keyBy('id');
 
-        foreach ($validated['details'] as $index => $detail) {
-            $barang = $barangs->get($detail['barang_id']);
-            if (! $barang) {
-                throw ValidationException::withMessages([
-                    "details.{$index}.barang_id" => 'Barang tidak ditemukan.',
-                ]);
+            foreach ($validated['details'] as $index => $detail) {
+                $barang = $barangs->get($detail['barang_id']);
+                if (! $barang) {
+                    throw ValidationException::withMessages([
+                        "details.{$index}.barang_id" => 'Barang '.$detail['barang_id'].' tidak sesuai dengan sumber dana '.$sumberDana.'.',
+                    ]);
+                }
             }
 
-            if ($barang->sumber_dana !== $validated['sumber_dana']) {
-                throw ValidationException::withMessages([
-                    "details.{$index}.barang_id" => 'Barang '.$barang->nama_barang.' tidak sesuai dengan sumber dana '.$validated['sumber_dana'].'.',
-                ]);
+            $details = collect($validated['details'])
+                ->map(fn (array $d): array => [
+                    'barang_id' => $d['barang_id'],
+                    'jumlah' => (int) $d['jumlah'],
+                    'harga_satuan' => (int) $d['harga_satuan'],
+                    'nilai_total' => (int) $d['jumlah'] * (int) $d['harga_satuan'],
+                    'merek_type' => $d['merek_type'] ?? null,
+                    'keterangan' => $d['keterangan'] ?? null,
+                ])
+                ->all();
+
+            if ($validated['is_saldo_awal'] ?? false) {
+                $this->saldoAwal->create($validated, $sekolahId, $request->user(), $details, $barangs->all());
+            } else {
+                $this->simpanPenerimaanBiasa($validated, $sekolahId, $details);
             }
-        }
 
-        $details = collect($validated['details'])
-            ->map(fn (array $d): array => [
-                'barang_id' => $d['barang_id'],
-                'jumlah' => (int) $d['jumlah'],
-                'harga_satuan' => (int) $d['harga_satuan'],
-                'nilai_total' => (int) $d['jumlah'] * (int) $d['harga_satuan'],
-                'merek_type' => $d['merek_type'] ?? null,
-                'keterangan' => $d['keterangan'] ?? null,
-            ])
-            ->all();
-
-        if ($validated['is_saldo_awal'] ?? false) {
-            $this->saldoAwal->create($validated, (string) $sekolahId, $request->user(), $details, $barangs->all());
-        } else {
-            $this->simpanPenerimaanBiasa($validated, $sekolahId, $details);
-        }
-
-        return back()->with('success', 'Penerimaan barang berhasil disimpan.');
+            return back()->with('success', 'Penerimaan barang berhasil disimpan.');
+        });
     }
 
     public function destroy(Request $request, Penerimaan $penerimaan): RedirectResponse
     {
         $this->authorizeSekolah($request, $penerimaan);
 
-        $this->saldoAwal->delete($penerimaan, $request->user());
+        try {
+            $this->saldoAwal->delete($penerimaan, $request->user());
+        } catch (ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
+        }
 
         return back()->with('success', 'Saldo awal berhasil dihapus.');
     }
@@ -128,10 +132,9 @@ class PenerimaanController extends Controller
      * Penerimaan biasa (bukan saldo awal): tanpa aturan uniqueness,
      * cukup header + detail dalam satu transaction.
      *
-     * @param  array<string,mixed>  $validated
      * @param  array<int, array{barang_id:string,jumlah:int,harga_satuan:int,merek_type:?string,keterangan:?string}>  $details
      */
-    private function simpanPenerimaanBiasa(array $validated, ?string $sekolahId, array $details): void
+    private function simpanPenerimaanBiasa(array $validated, string $sekolahId, array $details): void
     {
         DB::transaction(function () use ($validated, $sekolahId, $details) {
             $penerimaan = Penerimaan::create([
@@ -144,7 +147,6 @@ class PenerimaanController extends Controller
                 'tanggal_titimangsa' => $validated['tanggal_titimangsa'] ?? null,
                 'is_saldo_awal' => false,
                 'periode_tahun' => null,
-                'sumber_dana' => $validated['sumber_dana'],
             ]);
 
             foreach ($details as $detail) {

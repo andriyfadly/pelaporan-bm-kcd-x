@@ -4,6 +4,7 @@ namespace App\Http\Controllers\DistribusiBhp;
 
 use App\Http\Controllers\Controller;
 use App\Services\DistribusiBhp\SettingsService;
+use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,20 +19,29 @@ class SettingsController extends Controller
 
     public function __construct(private readonly SettingsService $settings) {}
 
-    public function edit(): Response
+    public function edit(Request $request): Response
     {
-        return Inertia::render('DistribusiBhp/Settings/Edit', [
-            'settings' => $this->settings->get(),
-        ]);
+        $sumberDana = $request->validate([
+            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
+        ])['sumber_dana'] ?? SumberDana::BOS;
+        $sumberDana = SumberDana::normalisasi($sumberDana);
+
+        return SumberDana::dengan($sumberDana, function () use ($sumberDana): Response {
+            return Inertia::render('DistribusiBhp/Settings/Edit', [
+                'settings' => $this->settings->get($sumberDana),
+                'sumberDana' => $sumberDana,
+            ]);
+        });
     }
 
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'format_nomor' => ['required', 'string', 'max:200'],
-            'paper_size' => ['nullable', Rule::in(['a4', 'letter', 'foli/f4'])],
-            'orientation' => ['nullable', Rule::in(['portrait', 'landscape'])],
+            'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
         ]);
+
+        $sumberDana = SumberDana::normalisasi($validated['sumber_dana']);
 
         // Format tanpa placeholder menghasilkan nomor dokumen duplikat
         // untuk setiap pengajuan — tolak di sini, bukan saat generate.
@@ -61,8 +71,10 @@ class SettingsController extends Controller
             ]);
         }
 
-        $this->settings->update($validated);
+        $this->settings->update($validated, $sumberDana);
 
-        return back()->with('success', 'Settings berhasil disimpan.');
+        return redirect()
+            ->route('distribusi-bhp.settings.edit', ['sumber_dana' => $sumberDana])
+            ->with('success', 'Settings '.$sumberDana.' berhasil disimpan.');
     }
 }

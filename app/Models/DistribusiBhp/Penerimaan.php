@@ -2,6 +2,7 @@
 
 namespace App\Models\DistribusiBhp;
 
+use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,9 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Penerimaan extends Model
 {
-    use HasFactory, HasUuids;
-
-    protected $table = 'bhp_penerimaan';
+    use HasFactory, HasSumberDanaTable, HasUuids;
 
     protected $fillable = [
         'source_id',
@@ -25,8 +24,12 @@ class Penerimaan extends Model
         'tanggal_titimangsa',
         'is_saldo_awal',
         'periode_tahun',
-        'sumber_dana',
     ];
+
+    public static function suffixTabel(): string
+    {
+        return 'penerimaan';
+    }
 
     protected function casts(): array
     {

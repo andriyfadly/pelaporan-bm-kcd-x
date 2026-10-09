@@ -8,6 +8,7 @@ use App\Models\DistribusiBhp\Pengajuan;
 use App\Models\Master\PejabatSekolah;
 use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\StokService;
+use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,7 +27,13 @@ class ReviewPengajuanController extends Controller
     public function index(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
+        $sumberDana = SumberDana::normalisasi((string) $request->query('sumber_dana', SumberDana::BOS));
 
+        return SumberDana::dengan($sumberDana, fn (): Response => $this->daftarReview($sekolahId, $sumberDana));
+    }
+
+    private function daftarReview(?string $sekolahId, string $sumberDana): Response
+    {
         $items = Pengajuan::with(['details.barang', 'pemohon'])
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
             ->where('status', 'submitted')
@@ -57,6 +64,7 @@ class ReviewPengajuanController extends Controller
     public function approve(Request $request, Pengajuan $pengajuan): RedirectResponse
     {
         $this->authorizeSekolah($request, $pengajuan);
+        $this->pastikanBukanPembuat($request, $pengajuan);
 
         $validated = $request->validate([
             'review_notes' => 'nullable|string',
@@ -81,6 +89,7 @@ class ReviewPengajuanController extends Controller
     public function reject(Request $request, Pengajuan $pengajuan): RedirectResponse
     {
         $this->authorizeSekolah($request, $pengajuan);
+        $this->pastikanBukanPembuat($request, $pengajuan);
 
         $validated = $request->validate([
             'rejection_reason' => 'required|string',
@@ -106,6 +115,13 @@ class ReviewPengajuanController extends Controller
         $divisiId = $request->user()->divisi_id;
         if ($divisiId && $pengajuan->divisi_id !== $divisiId) {
             abort(403, 'Pengajuan ini bukan milik divisi Anda.');
+        }
+    }
+
+    private function pastikanBukanPembuat(Request $request, Pengajuan $pengajuan): void
+    {
+        if ((string) $pengajuan->user_id === (string) $request->user()->id) {
+            abort(403, 'Anda tidak dapat menyetujui/menolak pengajuan Anda sendiri.');
         }
     }
 }

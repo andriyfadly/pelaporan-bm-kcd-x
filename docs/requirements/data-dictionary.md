@@ -38,17 +38,17 @@ entitas source digabung atau belum dibuat; lihat kolom Status.
 
 | Entitas source | Tabel target | Status | Catatan |
 |---|---|---|---|
-| `Divisi` | `bhp_divisi` | ⬜ Belum | `bhp_pengajuan.divisi_id` sudah ada (nullable), tabel master belum |
+| `Divisi` | `bhp_divisi` | ✅ Sudah | Tabel master divisi; `bhp_pengajuan.divisi_id` FK restrict, `users.divisi_id` FK set null |
 | `Koordinator` | `bhp_koordinator` | ⬜ Belum | Belum ada tabel |
-| `KodeRekening` | `bhp_kode_rekening` | ✅ Sudah | unique `(kode, sumber_dana)` |
-| `Barang` | `bhp_barang` | ✅ Sudah | `stok_tereservasi` dihitung dari reservasi, bukan kolom |
-| `HargaBarang` | `bhp_harga_barang` | ✅ Sudah | Riwayat harga per barang |
-| `Penyedia` | `bhp_penyedia` | ✅ Sudah | unique `nama` |
-| `BukuPenerimaanBarang` | `bhp_penerimaan` | ✅ Sudah | + `source_id` unik (jejak impor) |
-| `BukuPenerimaanBarangDetail` | `bhp_penerimaan_detail` | ✅ Sudah | hanya baris `cart_status=saved` yang diimpor |
-| `NotaPermintaanBarang` | `bhp_pengajuan` | ✅ Sudah | Digabung sebagai pengajuan + workflow status |
-| `NotaPermintaanBarangDetail` | `bhp_pengajuan_detail` | ✅ Sudah | |
-| `SuratPermintaanBarang` | `bhp_surat_permintaan` | ⬜ Belum | Dibuat sebagai **dokumen** `bhp_dokumen` (`jenis=surat_permintaan`), bukan tabel terpisah |
+| `KodeRekening` | `bhp_{bos,bopd}_kode_rekening` | ✅ Sudah | Tabel per sumber dana; unique `kode` per tabel |
+| `Barang` | `bhp_{bos,bopd}_barang` | ✅ Sudah | `stok_tereservasi` dihitung dari reservasi, bukan kolom |
+| `HargaBarang` | `bhp_{bos,bopd}_harga_barang` | ✅ Sudah | Riwayat harga per barang |
+| `Penyedia` | `bhp_penyedia` | ✅ Sudah | unique `nama`; tabel bersama lintas sumber dana |
+| `BukuPenerimaanBarang` | `bhp_{bos,bopd}_penerimaan` | ✅ Sudah | + `source_id` unik (jejak impor); `sekolah_id` NOT NULL |
+| `BukuPenerimaanBarangDetail` | `bhp_{bos,bopd}_penerimaan_detail` | ✅ Sudah | hanya baris `cart_status=saved` yang diimpor |
+| `NotaPermintaanBarang` | `bhp_{bos,bopd}_pengajuan` | ✅ Sudah | Digabung sebagai pengajuan + workflow status |
+| `NotaPermintaanBarangDetail` | `bhp_{bos,bopd}_pengajuan_detail` | ✅ Sudah | |
+| `SuratPermintaanBarang` | `bhp_surat_permintaan` | ⬜ Belum | Dibuat sebagai **dokumen** `bhp_{bos,bopd}_dokumen` (`jenis=surat_permintaan`), bukan tabel terpisah |
 | `SuratPerintahPenyaluranBarang` | `bhp_surat_penyaluran` | ⬜ Belum | Idem (`jenis=surat_penyaluran`) |
 | `BeritaAcaraSerahTerima` | `bhp_bast` | ⬜ Belum | Idem (`jenis=bast`) |
 | `BeritaAcaraPemeriksaan` | `bhp_bap` | ⬜ Belum | Idem (`jenis=bap`) |
@@ -57,20 +57,24 @@ entitas source digabung atau belum dibuat; lihat kolom Status.
 | `BukuPenyaluran` | `bhp_buku_penyaluran` | ⬜ Belum | Idem (`jenis=buku_penyaluran`) |
 | `KartuBarang` | `bhp_kartu_barang` | 🟡 Sebagian | Dihitung runtime (`LaporanService::kartuBarang`), tanpa tabel |
 | `KartuBarangPersediaan` | `bhp_kartu_persediaan` | 🟡 Sebagian | Dihitung runtime dengan saldo berjalan (`LaporanService::kartuPersediaan`), tanpa tabel |
-| `BatchPdfGeneration` | `bhp_batch_pdf_generation` | 🟡 Sebagian | Dipetakan ke `bhp_batch_dokumen` |
-| `BatchPdfFile` | `bhp_batch_pdf_file` | 🟡 Sebagian | Detail batch disimpan sebagai kolom `files` (json) di `bhp_batch_dokumen` |
-| `MonthlySequence` / `DocumentSequence` | `bhp_nomor_sequence` | ✅ Sudah | Counter atomic per (jenis, sumber dana, tahun, bulan); insert row pertama anti-race |
-| — | `bhp_dokumen` | ✅ Sudah | Tabel dokumen hasil generate (jenis, nomor, payload); payload ter-scope sekolah pengajuan |
-| — | `bhp_settings` | ✅ Sudah | Singleton (`is_singleton` + partial unique index): format nomor, preferensi PDF |
-| — | `pejabat_sekolah` | ✅ Sudah | Riwayat pejabat penandatangan per sekolah (kepala sekolah, wakasek sarpras, pembantu pengurus barang): nama, pangkat/golongan, NIP, masa jabatan; snapshot disimpan di `bhp_dokumen.payload.penandatangan` |
-| — | Foreign key BHP | ✅ Sudah | 10 FK (migrasi 2026-10-08): cascade detail/dokumen, restrict master historis, set null `users.divisi_id` |
+| `BatchPdfGeneration` | `bhp_batch_pdf_generation` | 🟡 Sebagian | Dipetakan ke `bhp_{bos,bopd}_batch_dokumen` |
+| `BatchPdfFile` | `bhp_batch_pdf_file` | 🟡 Sebagian | Detail batch disimpan sebagai kolom `files` (json) di `bhp_{bos,bopd}_batch_dokumen` |
+| `MonthlySequence` / `DocumentSequence` | `bhp_{bos,bopd}_nomor_sequence` | ✅ Sudah | Counter atomic per (jenis, tahun, bulan) per tabel dana; insert row pertama anti-race |
+| — | `bhp_{bos,bopd}_dokumen` | ✅ Sudah | Tabel dokumen hasil generate (jenis, nomor, payload); payload ter-scope sekolah pengajuan |
+| — | `bhp_{bos,bopd}_settings` | ✅ Sudah | Satu baris per dana (`is_singleton` + unique index): format nomor, preferensi PDF |
+| — | `pejabat_sekolah` | ✅ Sudah | Riwayat pejabat penandatangan per sekolah (kepala sekolah, wakasek sarpras, pembantu pengurus barang): nama, pangkat/golongan, NIP, masa jabatan; snapshot disimpan di `bhp_{bos,bopd}_dokumen.payload.penandatangan` |
+| — | Foreign key BHP | ✅ Sudah | FK per tabel (cascade detail/dokumen, restrict master historis, set null `users.divisi_id`), diterapkan ulang saat split 2026-10-12 |
+| — | Pemisahan per sumber dana | ✅ Sudah | Tabel transaksi & master dipecah `bhp_bos_*`/`bhp_bopd_*` (2026-10-12); sumber dana implisit dari nama tabel, tanpa kolom `sumber_dana` |
 
 Perubahan pemetaan dari rencana awal (keputusan implementasi):
 
 - Dokumen turunan (surat permintaan, surat penyaluran, BAST, BAP, stok opname,
   buku pengeluaran/penyaluran) **tidak** dibuat sebagai tabel terpisah, tetapi
-  satu tabel `bhp_dokumen` dengan kolom `jenis`. Alasan: lifecycle, penomoran,
-  dan batch PDF identik untuk semua jenis.
+  satu tabel dokumen per sumber dana (`bhp_{bos,bopd}_dokumen`) dengan kolom
+  `jenis`. Alasan: lifecycle, penomoran, dan batch PDF identik untuk semua jenis.
+- Semua tabel transaksi & master barang BHP **dipisah fisik per sumber dana**
+  (`bhp_bos_*`/`bhp_bopd_*`, migrasi 2026-10-12) agar BOS dan BOPD tidak bisa
+  tercampur di level skema. Hanya `bhp_penyedia` dan `bhp_divisi` yang bersama.
 - `KartuBarang` dan `KartuBarangPersediaan` dihitung dari mutasi
   penerimaan/pengajuan, tidak disimpan sebagai tabel agar tidak ada duplikasi
   data stok.

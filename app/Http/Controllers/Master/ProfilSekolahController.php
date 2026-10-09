@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,18 +22,43 @@ class ProfilSekolahController extends Controller
 
     public function edit(Request $request): Response
     {
-        $sekolah = Sekolah::findOrFail($this->resolveSekolahId($request));
+        $sekolahId = $this->resolveSekolahId($request);
+
+        // Admin KCD tanpa sekolah_id tidak punya tenant default. Jangan
+        // menerka sekolah (bisa salah edit sekolah lain) — minta pilih dulu.
+        if ($sekolahId === null) {
+            return Inertia::render('MasterData/ProfilSekolah/Edit', [
+                'sekolah' => null,
+                'sekolahOptions' => Sekolah::orderBy('nama_sekolah')
+                    ->get(['id', 'nama_sekolah'])
+                    ->map(fn (Sekolah $s): array => ['id' => $s->id, 'nama_sekolah' => $s->nama_sekolah])
+                    ->all(),
+                'sekolahTerpilih' => null,
+            ]);
+        }
+
+        $sekolah = Sekolah::findOrFail($sekolahId);
 
         return Inertia::render('MasterData/ProfilSekolah/Edit', [
             'sekolah' => $sekolah->only([
                 'id', 'nama_sekolah', 'npsn', 'kota_kab', 'alamat', 'telepon', 'website', 'email',
             ]),
+            'sekolahOptions' => [],
+            'sekolahTerpilih' => $sekolah->id,
         ]);
     }
 
     public function update(Request $request): RedirectResponse
     {
-        $sekolah = Sekolah::findOrFail($this->resolveSekolahId($request));
+        $sekolahId = $this->resolveSekolahId($request);
+
+        if ($sekolahId === null) {
+            throw ValidationException::withMessages([
+                'sekolah_id' => 'Pilih sekolah terlebih dahulu sebelum menyimpan profil.',
+            ]);
+        }
+
+        $sekolah = Sekolah::findOrFail($sekolahId);
 
         // Nama/NPSN/kota bagian identitas master (dikelola admin); operator
         // hanya mengisi data profil kontak.

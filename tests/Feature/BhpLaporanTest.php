@@ -52,13 +52,12 @@ class BhpLaporanTest extends TestCase
         ]);
     }
 
-    private function terima(Barang $barang, int $jumlah, ?Sekolah $sekolah = null): void
+    private function terima(Barang $barang, int $jumlah, Sekolah $sekolah): void
     {
         $penerimaan = Penerimaan::create([
-            'sekolah_id' => $sekolah?->id,
+            'sekolah_id' => $sekolah->id,
             'sumber_dana' => $barang->sumber_dana,
-            'is_saldo_awal' => true,
-            'periode_tahun' => 2026,
+            'is_saldo_awal' => false,
         ]);
         PenerimaanDetail::create([
             'bhp_penerimaan_id' => $penerimaan->id,
@@ -116,10 +115,11 @@ class BhpLaporanTest extends TestCase
 
     public function test_laporan_stok_terisolasi_per_sumber_dana(): void
     {
+        $sekolah = $this->sekolah();
         $bos = $this->barang('Kertas', 'BOS');
         $bopd = $this->barang('Pulpen', 'BOPD');
-        $this->terima($bos, 40);
-        $this->terima($bopd, 10);
+        $this->terima($bos, 40, $sekolah);
+        $this->terima($bopd, 10, $sekolah);
 
         $service = app(LaporanService::class);
 

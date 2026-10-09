@@ -18,9 +18,10 @@
 | Captcha login | Cloudflare Turnstile (`TurnstileService`) | opsional via env |
 | Test | PHPUnit 13, Pint, `tsc --noEmit` | coverage gate 80% |
 
-Roles: `super_admin`, `admin_kcd`, `operator_sekolah`, `bendahara_sekolah`.
-10 permission; `lihat-log-aktivitas` dimiliki super_admin & admin_kcd
-(aktivitas super_admin disembunyikan dari admin_kcd).
+Roles: `super_admin`, `admin_kcd`, `operator_sekolah`, `bendahara_sekolah`,
+`operator_divisi`. 19 permission (10 BM + 8 BHP + 1 master-data-sekolah);
+`lihat-log-aktivitas` dimiliki super_admin & admin_kcd (aktivitas super_admin
+disembunyikan dari admin_kcd).
 
 ## 2. Alur Request
 
@@ -54,19 +55,25 @@ app/
     PelaporanBm/              # Acuan, Cetak, Dashboard, InputRealisasi,
                               # KunciLaporan, Realisasi, Rekapan, Spj
     DistribusiBhp/            # Dashboard, Pengajuan, ReviewPengajuan, Barang,
-                              # KodeRekening, Penyedia, Penerimaan, Dokumen, Laporan
+                              # KodeRekening, Penyedia, Penerimaan, SaldoAwal,
+                              # Dokumen, Laporan, Settings, Divisi
   Listeners/CatatLoginLogout.php   # log login/logout (Event::listen di provider)
   Models/
-    Master/{Sekolah,KodeBarang}
+    Master/{Sekolah,KodeBarang,PejabatSekolah}
     PelaporanBm/{Spj,Realisasi,Acuan,KunciLaporan}
     DistribusiBhp/            # Barang, KodeRekening, HargaBarang, Penyedia,
                               # Penerimaan(+Detail), Pengajuan(+Detail),
-                              # Dokumen, NomorSequence, BatchDokumen
+                              # Dokumen, BatchDokumen, NomorSequence,
+                              # Settings, Divisi
+      Concerns/HasSumberDanaTable.php  # resolve tabel fisik per sumber dana
   Providers/ (AppServiceProvider: Gate super_admin + event auth; FortifyServiceProvider)
   Services/
     TurnstileService.php
     DistribusiBhp/            # StokService, NomorDokumenService,
-                              # DokumenService, LaporanService
+                              # DokumenService, LaporanService,
+                              # SaldoAwalService, SettingsService
+  Support/DistribusiBhp/SumberDana.php  # pemetaan suffix → tabel bhp_{bos,bopd}_*
+  Http/Middleware/SetSumberDanaBhp.php  # set/restore sumber dana aktif (fail-closed)
 bootstrap/app.php             # middleware alias role/permission, web group
 routes/web.php                # ~63 rute (lihat docs/api.md)
 config/activitylog.php        # log default `default`, auth driver default
@@ -78,10 +85,18 @@ public/
   images/logolog.jpeg         # master logo (sumber semua ikon)
 resources/views/app.blade.php # <head> global: favicon, manifest, @inertia
 resources/views/distribusi-bhp/
-  dokumen.blade.php           # template PDF satu dokumen
-  dokumen-kompilasi.blade.php # template PDF batch
+  partials/kop-surat.blade.php           # kop surat reusable (logo, PEMDA JABAR, sekolah, kontak)
+  nota-permintaan.blade.php              # PDF — portrait, 6 kolom (nama, jumlah, satuan, keperluan, ket)
+  surat-permintaan.blade.php             # PDF — landscape, 13 kolom (kode, nama, NUSP, spesifikasi, diminta, sisa, disetujui, keperluan, ket)
+  surat-penyaluran.blade.php             # PDF — portrait, 7 kolom (kode, nama, spesifikasi, jumlah, satuan, ket)
+  bast.blade.php                         # PDF — portrait, 7 kolom, 2 pihak signature (Pihak I=Wakasek, Pihak II=PPB)
+  bap.blade.php                          # PDF — portrait, 5 kolom (nama, jumlah, satuan, ket)
+  stok-opname.blade.php                  # PDF — portrait, 6 kolom + total nilai, 3 kolom signature (Wakasek, PPB, Kepsek)
+  buku-pengeluaran.blade.php             # PDF — landscape, 13 kolom (dokumen, kode, nama, spesifikasi, satuan, harga, total, ket)
+  buku-penyaluran.blade.php              # PDF — landscape, 14 kolom (BAST, kode, nama, spesifikasi, jumlah, harga, total, SPPB, penerima, ket)
+  dokumen-kompilasi.blade.php            # PDF — batch, render per jenis di page terpisah
 database/seeders/
-  PeranDanHakAksesSeeder.php  # 17 permission, 5 role (termasuk operator_divisi)
+  PeranDanHakAksesSeeder.php  # 19 permission, 5 role (termasuk operator_divisi)
   DistribusiBhpImportSeeder.php  # impor legacy BHP (idempotent)
 ```
 
@@ -167,15 +182,19 @@ Activity: morph subject/causer (UUID), log_name `sistem`
 
 ### Distribusi BHP (domain terpisah)
 
+Tabel transaksi & master dipisah fisik per sumber dana. Suffix di bawah ADA di
+`bhp_bos_*` **dan** `bhp_bopd_*`; `penyedia`/`divisi` satu tabel bersama.
+
 ```text
-KodeRekening 1──N Barang          (unique kode+sumber_dana)
+KodeRekening 1──N Barang          (per dana; unique kode)
 Barang 1──N HargaBarang | PenerimaanDetail | PengajuanDetail
-Penyedia 1──N Penerimaan
+Penyedia 1──N Penerimaan          (tabel bersama)
 Penerimaan 1──N PenerimaanDetail   [FK cascade]
 Pengajuan 1──N PengajuanDetail     [FK cascade]
 Pengajuan 1──N Dokumen 1──N BatchDokumen  [Dokumen FK cascade; Batch set null]
 Divisi 1──N Pengajuan | User.divisi_id  [pengajuan restrict, user set null]
-NomorSequence: counter per (jenis, sumber_dana, tahun, bulan), tanpa FK
+NomorSequence: counter per (jenis, tahun, bulan) per tabel dana, tanpa FK
+Settings: satu baris per tabel dana (partial unique is_singleton)
 ```
 
 Semua id entitas UUID (`HasUuids`); permission/role id bigint (bawaan Spatie).
@@ -190,7 +209,18 @@ dijaga foreign key di level database (lihat `docs/database.md` §6).
 | `NomorDokumenService` | Generate nomor atomic `{urut:3}/BHP/{kode}/{dana}/{romawi}/{tahun}` dengan `lockForUpdate`; insert row sequence pertama anti-race (catch `UniqueConstraintViolationException` → lock row pemenang) |
 | `DokumenService` | `approveDanGenerate` (validasi pejabat + approve + dokumen wajib dalam satu transaction), `generateTambahan` (idempotent per jenis, hanya untuk pengajuan `approved`); snapshot payload selalu ter-scope `sekolah_id` pengajuan dan menyertakan snapshot `penandatangan` |
 | `LaporanService` | `laporanStok` (via `rekapPerBarang`), `bukuPengeluaran`, `kartuBarang`, `kartuPersediaan` (saldo berjalan; filter sumber dana + sekolah di query DB, bukan collection PHP) |
-| `SettingsService` | Singleton `bhp_settings` via `firstOrCreate(['is_singleton' => true])` dalam transaction; dilindungi partial unique index |
+| `SettingsService` | Satu baris `bhp_{dana}_settings` per sumber dana; `get`/`update` selalu di dalam konteks `SumberDana::dengan()` (tidak menetapkan `$aktif` secara permanen); format nomor, preferensi PDF **hardcode a4/portrait** (ukuran & orientasi tetap per jenis dokumen, bukan user-configurable) |
+| `SaldoAwalService` | Lifecycle saldo awal: `create` (header tunggal per sekolah+dana+periode, partial unique index sebagai jaring race), `deleteDetail` (hapus satu barang, bersihkan header yatim), `delete` (hapus seluruh saldo awal); menolak hapus bila barang dipakai pengajuan `submitted`/`approved` (scope per sekolah + sumber dana) |
+
+**Pemetaan sumber dana.** `App\Support\DistribusiBhp\SumberDana` adalah sumber
+kebenaran tunggal untuk pemisahan tabel per dana: `tabel($suffix, $dana)`
+memetakan suffix logis → `bhp_{bos,bopd}_{suffix}`; `existsRule()` menghasilkan
+aturan validasi `exists` yang menunjuk tabel fisik dana terkait (cegah
+`barang_id` asing lintas dana). Model BHP memakai trait
+`HasSumberDanaTable`: tabel di-resolve runtime dari `SumberDana::aktif()`,
+`scopeSumberDana()` menyetel konteks, dan `resolveRouteBinding()` mencari di
+kedua tabel (UUID unik) sambil menyetel dana aktif. `SumberDana::dengan()`
+(callback + restore) dipakai untuk operasi yang perlu konteks dana eksplisit.
 
 Service generic (lintas domain): `App\Services\PejabatSekolahService` +
 `App\Models\Master\PejabatSekolah` (tabel `pejabat_sekolah`) — master pejabat
@@ -216,8 +246,10 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
   (`draft_spj_barang_{sekolah}_{bulan}`), datalist history merk/sertifikat/satuan.
 - Halaman BHP: `resources/js/Pages/DistribusiBhp/` — `Dashboard`,
   `Pengajuan/Index`, `Review/Index`, `Dokumen/Show`,
-  `Laporan/Index`, `Laporan/KartuPersediaan`,
+  `SaldoAwal/Index`, `Settings/Edit`,
+  `Laporan/Index`, `Laporan/KartuPersediaan`, `Divisi/Index`,
   `Master/{KodeRekening,Barang,Penyedia}/Index`, `Penerimaan/Index`.
+- Settings BHP hanya kolom `format_nomor` (paper_size & orientation **dihapus** — hardcode per jenis dokumen di `DokumenController::PAPER`).
 - Import SPJ: tombol "Import Excel" + modal unggah di `Spj/Index.tsx`
   (kondisional `canImportSpj`), link template `template_import_spj.xlsx`.
 - Cetak: pre-flight check, cegah unduh kosong, modal progres (cookie status).
@@ -225,7 +257,7 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 
 ## 7. Testing & Kualitas
 
-- 308 test / 1465 assertions (44 file Feature+Unit, 14 di antaranya BHP):
+- 418 test / 1948 assertions (50 file Feature+Unit, 16 di antaranya BHP):
   Feature per modul + Unit (Fortify, relasi, gate, rate limit). DB SQLite
   in-memory (`phpunit.xml`), seed `PeranDanHakAksesSeeder` per test.
 - Gate: `composer test` (cepat), `composer test-coverage` (Xdebug; total ≥ 80%
@@ -248,11 +280,14 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 | Tanpa purge log | Keputusan produk: simpan permanen |
 | Ikon brand statis di `public/` + `site.webmanifest` | Tanpa pipeline build; disajikan langsung, cacheable, PWA-ready |
 | BHP sebagai domain terpisah (bukan modul BM) | Stok, status, dan laporan berbeda; dicegah bercampur lewat test batas domain |
-| Dokumen BHP satu tabel `bhp_dokumen` + kolom `jenis` | Lifecycle, penomoran, dan batch PDF identik untuk semua jenis dokumen |
+| Tabel BHP dipisah fisik per sumber dana (`bhp_bos_*`/`bhp_bopd_*`) | Integritas BOS/BOPD dijamin skema; sumber dana implisit dari nama tabel, `SumberDana` sebagai pemetaan tunggal |
+| Middleware `SetSumberDanaBhp` fail-closed + restore state | `sumber_dana` invalid ditolak 422 (bukan fallback BOS); state tidak bocor antar-request (aman Octane/queue) |
+| Dokumen BHP satu tabel per dana + kolom `jenis` | Lifecycle, penomoran, dan batch PDF identik untuk semua jenis dokumen |
 | Stok 4-tier dihitung, bukan kolom | Hindari stok basi; satu sumber kebenaran `StokService` |
 | `applyApprove` tanpa transaction sendiri | Agar approve + generate dokumen bisa atomic dalam satu transaction |
 | `source_id` pada penerimaan | `no_bast` tidak unik di data legacy; jadikan kunci idempotensi impor |
-| Foreign key DB untuk seluruh relasi BHP (2026-10-08) | Mencegah orphan record di level database: detail/dokumen cascade, histori master restrict, `users.divisi_id` set null |
+| Foreign key DB untuk seluruh relasi BHP (2026-10-08, diterapkan ulang saat split 2026-10-12) | Mencegah orphan record di level database: detail/dokumen cascade, histori master restrict, `users.divisi_id` set null |
 | Snapshot payload dokumen ter-scope sekolah pengajuan | Payload stok opname/buku tidak pernah memuat data sekolah lain (audit 2026-10-08) |
-| Singleton `bhp_settings` via partial unique index | `firstOrCreate` bersamaan tidak menghasilkan dua baris settings |
+| Singleton settings per sumber dana via partial unique index | `get`/`create` bersamaan tidak menghasilkan dua baris settings; BOS & BOPD terpisah |
+| Dokumen PDF per jenis template (8 Blade terpisah) + `DokumenController::VIEW`/`PAPER` map | Struktur kolom, kop surat, signature berbeda per jenis; paper/orientasi hardcode — bukan konfigurasi user |
 | Agregasi laporan stok grouped (`rekapPerBarang`) | Laporan stok dari ~7N query menjadi 3 query grouped — aman untuk katalog besar |

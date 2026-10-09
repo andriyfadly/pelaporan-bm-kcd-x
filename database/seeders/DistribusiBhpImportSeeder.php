@@ -8,6 +8,8 @@ use App\Models\DistribusiBhp\KodeRekening;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Penyedia;
+use App\Models\Master\Sekolah;
+use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -34,6 +36,14 @@ class DistribusiBhpImportSeeder extends Seeder
     /** Path absolut DB sumber; null = pakai default. */
     protected ?string $sourcePath = null;
 
+    /**
+     * Sekolah tujuan untuk penerimaan. Sumber lama single-school sehingga tidak
+     * punya kolom sekolah; null = ambil sekolah pertama yang ada. Karena tidak
+     * ada pool pusat, penerimaan WAJIB punya sekolah — bila tidak ada sekolah
+     * sama sekali, impor penerimaan dilewati dengan peringatan.
+     */
+    protected ?string $sekolahId = null;
+
     private int $kodeRekeningCount = 0;
 
     private int $barangCount = 0;
@@ -56,6 +66,13 @@ class DistribusiBhpImportSeeder extends Seeder
     public function setSourcePath(?string $path): static
     {
         $this->sourcePath = $path;
+
+        return $this;
+    }
+
+    public function setSekolahId(?string $sekolahId): static
+    {
+        $this->sekolahId = $sekolahId;
 
         return $this;
     }
@@ -143,14 +160,16 @@ class DistribusiBhpImportSeeder extends Seeder
             ->orderBy('kode')
             ->chunk(100, function ($rows) {
                 foreach ($rows as $row) {
-                    KodeRekening::updateOrCreate(
-                        ['kode' => $row->kode, 'sumber_dana' => $row->sumber_dana ?: 'BOS'],
-                        [
-                            'nama' => $row->nama,
-                            'kode_barang' => $row->kode_barang,
-                            'uraian_kode_barang' => $row->uraian_kode_barang,
-                        ],
-                    );
+                    SumberDana::dengan($row->sumber_dana ?: SumberDana::BOS, function () use ($row) {
+                        KodeRekening::updateOrCreate(
+                            ['kode' => $row->kode],
+                            [
+                                'nama' => $row->nama,
+                                'kode_barang' => $row->kode_barang,
+                                'uraian_kode_barang' => $row->uraian_kode_barang,
+                            ],
+                        );
+                    });
                     $this->kodeRekeningCount++;
                 }
             });
@@ -173,33 +192,39 @@ class DistribusiBhpImportSeeder extends Seeder
 
     private function importBarang($db): void
     {
-        $rekeningMap = KodeRekening::pluck('id', 'kode')->all();
+        // Kode rekening kini per sumber dana; bangun peta per dana agar barang
+        // tidak pernah menunjuk kode rekening sumber dana lain.
+        $rekeningMap = [];
+        foreach (SumberDana::SEMUA as $dana) {
+            $rekeningMap[$dana] = SumberDana::dengan($dana, fn () => KodeRekening::pluck('id', 'kode')->all());
+        }
 
         $this->sourceTable($db, 'barang')
             ->orderBy('id')
             ->chunk(100, function ($rows) use ($db, $rekeningMap) {
                 foreach ($rows as $row) {
-                    $kodeRekeningId = null;
-                    if ($row->kode_rekening_id) {
-                        $kode = $db->table('kode_rekening')->where('id', $row->kode_rekening_id)->value('kode');
-                        $kodeRekeningId = $kode ? ($rekeningMap[$kode] ?? null) : null;
-                    }
+                    $dana = SumberDana::normalisasi($row->sumber_dana ?? SumberDana::BOS);
 
-                    $barang = Barang::updateOrCreate(
-                        [
-                            'nama_barang' => $row->nama_barang,
-                            'sumber_dana' => $row->sumber_dana ?: 'BOS',
-                        ],
-                        [
-                            'kode_barang' => $row->kode_barang,
-                            'spesifikasi_barang_nusp' => $row->spesifikasi_barang_nusp,
-                            'satuan' => $row->satuan,
-                            'kode_rekening_id' => $kodeRekeningId,
-                        ],
-                    );
-                    $this->barangCount++;
+                    SumberDana::dengan($dana, function () use ($db, $row, $rekeningMap, $dana) {
+                        $kodeRekeningId = null;
+                        if ($row->kode_rekening_id) {
+                            $kode = $db->table('kode_rekening')->where('id', $row->kode_rekening_id)->value('kode');
+                            $kodeRekeningId = $kode ? ($rekeningMap[$dana][$kode] ?? null) : null;
+                        }
 
-                    $this->importHarga($db, $row->id, $barang);
+                        $barang = Barang::updateOrCreate(
+                            ['nama_barang' => $row->nama_barang],
+                            [
+                                'kode_barang' => $row->kode_barang,
+                                'spesifikasi_barang_nusp' => $row->spesifikasi_barang_nusp,
+                                'satuan' => $row->satuan,
+                                'kode_rekening_id' => $kodeRekeningId,
+                            ],
+                        );
+                        $this->barangCount++;
+
+                        $this->importHarga($db, $row->id, $barang);
+                    });
                 }
             });
     }
@@ -224,37 +249,57 @@ class DistribusiBhpImportSeeder extends Seeder
 
     private function importPenerimaan($db): void
     {
-        $barangMap = Barang::get()->mapWithKeys(fn (Barang $b) => [$b->nama_barang.'|'.$b->sumber_dana => $b->id])->all();
-        $barangByKode = Barang::whereNotNull('kode_barang')->get()->mapWithKeys(fn (Barang $b) => [$b->kode_barang.'|'.$b->sumber_dana => $b->id])->all();
+        // Tidak ada pool pusat: setiap penerimaan harus terikat sekolah.
+        $sekolahId = $this->sekolahId ?? Sekolah::query()->orderBy('nama_sekolah')->value('id');
+
+        if (! $sekolahId) {
+            $this->command?->warn('Tidak ada sekolah tujuan; impor penerimaan BHP dilewati (stok tanpa pemilik tidak valid).');
+
+            return;
+        }
+
+        // Peta barang per sumber dana (tabel master barang sudah terpisah).
+        $petaNama = [];
+        $petaKode = [];
+        foreach (SumberDana::SEMUA as $dana) {
+            SumberDana::dengan($dana, function () use (&$petaNama, &$petaKode, $dana) {
+                $petaNama[$dana] = Barang::get()->mapWithKeys(fn (Barang $b) => [$b->nama_barang => $b->id])->all();
+                $petaKode[$dana] = Barang::whereNotNull('kode_barang')->get()->mapWithKeys(fn (Barang $b) => [$b->kode_barang => $b->id])->all();
+            });
+        }
         $penyediaMap = Penyedia::pluck('id', 'nama')->all();
 
         $this->sourceTable($db, 'buku_penerimaan_barang')
             ->orderBy('id')
-            ->chunk(100, function ($rows) use ($db, $barangMap, $barangByKode, $penyediaMap) {
+            ->chunk(100, function ($rows) use ($db, $petaNama, $petaKode, $penyediaMap, $sekolahId) {
                 foreach ($rows as $row) {
-                    $penyediaId = null;
-                    if ($row->penyedia_id) {
-                        $namaPenyedia = $db->table('penyedia')->where('id', $row->penyedia_id)->value('nama');
-                        $penyediaId = $namaPenyedia ? ($penyediaMap[$namaPenyedia] ?? null) : null;
-                    }
+                    $dana = SumberDana::normalisasi($row->sumber_dana ?? SumberDana::BOS);
 
-                    $penerimaan = Penerimaan::updateOrCreate(
-                        ['source_id' => $row->id],
-                        [
-                            'no_bast' => $row->no_bast,
-                            'no_nota_invoice' => $row->no_nota_invoice,
-                            'tanggal_bast' => $this->toDate($row->tanggal_bast),
-                            'no_kwitansi' => $row->no_kwitansi,
-                            'penyedia_id' => $penyediaId,
-                            'tanggal_titimangsa' => $this->toDate($row->tanggal_titimangsa),
-                            'is_saldo_awal' => (bool) $row->is_saldo_awal,
-                            'periode_tahun' => $row->periode_tahun !== null ? (int) $row->periode_tahun : null,
-                            'sumber_dana' => $row->sumber_dana ?: 'BOS',
-                        ],
-                    );
-                    $this->penerimaanCount++;
+                    SumberDana::dengan($dana, function () use ($db, $row, $dana, $petaNama, $petaKode, $penyediaMap, $sekolahId) {
+                        $penyediaId = null;
+                        if ($row->penyedia_id) {
+                            $namaPenyedia = $db->table('penyedia')->where('id', $row->penyedia_id)->value('nama');
+                            $penyediaId = $namaPenyedia ? ($penyediaMap[$namaPenyedia] ?? null) : null;
+                        }
 
-                    $this->importDetail($db, $row->id, $penerimaan, $barangMap, $barangByKode);
+                        $penerimaan = Penerimaan::updateOrCreate(
+                            ['source_id' => $row->id],
+                            [
+                                'sekolah_id' => $sekolahId,
+                                'no_bast' => $row->no_bast,
+                                'no_nota_invoice' => $row->no_nota_invoice,
+                                'tanggal_bast' => $this->toDate($row->tanggal_bast),
+                                'no_kwitansi' => $row->no_kwitansi,
+                                'penyedia_id' => $penyediaId,
+                                'tanggal_titimangsa' => $this->toDate($row->tanggal_titimangsa),
+                                'is_saldo_awal' => (bool) $row->is_saldo_awal,
+                                'periode_tahun' => $row->periode_tahun !== null ? (int) $row->periode_tahun : null,
+                            ],
+                        );
+                        $this->penerimaanCount++;
+
+                        $this->importDetail($db, $row->id, $penerimaan, $petaNama[$dana], $petaKode[$dana]);
+                    });
                 }
             });
     }
@@ -279,11 +324,11 @@ class DistribusiBhpImportSeeder extends Seeder
                 continue;
             }
 
-            $dana = $sumberBarang->sumber_dana ?: 'BOS';
-            $barangId = $barangMap[$sumberBarang->nama_barang.'|'.$dana] ?? null;
+            // Peta sudah spesifik satu sumber dana (tabel master terpisah).
+            $barangId = $barangMap[$sumberBarang->nama_barang] ?? null;
 
             if (! $barangId && $sumberBarang->kode_barang) {
-                $barangId = $barangByKode[$sumberBarang->kode_barang.'|'.$dana] ?? null;
+                $barangId = $barangByKode[$sumberBarang->kode_barang] ?? null;
             }
 
             if (! $barangId) {

@@ -18,7 +18,7 @@ Pelaporan BM. Lihat `docs/requirements/` untuk kontrak kedua domain.
 4. [Skema Database](database.md) — diagram relasi + kamus tabel BM **dan BHP** + konvensi.
 5. [Endpoint & Kontrak Data](api.md) — rute web, controller, middleware, payload (BM + BHP).
 6. [Alur & Modul per Role](modules.md) — detail operasional tiap modul, termasuk BHP.
-7. [Keamanan](security.md) — matriks RBAC (17 permission, 5 role), isolasi tenant, audit trail, checklist rilis.
+7. [Keamanan](security.md) — matriks RBAC (19 permission, 5 role), isolasi tenant, audit trail, checklist rilis.
 8. [Testing](testing.md) — strategi, perintah, matriks file test, status.
 9. [Instalasi Lokal](setup.md) — prasyarat, instalasi, verifikasi kualitas.
 10. [Deployment Produksi](deployment.md) — prasyarat server, rilis, backup, troubleshooting.

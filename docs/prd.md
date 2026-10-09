@@ -144,7 +144,7 @@ Detail kontrak: `docs/requirements/distribusi-bhp-prd.md` dan
   atomic per (jenis, sumber dana, tahun, bulan).
 - Dokumen wajib dibuat saat approve; dokumen tambahan (BAST, BAP, stok opname, buku)
   dibuat manual dan idempotent per jenis.
-- PDF per dokumen + Batch PDF dengan histori status (`bhp_batch_dokumen`).
+- PDF per dokumen + Batch PDF dengan histori status (`bhp_{bos,bopd}_batch_dokumen`).
 
 ### B6 — Laporan & Export
 - Laporan Stok (4-tier), Buku Pengeluaran, Kartu Barang, Kartu Persediaan (saldo berjalan).

@@ -1,5 +1,6 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import EmptyState from '@/Components/EmptyState';
 
 interface Sekolah {
     id: string;
@@ -12,18 +13,72 @@ interface Sekolah {
     email: string | null;
 }
 
-export default function Edit({ sekolah }: { sekolah: Sekolah }) {
+interface Props {
+    sekolah: Sekolah | null;
+    sekolahOptions: { id: string; nama_sekolah: string }[];
+    sekolahTerpilih: string | null;
+}
+
+export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props) {
     const form = useForm({
-        alamat: sekolah.alamat ?? '',
-        telepon: sekolah.telepon ?? '',
-        website: sekolah.website ?? '',
-        email: sekolah.email ?? '',
+        sekolah_id: sekolahTerpilih ?? '',
+        alamat: sekolah?.alamat ?? '',
+        telepon: sekolah?.telepon ?? '',
+        website: sekolah?.website ?? '',
+        email: sekolah?.email ?? '',
     });
+
+    const pilihSekolah = (id: string) => {
+        form.setData('sekolah_id', id);
+        router.get('/master-data/profil-sekolah', id ? { sekolah_id: id } : {}, { preserveState: false });
+    };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         form.put('/master-data/profil-sekolah');
     };
+
+    // Admin KCD tanpa sekolah_id: pilih sekolah dulu sebelum bisa mengisi profil.
+    if (!sekolah) {
+        return (
+            <AppLayout title="Profil Sekolah">
+                <Head title="Profil Sekolah" />
+
+                <div className="space-y-6">
+                    <div>
+                        <h1 className="text-lg font-bold text-slate-900">Profil Sekolah</h1>
+                        <p className="text-sm text-slate-500">Pilih sekolah terlebih dahulu untuk mengelola profilnya.</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-xl space-y-4">
+                        {sekolahOptions.length === 0 ? (
+                            <EmptyState
+                                title="Belum ada sekolah"
+                                description="Tambahkan data sekolah terlebih dahulu sebelum mengelola profil."
+                            />
+                        ) : (
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Sekolah</label>
+                                <select
+                                    value={form.data.sekolah_id}
+                                    onChange={(e) => pilihSekolah(e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                                >
+                                    <option value="">Pilih sekolah...</option>
+                                    {sekolahOptions.map((s) => (
+                                        <option key={s.id} value={s.id}>{s.nama_sekolah}</option>
+                                    ))}
+                                </select>
+                                {form.errors.sekolah_id && (
+                                    <p className="text-xs text-rose-600 mt-1">{form.errors.sekolah_id}</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
 
     return (
         <AppLayout title="Profil Sekolah">
@@ -36,6 +91,7 @@ export default function Edit({ sekolah }: { sekolah: Sekolah }) {
                 </div>
 
                 <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5 max-w-3xl">
+                    <input type="hidden" value={form.data.sekolah_id} readOnly />
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Sekolah</label>

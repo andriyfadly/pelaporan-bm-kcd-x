@@ -53,10 +53,10 @@ class BhpIsolasiSekolahTest extends TestCase
         ]);
     }
 
-    private function terima(Barang $barang, int $jumlah, ?Sekolah $sekolah = null): void
+    private function terima(Barang $barang, int $jumlah, Sekolah $sekolah): void
     {
         $penerimaan = Penerimaan::create([
-            'sekolah_id' => $sekolah?->id,
+            'sekolah_id' => $sekolah->id,
             'sumber_dana' => $barang->sumber_dana,
             'is_saldo_awal' => true,
             'periode_tahun' => 2026,
@@ -87,41 +87,58 @@ class BhpIsolasiSekolahTest extends TestCase
         $this->assertSame(150, $stok->fisik($barang));
     }
 
-    public function test_pool_pusat_tanpa_sekolah_bisa_dipakai_semua_sekolah(): void
+    public function test_stok_sekolah_tidak_melihat_penerimaan_tanpa_sekolah_milik_sekolah_lain(): void
     {
         $sekolahA = $this->sekolah('SMKN Pool A');
         $sekolahB = $this->sekolah('SMKN Pool B');
         $barang = $this->barang();
 
-        $this->terima($barang, 60, null);
+        // Tidak ada pool pusat: stok sekolah A tidak pernah terlihat sekolah B,
+        // dan sebaliknya (tidak ada stok bersama).
+        $this->terima($barang, 60, $sekolahA);
 
         $stok = app(StokService::class);
 
         $this->assertSame(60, $stok->fisik($barang, $sekolahA->id));
-        $this->assertSame(60, $stok->fisik($barang, $sekolahB->id));
+        $this->assertSame(0, $stok->fisik($barang, $sekolahB->id));
     }
 
-    public function test_submit_pengajuan_sekolah_lain_tidak_mengurangi_stok_pusat(): void
+    public function test_dua_sekolah_tidak_bisa_oversell_stok_yang_sama(): void
     {
-        $sekolahA = $this->sekolah('SMKN Submit A');
-        $userA = $this->user($sekolahA, 'op.iso.submit');
+        $sekolahA = $this->sekolah('SMKN Oversell A');
+        $sekolahB = $this->sekolah('SMKN Oversell B');
+        $userA = $this->user($sekolahA, 'op.iso.over.a');
+        $userB = $this->user($sekolahB, 'op.iso.over.b');
         $barang = $this->barang();
 
-        // Pool pusat hanya 30.
-        $this->terima($barang, 30, null);
+        // Stok hanya ada di sekolah A.
+        $this->terima($barang, 30, $sekolahA);
 
-        $pengajuan = Pengajuan::create([
+        $pengajuanA = Pengajuan::create([
             'sekolah_id' => $sekolahA->id,
             'user_id' => $userA->id,
             'sumber_dana' => 'BOS',
             'status' => 'draft',
             'tanggal' => '2026-06-17',
         ]);
-        $pengajuan->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 40]);
+        $pengajuanA->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 30]);
 
+        $pengajuanB = Pengajuan::create([
+            'sekolah_id' => $sekolahB->id,
+            'user_id' => $userB->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'draft',
+            'tanggal' => '2026-06-17',
+        ]);
+        $pengajuanB->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 30]);
+
+        $stok = app(StokService::class);
+        $stok->submit($pengajuanA->fresh('details'));
+
+        // Sekolah B tidak boleh ikut mengonsumsi stok milik sekolah A.
         $this->expectException(\RuntimeException::class);
 
-        app(StokService::class)->submit($pengajuan->fresh('details'));
+        $stok->submit($pengajuanB->fresh('details'));
     }
 
     public function test_laporan_stok_operator_hanya_melihat_sekolahnya(): void
@@ -242,6 +259,6 @@ class BhpIsolasiSekolahTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('distribusi-bhp.pengajuan.index', ['sumber_dana' => 'APBN']))
-            ->assertSessionHasErrors('sumber_dana');
+            ->assertStatus(422);
     }
 }

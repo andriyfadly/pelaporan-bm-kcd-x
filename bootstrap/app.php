@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsurePasswordNotExpired;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetSumberDanaBhp;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'sumber-dana-bhp' => SetSumberDanaBhp::class,
         ]);
         $middleware->web(append: [
             HandleInertiaRequests::class,

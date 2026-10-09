@@ -53,15 +53,15 @@ class BhpKartuPersediaanTest extends TestCase
     }
 
     /**
-     * Catat penerimaan (masuk) pada tanggal tertentu.
+     * Catat penerimaan (masuk) pada tanggal tertentu. Ini penerimaan biasa
+     * (bukan saldo awal), sehingga boleh beberapa kali pada periode yang sama.
      */
-    private function terima(Barang $barang, int $jumlah, string $tanggal, ?Sekolah $sekolah = null): PenerimaanDetail
+    private function terima(Barang $barang, int $jumlah, string $tanggal, Sekolah $sekolah): PenerimaanDetail
     {
         $penerimaan = Penerimaan::create([
-            'sekolah_id' => $sekolah?->id,
+            'sekolah_id' => $sekolah->id,
             'sumber_dana' => $barang->sumber_dana,
-            'is_saldo_awal' => true,
-            'periode_tahun' => (int) substr($tanggal, 0, 4),
+            'is_saldo_awal' => false,
             'tanggal_bast' => $tanggal,
         ]);
 
@@ -273,7 +273,6 @@ class BhpKartuPersediaanTest extends TestCase
                 'jenis' => 'kartu_persediaan',
                 'barang_id' => $barangBopd->id,
             ]))
-            ->assertRedirect()
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors('barang_id');
     }
 }

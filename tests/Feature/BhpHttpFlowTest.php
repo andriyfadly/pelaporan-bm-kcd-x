@@ -3,13 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\DistribusiBhp\Barang;
+use App\Models\DistribusiBhp\Divisi;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
-use App\Models\Master\PejabatSekolah;
 use App\Models\Master\Sekolah;
 use App\Models\User;
-use App\Services\PejabatSekolahService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -43,7 +42,7 @@ class BhpHttpFlowTest extends TestCase
         return $user;
     }
 
-    private function barang(string $sumberDana = 'BOS', int $stok = 100): Barang
+    private function barang(Sekolah $sekolah, string $sumberDana = 'BOS', int $stok = 100): Barang
     {
         $barang = Barang::create([
             'kode_barang' => '1.1.7.01.'.$sumberDana,
@@ -52,7 +51,7 @@ class BhpHttpFlowTest extends TestCase
             'sumber_dana' => $sumberDana,
         ]);
 
-        $penerimaan = Penerimaan::create(['sumber_dana' => $sumberDana, 'is_saldo_awal' => true, 'periode_tahun' => 2026]);
+        $penerimaan = Penerimaan::create(['sekolah_id' => $sekolah->id, 'sumber_dana' => $sumberDana, 'is_saldo_awal' => true, 'periode_tahun' => 2026]);
         PenerimaanDetail::create([
             'bhp_penerimaan_id' => $penerimaan->id,
             'barang_id' => $barang->id,
@@ -68,7 +67,7 @@ class BhpHttpFlowTest extends TestCase
     {
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'operator_sekolah', 'op.bhp');
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.pengajuan.store'), [
@@ -94,7 +93,7 @@ class BhpHttpFlowTest extends TestCase
     {
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'operator_sekolah', 'op.bhp2');
-        $barang = $this->barang('BOPD', 50);
+        $barang = $this->barang($sekolah, 'BOPD', 50);
 
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.pengajuan.store'), [
@@ -107,21 +106,11 @@ class BhpHttpFlowTest extends TestCase
         $this->assertSame(0, Pengajuan::count());
     }
 
-    public function test_operator_dapat_approve_pengajuan_sekolah_sendiri(): void
+    public function test_operator_tidak_dapat_approve_pengajuan_sendiri(): void
     {
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'operator_sekolah', 'op.bhp3');
-        $barang = $this->barang('BOS', 100);
-
-        // Approval mensyaratkan pejabat penandatangan lengkap.
-        $pejabat = app(PejabatSekolahService::class);
-        foreach (PejabatSekolah::JABATAN as $i => $jabatan) {
-            $pejabat->simpan((string) $sekolah->id, (string) $operator->id, [
-                'jabatan' => $jabatan,
-                'nama' => 'Pejabat '.$jabatan,
-                'mulai_menjabat' => '2026-01-01',
-            ]);
-        }
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = Pengajuan::create([
             'sekolah_id' => $sekolah->id,
@@ -141,9 +130,9 @@ class BhpHttpFlowTest extends TestCase
             ->post(route('distribusi-bhp.review-pengajuan.approve', $pengajuan), [
                 'jumlah_disetujui' => [$detail->id => 30],
             ])
-            ->assertRedirect();
+            ->assertForbidden();
 
-        $this->assertSame('approved', $pengajuan->fresh()->status);
+        $this->assertSame('submitted', $pengajuan->fresh()->status);
     }
 
     public function test_operator_tidak_dapat_mengakses_pengajuan_sekolah_lain(): void
@@ -163,6 +152,248 @@ class BhpHttpFlowTest extends TestCase
 
         $this->actingAs($operatorA)
             ->post(route('distribusi-bhp.pengajuan.submit', $pengajuan))
+            ->assertForbidden();
+    }
+
+    public function test_operator_dapat_mengubah_dan_menghapus_draft_sendiri(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->user($sekolah, 'operator_sekolah', 'op.edit');
+        $barang = $this->barang($sekolah, 'BOS', 100);
+
+        $this->actingAs($operator)->post(route('distribusi-bhp.pengajuan.store'), [
+            'sumber_dana' => 'BOS',
+            'tanggal' => '2026-06-17',
+            'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 5]],
+        ])->assertRedirect();
+
+        $pengajuan = Pengajuan::firstOrFail();
+
+        $this->actingAs($operator)->put(route('distribusi-bhp.pengajuan.update', $pengajuan), [
+            'sumber_dana' => 'BOS',
+            'tanggal' => '2026-06-20',
+            'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 8]],
+        ])->assertRedirect();
+
+        $this->assertSame('2026-06-20', $pengajuan->fresh()->tanggal->toDateString());
+        $this->assertSame(8, $pengajuan->fresh()->details()->sum('jumlah_diminta'));
+
+        $this->actingAs($operator)->delete(route('distribusi-bhp.pengajuan.destroy', $pengajuan))
+            ->assertRedirect();
+
+        $this->assertSame(0, Pengajuan::count());
+    }
+
+    public function test_pengajuan_yang_sudah_submit_tidak_dapat_diubah_atau_dihapus(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->user($sekolah, 'operator_sekolah', 'op.locked');
+        $barang = $this->barang($sekolah, 'BOS', 100);
+
+        $pengajuan = Pengajuan::create([
+            'sekolah_id' => $sekolah->id,
+            'user_id' => $operator->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'submitted',
+            'tanggal' => '2026-06-17',
+        ]);
+        $pengajuan->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 5]);
+
+        $this->actingAs($operator)->put(route('distribusi-bhp.pengajuan.update', $pengajuan), [
+            'sumber_dana' => 'BOS',
+            'tanggal' => '2026-06-20',
+            'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 8]],
+        ])->assertSessionHas('error');
+
+        $this->actingAs($operator)->delete(route('distribusi-bhp.pengajuan.destroy', $pengajuan))
+            ->assertSessionHas('error');
+
+        $this->assertSame('submitted', $pengajuan->fresh()->status);
+        $this->assertSame(5, $pengajuan->fresh()->details()->sum('jumlah_diminta'));
+    }
+
+    public function test_update_draft_sekolah_lain_ditolak(): void
+    {
+        $sekolahA = $this->sekolah('SMKN Upd A');
+        $sekolahB = $this->sekolah('SMKN Upd B');
+        $operatorA = $this->user($sekolahA, 'operator_sekolah', 'op.up.a');
+        $operatorB = $this->user($sekolahB, 'operator_sekolah', 'op.up.b');
+        $barang = $this->barang($sekolahB, 'BOS', 100);
+
+        $pengajuanB = Pengajuan::create([
+            'sekolah_id' => $sekolahB->id,
+            'user_id' => $operatorB->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'draft',
+            'tanggal' => '2026-06-17',
+        ]);
+        $pengajuanB->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 5]);
+
+        $this->actingAs($operatorA)->put(route('distribusi-bhp.pengajuan.update', $pengajuanB), [
+            'sumber_dana' => 'BOS',
+            'tanggal' => '2026-06-20',
+            'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 8]],
+        ])->assertForbidden();
+
+        $this->assertSame(5, $pengajuanB->fresh()->details()->sum('jumlah_diminta'));
+    }
+
+    public function test_user_dengan_divisi_sekolah_lain_ditolak_saat_membuat_pengajuan(): void
+    {
+        $sekolahA = $this->sekolah('SMKN Div A');
+        $sekolahB = $this->sekolah('SMKN Div B');
+        $barang = $this->barang($sekolahA, 'BOS', 100);
+
+        $divisiB = Divisi::create(['sekolah_id' => $sekolahB->id, 'nama' => 'TKJ B']);
+
+        // User terikat sekolah A tetapi divisi_id menunjuk divisi sekolah B.
+        $user = User::create([
+            'name' => 'Operator Nyasar',
+            'username' => 'op.nyasar',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolahA->id,
+            'divisi_id' => $divisiB->id,
+            'password_changed_at' => now(),
+        ]);
+        $user->assignRole('operator_sekolah');
+
+        $this->actingAs($user)->post(route('distribusi-bhp.pengajuan.store'), [
+            'sumber_dana' => 'BOS',
+            'tanggal' => '2026-06-17',
+            'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 5]],
+        ])->assertSessionHasErrors('divisi_id');
+
+        $this->assertSame(0, Pengajuan::count());
+    }
+
+    public function test_review_approve_sekolah_lain_ditolak(): void
+    {
+        $sekolahA = $this->sekolah('SMKN Rev A');
+        $sekolahB = $this->sekolah('SMKN Rev B');
+        $adminA = $this->user($sekolahA, 'operator_sekolah', 'op.rev.a');
+        $operatorB = $this->user($sekolahB, 'operator_sekolah', 'op.rev.b');
+        $barang = $this->barang($sekolahB, 'BOS', 100);
+
+        $pengajuanB = Pengajuan::create([
+            'sekolah_id' => $sekolahB->id,
+            'user_id' => $operatorB->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'submitted',
+            'tanggal' => '2026-06-17',
+        ]);
+        $detail = $pengajuanB->details()->create([
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 10,
+            'status_reservasi' => 'direservasi',
+            'jumlah_direservasi' => 10,
+        ]);
+
+        $this->actingAs($adminA)
+            ->post(route('distribusi-bhp.review-pengajuan.approve', $pengajuanB), [
+                'jumlah_disetujui' => [$detail->id => 10],
+            ])
+            ->assertForbidden();
+
+        $this->assertSame('submitted', $pengajuanB->fresh()->status);
+    }
+
+    public function test_review_reject_sekolah_lain_ditolak(): void
+    {
+        $sekolahA = $this->sekolah('SMKN Rej A');
+        $sekolahB = $this->sekolah('SMKN Rej B');
+        $adminA = $this->user($sekolahA, 'operator_sekolah', 'op.rej.a');
+        $operatorB = $this->user($sekolahB, 'operator_sekolah', 'op.rej.b');
+        $barang = $this->barang($sekolahB, 'BOS', 100);
+
+        $pengajuanB = Pengajuan::create([
+            'sekolah_id' => $sekolahB->id,
+            'user_id' => $operatorB->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'submitted',
+            'tanggal' => '2026-06-17',
+        ]);
+        $pengajuanB->details()->create([
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 10,
+            'status_reservasi' => 'direservasi',
+            'jumlah_direservasi' => 10,
+        ]);
+
+        $this->actingAs($adminA)
+            ->post(route('distribusi-bhp.review-pengajuan.reject', $pengajuanB), [
+                'rejection_reason' => 'Bukan wewenang saya',
+            ])
+            ->assertForbidden();
+
+        $this->assertSame('submitted', $pengajuanB->fresh()->status);
+    }
+
+    public function test_submit_mengabaikan_sekolah_id_palsu_dari_request(): void
+    {
+        $sekolahA = $this->sekolah('SMKN Fake A');
+        $sekolahB = $this->sekolah('SMKN Fake B');
+        $operatorA = $this->user($sekolahA, 'operator_sekolah', 'op.fake');
+        $barang = $this->barang($sekolahA, 'BOS', 100);
+
+        // User A menyisipkan sekolah_id sekolah B; harus diabaikan total.
+        $this->actingAs($operatorA)->post(route('distribusi-bhp.pengajuan.store'), [
+            'sekolah_id' => $sekolahB->id,
+            'sumber_dana' => 'BOS',
+            'tanggal' => '2026-06-17',
+            'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 5]],
+        ])->assertRedirect();
+
+        $pengajuan = Pengajuan::firstOrFail();
+        $this->assertSame($sekolahA->id, $pengajuan->sekolah_id);
+    }
+
+    public function test_operator_dapat_melihat_dokumen_pengajuan_sendiri(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->user($sekolah, 'operator_sekolah', 'op.doc');
+        $barang = $this->barang($sekolah, 'BOS', 100);
+
+        $pengajuan = Pengajuan::create([
+            'sekolah_id' => $sekolah->id,
+            'user_id' => $operator->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'approved',
+            'tanggal' => '2026-06-17',
+        ]);
+        $pengajuan->details()->create([
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 5,
+            'jumlah_disetujui' => 5,
+        ]);
+
+        $this->actingAs($operator)
+            ->get(route('distribusi-bhp.dokumen.show', $pengajuan))
+            ->assertOk();
+    }
+
+    public function test_operator_tidak_dapat_melihat_dokumen_sekolah_lain(): void
+    {
+        $sekolahA = $this->sekolah('SMKN Doc A');
+        $sekolahB = $this->sekolah('SMKN Doc B');
+        $operatorA = $this->user($sekolahA, 'operator_sekolah', 'op.doc.a');
+        $operatorB = $this->user($sekolahB, 'operator_sekolah', 'op.doc.b');
+        $barang = $this->barang($sekolahB, 'BOS', 100);
+
+        $pengajuanB = Pengajuan::create([
+            'sekolah_id' => $sekolahB->id,
+            'user_id' => $operatorB->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'approved',
+            'tanggal' => '2026-06-17',
+        ]);
+        $pengajuanB->details()->create([
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 5,
+            'jumlah_disetujui' => 5,
+        ]);
+
+        $this->actingAs($operatorA)
+            ->get(route('distribusi-bhp.dokumen.show', $pengajuanB))
             ->assertForbidden();
     }
 

@@ -2,8 +2,8 @@
 
 > Engine: **PostgreSQL**. Seluruh id entitas bisnis memakai UUID
 > (`HasUuids`); tabel bawaan Spatie memakai bigint. Sumber kebenaran:
-> `database/migrations/`. Di bawah ini ringkasan per 2026-10-08
-> (26 migrasi + `activity_log`; 20 migrasi BM/shared + 6 migrasi Distribusi BHP).
+> `database/migrations/`. Di bawah ini ringkasan per 2026-10-12
+> (38 migrasi + `activity_log`; tabel BHP dipisah fisik per sumber dana).
 
 ## 1. Diagram Relasi (tekstual)
 
@@ -32,39 +32,47 @@ model_has_roles, model_has_permissions, role_has_permissions)
 
 ### Distribusi BHP (domain terpisah — lihat §5)
 
+> **Penting:** tabel transaksi & master barang BHP **dipisah fisik per sumber
+> dana** menjadi `bhp_bos_*` dan `bhp_bopd_*` (migrasi
+> `2026_10_12_000001_split_bhp_tables_per_sumber_dana`). Sumber dana **implisit
+> dari nama tabel** — tidak ada lagi kolom `sumber_dana`. Hanya `bhp_penyedia`
+> dan `bhp_divisi` yang tetap satu tabel bersama lintas sumber dana. Pemetaan
+> suffix → tabel fisik terpusat di `App\Support\DistribusiBhp\SumberDana`
+> (dipakai model via trait `HasSumberDanaTable` dan query builder mentah).
+
 ```text
 master_data_sekolah
-  ├── 1──N bhp_penerimaan            [FK restrict]
-  └── 1──N bhp_pengajuan             [FK restrict]
+  ├── 1──N bhp_{bos,bopd}_penerimaan            [FK restrict]
+  └── 1──N bhp_{bos,bopd}_pengajuan             [FK restrict]
 
 bhp_divisi [unique(sekolah_id, nama)]
-  ├── 1──N bhp_pengajuan             [FK restrict]
-  └── 1──N users (divisi_id)         [FK set null saat divisi dihapus]
+  ├── 1──N bhp_{bos,bopd}_pengajuan             [FK restrict]
+  └── 1──N users (divisi_id)                    [FK set null saat divisi dihapus]
 
-bhp_kode_rekening (unique kode+sumber_dana)
-  └── 1──N bhp_barang
+bhp_{bos,bopd}_kode_rekening (unique kode per tabel)
+  └── 1──N bhp_{bos,bopd}_barang
 
-bhp_barang
-  ├── 1──N bhp_harga_barang          [FK cascade]
-  ├── 1──N bhp_penerimaan_detail     [FK restrict]
-  └── 1──N bhp_pengajuan_detail      [FK restrict]
+bhp_{bos,bopd}_barang
+  ├── 1──N bhp_{bos,bopd}_harga_barang          [FK cascade]
+  ├── 1──N bhp_{bos,bopd}_penerimaan_detail     [FK restrict]
+  └── 1──N bhp_{bos,bopd}_pengajuan_detail      [FK restrict]
 
-bhp_penyedia ──1──N bhp_penerimaan (penyedia_id)
+bhp_penyedia ──1──N bhp_{bos,bopd}_penerimaan (penyedia_id)
 
-bhp_penerimaan ──1──N bhp_penerimaan_detail [FK cascade]
-  └── 1──N bhp_pengajuan ──1──N bhp_pengajuan_detail [FK cascade]
-        ├── 1──N bhp_dokumen         [FK cascade; unique(pengajuan, jenis)]
-        └── 1──N bhp_batch_dokumen   [FK set null; histori generasi batch; files json]
+bhp_{bos,bopd}_penerimaan ──1──N bhp_{bos,bopd}_penerimaan_detail [FK cascade]
+  └── 1──N bhp_{bos,bopd}_pengajuan ──1──N bhp_{bos,bopd}_pengajuan_detail [FK cascade]
+        ├── 1──N bhp_{bos,bopd}_dokumen         [FK cascade; unique(pengajuan, jenis)]
+        └── 1──N bhp_{bos,bopd}_batch_dokumen   [FK set null; histori generasi batch; files json]
 
-bhp_settings: singleton (kolom `is_singleton` + partial unique index —
-              hanya satu baris boleh bernilai true)
+bhp_{bos,bopd}_settings: satu baris per tabel (partial unique index pada
+              is_singleton)
 
 pejabat_sekolah ──N──1 master_data_sekolah
               (riwayat pejabat penandatangan; satu pejabat aktif per
-              (sekolah, jabatan) via partial unique index)
+              (sekolah, jabatan) via partial unique index; tabel bersama, non-BHP)
 
-bhp_nomor_sequence: counter atomic per (jenis, sumber_dana, tahun, bulan),
-              unique(jenis, sumber_dana, tahun, bulan), tanpa FK
+bhp_{bos,bopd}_nomor_sequence: counter atomic per (jenis, tahun, bulan),
+              unique(jenis, tahun, bulan), tanpa FK
 ```
 
 ## 2. Kamus Tabel
@@ -143,41 +151,51 @@ Domain BHP terpisah total dari `pelaporan_bm_*` (lihat
 | `2026_10_01_000002_create_distribusi_bhp_dokumen_tables` | `bhp_dokumen`, `bhp_nomor_sequence` |
 | `2026_10_01_000003_create_distribusi_bhp_batch_tables` | `bhp_batch_dokumen` |
 | `2026_10_01_000004_add_source_id_to_bhp_penerimaan` | `source_id` unik (jejak impor) |
+| `2026_10_08_151827_create_bhp_settings_table` | `bhp_settings` (format nomor/PDF) |
+| `2026_10_08_153505_create_bhp_divisi_table` | `bhp_divisi` + `users.divisi_id` |
 | `2026_10_08_160849_add_singleton_key_to_bhp_settings_table` | `bhp_settings.is_singleton` + partial unique index (anti-race singleton) |
-| `2026_10_08_161500_add_foreign_keys_to_bhp_tables` | 10 foreign key relasi BHP (lihat §6) |
+| `2026_10_08_161500_add_foreign_keys_to_bhp_tables` | Foreign key relasi BHP |
 | `2026_10_08_163932_create_pejabat_sekolah_table` | Master pejabat penandatangan + partial unique index satu-aktif |
 | `2026_10_08_163940_drop_penyetuju_from_bhp_settings_table` | Hapus `nama_penyetuju`/`jabatan_penyetuju` global (diganti pejabat sekolah) |
 | `2026_10_08_170000_add_profil_kontak_to_master_data_sekolah_table` | `master_data_sekolah.alamat/telepon/website/email` (profil kontak, diisi operator) |
+| `2026_10_10_000001_add_saldo_awal_unique_key_to_bhp_penerimaan` | Kolom bantu `saldo_awal_key` + partial unique (jaring race saldo awal) |
+| `2026_10_11_000001_drop_pool_pusat_saldo_awal` | `sekolah_id` **NOT NULL** (hilangkan pool pusat); ganti unique ke `(sekolah_id, sumber_dana, periode_tahun)` |
+| `2026_10_13_000001_drop_paper_from_bhp_settings` | **Hapus** kolom `paper_size` & `orientation` dari `bhp_{bos,bopd}_settings` — PDF hardcode per jenis dokumen |
 
 ### Master
 
+Semua suffix di bawah punya **dua tabel fisik** (`bhp_bos_*` dan
+`bhp_bopd_*`). Kolom `sumber_dana` **tidak ada** — nilainya implisit dari nama
+tabel.
+
 | Tabel | Kolom penting |
 |---|---|
-| `bhp_kode_rekening` | `kode` (100) · `nama` · `kode_barang` · `uraian_kode_barang` · `sumber_dana` enum `BOS`/`BOPD` · unique `(kode, sumber_dana)` |
-| `bhp_barang` | `kode_barang` · `nama_barang` · `spesifikasi_barang_nusp` · `satuan` · `kode_rekening_id` (FK nullable) · `sumber_dana` |
-| `bhp_harga_barang` | `barang_id` FK · `harga_satuan` bigint · `created_by` (uuid nullable) |
-| `bhp_penyedia` | `nama` (unique) · `alamat` · `telepon` · `email` |
+| `bhp_{dana}_kode_rekening` | `kode` (100) · `nama` · `kode_barang` · `uraian_kode_barang` · unique `kode` per tabel |
+| `bhp_{dana}_barang` | `kode_barang` · `nama_barang` · `spesifikasi_barang_nusp` · `satuan` · `kode_rekening_id` (FK nullable) |
+| `bhp_{dana}_harga_barang` | `barang_id` FK · `harga_satuan` bigint · `created_by` (uuid nullable) |
+| `bhp_penyedia` *(bersama)* | `nama` (unique) · `alamat` · `telepon` · `email` |
+| `bhp_divisi` *(bersama)* | `sekolah_id` FK · `nama` · `kode` — `users.divisi_id` FK set null |
 
-Catatan: `bhp_barang` **tidak** menyimpan `stok_tereservasi`; angka stok selalu
-dihitung (`StokService`).
+Catatan: `bhp_{dana}_barang` **tidak** menyimpan `stok_tereservasi`; angka stok
+selalu dihitung (`StokService`).
 
 ### Transaksi
 
 | Tabel | Kolom penting |
 |---|---|
-| `bhp_penerimaan` | `source_id` (unique, nullable) · `sekolah_id` FK nullable · `no_nota_invoice`/`no_bast`/`no_kwitansi` · `tanggal_bast`/`tanggal_titimangsa` date · `penyedia_id` FK nullable · `is_saldo_awal` bool · `periode_tahun` int · `sumber_dana` |
-| `bhp_penerimaan_detail` | `bhp_penerimaan_id` FK · `barang_id` FK nullable · `harga_barang_id` nullable · `jumlah` int · `harga_satuan`/`nilai_total` bigint nullable · `merek_type` · `keterangan` |
-| `bhp_pengajuan` | `sekolah_id` FK nullable · `divisi_id`/`user_id` uuid nullable · `nomor_pengajuan` · `tanggal` date · `sumber_dana` · `status` enum `draft`/`submitted`/`approved`/`rejected` · `review_notes`/`rejection_reason` · `reviewed_by`/`reviewed_at` |
-| `bhp_pengajuan_detail` | `bhp_pengajuan_id` FK · `barang_id` FK nullable · `jumlah_diminta` int · `jumlah_disetujui` int nullable · `harga_satuan` nullable · `keperluan`/`keterangan` · `status_reservasi` (30) · `jumlah_direservasi` int |
+| `bhp_{dana}_penerimaan` | `source_id` (unique, nullable) · `sekolah_id` FK **NOT NULL** (tanpa pool pusat) · `no_nota_invoice`/`no_bast`/`no_kwitansi` · `tanggal_bast`/`tanggal_titimangsa` date · `penyedia_id` FK nullable · `is_saldo_awal` bool · `periode_tahun` int · partial unique `bhp_{dana}_penerimaan_saldo_awal_unique` `(sekolah_id, periode_tahun) WHERE is_saldo_awal` |
+| `bhp_{dana}_penerimaan_detail` | `bhp_penerimaan_id` FK · `barang_id` FK nullable · `harga_barang_id` nullable · `jumlah` int · `harga_satuan`/`nilai_total` bigint nullable · `merek_type` · `keterangan` |
+| `bhp_{dana}_pengajuan` | `sekolah_id` FK nullable · `divisi_id`/`user_id` uuid nullable · `nomor_pengajuan` · `tanggal` date · `status` enum `draft`/`submitted`/`approved`/`rejected` · `review_notes`/`rejection_reason` · `reviewed_by`/`reviewed_at` |
+| `bhp_{dana}_pengajuan_detail` | `bhp_pengajuan_id` FK · `barang_id` FK nullable · `jumlah_diminta` int · `jumlah_disetujui` int nullable · `harga_satuan` nullable · `keperluan`/`keterangan` · `status_reservasi` (30) · `jumlah_direservasi` int |
 
 ### Dokumen & penomoran
 
 | Tabel | Kolom penting |
 |---|---|
-| `bhp_dokumen` | `bhp_pengajuan_id` FK cascade · `jenis` (nota_permintaan, surat_permintaan, surat_penyaluran, bast, bap, stok_opname, buku_pengeluaran, buku_penyaluran) · `nomor` · `tanggal_titimangsa` date · `payload` json (snapshot, **ter-scope sekolah pengajuan**) — unique `(bhp_pengajuan_id, jenis)` |
-| `bhp_nomor_sequence` | `jenis` · `sumber_dana` · `tahun` · `bulan` · `counter` — dikunci `lockForUpdate` saat generate; insert row pertama aman terhadap race (catch `UniqueConstraintViolationException` lalu lock row pemenang) |
-| `bhp_batch_dokumen` | `jenis` · `sumber_dana` · `bhp_pengajuan_id` FK set null · `status` (`pending`/`selesai`/`sebagian`/`gagal`) · `total`/`berhasil`/`gagal` · `files` json · `created_by` · `error_message` |
-| `bhp_settings` | `format_nomor` · `paper_size` · `orientation` · `is_singleton` (partial unique index: maks satu baris). Penandatangan TIDAK lagi di sini — lihat `pejabat_sekolah` |
+| `bhp_{dana}_dokumen` | `bhp_pengajuan_id` FK cascade · `jenis` (nota_permintaan, surat_permintaan, surat_penyaluran, bast, bap, stok_opname, buku_pengeluaran, buku_penyaluran) · `nomor` · `tanggal_titimangsa` date · `payload` json (snapshot, **ter-scope sekolah pengajuan**) — unique `(bhp_pengajuan_id, jenis)` |
+| `bhp_{dana}_nomor_sequence` | `jenis` · `tahun` · `bulan` · `counter` — dikunci `lockForUpdate` saat generate; insert row pertama aman terhadap race (catch `UniqueConstraintViolationException` lalu lock row pemenang) |
+| `bhp_{dana}_batch_dokumen` | `jenis` · `bhp_pengajuan_id` FK set null · `status` (`pending`/`selesai`/`sebagian`/`gagal`) · `total`/`berhasil`/`gagal` · `files` json · `created_by` · `error_message` |
+| `bhp_{dana}_settings` | `format_nomor` · `is_singleton` (unique: maks satu baris per tabel dana). **`paper_size` & `orientation` dihapus** (2026-10-13) — ukuran/orientasi PDF hardcode per jenis dokumen di `DokumenController::PAPER`. Penandatangan TIDAK lagi di sini — lihat `pejabat_sekolah` |
 | `pejabat_sekolah` *(generic, non-BHP)* | `sekolah_id` FK · `jabatan` enum `kepala_sekolah`/`wakasek_sarpras`/`pembantu_pengurus_barang` · `jenis_jabatan` enum `definitif`/`plt`/`plh` · `nama` · `pangkat_golongan` · `nip` · `mulai_menjabat`/`selesai_menjabat` date · `created_by`/`updated_by` · soft deletes · unique `(sekolah_id, jabatan, mulai_menjabat)` + partial unique satu-aktif `(sekolah_id, jabatan) WHERE selesai_menjabat IS NULL AND deleted_at IS NULL` |
 
 ## 6. Konvensi & Batasan
@@ -191,13 +209,16 @@ dihitung (`StokService`).
 - Semua mutasi stok lewat `StokService` dengan `lockForUpdate`. Untuk laporan
   stok massal, `StokService::rekapPerBarang()` mengagregasi seluruh barang
   dalam 3 query grouped (fisik/terpakai/reservasi) — tanpa N+1.
-- Sumber dana (`BOS`/`BOPD`) selalu menjadi filter wajib; BOS dan BOPD tidak
-  boleh tercampur pada stok/laporan.
-- **Foreign key BHP** (migrasi 2026-10-08): detail & dokumen cascade mengikuti
+- Sumber dana BHP (`BOS`/`BOPD`) **implisit dari nama tabel fisik**
+  (`bhp_bos_*`/`bhp_bopd_*`); tidak ada kolom `sumber_dana`. Akses model
+  di-resolve runtime via `SumberDana::tabel()` + trait `HasSumberDanaTable`;
+  BOS dan BOPD tidak boleh tercampur pada stok/laporan.
+- **Foreign key BHP** (migrasi 2026-10-08, diterapkan ulang per tabel saat
+  split 2026-10-12): detail & dokumen cascade mengikuti
   parent; `barang_id` pada detail transaksi dan `divisi_id` pada pengajuan
-  `restrict` (histori tidak boleh yatim); `bhp_pengajuan.user_id` dan
+  `restrict` (histori tidak boleh yatim); `bhp_{dana}_pengajuan.user_id` dan
   `users.divisi_id` `set null` saat referensi dihapus.
-- Snapshot payload dokumen (`bhp_dokumen.payload`) selalu ter-scope
+- Snapshot payload dokumen (`bhp_{dana}_dokumen.payload`) selalu ter-scope
   `sekolah_id` milik pengajuan — tidak pernah memuat data sekolah lain.
 - **Penandatangan dokumen BHP**: approval mensyaratkan ketiga jabatan
   (`kepala_sekolah`, `wakasek_sarpras`, `pembantu_pengurus_barang`) terisi dan
@@ -208,10 +229,11 @@ dihitung (`StokService`).
   berubah meski pejabat master berganti. Riwayat pejabat tidak dihapus permanen.
 - Hapus SPJ/SPK BM: cascade manual (`realisasi` by `spj_id` dulu) dalam transaksi.
 - Unique: `kode_barang`, `username`, `(sekolah_id, bulan)` di kunci,
-  `bhp_penyedia.nama`, `bhp_kode_rekening(kode, sumber_dana)`,
-  `bhp_penerimaan.source_id`, `(bhp_pengajuan_id, jenis)` di dokumen,
-  `(jenis, sumber_dana, tahun, bulan)` di nomor sequence,
-  `bhp_settings.is_singleton` (partial),
+  `bhp_penyedia.nama`, `bhp_{dana}_kode_rekening(kode)`,
+  `bhp_{dana}_penerimaan.source_id`, `(bhp_pengajuan_id, jenis)` di dokumen,
+  `(jenis, tahun, bulan)` di nomor sequence,
+  `bhp_{dana}_settings.is_singleton` (partial),
+  partial unique saldo awal `(sekolah_id, periode_tahun) WHERE is_saldo_awal`,
   `pejabat_sekolah` satu pejabat aktif per `(sekolah_id, jabatan)` (partial).
 - Migrasi legacy: kolom `*_lama` (BM) dan `source_id` (BHP) + `updateOrCreate`
   idempoten.

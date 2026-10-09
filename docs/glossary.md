@@ -32,13 +32,14 @@
 |---------|--------------------|
 | BHP | Barang Habis Pakai — domain terpisah dari Belanja Modal |
 | BOPD | Belanja Operasional Pendidikan Daerah — sumber dana BHP selain BOS |
-| Barang | Master item BHP (`bhp_barang`); punya kode, satuan, kode rekening, sumber dana |
-| Kode Rekening (BHP) | Kode akun BHP (`bhp_kode_rekening`), unik per `(kode, sumber_dana)` |
-| Penyedia | Rekanan/supplier barang (`bhp_penyedia`) |
-| Penerimaan | Pencatatan barang masuk (`bhp_penerimaan` + detail); menambah stok fisik |
+| Sumber dana | `BOS`/`BOPD`; pada tabel BHP dipisah fisik (`bhp_bos_*`/`bhp_bopd_*`), implisit dari nama tabel |
+| Barang | Master item BHP (`bhp_{bos,bopd}_barang`); punya kode, satuan, kode rekening |
+| Kode Rekening (BHP) | Kode akun BHP (`bhp_{bos,bopd}_kode_rekening`), unik `kode` per tabel dana |
+| Penyedia | Rekanan/supplier barang (`bhp_penyedia`, tabel bersama lintas dana) |
+| Penerimaan | Pencatatan barang masuk (`bhp_{bos,bopd}_penerimaan` + detail); menambah stok fisik |
 | Saldo awal | Penerimaan yang ditandai `is_saldo_awal` + `periode_tahun`; stok awal tahun |
-| Pengajuan | Permintaan/distribusi BHP (`bhp_pengajuan`); hidup dengan status |
-| Detail pengajuan | Baris barang pada pengajuan (`bhp_pengajuan_detail`) |
+| Pengajuan | Permintaan/distribusi BHP (`bhp_{bos,bopd}_pengajuan`); hidup dengan status |
+| Detail pengajuan | Baris barang pada pengajuan (`bhp_{bos,bopd}_pengajuan_detail`) |
 | Reservasi | Stok yang "dipesan" pengajuan `submitted`; belum mengurangi terpakai |
 | Terpakai | Jumlah disetujui (`jumlah_disetujui`) pada pengajuan `approved` |
 | Fisik | Total barang masuk (Σ detail penerimaan) |
@@ -47,17 +48,17 @@
 | Submit pengajuan | Aksi pemohon: validasi stok tersedia lalu buat reservasi (`draft → submitted`) |
 | Approve | Aksi admin: koreksi jumlah, reservasi → pemakaian (`submitted → approved`) |
 | Reject | Aksi admin: lepas reservasi + alasan wajib (`submitted → rejected`) |
-| Dokumen BHP | Surat/berita acara hasil generate (`bhp_dokumen`), satu tabel dengan kolom `jenis` |
+| Dokumen BHP | Surat/berita acara hasil generate (`bhp_{bos,bopd}_dokumen`), satu tabel per dana dengan kolom `jenis` |
 | Jenis dokumen | `nota_permintaan`, `surat_permintaan`, `surat_penyaluran`, `bast`, `bap`, `stok_opname`, `buku_pengeluaran`, `buku_penyaluran` |
 | Dokumen wajib | 3 dokumen yang otomatis dibuat saat approve: nota, surat permintaan, surat penyaluran |
 | Dokumen tambahan | Dokumen yang dibuat manual setelah approve (BAST/BAP/stok opname/buku), idempotent per jenis |
 | Nomor dokumen | Format `{urut:3}/BHP/{kode}/{sumber_dana}/{bulan_romawi}/{tahun}`, counter atomic |
-| Batch PDF | Gabungan semua dokumen pengajuan dalam satu PDF; histori di `bhp_batch_dokumen` |
+| Batch PDF | Gabungan semua dokumen pengajuan dalam satu PDF; histori di `bhp_{bos,bopd}_batch_dokumen` |
 | Buku pengeluaran | Laporan item yang sudah approved beserta keperluan |
 | Buku penyaluran | Dokumen/laporan penyaluran BHP |
 | Kartu barang | Profil barang + mutasi masuk/keluar (tanpa saldo berjalan) |
 | Kartu persediaan | Mutasi kronologis **dengan saldo berjalan** per barang |
 | operator_divisi | Role khusus BHP: membuat & mensubmit pengajuan, tanpa master/approval |
 | Impor BHP | `DistribusiBhpImportSeeder` — impor master + penerimaan dari DB SQLite legacy |
-| source_id | ID asli entitas dari DB sumber (`bhp_penerimaan.source_id`) untuk jejak audit/impor |
+| source_id | ID asli entitas dari DB sumber (`bhp_{bos,bopd}_penerimaan.source_id`) untuk jejak audit/impor |
 | cart_status | Status baris di DB sumber; hanya `saved` yang diimpor (`in_cart` = draft keranjang) |

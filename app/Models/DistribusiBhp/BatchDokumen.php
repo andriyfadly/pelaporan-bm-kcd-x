@@ -2,6 +2,7 @@
 
 namespace App\Models\DistribusiBhp;
 
+use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,13 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BatchDokumen extends Model
 {
-    use HasFactory, HasUuids;
-
-    protected $table = 'bhp_batch_dokumen';
+    use HasFactory, HasSumberDanaTable, HasUuids;
 
     protected $fillable = [
         'jenis',
-        'sumber_dana',
         'bhp_pengajuan_id',
         'status',
         'total',
@@ -26,6 +24,11 @@ class BatchDokumen extends Model
         'path',
         'created_by',
     ];
+
+    public static function suffixTabel(): string
+    {
+        return 'batch_dokumen';
+    }
 
     protected function casts(): array
     {

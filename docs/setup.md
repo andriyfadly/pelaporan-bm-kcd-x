@@ -43,7 +43,7 @@ php artisan migrate --seed
 # - Akun Developer: username `developer` (password: `#SidiptaBeuKCD10`, role: `super_admin`)
 # - Akun Admin KCD: username `admin_kcd` (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
 # - Akun Operator Sekolah: username `[npsn]-admin` (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
-# - Permission & role BHP (17 permission, 5 role termasuk `operator_divisi`)
+# - Permission & role BHP (19 permission, 5 role termasuk `operator_divisi`)
 #
 # Seeder juga memanggil DistribusiBhpImportSeeder: mengimpor master + penerimaan
 # BHP dari DB SQLite sumber. Default path:

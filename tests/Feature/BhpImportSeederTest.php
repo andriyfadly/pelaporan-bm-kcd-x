@@ -8,6 +8,7 @@ use App\Models\DistribusiBhp\KodeRekening;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Penyedia;
+use App\Models\Master\Sekolah;
 use Database\Seeders\DistribusiBhpImportSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -20,10 +21,17 @@ class BhpImportSeederTest extends TestCase
 
     private string $sourcePath;
 
+    private string $sekolahId;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->sourcePath = $this->buildSourceDatabase();
+        // Tidak ada pool pusat: penerimaan hasil impor harus punya sekolah.
+        $this->sekolahId = (string) Sekolah::create([
+            'nama_sekolah' => 'SMKN Impor BHP',
+            'kota_kab' => 'Kota Bandung',
+        ])->id;
     }
 
     /**
@@ -120,6 +128,7 @@ class BhpImportSeederTest extends TestCase
 
         $this->assertSame(1, Penerimaan::count());
         $terima = Penerimaan::firstOrFail();
+        $this->assertSame($this->sekolahId, (string) $terima->sekolah_id);
         $this->assertSame('BAST/001', $terima->no_bast);
         $this->assertSame('2026-02-19', $terima->tanggal_bast->toDateString());
         $this->assertNotNull($terima->penyedia_id);
@@ -175,8 +184,8 @@ class BhpImportSeederTest extends TestCase
         // Regresi: koneksi sumber tidak boleh menyentuh tabel domain BHP.
         $this->runSeeder();
 
-        $this->assertTrue(Schema::hasTable('bhp_kode_rekening'));
-        $this->assertTrue(Schema::hasTable('bhp_barang'));
+        $this->assertTrue(Schema::hasTable('bhp_bos_kode_rekening'));
+        $this->assertTrue(Schema::hasTable('bhp_bos_barang'));
     }
 
     public function test_penerimaan_dengan_no_bast_duplikat_tetap_terpisah(): void

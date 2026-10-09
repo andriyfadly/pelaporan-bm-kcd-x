@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Barang;
 use App\Services\DistribusiBhp\LaporanService;
 use App\Services\DistribusiBhp\SettingsService;
+use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -32,9 +33,9 @@ class LaporanController extends Controller
     {
         $sekolahId = $this->resolveSekolahId($request);
         $sumberDana = $request->validate([
-            'sumber_dana' => ['nullable', Rule::in(['BOS', 'BOPD'])],
-        ])['sumber_dana'] ?? 'BOS';
-        $sumberDana = strtoupper((string) $sumberDana);
+            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
+        ])['sumber_dana'] ?? SumberDana::BOS;
+        $sumberDana = SumberDana::normalisasi($sumberDana);
 
         return Inertia::render('DistribusiBhp/Laporan/Index', [
             'sumberDana' => $sumberDana,
@@ -46,33 +47,34 @@ class LaporanController extends Controller
     public function kartuPersediaan(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
+        $sumberDana = SumberDana::normalisasi($request->input('sumber_dana', SumberDana::BOS));
+
         $validated = $request->validate([
-            'sumber_dana' => ['nullable', Rule::in(['BOS', 'BOPD'])],
-            'barang_id' => ['nullable', 'uuid', 'exists:bhp_barang,id'],
+            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
+            'barang_id' => ['nullable', 'uuid', SumberDana::existsRule('barang', $sumberDana)],
         ]);
-        $sumberDana = strtoupper((string) ($validated['sumber_dana'] ?? 'BOS'));
         $barangId = (string) ($validated['barang_id'] ?? '');
 
-        return Inertia::render('DistribusiBhp/Laporan/KartuPersediaan', [
+        return SumberDana::dengan($sumberDana, fn (): Response => Inertia::render('DistribusiBhp/Laporan/KartuPersediaan', [
             'sumberDana' => $sumberDana,
             'barangId' => $barangId,
             'kartu' => $barangId !== '' ? $this->laporan->kartuPersediaan($barangId, $sumberDana, $sekolahId) : null,
-            'daftarBarang' => Barang::where('sumber_dana', $sumberDana)
-                ->orderBy('nama_barang')
-                ->get(['id', 'kode_barang', 'nama_barang']),
-        ]);
+            'daftarBarang' => Barang::orderBy('nama_barang')->get(['id', 'kode_barang', 'nama_barang']),
+        ]));
     }
 
     public function export(Request $request): BinaryFileResponse|RedirectResponse
     {
+        $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS));
+
         $validated = $request->validate([
-            'sumber_dana' => ['required', Rule::in(['BOS', 'BOPD'])],
+            'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
             'jenis' => ['required', Rule::in(['stok', 'pengeluaran', 'kartu_persediaan'])],
-            'barang_id' => ['required_if:jenis,kartu_persediaan', 'uuid'],
+            'barang_id' => ['required_if:jenis,kartu_persediaan', 'uuid', SumberDana::existsRule('barang', $sumberDana)],
         ]);
 
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = strtoupper($validated['sumber_dana']);
+        $sumberDana = SumberDana::normalisasi($validated['sumber_dana']);
         $jenis = $validated['jenis'];
 
         if ($jenis === 'stok') {

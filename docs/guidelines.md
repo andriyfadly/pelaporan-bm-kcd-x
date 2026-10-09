@@ -143,5 +143,14 @@ permission *-bm                 ↔  permission *-bhp
   perlu digabung dengan langkah lain.
 - Endpoint mutasi wajib dijaga middleware `permission:*-bhp`, dan aksi ber-tenant
   memanggil `resolveSekolahId` + cek kepemilikan record.
-- Dokumen baru cukup ditambah sebagai `jenis` di `bhp_dokumen`; jangan membuat
-  tabel baru per jenis dokumen kecuali ada alasan kuat.
+- Dokumen baru cukup ditambah sebagai `jenis` di tabel dokumen per dana
+  (`bhp_{bos,bopd}_dokumen`); jangan membuat tabel baru per jenis dokumen
+  kecuali ada alasan kuat.
+- Tabel BHP dipisah fisik per sumber dana (`bhp_bos_*`/`bhp_bopd_*`); sumber
+  dana implisit dari nama tabel. Selalu resolve tabel/binding lewat
+  `App\Support\DistribusiBhp\SumberDana` (`tabel()`, `existsRule()`, `dengan()`)
+  dan trait `HasSumberDanaTable` — jangan hardcode nama tabel.
+- Endpoint yang menerima `sumber_dana` mengandalkan middleware
+  `sumber-dana-bhp` (fail-closed: invalid → 422). Bila menetapkan konteks dana
+  di service, pakai `SumberDana::dengan()` (restore otomatis), bukan
+  `setAktif()` permanen.

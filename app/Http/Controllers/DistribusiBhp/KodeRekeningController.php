@@ -4,6 +4,7 @@ namespace App\Http\Controllers\DistribusiBhp;
 
 use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\KodeRekening;
+use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,20 +16,21 @@ class KodeRekeningController extends Controller
     public function index(Request $request): Response
     {
         $sumberDana = $request->validate([
-            'sumber_dana' => ['nullable', Rule::in(['BOS', 'BOPD'])],
-        ])['sumber_dana'] ?? 'BOS';
-        $sumberDana = strtoupper((string) $sumberDana);
+            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
+        ])['sumber_dana'] ?? SumberDana::BOS;
+        $sumberDana = SumberDana::normalisasi($sumberDana);
 
-        $items = KodeRekening::query()
-            ->where('sumber_dana', $sumberDana)
-            ->orderBy('kode')
-            ->paginate(50)
-            ->withQueryString();
+        return SumberDana::dengan($sumberDana, function () use ($sumberDana): Response {
+            $items = KodeRekening::query()
+                ->orderBy('kode')
+                ->paginate(50)
+                ->withQueryString();
 
-        return Inertia::render('DistribusiBhp/Master/KodeRekening/Index', [
-            'items' => $items,
-            'sumberDana' => $sumberDana,
-        ]);
+            return Inertia::render('DistribusiBhp/Master/KodeRekening/Index', [
+                'items' => $items,
+                'sumberDana' => $sumberDana,
+            ]);
+        });
     }
 
     public function store(Request $request): RedirectResponse
@@ -38,21 +40,26 @@ class KodeRekeningController extends Controller
             'nama' => ['required', 'string', 'max:255'],
             'kode_barang' => ['nullable', 'string', 'max:100'],
             'uraian_kode_barang' => ['nullable', 'string', 'max:255'],
-            'sumber_dana' => ['required', Rule::in(['BOS', 'BOPD'])],
+            'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
         ]);
 
-        $exists = KodeRekening::where('kode', $validated['kode'])
-            ->where('sumber_dana', $validated['sumber_dana'])
-            ->exists();
+        $sumberDana = SumberDana::normalisasi($validated['sumber_dana']);
 
-        if ($exists) {
-            return back()->withErrors([
-                'kode' => 'Kode rekening sudah ada untuk sumber dana '.$validated['sumber_dana'].'.',
-            ])->withInput();
-        }
+        return SumberDana::dengan($sumberDana, function () use ($validated, $sumberDana): RedirectResponse {
+            if (KodeRekening::where('kode', $validated['kode'])->exists()) {
+                return back()->withErrors([
+                    'kode' => 'Kode rekening sudah ada untuk sumber dana '.$sumberDana.'.',
+                ])->withInput();
+            }
 
-        KodeRekening::create($validated);
+            KodeRekening::create([
+                'kode' => $validated['kode'],
+                'nama' => $validated['nama'],
+                'kode_barang' => $validated['kode_barang'] ?? null,
+                'uraian_kode_barang' => $validated['uraian_kode_barang'] ?? null,
+            ]);
 
-        return back()->with('success', 'Kode rekening berhasil ditambahkan.');
+            return back()->with('success', 'Kode rekening berhasil ditambahkan.');
+        });
     }
 }

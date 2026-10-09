@@ -130,11 +130,25 @@ BOS dan BOPD **tidak pernah tercampur**.
    detail barang dan jumlahnya. Barang masuk akan menambah **stok fisik**.
 3. Untuk saldo awal tahun, tandai sebagai **saldo awal** dan isi periode tahun.
 
+> **Stok selalu milik satu sekolah.** Tidak ada stok bersama antar sekolah —
+> penerimaan yang Anda catat hanya mengurangi stok sekolah Anda sendiri.
+
+**Saldo awal** juga punya halaman khusus **Saldo Awal BHP**
+(`/distribusi-bhp/saldo-awal`): pilih sumber dana (BOS/BOPD) dan periode,
+tambah manual, atau **import Excel** (unduh template dulu; satu baris salah
+membatalkan seluruh import). Tombol **Hapus** pada satu baris hanya menghapus
+barang itu — barang lain pada periode yang sama tetap ada. Barang yang sudah
+dipakai pengajuan aktif tidak dapat dihapus.
+
 ### 6.4 Membuat & Mensubmit Pengajuan
 
 1. Buka **Pengajuan** (`/distribusi-bhp/pengajuan`), buat draft: pilih sumber
-   dana, tanggal, lalu daftar barang + jumlah diminta.
-2. Klik **Submit**. Sistem memeriksa stok **Tersedia**; bila cukup, jumlah
+   dana, tanggal, lalu daftar barang + jumlah diminta. Kolom barang menampilkan
+   **stok tersedia** sekolah Anda.
+2. Draft bisa **Edit** (ubah tanggal/daftar barang) atau **Hapus** selama masih
+   `draft`. Setelah disubmit, draft terkunci — perubahan harus lewat Reject lalu
+   buat pengajuan baru.
+3. Klik **Submit**. Sistem memeriksa stok **Tersedia**; bila cukup, jumlah
    tersebut **direservasi** (belum mengurangi stok terpakai). Bila tidak cukup,
    submit ditolak dengan pesan sisa stok.
 

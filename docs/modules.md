@@ -115,12 +115,21 @@ terpisah di navigasi (`AppLayout`).
 
 **Sumber dana.** Setiap data terikat `BOS` atau `BOPD`. BOS dan BOPD tidak
 pernah tercampur pada stok maupun laporan; stok dihitung per sumber dana.
+Middleware `SetSumberDanaBhp` bersifat **fail-closed**: `sumber_dana` invalid
+ditolak 422, default `BOS` hanya bila parameter tidak dikirim. State sumber dana
+dipulihkan setelah request agar tidak bocor antar-request.
 
 **Stok 4-tier.** `Tersedia = Fisik − Terpakai − Reservasi` (di-`max(0,…)`).
 `Fisik` dari penerimaan, `Terpakai` dari pengajuan `approved`, `Reservasi` dari
 pengajuan `submitted`. Semua mutasi lewat `StokService` dengan `lockForUpdate`;
 laporan stok memakai agregasi grouped (`rekapPerBarang`, 3 query untuk semua
 barang).
+
+**Tanpa pool pusat.** Stok selalu **milik satu sekolah** — tidak ada penerimaan
+"bersama" tanpa sekolah. `bhp_{bos,bopd}_penerimaan.sekolah_id` **NOT NULL**,
+dan semua query stok/laporan di-scope **tepat** ke sekolah pemakainya (bukan
+`orWhereNull`). Konsekuensinya: sekolah A tidak pernah melihat/mengonsumsi
+penerimaan sekolah B, dan dua sekolah tidak bisa meng-oversell stok yang sama.
 
 **Dashboard BHP.** Statistik pengajuan difilter `divisi_id` untuk operator
 divisi (hanya divisinya sendiri); operator sekolah/admin melihat seluruh divisi
@@ -145,25 +154,56 @@ divisi.
 - Permission: `kelola-penerimaan-bhp`.
 - **Saldo awal** punya **halaman terpisah** `/distribusi-bhp/saldo-awal`
   (pola sistem-manajemen-aset): filter sumber dana + periode, kartu statistik
-  (jumlah barang, total unit, total nilai saldo), tabel per barang, tambah
+  (jumlah barang, total unit, total nilai saldo — diagregasi di database via
+  `count()`/`sum()`, bukan dihitung di PHP), tabel per barang, tambah
   manual, hapus per barang dengan konfirmasi, serta **import Excel** +
   **unduh template** (all-or-nothing, maksimal 2000 baris, throttle 10/menit).
+  Daftar periode yang tersedia (`availablePeriods`) difilter ke sumber dana
+  aktif — periode yang hanya memiliki data dana lain tidak muncul.
 - **Saldo awal** adalah flow khusus (`SaldoAwalService`), bukan sekadar flag:
   - kombinasi `is_saldo_awal × periode_tahun` wajib konsisten — saldo awal
     wajib menyebut periode (2000–2100), penerimaan biasa dilarang mengisinya;
-  - unik per **sekolah + sumber dana + periode + barang** (duplikat ditolak,
-    termasuk barang ganda dalam satu request);
-  - **`DELETE /distribusi-bhp/penerimaan/{penerimaan}`** hanya menghapus saldo
-    awal (bukan penerimaan biasa), milik sekolah sendiri, dan belum dipakai
-    pengajuan `submitted`/`approved` — header + detail dihapus atomic dengan
-    activity log `kelola-saldo-awal` / `hapus-saldo-awal`.
+  - saldo awal **wajib terikat satu sekolah** (tidak ada pool pusat). Satu
+    header saldo awal menampung **seluruh barang** untuk periode tersebut;
+    keunikan (sekolah + periode, per sumber dana) dijaga aplikasi **dan** partial
+    unique index `bhp_{dana}_penerimaan_saldo_awal_unique`
+    `ON bhp_{dana}_penerimaan (sekolah_id, periode_tahun) WHERE is_saldo_awal`
+    sebagai jaring terakhir terhadap race concurrent. Duplikat barang dalam satu
+    request tetap ditolak;
+  - **`DELETE /distribusi-bhp/saldo-awal/{detail}`** menghapus **satu barang**
+    saja (`deleteDetail`); barang lain pada header yang sama tetap utuh. Header
+    ikut terhapus hanya bila detailnya habis, agar tidak meninggalkan saldo awal
+    kosong;
+  - **`DELETE /distribusi-bhp/penerimaan/{penerimaan}`** menghapus **seluruh**
+    saldo awal (header + semua detail). Keduanya hanya untuk saldo awal (bukan
+    penerimaan biasa), milik sekolah sendiri, dan ditolak bila barangnya sudah
+    dipakai pengajuan `submitted`/`approved` — dicek per sekolah **dan** sumber
+    dana, sehingga pengajuan dana lain tidak mengunci. Atomic + activity log
+    `kelola-saldo-awal` / `hapus-saldo-awal`;
+  - **Import** memvalidasi seluruh baris sebelum menyentuh DB (all-or-nothing):
+    kode kosong, kode tak dikenal, sumber dana salah, barang ganda, saldo awal
+    sudah ada, jumlah bukan bilangan bulat (`1.5` ditolak, bukan dianggap `15`),
+    harga bukan bilangan bulat/negatif, dan batas 2000 baris. Pemisah ribuan
+    (`1.500`) diterima; baris kosong (trailing) diabaikan; berkas tak terbaca
+    atau bukan `.xlsx`/`.xls` ditolak dengan pesan, bukan error server.
 
 ### 7.3 Pengajuan
 
-- **`/distribusi-bhp/pengajuan`**: buat draft pengajuan (sumber dana, tanggal,
-  daftar barang & jumlah diminta), lalu **Submit** yang memvalidasi stok
+- **`/distribusi-bhp/pengajuan`**: halaman satu-atap dengan form buat draft
+  (sumber dana, tanggal, daftar barang & jumlah diminta; kolom barang
+  menampilkan **stok tersedia** per sekolah), tabel pengajuan, modal **Detail**,
+  aksi **Edit** draft, **Hapus** draft, dan **Submit** yang memvalidasi stok
   tersedia dan membuat **reservasi**.
-- Permission: lihat `lihat-distribusi-bhp`; buat/submit `kelola-pengajuan-bhp`.
+- **`PUT /distribusi-bhp/pengajuan/{pengajuan}`** mengganti tanggal + seluruh
+  detail draft; **`DELETE`** menghapus draft. Keduanya **hanya untuk draft** —
+  pengajuan `submitted`/`approved`/`rejected` ditolak (reservasi sudah terbentuk;
+  perubahan harus lewat reject lalu pengajuan baru). Keduanya atomic dengan
+  `lockForUpdate` agar edit bersamaan tidak saling menimpa.
+- **Validasi divisi**: `divisi_id` selalu diambil dari user login, dan usernya
+  wajib berdivisi **milik sekolah pengajuan** (ditolak bila divisi lintas
+  sekolah). Barang pada satu pengajuan wajib se-sumber dana dengan pengajuannya.
+- Permission: lihat `lihat-distribusi-bhp`; buat/edit/hapus/submit
+  `kelola-pengajuan-bhp`.
 - Role `operator_divisi` hanya sampai di sini (tanpa approve).
 
 ### 7.4 Review & Approval
@@ -180,7 +220,12 @@ divisi.
   permintaan, surat permintaan, surat penyaluran) digenerate dengan nomor atomic
   plus **snapshot penandatangan** di payload (immutable terhadap pergantian
   pejabat).
-- Permission: lihat `review-pengajuan-bhp`; approve/reject `approve-pengajuan-bhp`.
+- **Tanpa self-approval**: `operator_sekolah` tidak diberi `review-pengajuan-bhp`
+  /`approve-pengajuan-bhp`; `ReviewPengajuanController` juga memasang guard
+  `pastikanBukanPembuat()` yang menolak approve/reject bila reviewer adalah
+  pembuat pengajuan (403).
+- Permission: lihat `review-pengajuan-bhp`; approve/reject `approve-pengajuan-bhp`
+  (super_admin/admin_kcd saja).
 - **Hardening approval**: sumber dana barang direvalidasi saat approve (bukan
   hanya saat submit), semua barang terlibat dikunci `lockForUpdate` dengan
   urutan ID deterministik (anti-deadlock, anti-oversell concurrent), payload
@@ -206,7 +251,7 @@ divisi.
   per (jenis, sumber dana, tahun, bulan) — aman untuk request bersamaan
   termasuk saat row sequence pertama kali dibuat (unique constraint + retry).
 - **Unduh PDF** per dokumen, atau **Batch PDF** (semua dokumen dalam satu file;
-  histori generasi tersimpan di `bhp_batch_dokumen` dengan status
+  histori generasi tersimpan di `bhp_{bos,bopd}_batch_dokumen` dengan status
   selesai/sebagian/gagal).
 - **Dokumen tambahan**: BAST, BAP, Stok Opname, Buku Pengeluaran, Buku
   Penyaluran — idempotent per jenis (nomor tidak berubah saat dibuat ulang),
@@ -234,9 +279,21 @@ divisi.
   (wajib `barang_id`).
 - Permission: lihat `lihat-distribusi-bhp`; export `cetak-dokumen-bhp`.
 
-### 7.8 Impor Data Legacy
+### 7.8 Settings BHP (`/distribusi-bhp/settings`)
+
+- Format nomor dokumen + preferensi PDF (ukuran kertas & orientasi), **satu
+  baris per sumber dana** (tabel `bhp_{bos,bopd}_settings` dengan partial unique
+  index `is_singleton`). Settings BOS dan BOPD sepenuhnya independen.
+- Validasi format: wajib memuat placeholder `{urut:N}` (agar nomor tidak
+  duplikat), hanya placeholder yang dikenal diterima, dan kurung kurawal
+  berpasangan.
+- Permission: `kelola-master-bhp`.
+
+### 7.9 Impor Data Legacy
 
 - `DistribusiBhpImportSeeder` mengimpor master (kode rekening, penyedia,
   barang, harga) + penerimaan/detail dari DB SQLite aplikasi sumber. Melewati
   baris soft-deleted dan detail keranjang (`cart_status != 'saved'`), dan
-  idempotent. Detail: `docs/api.md` §I.
+  idempotent. Karena tidak ada pool pusat, penerimaan hasil impor diikatkan ke
+  satu sekolah tujuan (`setSekolahId()` atau sekolah pertama); bila tidak ada
+  sekolah, impor penerimaan dilewati dengan peringatan. Detail: `docs/api.md` §I.

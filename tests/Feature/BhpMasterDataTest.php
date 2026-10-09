@@ -58,7 +58,9 @@ class BhpMasterDataTest extends TestCase
             ])
             ->assertRedirect();
 
-        $this->assertSame(2, KodeRekening::where('kode', '5.1.02.01.01.0001')->count());
+        // Tabel terpisah per sumber dana: kode yang sama sah ada di BOS dan BOPD.
+        $this->assertSame(1, KodeRekening::sumberDana('BOS')->where('kode', '5.1.02.01.01.0001')->count());
+        $this->assertSame(1, KodeRekening::sumberDana('BOPD')->where('kode', '5.1.02.01.01.0001')->count());
     }
 
     public function test_kode_rekening_duplikat_pada_sumber_dana_sama_ditolak(): void
@@ -86,7 +88,7 @@ class BhpMasterDataTest extends TestCase
                 'nama' => 'Bahan B',
                 'sumber_dana' => 'APBD',
             ])
-            ->assertSessionHasErrors('sumber_dana');
+            ->assertStatus(422);
     }
 
     public function test_operator_dapat_membuat_barang_beserta_harga(): void
@@ -139,10 +141,10 @@ class BhpMasterDataTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.barang.harga.store', $barang), ['harga_satuan' => 200000])
+            ->post(route('distribusi-bhp.barang.harga.store', $barang), ['sumber_dana' => 'BOS', 'harga_satuan' => 200000])
             ->assertRedirect();
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.barang.harga.store', $barang), ['harga_satuan' => 220000])
+            ->post(route('distribusi-bhp.barang.harga.store', $barang), ['sumber_dana' => 'BOS', 'harga_satuan' => 220000])
             ->assertRedirect();
 
         $this->assertSame(2, HargaBarang::where('barang_id', $barang->id)->count());

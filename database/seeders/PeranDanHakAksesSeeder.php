@@ -56,8 +56,6 @@ class PeranDanHakAksesSeeder extends Seeder
             'kelola-master-bhp',
             'kelola-penerimaan-bhp',
             'kelola-pengajuan-bhp',
-            'review-pengajuan-bhp',
-            'approve-pengajuan-bhp',
             'cetak-dokumen-bhp',
             'kelola-divisi-bhp',
             'kelola-master-data-sekolah',

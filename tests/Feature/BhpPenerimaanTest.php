@@ -250,7 +250,9 @@ class BhpPenerimaanTest extends TestCase
             ])
             ->assertRedirect();
 
-        $this->assertSame(2, Penerimaan::count());
+        // Tabel terpisah per sumber dana: satu saldo awal BOS + satu BOPD.
+        $this->assertSame(1, Penerimaan::sumberDana('BOS')->count());
+        $this->assertSame(1, Penerimaan::sumberDana('BOPD')->count());
     }
 
     public function test_saldo_awal_dengan_jumlah_nol_ditolak(): void
@@ -390,7 +392,7 @@ class BhpPenerimaanTest extends TestCase
 
         $this->actingAs($operator)
             ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
-            ->assertSessionHasErrors();
+            ->assertSessionHas('error');
 
         $this->assertSame(1, Penerimaan::count());
     }
@@ -450,9 +452,40 @@ class BhpPenerimaanTest extends TestCase
 
         $this->actingAs($operator)
             ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
-            ->assertSessionHasErrors();
+            ->assertSessionHas('error');
 
         $this->assertSame(1, Penerimaan::count());
+    }
+
+    public function test_hapus_via_penerimaan_menghapus_semua_barang_saldo_awal(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $kertas = Barang::create(['kode_barang' => 'E2E-KERTAS-MULTI', 'nama_barang' => 'Kertas Multi', 'satuan' => 'Rim', 'sumber_dana' => 'BOS']);
+        $pulpen = Barang::create(['kode_barang' => 'E2E-PULPEN-MULTI', 'nama_barang' => 'Pulpen Multi', 'satuan' => 'Pcs', 'sumber_dana' => 'BOS']);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
+                'details' => [
+                    ['barang_id' => $kertas->id, 'jumlah' => 20, 'harga_satuan' => 50000],
+                    ['barang_id' => $pulpen->id, 'jumlah' => 100, 'harga_satuan' => 3000],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(2, PenerimaanDetail::count());
+        $penerimaan = Penerimaan::firstOrFail();
+
+        // Delete header-level menghapus SELURUH saldo awal, bukan satu barang.
+        $this->actingAs($operator)
+            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->assertRedirect();
+
+        $this->assertSame(0, Penerimaan::count());
+        $this->assertSame(0, PenerimaanDetail::count());
     }
 
     public function test_guest_tidak_bisa_mengakses_penerimaan(): void
@@ -491,7 +524,7 @@ class BhpPenerimaanTest extends TestCase
                     ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
                 ],
             ])
-            ->assertSessionHasErrors('sumber_dana');
+            ->assertStatus(422);
     }
 
     public function test_penyedia_invalid_ditolak(): void

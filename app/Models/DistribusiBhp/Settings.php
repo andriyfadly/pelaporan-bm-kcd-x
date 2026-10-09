@@ -2,18 +2,20 @@
 
 namespace App\Models\DistribusiBhp;
 
+use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Settings extends Model
 {
-    use HasUuids;
-
-    protected $table = 'bhp_settings';
+    use HasSumberDanaTable, HasUuids;
 
     protected $fillable = [
         'format_nomor',
-        'paper_size',
-        'orientation',
     ];
+
+    public static function suffixTabel(): string
+    {
+        return 'settings';
+    }
 }

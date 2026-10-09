@@ -97,7 +97,9 @@ class BhpPdfDokumenTest extends TestCase
 
     public function test_tabel_batch_dokumen_ada(): void
     {
-        $this->assertTrue(Schema::hasTable('bhp_batch_dokumen'));
+        // Tabel terpisah per sumber dana.
+        $this->assertTrue(Schema::hasTable('bhp_bos_batch_dokumen'));
+        $this->assertTrue(Schema::hasTable('bhp_bopd_batch_dokumen'));
     }
 
     public function test_operator_dapat_mengunduh_pdf_satu_dokumen(): void
@@ -129,7 +131,7 @@ class BhpPdfDokumenTest extends TestCase
         $response->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('content-type'));
 
-        $batch = BatchDokumen::firstOrFail();
+        $batch = BatchDokumen::sumberDana($pengajuan->sumber_dana)->firstOrFail();
         $this->assertSame('selesai', $batch->status);
         $this->assertSame($pengajuan->dokumen()->count(), $batch->total);
         $this->assertSame($batch->total, $batch->berhasil);
@@ -145,7 +147,7 @@ class BhpPdfDokumenTest extends TestCase
 
         $this->actingAs($operator)->post(route('distribusi-bhp.dokumen.batch', $pengajuan));
 
-        $this->assertDatabaseHas('bhp_batch_dokumen', [
+        $this->assertDatabaseHas('bhp_'.strtolower($pengajuan->sumber_dana).'_batch_dokumen', [
             'bhp_pengajuan_id' => $pengajuan->id,
             'status' => 'selesai',
         ]);

@@ -9,6 +9,8 @@ use App\Models\DistribusiBhp\Dokumen;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\SettingsService;
+use App\Services\DistribusiBhp\StokService;
+use App\Support\DistribusiBhp\SumberDana;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,12 +25,34 @@ class DokumenController extends Controller
 {
     use ResolvesSekolah;
 
+    private const VIEW = [
+        'nota_permintaan' => 'distribusi-bhp.nota-permintaan',
+        'surat_permintaan' => 'distribusi-bhp.surat-permintaan',
+        'surat_penyaluran' => 'distribusi-bhp.surat-penyaluran',
+        'bast' => 'distribusi-bhp.bast',
+        'bap' => 'distribusi-bhp.bap',
+        'stok_opname' => 'distribusi-bhp.stok-opname',
+        'buku_pengeluaran' => 'distribusi-bhp.buku-pengeluaran',
+        'buku_penyaluran' => 'distribusi-bhp.buku-penyaluran',
+    ];
+
     public function __construct(
         private readonly DokumenService $dokumenService,
         private readonly SettingsService $settings,
+        private readonly StokService $stok,
     ) {}
 
-    /** Label jenis dokumen dalam Bahasa Indonesia. */
+    private const PAPER = [
+        'nota_permintaan' => ['paper' => 'a4', 'orientation' => 'portrait'],
+        'surat_permintaan' => ['paper' => 'a4', 'orientation' => 'landscape'],
+        'surat_penyaluran' => ['paper' => 'a4', 'orientation' => 'portrait'],
+        'bast' => ['paper' => 'a4', 'orientation' => 'portrait'],
+        'bap' => ['paper' => 'a4', 'orientation' => 'portrait'],
+        'stok_opname' => ['paper' => 'a4', 'orientation' => 'portrait'],
+        'buku_pengeluaran' => ['paper' => 'a4', 'orientation' => 'landscape'],
+        'buku_penyaluran' => ['paper' => 'a4', 'orientation' => 'landscape'],
+    ];
+
     private const JUDUL = [
         'nota_permintaan' => 'Nota Permintaan Barang',
         'surat_permintaan' => 'Surat Permintaan Barang',
@@ -63,60 +87,69 @@ class DokumenController extends Controller
     {
         $this->authorizeSekolah($request, $pengajuan);
 
-        $dokumenList = $pengajuan->dokumen()->orderBy('jenis')->get();
+        return SumberDana::dengan($pengajuan->sumber_dana, function () use ($request, $pengajuan): Response {
+            $dokumenList = $pengajuan->dokumen()->orderBy('jenis')->get();
 
-        $batch = BatchDokumen::create([
-            'jenis' => 'batch_dokumen',
-            'sumber_dana' => $pengajuan->sumber_dana,
-            'bhp_pengajuan_id' => $pengajuan->id,
-            'status' => 'pending',
-            'total' => $dokumenList->count(),
-            'created_by' => $request->user()->id,
-        ]);
-
-        $files = [];
-        $berhasil = 0;
-        $gagal = 0;
-
-        foreach ($dokumenList as $dokumen) {
-            try {
-                $this->render($pengajuan->load('details.barang'), $dokumen)->output();
-                $files[] = ['nomor' => $dokumen->nomor, 'jenis' => $dokumen->jenis, 'status' => 'ok'];
-                $berhasil++;
-            } catch (Throwable $e) {
-                $files[] = ['nomor' => $dokumen->nomor, 'jenis' => $dokumen->jenis, 'status' => 'error', 'message' => $e->getMessage()];
-                $gagal++;
-            }
-        }
-
-        // Gabungkan semua dokumen menjadi satu PDF untuk diunduh.
-        $pdf = $this->loadPdf('distribusi-bhp.dokumen-kompilasi', [
-            'pengajuan' => $pengajuan->load('details.barang'),
-            'dokumenList' => $dokumenList,
-            'judulMap' => self::JUDUL,
-            'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
-            'pemohon' => $pengajuan->pemohon?->name ?? '-',
-            'penandatangan' => $dokumenList->first()?->payload['penandatangan'] ?? [],
-            'settings' => $this->settings->get(),
-        ]);
-
-        DB::transaction(function () use ($batch, $files, $berhasil, $gagal) {
-            $batch->update([
-                'status' => $gagal === 0 ? 'selesai' : ($berhasil === 0 ? 'gagal' : 'sebagian'),
-                'berhasil' => $berhasil,
-                'gagal' => $gagal,
-                'files' => $files,
-                'error_message' => $gagal > 0 ? "{$gagal} dokumen gagal dibuat." : null,
+            $batch = BatchDokumen::create([
+                'jenis' => 'batch_dokumen',
+                'bhp_pengajuan_id' => $pengajuan->id,
+                'status' => 'pending',
+                'total' => $dokumenList->count(),
+                'created_by' => $request->user()->id,
             ]);
+
+            $files = [];
+            $berhasil = 0;
+            $gagal = 0;
+            $pdfs = [];
+
+            foreach ($dokumenList as $dokumen) {
+                try {
+                    $pdfs[] = $this->render($pengajuan->load('details.barang'), $dokumen);
+                    $files[] = ['nomor' => $dokumen->nomor, 'jenis' => $dokumen->jenis, 'status' => 'ok'];
+                    $berhasil++;
+                } catch (Throwable $e) {
+                    $files[] = ['nomor' => $dokumen->nomor, 'jenis' => $dokumen->jenis, 'status' => 'error', 'message' => $e->getMessage()];
+                    $gagal++;
+                }
+            }
+
+            // Gabungkan semua PDF menggunakan dompdf
+            $pdf = Pdf::loadHtml(
+                view('distribusi-bhp.dokumen-kompilasi', [
+                    'pengajuan' => $pengajuan->load('details.barang'),
+                    'dokumenList' => $dokumenList,
+                    'judulMap' => self::JUDUL,
+                    'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
+                    'alamat' => $pengajuan->sekolah?->alamat ?? '',
+                    'telepon' => $pengajuan->sekolah?->telepon ?? '',
+                    'website' => $pengajuan->sekolah?->website ?? '',
+                    'email' => $pengajuan->sekolah?->email ?? '',
+                    'kodePos' => $pengajuan->sekolah?->kode_pos ?? '',
+                    'pemohon' => $pengajuan->pemohon?->name ?? '-',
+                    'penandatangan' => $dokumenList->first()?->payload['penandatangan'] ?? [],
+                    'settings' => $this->settings->get($pengajuan->sumber_dana),
+                ])->render()
+            )->setPaper('a4', 'portrait');
+
+            DB::transaction(function () use ($batch, $files, $berhasil, $gagal) {
+                $batch->update([
+                    'status' => $gagal === 0 ? 'selesai' : ($berhasil === 0 ? 'gagal' : 'sebagian'),
+                    'berhasil' => $berhasil,
+                    'gagal' => $gagal,
+                    'files' => $files,
+                    'error_message' => $gagal > 0 ? "{$gagal} dokumen gagal dibuat." : null,
+                ]);
+            });
+
+            activity('sistem')
+                ->event('batch-dokumen-bhp')
+                ->performedOn($pengajuan)
+                ->withProperties(['batch_id' => $batch->id, 'berhasil' => $berhasil, 'gagal' => $gagal])
+                ->log('batch-dokumen-bhp');
+
+            return $pdf->download("batch_dokumen_bhp_{$pengajuan->sumber_dana}.pdf");
         });
-
-        activity('sistem')
-            ->event('batch-dokumen-bhp')
-            ->performedOn($pengajuan)
-            ->withProperties(['batch_id' => $batch->id, 'berhasil' => $berhasil, 'gagal' => $gagal])
-            ->log('batch-dokumen-bhp');
-
-        return $pdf->download("batch_dokumen_bhp_{$pengajuan->sumber_dana}.pdf");
     }
 
     public function tambahan(Request $request, Pengajuan $pengajuan): RedirectResponse
@@ -139,25 +172,30 @@ class DokumenController extends Controller
 
     private function render(Pengajuan $pengajuan, Dokumen $dokumen)
     {
-        return $this->loadPdf('distribusi-bhp.dokumen', [
+        $pengajuan->loadMissing('details.barang', 'divisi', 'pemohon', 'dokumen');
+
+        return $this->loadPdf($dokumen->jenis, $pengajuan->sumber_dana, self::VIEW[$dokumen->jenis] ?? 'distribusi-bhp.dokumen', [
             'judul' => self::JUDUL[$dokumen->jenis] ?? ucwords(str_replace('_', ' ', $dokumen->jenis)),
             'dokumen' => $dokumen,
             'pengajuan' => $pengajuan,
             'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
+            'alamat' => $pengajuan->sekolah?->alamat ?? '',
+            'telepon' => $pengajuan->sekolah?->telepon ?? '',
+            'website' => $pengajuan->sekolah?->website ?? '',
+            'email' => $pengajuan->sekolah?->email ?? '',
+            'kodePos' => $pengajuan->sekolah?->kode_pos ?? '',
             'pemohon' => $pengajuan->pemohon?->name ?? '-',
-            // Snapshot penandatangan dari payload (bukan pejabat aktif kini),
-            // sehingga reprint dokumen lama tetap konsisten.
             'penandatangan' => $dokumen->payload['penandatangan'] ?? [],
-            'settings' => $this->settings->get(),
+            'settings' => $this->settings->get($pengajuan->sumber_dana),
         ]);
     }
 
-    /** Load PDF dengan paper/orientasi dari settings BHP. */
-    private function loadPdf(string $view, array $data)
+    /** Load PDF dengan paper/orientasi hardcode per jenis. */
+    private function loadPdf(string $jenis, string $sumberDana, string $view, array $data)
     {
-        ['paper' => $paper, 'orientation' => $orientation] = $this->settings->pdf();
+        $cfg = self::PAPER[$jenis] ?? ['paper' => 'a4', 'orientation' => 'portrait'];
 
-        return Pdf::loadView($view, $data)->setPaper($paper, $orientation);
+        return Pdf::loadView($view, $data)->setPaper($cfg['paper'], $cfg['orientation']);
     }
 
     /** Ubah nomor dokumen menjadi nama file yang aman (tanpa '/' atau '\'). */

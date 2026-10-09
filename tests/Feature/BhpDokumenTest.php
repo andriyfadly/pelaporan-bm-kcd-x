@@ -47,7 +47,7 @@ class BhpDokumenTest extends TestCase
         return $user;
     }
 
-    private function barang(string $sumberDana = 'BOS', int $stok = 100): Barang
+    private function barang(Sekolah $sekolah, string $sumberDana = 'BOS', int $stok = 100): Barang
     {
         $barang = Barang::create([
             'kode_barang' => '1.1.7.20.'.$sumberDana,
@@ -56,7 +56,7 @@ class BhpDokumenTest extends TestCase
             'sumber_dana' => $sumberDana,
         ]);
 
-        $penerimaan = Penerimaan::create(['sumber_dana' => $sumberDana, 'is_saldo_awal' => true, 'periode_tahun' => 2026]);
+        $penerimaan = Penerimaan::create(['sekolah_id' => $sekolah->id, 'sumber_dana' => $sumberDana, 'is_saldo_awal' => true, 'periode_tahun' => 2026]);
         PenerimaanDetail::create([
             'bhp_penerimaan_id' => $penerimaan->id,
             'barang_id' => $barang->id,
@@ -92,16 +92,21 @@ class BhpDokumenTest extends TestCase
         $c = $service->generate('nota_permintaan', 'BOPD', 2026, 6);
         $d = $service->generate('nota_permintaan', 'BOS', 2026, 7);
 
-        $this->assertSame('001/BHP/NPB/BOS/VI/2026', $a);
-        $this->assertSame('002/BHP/NPB/BOS/VI/2026', $b);
-        $this->assertSame('001/BHP/NPB/BOPD/VI/2026', $c);
-        $this->assertSame('001/BHP/NPB/BOS/VII/2026', $d);
+        // Default format tidak lagi memuat {sumber_dana} (implisit dari tabel),
+        // tetapi penomoran tetap terpisah per sumber dana.
+        $this->assertSame('001/BHP/NPB/VI/2026', $a);
+        $this->assertSame('002/BHP/NPB/VI/2026', $b);
+        $this->assertSame('001/BHP/NPB/VI/2026', $c);
+        $this->assertSame('001/BHP/NPB/VII/2026', $d);
     }
 
     public function test_tabel_sequence_dan_dokumen_ada(): void
     {
-        $this->assertTrue(Schema::hasTable('bhp_nomor_sequence'));
-        $this->assertTrue(Schema::hasTable('bhp_dokumen'));
+        // Tabel terpisah per sumber dana.
+        $this->assertTrue(Schema::hasTable('bhp_bos_nomor_sequence'));
+        $this->assertTrue(Schema::hasTable('bhp_bopd_nomor_sequence'));
+        $this->assertTrue(Schema::hasTable('bhp_bos_dokumen'));
+        $this->assertTrue(Schema::hasTable('bhp_bopd_dokumen'));
     }
 
     public function test_approve_pengajuan_membuat_dokumen_distribusi_secara_atomic(): void
@@ -109,7 +114,7 @@ class BhpDokumenTest extends TestCase
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'op.dok');
         $admin = $this->user($sekolah, 'admin.dok');
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = Pengajuan::create([
             'sekolah_id' => $sekolah->id,
@@ -144,7 +149,7 @@ class BhpDokumenTest extends TestCase
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'op.dok2');
         $admin = $this->user($sekolah, 'admin.dok2');
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = Pengajuan::create([
             'sekolah_id' => $sekolah->id,
@@ -180,7 +185,7 @@ class BhpDokumenTest extends TestCase
         $operator = $this->user($sekolah, 'op.dok3');
         $admin = $this->user($sekolah, 'admin.dok3');
         // Stok fisik hanya 50, sementara item direservasi 100.
-        $barang = $this->barang('BOS', 50);
+        $barang = $this->barang($sekolah, 'BOS', 50);
 
         $pengajuan = Pengajuan::create([
             'sekolah_id' => $sekolah->id,
@@ -216,7 +221,7 @@ class BhpDokumenTest extends TestCase
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'op.dok4');
         $admin = $this->user($sekolah, 'admin.dok4');
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = Pengajuan::create([
             'sekolah_id' => $sekolah->id,
@@ -245,7 +250,7 @@ class BhpDokumenTest extends TestCase
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'op.dok5');
         $admin = $this->user($sekolah, 'admin.dok5');
-        $barang = $this->barang('BOS', 100);
+        $barang = $this->barang($sekolah, 'BOS', 100);
 
         $pengajuan = Pengajuan::create([
             'sekolah_id' => $sekolah->id,

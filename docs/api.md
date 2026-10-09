@@ -123,23 +123,32 @@ Semua rute ber-prefix `/distribusi-bhp`, name `distribusi-bhp.*`, dan dijaga
 permission BHP. Prefix ini tidak menyentuh `/pelaporan-bm` (lihat
 `docs/requirements/domain-boundaries.md`).
 
+Middleware `sumber-dana-bhp` (`SetSumberDanaBhp`) menyetel sumber dana aktif
+request dari input/query `sumber_dana` **fail-closed**: nilai yang dikirim
+tetapi tidak valid (mis. `APBN`) → **422**, nilai kosong → default `BOS`.
+State sumber dana dipulihkan di `finally` sehingga tidak bocor antar-request.
+Route model binding lintas tabel (BOS/BOPD) ditangani trait
+`HasSumberDanaTable::resolveRouteBinding`.
+
 | Method | Path | Permission | Controller::method |
 |---|---|---|---|
 | GET | `/distribusi-bhp/dashboard` | `lihat-distribusi-bhp` | `DashboardController::index` |
 | GET | `/distribusi-bhp/pengajuan` | `lihat-distribusi-bhp` | `PengajuanController::index` |
 | POST | `/distribusi-bhp/pengajuan` | `kelola-pengajuan-bhp` | `PengajuanController::store` |
+| PUT | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::update` — hanya draft |
+| DELETE | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::destroy` — hanya draft |
 | POST | `/distribusi-bhp/pengajuan/{pengajuan}/submit` | `kelola-pengajuan-bhp` | `PengajuanController::submit` |
 | GET | `/distribusi-bhp/review-pengajuan` | `review-pengajuan-bhp` | `ReviewPengajuanController::index` |
 | POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/approve` | `approve-pengajuan-bhp` | `ReviewPengajuanController::approve` |
 | POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/reject` | `approve-pengajuan-bhp` | `ReviewPengajuanController::reject` |
 | GET/POST | `/distribusi-bhp/master/kode-rekening` | `kelola-master-bhp` | `KodeRekeningController` |
 | GET/POST | `/distribusi-bhp/master/barang` | `kelola-master-bhp` | `BarangController` |
-| POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-master-bhp` | `BarangController::storeHarga` |
+| POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-master-bhp` | `BarangController::storeHarga` — `sumber_dana` wajib & harus cocok dengan barang ter-binding |
 | GET/POST | `/distribusi-bhp/master/penyedia` | `kelola-master-bhp` | `PenyediaController` |
 | GET/POST | `/distribusi-bhp/penerimaan` | `kelola-penerimaan-bhp` | `PenerimaanController` |
-| DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hanya saldo awal milik sekolah sendiri yang belum dipakai |
+| DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hapus **seluruh** saldo awal (header + semua detail) milik sekolah sendiri yang belum dipakai |
 | GET/POST | `/distribusi-bhp/saldo-awal` | `kelola-penerimaan-bhp` | `SaldoAwalController` — halaman saldo awal (filter `sumber_dana`, `periode`) |
-| DELETE | `/distribusi-bhp/saldo-awal/{detail}` | `kelola-penerimaan-bhp` | `SaldoAwalController` — hapus satu barang saldo awal |
+| DELETE | `/distribusi-bhp/saldo-awal/{detail}` | `kelola-penerimaan-bhp` | `SaldoAwalController` — hapus **satu barang** saldo awal (barang lain tetap; header ikut terhapus bila detail habis). Ditolak bila barang dipakai pengajuan aktif (submitted/approved) |
 | POST | `/distribusi-bhp/saldo-awal/import` | `kelola-penerimaan-bhp` | `SaldoAwalController` — import Excel (all-or-nothing, throttle 10/menit) |
 | GET | `/distribusi-bhp/saldo-awal/template` | `kelola-penerimaan-bhp` | `SaldoAwalController` — unduh template import |
 | GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen` | `lihat-distribusi-bhp` | `DokumenController::show` |
@@ -149,7 +158,7 @@ permission BHP. Prefix ini tidak menyentuh `/pelaporan-bm` (lihat
 | GET | `/distribusi-bhp/laporan` | `lihat-distribusi-bhp` | `LaporanController::index` |
 | GET | `/distribusi-bhp/laporan/kartu-persediaan` | `lihat-distribusi-bhp` | `LaporanController::kartuPersediaan` |
 | GET | `/distribusi-bhp/laporan/export` | `cetak-dokumen-bhp` | `LaporanController::export` |
-Total: **23 rute** (prefix distribusi-bhp).
+Total: **25 rute** (prefix distribusi-bhp).
 
 ### I. Master Data Sekolah (`app/Http/Controllers/Master/*`, prefix `/master-data`)
 
@@ -168,8 +177,15 @@ Rute generic lintas domain (di luar `distribusi-bhp`). Dijaga permission
 
 Payload penting:
 
-- `POST pengajuan`: `sumber_dana` (`BOS`/`BOPD`), `tanggal`, `details[]`
-  (`barang_id`, `jumlah_diminta`, `keperluan`).
+- `POST pengajuan`: `sumber_dana` (`BOS`/`BOPD`), `tanggal`, `items[]`
+  (`barang_id`, `jumlah_diminta`, `keperluan`). `PUT pengajuan/{pengajuan}`
+  memakai payload sama dan hanya berlaku untuk status `draft`.
+  **Source-match guard**: `update`, `submit`, dan `destroy` menolak bila
+  `sumber_dana` request tidak cocok dengan sumber dana model ter-binding
+  (mencegah IDOR lintas sumber dana lewat route model binding).
+- `POST penerimaan` / `POST saldo-awal`: `sekolah_id` **selalu dari user login**
+  (input request diabaikan); domain BHP tidak mengenal pool pusat sehingga
+  konteks sekolah **wajib** — admin tanpa sekolah menerima 422.
 - `POST pejabat` / `PUT pejabat/{pejabat}`: `jabatan` ∈ {`kepala_sekolah`,
   `wakasek_sarpras`, `pembantu_pengurus_barang`}, `jenis_jabatan` ∈
   {`definitif`, `plt`, `plh`}, `nama`, `pangkat_golongan`, `nip`,
@@ -181,12 +197,14 @@ Payload penting:
   jenis.
 - `GET laporan/export`: `sumber_dana`, `jenis` ∈ {`stok`, `pengeluaran`,
   `kartu_persediaan`}; `barang_id` **wajib** bila `jenis=kartu_persediaan`
-  (divalidasi `uuid` + `exists:bhp_barang,id`). Barang dengan sumber dana
-  berbeda dari `sumber_dana` laporan → redirect + flash `error` (bukan 500).
-- `GET laporan/kartu-persediaan`: `barang_id` (`uuid` + `exists`,
-  opsional), `sumber_dana` (opsional; default `BOS`). Mengembalikan `kartu`
-  berisi `barang` (saldo awal/masuk/keluar/akhir) + `mutasi[]` dengan saldo
-  berjalan.
+  (divalidasi `uuid` + `exists` ke tabel barang **sesuai sumber dana** laporan,
+  via `SumberDana::existsRule('barang', $sumberDana)` — barang dana lain
+  ditolak sebagai validation error). Barang dengan sumber dana berbeda dari
+  `sumber_dana` laporan → redirect + flash `error` (bukan 500).
+- `GET laporan/kartu-persediaan`: `barang_id` (`uuid` + `exists` ke tabel barang
+  sesuai sumber dana, opsional), `sumber_dana` (opsional; default `BOS`).
+  Mengembalikan `kartu` berisi `barang` (saldo awal/masuk/keluar/akhir) +
+  `mutasi[]` dengan saldo berjalan.
 
 ### J. Migrasi Data Legacy BHP (seeder)
 
@@ -195,8 +213,10 @@ Payload penting:
   - Membaca DB SQLite sumber (Next/Prisma). Default:
     `../sistem-manajemen-aset/prisma/dev.db.backup.db`; dapat diarahkan via
     `setSourcePath()`.
-  - Cakupan: `bhp_kode_rekening`, `bhp_penyedia`, `bhp_barang`,
-    `bhp_harga_barang`, `bhp_penerimaan` + `bhp_penerimaan_detail`.
+  - Cakupan: kode rekening, penyedia (`bhp_penyedia`, bersama),
+    barang, harga barang, penerimaan + detail. Baris sumber dana
+    `BOS`/`BOPD` dituliskan ke tabel fisik per dana (`bhp_bos_*`/`bhp_bopd_*`)
+    via konteks `SumberDana::dengan()`.
   - Melewati baris `deleted_at` (bila kolom ada) dan detail
     `cart_status != 'saved'`.
   - Idempotent (upsert berbasis `source_id` untuk penerimaan, natural key untuk

@@ -2,23 +2,26 @@
 
 namespace App\Models\DistribusiBhp;
 
+use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class NomorSequence extends Model
 {
-    use HasFactory, HasUuids;
-
-    protected $table = 'bhp_nomor_sequence';
+    use HasFactory, HasSumberDanaTable, HasUuids;
 
     protected $fillable = [
         'jenis',
-        'sumber_dana',
         'tahun',
         'bulan',
         'counter',
     ];
+
+    public static function suffixTabel(): string
+    {
+        return 'nomor_sequence';
+    }
 
     protected function casts(): array
     {

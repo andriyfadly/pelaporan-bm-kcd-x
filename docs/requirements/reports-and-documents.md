@@ -29,7 +29,7 @@ Status: L = laporan, D = dokumen.
 | Buku penyaluran | 🟡 Sebagian (dokumen ada; laporan penyaluran khusus belum) |
 | Kartu barang | ✅ Sudah (runtime, tanpa tabel) |
 | Kartu persediaan | ✅ Sudah (runtime dengan saldo berjalan + export) |
-| Batch PDF dan histori batch | ✅ Sudah (`bhp_batch_dokumen`) |
+| Batch PDF dan histori batch | ✅ Sudah (`bhp_{bos,bopd}_batch_dokumen`) |
 
 ## 3. Numbering
 

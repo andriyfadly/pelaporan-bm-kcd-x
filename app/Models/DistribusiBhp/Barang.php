@@ -2,6 +2,7 @@
 
 namespace App\Models\DistribusiBhp;
 
+use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,9 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Barang extends Model
 {
-    use HasFactory, HasUuids;
-
-    protected $table = 'bhp_barang';
+    use HasFactory, HasSumberDanaTable, HasUuids;
 
     protected $fillable = [
         'kode_barang',
@@ -20,8 +19,12 @@ class Barang extends Model
         'spesifikasi_barang_nusp',
         'satuan',
         'kode_rekening_id',
-        'sumber_dana',
     ];
+
+    public static function suffixTabel(): string
+    {
+        return 'barang';
+    }
 
     public function kodeRekening(): BelongsTo
     {

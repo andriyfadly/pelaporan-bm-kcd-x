@@ -5,7 +5,9 @@ namespace App\Services\DistribusiBhp;
 use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Models\DistribusiBhp\PengajuanDetail;
 use App\Models\User;
+use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -21,16 +23,17 @@ class StokService
 {
     /**
      * Stok fisik: total barang masuk (penerimaan + saldo awal).
-     * $sekolahId null = tanpa filter (admin lintas sekolah); user sekolah
-     * mendapat penerimaan sekolahnya sendiri ditambah pool pusat (sekolah_id null).
+     *
+     * Tidak ada pool pusat: penerimaan selalu milik satu sekolah. $sekolahId
+     * null = tanpa filter (admin lintas sekolah, agregat seluruh sekolah);
+     * selain itu scope TEPAT ke sekolah tersebut — penerimaan sekolah lain
+     * tidak pernah ikut terhitung.
      */
     public function fisik(Barang $barang, ?string $sekolahId = null): int
     {
-        return (int) PenerimaanDetail::where('barang_id', $barang->id)
-            ->when($sekolahId !== null, fn ($q) => $q->whereHas('penerimaan', fn ($p) => $p->where(function ($w) use ($sekolahId) {
-                $w->where('sekolah_id', $sekolahId)->orWhereNull('sekolah_id');
-            })))
-            ->sum('jumlah');
+        return SumberDana::dengan($barang->sumber_dana, fn (): int => (int) PenerimaanDetail::where('barang_id', $barang->id)
+            ->when($sekolahId !== null, fn ($q) => $q->whereHas('penerimaan', fn ($p) => $p->where('sekolah_id', $sekolahId)))
+            ->sum('jumlah'));
     }
 
     /**
@@ -38,12 +41,11 @@ class StokService
      */
     public function terpakai(Barang $barang, ?string $sekolahId = null): int
     {
-        return (int) DB::table('bhp_pengajuan_detail as d')
-            ->join('bhp_pengajuan as p', 'p.id', '=', 'd.bhp_pengajuan_id')
-            ->where('d.barang_id', $barang->id)
-            ->where('p.status', 'approved')
-            ->when($sekolahId !== null, fn ($q) => $q->where('p.sekolah_id', $sekolahId))
-            ->sum('d.jumlah_disetujui');
+        return SumberDana::dengan($barang->sumber_dana, fn (): int => (int) PengajuanDetail::where('barang_id', $barang->id)
+            ->whereHas('pengajuan', fn ($q) => $q
+                ->where('status', 'approved')
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+            ->sum('jumlah_disetujui'));
     }
 
     /**
@@ -51,12 +53,11 @@ class StokService
      */
     public function reservasi(Barang $barang, ?string $sekolahId = null): int
     {
-        return (int) DB::table('bhp_pengajuan_detail as d')
-            ->join('bhp_pengajuan as p', 'p.id', '=', 'd.bhp_pengajuan_id')
-            ->where('d.barang_id', $barang->id)
-            ->where('p.status', 'submitted')
-            ->when($sekolahId !== null, fn ($q) => $q->where('p.sekolah_id', $sekolahId))
-            ->sum('d.jumlah_direservasi');
+        return SumberDana::dengan($barang->sumber_dana, fn (): int => (int) PengajuanDetail::where('barang_id', $barang->id)
+            ->whereHas('pengajuan', fn ($q) => $q
+                ->where('status', 'submitted')
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+            ->sum('jumlah_direservasi'));
     }
 
     /**
@@ -83,31 +84,39 @@ class StokService
             return [];
         }
 
+        $dana = collect($barangs)->first()?->sumber_dana ?? SumberDana::aktif();
+
+        return SumberDana::dengan($dana, fn (): array => $this->rekapDalamDana($barangs, $barangIds, $sekolahId));
+    }
+
+    /**
+     * @param  iterable<Barang>  $barangs
+     * @param  list<string>  $barangIds
+     * @return array<string,array{fisik:int,terpakai:int,reservasi:int,tersedia:int}>
+     */
+    private function rekapDalamDana(iterable $barangs, array $barangIds, ?string $sekolahId): array
+    {
         $fisik = PenerimaanDetail::whereIn('barang_id', $barangIds)
-            ->when($sekolahId !== null, fn ($q) => $q->whereHas('penerimaan', fn ($p) => $p->where(function ($w) use ($sekolahId) {
-                $w->where('sekolah_id', $sekolahId)->orWhereNull('sekolah_id');
-            })))
+            ->when($sekolahId !== null, fn ($q) => $q->whereHas('penerimaan', fn ($p) => $p->where('sekolah_id', $sekolahId)))
             ->groupBy('barang_id')
             ->selectRaw('barang_id, sum(jumlah) as total')
             ->pluck('total', 'barang_id');
 
-        $terpakai = DB::table('bhp_pengajuan_detail as d')
-            ->join('bhp_pengajuan as p', 'p.id', '=', 'd.bhp_pengajuan_id')
-            ->whereIn('d.barang_id', $barangIds)
-            ->where('p.status', 'approved')
-            ->when($sekolahId !== null, fn ($q) => $q->where('p.sekolah_id', $sekolahId))
-            ->groupBy('d.barang_id')
-            ->selectRaw('d.barang_id, sum(d.jumlah_disetujui) as total')
-            ->pluck('total', 'd.barang_id');
+        $terpakai = PengajuanDetail::whereIn('barang_id', $barangIds)
+            ->whereHas('pengajuan', fn ($q) => $q
+                ->where('status', 'approved')
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+            ->groupBy('barang_id')
+            ->selectRaw('barang_id, sum(jumlah_disetujui) as total')
+            ->pluck('total', 'barang_id');
 
-        $reservasi = DB::table('bhp_pengajuan_detail as d')
-            ->join('bhp_pengajuan as p', 'p.id', '=', 'd.bhp_pengajuan_id')
-            ->whereIn('d.barang_id', $barangIds)
-            ->where('p.status', 'submitted')
-            ->when($sekolahId !== null, fn ($q) => $q->where('p.sekolah_id', $sekolahId))
-            ->groupBy('d.barang_id')
-            ->selectRaw('d.barang_id, sum(d.jumlah_direservasi) as total')
-            ->pluck('total', 'd.barang_id');
+        $reservasi = PengajuanDetail::whereIn('barang_id', $barangIds)
+            ->whereHas('pengajuan', fn ($q) => $q
+                ->where('status', 'submitted')
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+            ->groupBy('barang_id')
+            ->selectRaw('barang_id, sum(jumlah_direservasi) as total')
+            ->pluck('total', 'barang_id');
 
         $rekap = [];
 
@@ -129,15 +138,15 @@ class StokService
     /**
      * Submit pengajuan: validasi stok lalu buat reservasi.
      *
-     * Validasi stok selalu scoped ke sekolah pengajuan: penerimaan tanpa
-     * sekolah (saldo awal pusat) tetap bisa dipakai, tapi pengajuan sekolah A
-     * tidak mengonsumsi stok penerimaan milik sekolah B.
+     * Validasi stok selalu scoped TEPAT ke sekolah pengajuan: pengajuan
+     * sekolah A hanya boleh mengonsumsi stok penerimaan sekolah A, tidak
+     * pernah stok sekolah B (tidak ada pool pusat).
      *
      * @throws RuntimeException bila status bukan draft, detail kosong, atau stok tidak cukup.
      */
     public function submit(Pengajuan $pengajuan): Pengajuan
     {
-        return DB::transaction(function () use ($pengajuan) {
+        return SumberDana::dengan($pengajuan->sumber_dana, fn (): Pengajuan => DB::transaction(function () use ($pengajuan) {
             $pengajuan = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
 
             if ($pengajuan->status !== 'draft') {
@@ -185,7 +194,7 @@ class StokService
             $pengajuan->update(['status' => 'submitted']);
 
             return $pengajuan;
-        });
+        }));
     }
 
     /**
@@ -193,7 +202,7 @@ class StokService
      */
     public function reject(Pengajuan $pengajuan, User $reviewer, string $alasan): Pengajuan
     {
-        return DB::transaction(function () use ($pengajuan, $reviewer, $alasan) {
+        return SumberDana::dengan($pengajuan->sumber_dana, fn (): Pengajuan => DB::transaction(function () use ($pengajuan, $reviewer, $alasan) {
             $pengajuan = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
 
             if ($pengajuan->status !== 'submitted') {
@@ -217,7 +226,7 @@ class StokService
             ]);
 
             return $pengajuan;
-        });
+        }));
     }
 
     /**
@@ -237,6 +246,14 @@ class StokService
      * @param  array<string,int>  $jumlahDisetujui
      */
     public function applyApprove(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui = []): Pengajuan
+    {
+        return SumberDana::dengan($pengajuan->sumber_dana, fn (): Pengajuan => $this->applyApproveDalamDana($pengajuan, $reviewer, $jumlahDisetujui));
+    }
+
+    /**
+     * @param  array<string,int>  $jumlahDisetujui
+     */
+    private function applyApproveDalamDana(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui): Pengajuan
     {
         $pengajuan = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
 

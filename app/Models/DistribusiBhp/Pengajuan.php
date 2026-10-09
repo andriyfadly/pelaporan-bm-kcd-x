@@ -2,6 +2,7 @@
 
 namespace App\Models\DistribusiBhp;
 
+use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -12,9 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Pengajuan extends Model
 {
-    use HasFactory, HasUuids;
-
-    protected $table = 'bhp_pengajuan';
+    use HasFactory, HasSumberDanaTable, HasUuids;
 
     protected $fillable = [
         'sekolah_id',
@@ -22,13 +21,17 @@ class Pengajuan extends Model
         'user_id',
         'nomor_pengajuan',
         'tanggal',
-        'sumber_dana',
         'status',
         'review_notes',
         'rejection_reason',
         'reviewed_by',
         'reviewed_at',
     ];
+
+    public static function suffixTabel(): string
+    {
+        return 'pengajuan';
+    }
 
     protected function casts(): array
     {

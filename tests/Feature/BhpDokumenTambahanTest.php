@@ -219,7 +219,7 @@ class BhpDokumenTambahanTest extends TestCase
             ->post(route('distribusi-bhp.dokumen.tambahan', $pengajuan), ['jenis' => 'bast', 'tanggal' => '2026-06-20'])
             ->assertRedirect();
 
-        $this->assertDatabaseHas('bhp_dokumen', ['bhp_pengajuan_id' => $pengajuan->id, 'jenis' => 'bast']);
+        $this->assertDatabaseHas('bhp_'.strtolower($pengajuan->sumber_dana).'_dokumen', ['bhp_pengajuan_id' => $pengajuan->id, 'jenis' => 'bast']);
     }
 
     public function test_user_tanpa_permission_cetak_tidak_dapat_generate(): void
