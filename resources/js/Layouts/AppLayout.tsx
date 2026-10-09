@@ -262,7 +262,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const isSuperAdmin = roles.includes('super_admin');
 
     const canBhp = permissions.includes('lihat-distribusi-bhp');
-    const canMasterData = permissions.includes('kelola-master-bhp');
+    const canMasterData = permissions.includes('kelola-master-data-sekolah');
     const [openBhp, setOpenBhp] = useState(true);
 
     const isMasterActive =
