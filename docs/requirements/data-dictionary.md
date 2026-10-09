@@ -48,20 +48,20 @@ entitas source digabung atau belum dibuat; lihat kolom Status.
 | `BukuPenerimaanBarangDetail` | `bhp_{bos,bopd}_penerimaan_detail` | ✅ Sudah | hanya baris `cart_status=saved` yang diimpor |
 | `NotaPermintaanBarang` | `bhp_{bos,bopd}_pengajuan` | ✅ Sudah | Digabung sebagai pengajuan + workflow status |
 | `NotaPermintaanBarangDetail` | `bhp_{bos,bopd}_pengajuan_detail` | ✅ Sudah | |
-| `SuratPermintaanBarang` | `bhp_surat_permintaan` | ⬜ Belum | Dibuat sebagai **dokumen** `bhp_{bos,bopd}_dokumen` (`jenis=surat_permintaan`), bukan tabel terpisah |
-| `SuratPerintahPenyaluranBarang` | `bhp_surat_penyaluran` | ⬜ Belum | Idem (`jenis=surat_penyaluran`) |
-| `BeritaAcaraSerahTerima` | `bhp_bast` | ⬜ Belum | Idem (`jenis=bast`) |
-| `BeritaAcaraPemeriksaan` | `bhp_bap` | ⬜ Belum | Idem (`jenis=bap`) |
-| `StokOpname` | `bhp_stok_opname` | ⬜ Belum | Idem (`jenis=stok_opname`) |
-| `BukuPengeluaranBarang` | `bhp_buku_pengeluaran` | ⬜ Belum | Idem (`jenis=buku_pengeluaran`) |
-| `BukuPenyaluran` | `bhp_buku_penyaluran` | ⬜ Belum | Idem (`jenis=buku_penyaluran`) |
+| `SuratPermintaanBarang` | `bhp_surat_permintaan` | ✅ Sudah | Dibuat sebagai **dokumen** `bhp_{bos,bopd}_dokumen` (`jenis=surat_permintaan`), bukan tabel terpisah; halaman read-only mandiri tersedia |
+| `SuratPerintahPenyaluranBarang` | `bhp_surat_penyaluran` | ✅ Sudah | Idem (`jenis=surat_penyaluran`) |
+| `BeritaAcaraSerahTerima` | `bhp_bast` | ✅ Sudah | Idem (`jenis=bast`) |
+| `BeritaAcaraPemeriksaan` | `bhp_bap` | ✅ Sudah | Idem (`jenis=bap`) |
+| `StokOpname` | `bhp_stok_opname` | ✅ Sudah | Idem (`jenis=stok_opname`) |
+| `BukuPengeluaranBarang` | `bhp_buku_pengeluaran` | ✅ Sudah | Idem (`jenis=buku_pengeluaran`); juga halaman dari data pengajuan approved |
+| `BukuPenyaluran` | `bhp_buku_penyaluran` | ✅ Sudah | Idem (`jenis=buku_penyaluran`) |
 | `KartuBarang` | `bhp_kartu_barang` | 🟡 Sebagian | Dihitung runtime (`LaporanService::kartuBarang`), tanpa tabel |
 | `KartuBarangPersediaan` | `bhp_kartu_persediaan` | 🟡 Sebagian | Dihitung runtime dengan saldo berjalan (`LaporanService::kartuPersediaan`), tanpa tabel |
 | `BatchPdfGeneration` | `bhp_batch_pdf_generation` | 🟡 Sebagian | Dipetakan ke `bhp_{bos,bopd}_batch_dokumen` |
 | `BatchPdfFile` | `bhp_batch_pdf_file` | 🟡 Sebagian | Detail batch disimpan sebagai kolom `files` (json) di `bhp_{bos,bopd}_batch_dokumen` |
 | `MonthlySequence` / `DocumentSequence` | `bhp_{bos,bopd}_nomor_sequence` | ✅ Sudah | Counter atomic per (jenis, tahun, bulan) per tabel dana; insert row pertama anti-race |
 | — | `bhp_{bos,bopd}_dokumen` | ✅ Sudah | Tabel dokumen hasil generate (jenis, nomor, payload); payload ter-scope sekolah pengajuan |
-| — | `bhp_{bos,bopd}_settings` | ✅ Sudah | Satu baris per dana (`is_singleton` + unique index): format nomor, preferensi PDF |
+| — | `bhp_{bos,bopd}_settings` | ✅ Sudah | Satu baris per dana (`is_singleton` + unique index): hanya `format_nomor` (paper size & orientation dihapus — hardcode per jenis di `DokumenController::PAPER`) |
 | — | `pejabat_sekolah` | ✅ Sudah | Riwayat pejabat penandatangan per sekolah (kepala sekolah, wakasek sarpras, pembantu pengurus barang): nama, pangkat/golongan, NIP, masa jabatan; snapshot disimpan di `bhp_{bos,bopd}_dokumen.payload.penandatangan` |
 | — | Foreign key BHP | ✅ Sudah | FK per tabel (cascade detail/dokumen, restrict master historis, set null `users.divisi_id`), diterapkan ulang saat split 2026-10-12 |
 | — | Pemisahan per sumber dana | ✅ Sudah | Tabel transaksi & master dipecah `bhp_bos_*`/`bhp_bopd_*` (2026-10-12); sumber dana implisit dari nama tabel, tanpa kolom `sumber_dana` |

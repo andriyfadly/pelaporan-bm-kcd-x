@@ -2,8 +2,8 @@
 
 > Engine: **PostgreSQL**. Seluruh id entitas bisnis memakai UUID
 > (`HasUuids`); tabel bawaan Spatie memakai bigint. Sumber kebenaran:
-> `database/migrations/`. Di bawah ini ringkasan per 2026-10-12
-> (38 migrasi + `activity_log`; tabel BHP dipisah fisik per sumber dana).
+> `database/migrations/`. Di bawah ini ringkasan per 2026-10-13
+> (45 migrasi + `activity_log`; tabel BHP dipisah fisik per sumber dana).
 
 ## 1. Diagram Relasi (tekstual)
 

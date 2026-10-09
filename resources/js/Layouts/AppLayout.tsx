@@ -28,13 +28,14 @@ interface BhpMenuProps {
     permissions: string[];
 }
 
-/** Menu navigasi domain Distribusi BHP, dipisah dari menu Pelaporan BM. */
+/** Menu navigasi domain Distribusi BHP, dengan dua grup terpisah per sumber dana. */
 function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions }: BhpMenuProps) {
     const canMaster = permissions.includes('kelola-master-bhp');
     const canTerima = permissions.includes('kelola-penerimaan-bhp');
     const canPengajuan = permissions.includes('kelola-pengajuan-bhp');
     const canReview = permissions.includes('review-pengajuan-bhp');
     const canDivisi = permissions.includes('kelola-divisi-bhp');
+    const canCetak = permissions.includes('cetak-dokumen-bhp');
 
     const isBhpActive = currentPath.startsWith('/distribusi-bhp');
 
@@ -44,6 +45,120 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                 ? 'text-[#2563eb] font-bold bg-blue-50/50'
                 : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
         }`;
+
+    const subNavClass = (active: boolean) =>
+        `block px-3 py-1.5 text-[12.5px] rounded-lg transition ${
+            active
+                ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+        }`;
+
+    const section = (sumberDana: string) => {
+        const prefix = `/distribusi-bhp/${sumberDana}`;
+        const isBos = sumberDana === 'bos';
+
+        return (
+            <div key={sumberDana} className="pt-1">
+                <div className={`text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-1 ${isBos ? 'pt-1' : ''}`}>
+                    Distribusi BHP {isBos ? 'BOS' : 'BOPD'}
+                </div>
+                <div className="pl-2 space-y-0.5">
+                    {/* Saldo Awal */}
+                    {canTerima && (
+                        <Link href={`${prefix}/saldo-awal`} className={itemClass(currentPath.startsWith(`${prefix}/saldo-awal`))}>
+                            Saldo Awal
+                        </Link>
+                    )}
+                    {/* Kode Rekening */}
+                    {canMaster && (
+                        <Link href={`${prefix}/master/kode-rekening`} className={itemClass(currentPath.startsWith(`${prefix}/master/kode-rekening`))}>
+                            Kode Rekening
+                        </Link>
+                    )}
+                    {/* Data Barang */}
+                    {canMaster && (
+                        <Link href={`${prefix}/master/barang`} className={itemClass(currentPath.startsWith(`${prefix}/master/barang`))}>
+                            Data Barang
+                        </Link>
+                    )}
+                    {/* Distribusi Barang group */}
+                    <PageGroupTitle title="Distribusi Barang" />
+                    {canTerima && (
+                        <Link href={`${prefix}/penerimaan/lunas-bayar`} className={subNavClass(currentPath.startsWith(`${prefix}/penerimaan/lunas-bayar`))}>
+                            Lunas Bayar
+                        </Link>
+                    )}
+                    {canTerima && (
+                        <Link href={`${prefix}/penerimaan`} className={subNavClass(currentPath === `${prefix}/penerimaan` || currentPath.startsWith(`${prefix}/penerimaan?`))}>
+                            Buku Penerimaan
+                        </Link>
+                    )}
+                    {canPengajuan && (
+                        <Link href={`${prefix}/pengajuan`} className={subNavClass(currentPath.startsWith(`${prefix}/pengajuan`))}>
+                            Nota Permintaan
+                        </Link>
+                    )}
+                    {/* Penyaluran group */}
+                    <PageGroupTitle title="Penyaluran" />
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/surat-permintaan-barang`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/surat-permintaan-barang`))}>
+                            Surat Permintaan Barang
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/surat-perintah-penyaluran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/surat-perintah-penyaluran`))}>
+                            Surat Perintah Penyaluran
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/berita-acara-serah-terima`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/berita-acara-serah-terima`))}>
+                            Berita Acara Serah Terima
+                        </Link>
+                    )}
+                    {/* Laporan group */}
+                    <PageGroupTitle title="Laporan" />
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/bast-internal`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/bast-internal`))}>
+                            BAST Internal
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/berita-acara-pemeriksaan`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/berita-acara-pemeriksaan`))}>
+                            Berita Acara Pemeriksaan
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/buku-pengeluaran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-pengeluaran`))}>
+                            Buku Pengeluaran
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/buku-penyaluran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-penyaluran`))}>
+                            Buku Penyaluran
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/kartu-persediaan`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/kartu-persediaan`))}>
+                            Kartu Persediaan
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/stok-opname`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/stok-opname`))}>
+                            Stok Opname
+                        </Link>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const isSumberDanaBhp = (path: string) => {
+        if (!path.startsWith('/distribusi-bhp')) return false;
+        // paths with bos/bopd prefix
+        if (path.match(/^\/distribusi-bhp\/(bos|bopd)\//)) return true;
+        // current flat paths
+        return ['/distribusi-bhp/dashboard', '/distribusi-bhp/settings', '/distribusi-bhp/divisi'].some(p => path.startsWith(p));
+    };
 
     return (
         <div className="pt-4">
@@ -76,53 +191,17 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                     <Link href="/distribusi-bhp/dashboard" className={itemClass(currentPath.startsWith('/distribusi-bhp/dashboard'))}>
                         Dashboard BHP
                     </Link>
+                    {section('bos')}
+                    {section('bopd')}
                     {canMaster && (
-                        <>
-                            <Link href="/distribusi-bhp/master/kode-rekening" className={itemClass(currentPath.startsWith('/distribusi-bhp/master/kode-rekening'))}>
-                                Kode Rekening
-                            </Link>
-                            <Link href="/distribusi-bhp/master/barang" className={itemClass(currentPath.startsWith('/distribusi-bhp/master/barang'))}>
-                                Data Barang
-                            </Link>
-                            <Link href="/distribusi-bhp/master/penyedia" className={itemClass(currentPath.startsWith('/distribusi-bhp/master/penyedia'))}>
-                                Penyedia
-                            </Link>
-                        </>
-                    )}
-                    {canTerima && (
-                        <Link href="/distribusi-bhp/penerimaan" className={itemClass(currentPath.startsWith('/distribusi-bhp/penerimaan'))}>
-                            Penerimaan
+                        <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
+                            Pejabat Sekolah
                         </Link>
                     )}
-                    {canTerima && (
-                        <Link href="/distribusi-bhp/saldo-awal" className={itemClass(currentPath.startsWith('/distribusi-bhp/saldo-awal'))}>
-                            Saldo Awal
-                        </Link>
-                    )}
-                    {canPengajuan && (
-                        <Link href="/distribusi-bhp/pengajuan" className={itemClass(currentPath.startsWith('/distribusi-bhp/pengajuan'))}>
-                            Pengajuan
-                        </Link>
-                    )}
-                    {canReview && (
-                        <Link href="/distribusi-bhp/review-pengajuan" className={itemClass(currentPath.startsWith('/distribusi-bhp/review-pengajuan'))}>
-                            Review Pengajuan
-                        </Link>
-                    )}
-                    <Link href="/distribusi-bhp/laporan" className={itemClass(currentPath.startsWith('/distribusi-bhp/laporan'))}>
-                        <span className="inline-flex items-center gap-2">
-                            <PackageCheck className="w-4 h-4" /> Laporan BHP
-                        </span>
-                    </Link>
                     {canMaster && (
-                        <>
-                            <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
-                                Pejabat Sekolah
-                            </Link>
-                            <Link href="/distribusi-bhp/settings" className={itemClass(currentPath.startsWith('/distribusi-bhp/settings'))}>
-                                Settings BHP
-                            </Link>
-                        </>
+                        <Link href="/distribusi-bhp/settings" className={itemClass(currentPath.startsWith('/distribusi-bhp/settings'))}>
+                            Settings BHP
+                        </Link>
                     )}
                     {canDivisi && (
                         <Link href="/distribusi-bhp/divisi" className={itemClass(currentPath.startsWith('/distribusi-bhp/divisi'))}>
@@ -131,6 +210,14 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                     )}
                 </div>
             )}
+        </div>
+    );
+}
+
+function PageGroupTitle({ title }: { title: string }) {
+    return (
+        <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest px-1 pt-2 pb-0.5">
+            {title}
         </div>
     );
 }

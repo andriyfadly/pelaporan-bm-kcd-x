@@ -237,18 +237,23 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 
 - `AppLayout`: sidebar collapsible + mobile drawer, menu admin vs sekolah,
   link Log Aktivitas hanya super_admin; header status sekolah; logout confirm.
-- `BhpHtmlMenu` (`AppLayout.tsx`): section **Distribusi BHP** terpisah dari
-  menu BM, dirender hanya bila user punya `lihat-distribusi-bhp`; tiap item
-  menu difilter per permission BHP.
+- `BhpHtmlMenu` (`AppLayout.tsx`): section **Distribusi BHP** dengan dua grup
+  per sumber dana (`bos`/`bopd`), masing-masing mirror struktur original:
+  sub-grup Distribusi Barang, Penyaluran, Laporan. Flat routes tetap
+  didukung untuk backward compatibility.
 - Komponen reuse: `Pagination`, `SearchInput`, `EmptyState`, `Modal`,
   `ConfirmDialog`, `StatusBadge`, `CardStat`.
 - Form SPK: accordion item, live search katalog, draft autosave
   (`draft_spj_barang_{sekolah}_{bulan}`), datalist history merk/sertifikat/satuan.
 - Halaman BHP: `resources/js/Pages/DistribusiBhp/` — `Dashboard`,
-  `Pengajuan/Index`, `Review/Index`, `Dokumen/Show`,
-  `SaldoAwal/Index`, `Settings/Edit`,
-  `Laporan/Index`, `Laporan/KartuPersediaan`, `Divisi/Index`,
-  `Master/{KodeRekening,Barang,Penyedia}/Index`, `Penerimaan/Index`.
+  `{BOS,BOPD}/Pengajuan/Index`, `{BOS,BOPD}/Review/Index`, `Dokumen/Show`,
+  `{BOS,BOPD}/SaldoAwal/Index`, `{BOS,BOPD}/Settings/Edit`,
+  `{BOS,BOPD}/Laporan/Index`, `{BOS,BOPD}/Laporan/KartuPersediaan`,
+  `{BOS,BOPD}/Laporan/DokumenList` (view dokumen per jenis),
+  `{BOS,BOPD}/Laporan/BukuPengeluaran`,
+  `{BOS,BOPD}/Penerimaan/Index`, `{BOS,BOPD}/Penerimaan/LunasBayar`,
+  `{BOS,BOPD}/Divisi/Index`,
+  `{BOS,BOPD}/Master/{KodeRekening,Barang,Penyedia}/Index`.
 - Settings BHP hanya kolom `format_nomor` (paper_size & orientation **dihapus** — hardcode per jenis dokumen di `DokumenController::PAPER`).
 - Import SPJ: tombol "Import Excel" + modal unggah di `Spj/Index.tsx`
   (kondisional `canImportSpj`), link template `template_import_spj.xlsx`.

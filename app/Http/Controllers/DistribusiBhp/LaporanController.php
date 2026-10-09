@@ -8,6 +8,7 @@ use App\Exports\DistribusiBhp\BhpStokExport;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Barang;
+use App\Models\DistribusiBhp\Dokumen;
 use App\Services\DistribusiBhp\LaporanService;
 use App\Services\DistribusiBhp\SettingsService;
 use App\Support\DistribusiBhp\SumberDana;
@@ -61,6 +62,96 @@ class LaporanController extends Controller
             'kartu' => $barangId !== '' ? $this->laporan->kartuPersediaan($barangId, $sumberDana, $sekolahId) : null,
             'daftarBarang' => Barang::orderBy('nama_barang')->get(['id', 'kode_barang', 'nama_barang']),
         ]));
+    }
+
+    private function daftarDokumen(Request $request, string $sumberDana, string $jenis): Response
+    {
+        $sekolahId = $this->resolveSekolahId($request);
+        $label = self::LABEL[$jenis] ?? $jenis;
+
+        return SumberDana::dengan($sumberDana, function () use ($sekolahId, $jenis, $label, $sumberDana): Response {
+            $items = Dokumen::query()
+                ->with('pengajuan:id,tanggal,nomor_pengajuan,divisi_id,sekolah_id')
+                ->where('jenis', $jenis)
+                ->when($sekolahId !== null, fn ($q) => $q->whereHas('pengajuan', fn ($w) => $w->where('sekolah_id', $sekolahId)))
+                ->orderByDesc('tanggal_titimangsa')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(fn (Dokumen $d) => [
+                    'id' => $d->id,
+                    'nomor' => $d->nomor,
+                    'tanggal' => $d->tanggal_titimangsa?->toDateString(),
+                    'pengajuan' => $d->pengajuan ? [
+                        'id' => $d->pengajuan->id,
+                        'nomor' => $d->pengajuan->nomor_pengajuan,
+                        'tanggal' => $d->pengajuan->tanggal?->toDateString(),
+                        'sekolah_id' => $d->pengajuan->sekolah_id,
+                    ] : null,
+                ]);
+
+            return Inertia::render('DistribusiBhp/Laporan/DokumenList', [
+                'jenis' => $jenis,
+                'jenisLabel' => $label,
+                'sumberDana' => $sumberDana,
+                'items' => $items,
+            ]);
+        });
+    }
+
+    private const LABEL = [
+        'bast' => 'Berita Acara Serah Terima',
+        'bap' => 'Berita Acara Pemeriksaan',
+        'buku_penyaluran' => 'Buku Penyaluran Barang',
+        'stok_opname' => 'Berita Acara Stok Opname',
+        'surat_permintaan' => 'Surat Permintaan Barang',
+        'surat_penyaluran' => 'Surat Perintah Penyaluran Barang',
+    ];
+
+    public function bastInternal(Request $request): Response
+    {
+        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'bast');
+    }
+
+    public function bap(Request $request): Response
+    {
+        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'bap');
+    }
+
+    public function bukuPengeluaranPage(Request $request): Response
+    {
+        $sekolahId = $this->resolveSekolahId($request);
+        $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS));
+
+        return Inertia::render('DistribusiBhp/Laporan/BukuPengeluaran', [
+            'jenisLabel' => 'Buku Pengeluaran Barang',
+            'sumberDana' => $sumberDana,
+            'items' => $this->laporan->bukuPengeluaran($sumberDana, $sekolahId),
+        ]);
+    }
+
+    public function bukuPenyaluran(Request $request): Response
+    {
+        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'buku_penyaluran');
+    }
+
+    public function stokOpname(Request $request): Response
+    {
+        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'stok_opname');
+    }
+
+    public function suratPermintaan(Request $request): Response
+    {
+        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'surat_permintaan');
+    }
+
+    public function suratPenyaluran(Request $request): Response
+    {
+        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'surat_penyaluran');
+    }
+
+    public function bastSerahTerima(Request $request): Response
+    {
+        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'bast');
     }
 
     public function export(Request $request): BinaryFileResponse|RedirectResponse

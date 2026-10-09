@@ -47,6 +47,25 @@ class PenerimaanController extends Controller
         });
     }
 
+    public function lunasBayar(Request $request): Response
+    {
+        $sekolahId = $this->resolveSekolahId($request);
+        $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS));
+
+        return SumberDana::dengan($sumberDana, function () use ($sekolahId, $sumberDana): Response {
+            $items = Penerimaan::with(['penyedia', 'details.barang'])
+                ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+                ->latest('id')
+                ->paginate(25)
+                ->withQueryString();
+
+            return Inertia::render('DistribusiBhp/Penerimaan/LunasBayar', [
+                'items' => $items,
+                'sumberDana' => $sumberDana,
+            ]);
+        });
+    }
+
     public function store(Request $request): RedirectResponse
     {
         // Tidak ada pool pusat: penerimaan/saldo awal wajib milik satu sekolah.

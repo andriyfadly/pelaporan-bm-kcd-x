@@ -85,13 +85,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/rekapan', [RekapanController::class, 'index'])->name('rekapan.index');
     });
 
-    // Domain Distribusi BHP — terpisah dari Pelaporan BM (lihat docs/requirements/domain-boundaries.md).
-    // Tabel BHP dipisah per sumber dana; middleware ini menyetel sumber dana aktif.
-    Route::prefix('distribusi-bhp')->name('distribusi-bhp.')->middleware('sumber-dana-bhp')->group(function () {
-        Route::get('/dashboard', [BhpDashboardController::class, 'index'])
-            ->middleware('permission:lihat-distribusi-bhp')
-            ->name('dashboard');
-
+    // Helper untuk mendaftarkan rute BHP per sumber dana
+    $bhpRoutes = function () {
         Route::get('/pengajuan', [BhpPengajuanController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('pengajuan.index');
@@ -135,63 +130,72 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/penerimaan', [BhpPenerimaanController::class, 'store'])->name('penerimaan.store');
             Route::delete('/penerimaan/{penerimaan}', [BhpPenerimaanController::class, 'destroy'])->name('penerimaan.destroy');
 
-            // Flow saldo awal terpisah (pola sistem-manajemen-aset).
             Route::get('/saldo-awal', [BhpSaldoAwalController::class, 'index'])->name('saldo-awal.index');
             Route::post('/saldo-awal', [BhpSaldoAwalController::class, 'store'])->name('saldo-awal.store');
             Route::delete('/saldo-awal/{detail}', [BhpSaldoAwalController::class, 'destroy'])->name('saldo-awal.destroy');
             Route::post('/saldo-awal/import', [BhpSaldoAwalController::class, 'import'])
-                ->middleware('throttle:10,1')
-                ->name('saldo-awal.import');
+                ->middleware('throttle:10,1')->name('saldo-awal.import');
             Route::get('/saldo-awal/template', [BhpSaldoAwalController::class, 'template'])
-                ->middleware('throttle:30,1')
-                ->name('saldo-awal.template');
+                ->middleware('throttle:30,1')->name('saldo-awal.template');
         });
 
         Route::get('/pengajuan/{pengajuan}/dokumen', [BhpDokumenController::class, 'show'])
-            ->middleware('permission:lihat-distribusi-bhp')
-            ->name('dokumen.show');
-
+            ->middleware('permission:lihat-distribusi-bhp')->name('dokumen.show');
         Route::get('/pengajuan/{pengajuan}/dokumen/{dokumen}/pdf', [BhpDokumenController::class, 'pdf'])
-            ->middleware('permission:cetak-dokumen-bhp')
-            ->name('dokumen.pdf');
-
+            ->middleware('permission:cetak-dokumen-bhp')->name('dokumen.pdf');
         Route::post('/pengajuan/{pengajuan}/dokumen/batch', [BhpDokumenController::class, 'batch'])
-            ->middleware('permission:cetak-dokumen-bhp')
-            ->name('dokumen.batch');
-
+            ->middleware('permission:cetak-dokumen-bhp')->name('dokumen.batch');
         Route::post('/pengajuan/{pengajuan}/dokumen/tambahan', [BhpDokumenController::class, 'tambahan'])
-            ->middleware('permission:cetak-dokumen-bhp')
-            ->name('dokumen.tambahan');
+            ->middleware('permission:cetak-dokumen-bhp')->name('dokumen.tambahan');
 
         Route::get('/laporan', [BhpLaporanController::class, 'index'])
-            ->middleware('permission:lihat-distribusi-bhp')
-            ->name('laporan.index');
+            ->middleware('permission:lihat-distribusi-bhp')->name('laporan.index');
         Route::get('/laporan/kartu-persediaan', [BhpLaporanController::class, 'kartuPersediaan'])
-            ->middleware('permission:lihat-distribusi-bhp')
-            ->name('laporan.kartu-persediaan');
+            ->middleware('permission:lihat-distribusi-bhp')->name('laporan.kartu-persediaan');
         Route::get('/laporan/export', [BhpLaporanController::class, 'export'])
-            ->middleware('permission:cetak-dokumen-bhp')
-            ->name('laporan.export');
+            ->middleware('permission:cetak-dokumen-bhp')->name('laporan.export');
+
+        Route::middleware('permission:lihat-distribusi-bhp')->group(function () {
+            Route::get('/laporan/bast-internal', [BhpLaporanController::class, 'bastInternal'])->name('laporan.bast-internal');
+            Route::get('/laporan/berita-acara-pemeriksaan', [BhpLaporanController::class, 'bap'])->name('laporan.bap');
+            Route::get('/laporan/buku-pengeluaran', [BhpLaporanController::class, 'bukuPengeluaranPage'])->name('laporan.buku-pengeluaran');
+            Route::get('/laporan/buku-penyaluran', [BhpLaporanController::class, 'bukuPenyaluran'])->name('laporan.buku-penyaluran');
+            Route::get('/laporan/stok-opname', [BhpLaporanController::class, 'stokOpname'])->name('laporan.stok-opname');
+            Route::get('/laporan/surat-permintaan-barang', [BhpLaporanController::class, 'suratPermintaan'])->name('laporan.surat-permintaan');
+            Route::get('/laporan/surat-perintah-penyaluran', [BhpLaporanController::class, 'suratPenyaluran'])->name('laporan.surat-penyaluran');
+            Route::get('/laporan/berita-acara-serah-terima', [BhpLaporanController::class, 'bastSerahTerima'])->name('laporan.bast-serah-terima');
+        });
+
+        Route::get('/penerimaan/lunas-bayar', [BhpPenerimaanController::class, 'lunasBayar'])
+            ->middleware('permission:kelola-penerimaan-bhp')->name('penerimaan.lunas-bayar');
+    };
+
+    // Domain Distribusi BHP — terpisah dari Pelaporan BM.
+    Route::prefix('distribusi-bhp')->name('distribusi-bhp.')->middleware('sumber-dana-bhp')->group(function () use ($bhpRoutes) {
+        Route::get('/dashboard', [BhpDashboardController::class, 'index'])
+            ->middleware('permission:lihat-distribusi-bhp')
+            ->name('dashboard');
+
+        // Flat routes (backward compatible)
+        $bhpRoutes();
+
+        // Per-sumber-dana prefixed routes
+        Route::prefix('bos')->name('bos.')->group($bhpRoutes);
+        Route::prefix('bopd')->name('bopd.')->group($bhpRoutes);
 
         Route::get('/settings', [BhpSettingsController::class, 'edit'])
-            ->middleware('permission:kelola-master-bhp')
-            ->name('settings.edit');
+            ->middleware('permission:kelola-master-bhp')->name('settings.edit');
         Route::put('/settings', [BhpSettingsController::class, 'update'])
-            ->middleware('permission:kelola-master-bhp')
-            ->name('settings.update');
+            ->middleware('permission:kelola-master-bhp')->name('settings.update');
 
         Route::get('/divisi', [BhpDivisiController::class, 'index'])
-            ->middleware('permission:kelola-divisi-bhp')
-            ->name('divisi.index');
+            ->middleware('permission:kelola-divisi-bhp')->name('divisi.index');
         Route::post('/divisi', [BhpDivisiController::class, 'store'])
-            ->middleware('permission:kelola-divisi-bhp')
-            ->name('divisi.store');
+            ->middleware('permission:kelola-divisi-bhp')->name('divisi.store');
         Route::put('/divisi/operator/{operator}/password', [BhpDivisiController::class, 'resetPassword'])
-            ->middleware('permission:kelola-divisi-bhp')
-            ->name('divisi.operator.password');
+            ->middleware('permission:kelola-divisi-bhp')->name('divisi.operator.password');
         Route::put('/divisi/operator/{operator}/toggle', [BhpDivisiController::class, 'toggleActive'])
-            ->middleware('permission:kelola-divisi-bhp')
-            ->name('divisi.operator.toggle');
+            ->middleware('permission:kelola-divisi-bhp')->name('divisi.operator.toggle');
     });
 
     // Master data generic lintas domain — di luar prefix distribusi-bhp.

@@ -39,6 +39,14 @@
 | Penerimaan | Pencatatan barang masuk (`bhp_{bos,bopd}_penerimaan` + detail); menambah stok fisik |
 | Saldo awal | Penerimaan yang ditandai `is_saldo_awal` + `periode_tahun`; stok awal tahun |
 | Pengajuan | Permintaan/distribusi BHP (`bhp_{bos,bopd}_pengajuan`); hidup dengan status |
+| Nota Permintaan Barang | Dokumen pertama yang digenerate saat approve — daftar barang diminta |
+| Surat Permintaan Barang | Dokumen penyaluran — rincian barang yang diminta sekolah |
+| Surat Perintah Penyaluran | Dokumen perintah penyaluran dari penyedia/operator |
+| BAST | Berita Acara Serah Terima — dokumen serah terima barang |
+| BAP | Berita Acara Pemeriksaan — dokumen pemeriksaan barang |
+| Stok Opname | Berita Acara Stok Opname — laporan stok fisik periodik |
+| Buku Pengeluaran | Laporan item yang sudah approved beserta keperluan |
+| Buku Penyaluran | Dokumen/laporan penyaluran BHP |
 | Detail pengajuan | Baris barang pada pengajuan (`bhp_{bos,bopd}_pengajuan_detail`) |
 | Reservasi | Stok yang "dipesan" pengajuan `submitted`; belum mengurangi terpakai |
 | Terpakai | Jumlah disetujui (`jumlah_disetujui`) pada pengajuan `approved` |
@@ -58,6 +66,7 @@
 | Buku penyaluran | Dokumen/laporan penyaluran BHP |
 | Kartu barang | Profil barang + mutasi masuk/keluar (tanpa saldo berjalan) |
 | Kartu persediaan | Mutasi kronologis **dengan saldo berjalan** per barang |
+| Pejabat sekolah | Penandatangan dokumen (kepala sekolah, wakasek sarpras, pembantu pengurus barang), tabel `pejabat_sekolah` |
 | operator_divisi | Role khusus BHP: membuat & mensubmit pengajuan, tanpa master/approval |
 | Impor BHP | `DistribusiBhpImportSeeder` — impor master + penerimaan dari DB SQLite legacy |
 | source_id | ID asli entitas dari DB sumber (`bhp_{bos,bopd}_penerimaan.source_id`) untuk jejak audit/impor |

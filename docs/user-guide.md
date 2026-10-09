@@ -100,6 +100,10 @@ Modul ini mengelola **Barang Habis Pakai** dengan sumber dana **BOS** atau
 **BOPD**. Aturan utama: pilih sumber dana lebih dulu, karena stok dan laporan
 BOS dan BOPD **tidak pernah tercampur**.
 
+Menu BHP di sidebar menampilkan dua grup terpisah: **Distribusi BHP BOS** dan
+**Distribusi BHP BOPD**, masing-masing dengan sub-grup Distribusi Barang,
+Penyaluran, dan Laporan — mirror struktur asli aplikasi sistem-manajemen-aset.
+
 ### 6.1 Istilah Stok
 
 | Angka | Arti |
@@ -111,11 +115,11 @@ BOS dan BOPD **tidak pernah tercampur**.
 
 ### 6.2 Menyiapkan Master Data (Admin/Operator Sekolah)
 
-1. **Kode Rekening** (`/distribusi-bhp/master/kode-rekening`) — satu kode per
+1. **Kode Rekening** (`/distribusi-bhp/{bos|bopd}/master/kode-rekening`) — satu kode per
    sumber dana.
-2. **Barang** (`/distribusi-bhp/master/barang`) — isi kode, nama, satuan, kode
+2. **Barang** (`/distribusi-bhp/{bos|bopd}/master/barang`) — isi kode, nama, satuan, kode
    rekening, dan harga satuan.
-3. **Penyedia** (`/distribusi-bhp/master/penyedia`) — data rekanan/supplier.
+3. **Penyedia** (`/distribusi-bhp/{bos|bopd}/master/penyedia`) — data rekanan/supplier.
 4. **Pejabat Sekolah** (`/master-data/pejabat`, menu Master Data sekolah — di luar menu BHP) — data penandatangan
    dokumen: **Kepala Sekolah**, **Wakasek Sarana Prasarana**, dan **Pembantu
    Pengurus Barang**. Isi nama, pangkat/golongan, NIP, jenis jabatan
@@ -125,10 +129,13 @@ BOS dan BOPD **tidak pernah tercampur**.
 
 ### 6.3 Mencatat Penerimaan Barang
 
-1. Buka **Penerimaan** (`/distribusi-bhp/penerimaan`), pilih sumber dana.
+1. Buka **Buku Penerimaan** (`/distribusi-bhp/{bos|bopd}/penerimaan`), pilih sumber dana (lewat navigasi ke grup BOS/BOPD).
 2. Isi dokumen (nota/invoice, BAST, kwitansi, penyedia, tanggal) lalu tambahkan
    detail barang dan jumlahnya. Barang masuk akan menambah **stok fisik**.
-3. Untuk saldo awal tahun, tandai sebagai **saldo awal** dan isi periode tahun.
+3. Untuk saldo awal tahun, buka **Saldo Awal** (`/distribusi-bhp/{bos|bopd}/saldo-awal`),
+   tandai sebagai **saldo awal** dan isi periode tahun.
+4. **Lunas Bayar** (`/distribusi-bhp/{bos|bopd}/penerimaan/lunas-bayar`) menampilkan
+   daftar penerimaan yang sudah dilunasi — read-only view.
 
 > **Stok selalu milik satu sekolah.** Tidak ada stok bersama antar sekolah —
 > penerimaan yang Anda catat hanya mengurangi stok sekolah Anda sendiri.
@@ -142,9 +149,10 @@ dipakai pengajuan aktif tidak dapat dihapus.
 
 ### 6.4 Membuat & Mensubmit Pengajuan
 
-1. Buka **Pengajuan** (`/distribusi-bhp/pengajuan`), buat draft: pilih sumber
-   dana, tanggal, lalu daftar barang + jumlah diminta. Kolom barang menampilkan
-   **stok tersedia** sekolah Anda.
+1. Buka **Pengajuan / Nota Permintaan** (`/distribusi-bhp/{bos|bopd}/pengajuan`, menu sidebar
+   di sub-grup **Distribusi Barang**), buat draft: pilih sumber dana (telah ditentukan
+   oleh grup BOS/BOPD yang dipilih), tanggal, lalu daftar barang + jumlah diminta.
+   Kolom barang menampilkan **stok tersedia** sekolah Anda.
 2. Draft bisa **Edit** (ubah tanggal/daftar barang) atau **Hapus** selama masih
    `draft`. Setelah disubmit, draft terkunci — perubahan harus lewat Reject lalu
    buat pengajuan baru.
@@ -154,8 +162,9 @@ dipakai pengajuan aktif tidak dapat dihapus.
 
 ### 6.5 Review & Approval (Admin)
 
-1. Buka **Review Pengajuan** (`/distribusi-bhp/review-pengajuan`), pilih
-   pengajuan berstatus `submitted`.
+1. Buka **Review Pengajuan** (`/distribusi-bhp/{bos|bopd}/review-pengajuan`),
+   **menu sidebar terpisah** dari Pengajuan/Nota Permintaan. Pilih pengajuan
+   berstatus `submitted`.
 2. **Approve** — boleh mengoreksi jumlah yang disetujui (tidak boleh melebihi
    yang diminta atau stok tersedia), atau **Reject** dengan alasan wajib.
 3. Approval ditolak bila pejabat penandatangan (kepala sekolah, wakasek
@@ -179,12 +188,15 @@ dipakai pengajuan aktif tidak dapat dihapus.
 
 ### 6.7 Melihat Laporan
 
-1. Buka **Laporan** (`/distribusi-bhp/laporan`), pilih sumber dana BOS/BOPD.
-2. Tab tersedia: **Laporan Stok** (4-tier), **Buku Pengeluaran** (item yang
-   sudah disetujui).
-3. Buka **Kartu Persediaan** (`/distribusi-bhp/laporan/kartu-persediaan`),
-   pilih barang untuk melihat mutasi masuk/keluar dengan **saldo berjalan**.
-4. **Export Excel** tersedia untuk stok, buku pengeluaran, dan kartu
+1. Buka **Laporan Stok** (`/distribusi-bhp/{bos|bopd}/laporan`), pilih sumber dana BOS/BOPD (lewat grup sidebar).
+2. Sub-grup **Laporan** di sidebar menyediakan halaman read-only per jenis:
+   - **BAST Internal**: dokumen BAST (`jenis=bast`)
+   - **Berita Acara Pemeriksaan**: dokumen BAP
+   - **Buku Pengeluaran**: item yang sudah disetujui
+   - **Buku Penyaluran**: dokumen penyaluran
+   - **Kartu Persediaan**: mutasi masuk/keluar dengan saldo berjalan
+   - **Stok Opname**: dokumen stok opname
+3. **Export Excel** tersedia untuk stok, buku pengeluaran, dan kartu
    persediaan. Kartu persediaan wajib memilih barang yang sealiran sumber
    dana laporan; jika tidak cocok, sistem menampilkan pesan error (bukan
    halaman rusak).

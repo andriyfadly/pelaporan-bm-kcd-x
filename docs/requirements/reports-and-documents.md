@@ -26,7 +26,7 @@ Status: L = laporan, D = dokumen.
 | BAP | ✅ Sudah (dokumen tambahan) |
 | Stok opname | ✅ Sudah (dokumen tambahan) |
 | Buku pengeluaran | ✅ Sudah (laporan + dokumen) |
-| Buku penyaluran | 🟡 Sebagian (dokumen ada; laporan penyaluran khusus belum) |
+| Buku penyaluran | ✅ Sudah (dokumen ada; halaman read-only mandiri) |
 | Kartu barang | ✅ Sudah (runtime, tanpa tabel) |
 | Kartu persediaan | ✅ Sudah (runtime dengan saldo berjalan + export) |
 | Batch PDF dan histori batch | ✅ Sudah (`bhp_{bos,bopd}_batch_dokumen`) |
@@ -54,3 +54,11 @@ Format dan sequence dokumen disimpan pada konfigurasi BHP. Generator harus:
   lama tidak berubah ketika pejabat berganti.
 - PDF dapat dibuka/diunduh tanpa membocorkan tenant lain.
 - Batch generation menyimpan status per file dan error message.
+- **Paper size & orientation hardcode** per jenis dokumen di
+  `DokumenController::PAPER` — bukan konfigurasi user. Mapping:
+  - `nota_permintaan` (A4 portrait), `surat_permintaan` (A4 landscape),
+    `surat_penyaluran` (A4 portrait), `bast` (A4 portrait), `bap` (A4 portrait),
+    `stok_opname` (A4 portrait), `buku_pengeluaran` (A4 landscape),
+    `buku_penyaluran` (A4 landscape).
+- Sidebar BHP menyajikan halaman read-only per jenis dokumen dengan prefix
+  `/distribusi-bhp/{bos,bopd}/...`, mirror struktur asli sistem-manajemen-aset.

@@ -158,7 +158,21 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 | GET | `/distribusi-bhp/laporan` | `lihat-distribusi-bhp` | `LaporanController::index` |
 | GET | `/distribusi-bhp/laporan/kartu-persediaan` | `lihat-distribusi-bhp` | `LaporanController::kartuPersediaan` |
 | GET | `/distribusi-bhp/laporan/export` | `cetak-dokumen-bhp` | `LaporanController::export` |
-Total: **25 rute** (prefix distribusi-bhp).
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/bast-internal` | `lihat-distribusi-bhp` | `LaporanController::bastInternal` — view dokumen BAST |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/berita-acara-pemeriksaan` | `lihat-distribusi-bhp` | `LaporanController::bap` — view dokumen BAP |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/buku-pengeluaran` | `lihat-distribusi-bhp` | `LaporanController::bukuPengeluaranPage` — view pengajuan approved |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/buku-penyaluran` | `lihat-distribusi-bhp` | `LaporanController::bukuPenyaluran` — view dokumen penyaluran |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/stok-opname` | `lihat-distribusi-bhp` | `LaporanController::stokOpname` — view dokumen stok opname |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/surat-permintaan-barang` | `lihat-distribusi-bhp` | `LaporanController::suratPermintaan` — view surat permintaan |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/surat-perintah-penyaluran` | `lihat-distribusi-bhp` | `LaporanController::suratPenyaluran` — view surat penyaluran |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/berita-acara-serah-terima` | `lihat-distribusi-bhp` | `LaporanController::bastSerahTerima` — view BAST serah terima |
+| GET | `/distribusi-bhp/{bos,bopd}/penerimaan/lunas-bayar` | `kelola-penerimaan-bhp` | `PenerimaanController::lunasBayar` — view penerimaan lunas |
+Total: **25 rute** (prefix distribusi-bhp), plus **25 rute × 2** (prefix
+`distribusi-bhp/bos/` dan `distribusi-bhp/bopd/`) dan **8 halaman read-only**
+(daftar dokumen per jenis). Sidebar menu mengarah ke rute per-sumber-dana
+(`/distribusi-bhp/{bos,bopd}/...`); flat routes tetap didukung untuk
+backward compatibility. Rute bos/bopd adalah duplikat dari tabel di atas
+dengan prefix tambahan, permission sama.
 
 ### I. Master Data Sekolah (`app/Http/Controllers/Master/*`, prefix `/master-data`)
 

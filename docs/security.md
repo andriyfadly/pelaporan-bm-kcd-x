@@ -107,6 +107,9 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 - Render PDF menggunakan template Blade **per jenis dokumen** (8 file
   di `resources/views/distribusi-bhp/`); paper/orientasi hardcode di
   `DokumenController::PAPER`, bukan konfigurasi user.
+- Halaman read-only per jenis dokumen (`{bos|bopd}/laporan/bast-internal`, dll.)
+  menggunakan permission `lihat-distribusi-bhp` — semua role dengan akses BHP
+  dapat melihat daftar dokumen; unduh PDF membutuhkan `cetak-dokumen-bhp`.
 - Snapshot payload dokumen tambahan (`DokumenService::payloadFor`) selalu
   mengirim `sekolah_id` milik pengajuan ke `laporanStok`/`bukuPengeluaran`,
   sehingga stok opname dan buku pengeluaran tidak pernah memuat data sekolah
