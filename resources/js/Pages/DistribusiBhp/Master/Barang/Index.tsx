@@ -6,7 +6,7 @@ import ConfirmDialog from '@/Components/ConfirmDialog';
 import CardStat from '@/Components/CardStat';
 import SearchInput from '@/Components/SearchInput';
 import { formatRupiah } from '@/Utils/format';
-import { Package, Plus, Pencil, Trash2, DollarSign, Save, TrendingUp } from 'lucide-react';
+import { Package, Plus, Pencil, Trash2, DollarSign, Save, TrendingUp, Upload, Download } from 'lucide-react';
 
 interface HargaItem {
     id: string;
@@ -69,11 +69,14 @@ export default function Index({
     const prefix = `/distribusi-bhp/${sumberDana.toLowerCase()}`;
     const [search, setSearch] = useState('');
     const [showCreate, setShowCreate] = useState(false);
+    const [showImport, setShowImport] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
     const [editTarget, setEditTarget] = useState<BarangItem | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<BarangItem | null>(null);
 
     const createForm = useForm({ ...EMPTY_FORM, sumber_dana: sumberDana });
     const editForm = useForm({ ...EMPTY_FORM, sumber_dana: sumberDana });
+    const importForm = useForm<{ file: File | null; sumber_dana: string }>({ file: null, sumber_dana: sumberDana });
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -95,6 +98,20 @@ export default function Index({
             onSuccess: () => {
                 createForm.reset();
                 setShowCreate(false);
+            },
+        });
+    };
+
+    const submitImport = () => {
+        if (!importFile) return;
+        importForm.transform(() => ({ file: importFile, sumber_dana: sumberDana }));
+        importForm.post(`${prefix}/master/barang/import`, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                setImportFile(null);
+                importForm.reset();
+                setShowImport(false);
             },
         });
     };
@@ -263,6 +280,13 @@ export default function Index({
                     <div className="flex items-center gap-2 shrink-0">
                         <button
                             type="button"
+                            onClick={() => setShowImport(true)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50"
+                        >
+                            <Upload className="w-4 h-4" /> Import
+                        </button>
+                        <button
+                            type="button"
                             onClick={handleExport}
                             disabled={filtered.length === 0}
                             className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 disabled:opacity-50"
@@ -410,6 +434,64 @@ export default function Index({
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal isOpen={showImport} onClose={() => setShowImport(false)} title="Import Data Barang" maxWidth="2xl">
+                <div className="space-y-5">
+                    <div className="flex items-start justify-between gap-4 rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+                        <div>
+                            <h4 className="text-sm font-bold text-blue-900">Unduh Template</h4>
+                            <p className="text-xs text-blue-700 mt-1">
+                                Gunakan template Excel agar format kolom sesuai.
+                            </p>
+                        </div>
+                        <a
+                            href={`${prefix}/master/barang/template?sumber_dana=${sumberDana}`}
+                            className="inline-flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs font-bold text-blue-700 border border-blue-300 rounded-xl hover:bg-blue-100"
+                        >
+                            <Download className="w-4 h-4" /> Download
+                        </a>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">File Excel (.xlsx/.xls)</label>
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                            className="block w-full text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-xl file:border-0 file:bg-slate-100 file:text-sm file:font-semibold"
+                        />
+                        {importForm.errors.file && <p className="text-xs text-rose-600 mt-1">{importForm.errors.file}</p>}
+                        {importForm.errors.sumber_dana && <p className="text-xs text-rose-600 mt-1">{importForm.errors.sumber_dana}</p>}
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-600 space-y-1">
+                        <p className="font-bold text-slate-700">Petunjuk:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                            <li>Urutan kolom: Kode Rekening, Nama Barang, Spesifikasi/NUSP, Satuan, Harga Satuan.</li>
+                            <li>Kode Barang & uraian diisi otomatis dari Kode Rekening.</li>
+                            <li>Kode Rekening, Nama Barang, Satuan, dan Harga Satuan wajib diisi.</li>
+                            <li>Harga Satuan berupa angka tanpa Rp/titik.</li>
+                            <li>Nama barang yang sama akan menambah varian harga pada barang yang ada.</li>
+                            <li>Import bersifat all-or-nothing: satu baris invalid membatalkan seluruh import.</li>
+                            <li>Maksimal 1000 baris per upload, file maksimal 10MB.</li>
+                        </ul>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setShowImport(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
+                            Batal
+                        </button>
+                        <button
+                            type="button"
+                            onClick={submitImport}
+                            disabled={!importFile || importForm.processing}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl disabled:opacity-50"
+                        >
+                            <Upload className="w-4 h-4" /> {importForm.processing ? 'Mengimpor...' : 'Import'}
+                        </button>
+                    </div>
+                </div>
             </Modal>
 
             <ConfirmDialog

@@ -124,8 +124,12 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:lihat-distribusi-bhp')->name('barang.index');
         Route::get('/master/barang/{barang}/kelola-harga', [BhpBarangController::class, 'hargaIndex'])
             ->middleware('permission:lihat-distribusi-bhp')->name('barang.harga.index');
+        Route::get('/master/barang/template', [BhpBarangController::class, 'template'])
+            ->middleware('permission:kelola-barang-bhp')->name('barang.template');
         Route::middleware('permission:kelola-barang-bhp')->group(function () {
             Route::post('/master/barang', [BhpBarangController::class, 'store'])->name('barang.store');
+            Route::post('/master/barang/import', [BhpBarangController::class, 'import'])
+                ->middleware('throttle:10,1')->name('barang.import');
             Route::put('/master/barang/{barang}', [BhpBarangController::class, 'update'])->name('barang.update');
             Route::delete('/master/barang/{barang}', [BhpBarangController::class, 'destroy'])->name('barang.destroy');
             Route::post('/master/barang/{barang}/harga', [BhpBarangController::class, 'storeHarga'])->name('barang.harga.store');

@@ -123,6 +123,10 @@ Penyaluran, dan Laporan — mirror struktur asli aplikasi sistem-manajemen-aset.
    membuka halaman untuk menambah/mengubah/menghapus semua varian harga barang; **Edit**
    dan **Hapus** mengelola data barangnya (barang yang masih dipakai penerimaan/pengajuan
    tidak dapat dihapus). Halaman ini juga punya kartu statistik dan export CSV.
+   **Import Excel**: unduh template (kolom: Kode Rekening, Nama Barang, Spesifikasi/NUSP,
+   Satuan, Harga Satuan), isi, lalu unggah. Kode Barang & uraian diisi otomatis dari Kode
+   Rekening; nama barang yang sama akan menambah varian harga. Import bersifat
+   **all-or-nothing** (satu baris invalid = batal semua; maksimal 1000 baris).
 3. **Penyedia** (`/distribusi-bhp/penyedia`) — data rekanan/supplier (berlaku lintas sumber dana).
 4. **Pejabat Sekolah** (`/master-data/pejabat`, menu Master Data sekolah — di luar menu BHP) — data penandatangan
    dokumen: **Kepala Sekolah**, **Wakasek Sarana Prasarana**, dan **Pembantu

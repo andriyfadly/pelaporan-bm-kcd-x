@@ -146,6 +146,8 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 | POST | `/distribusi-bhp/master/kode-rekening/batch-assign` | `lihat-distribusi-bhp` | `KodeRekeningController::batchAssign` |
 | GET/POST/PUT/DELETE | `/distribusi-bhp/master/barang` | `lihat-distribusi-bhp` (read) / `kelola-barang-bhp` (write) | `BarangController` |
 | GET | `/distribusi-bhp/master/barang/{barang}/kelola-harga` | `lihat-distribusi-bhp` | `BarangController::hargaIndex` — halaman kelola harga barang |
+| GET | `/distribusi-bhp/master/barang/template` | `kelola-barang-bhp` | `BarangController::template` — unduh template Excel import barang |
+| POST | `/distribusi-bhp/master/barang/import` | `kelola-barang-bhp` | `BarangController::import` — import Excel (all-or-nothing, max 1000 baris, throttle 10/menit) |
 | POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-barang-bhp` | `BarangController::storeHarga` — `sumber_dana` wajib |
 | PUT/DELETE | `/distribusi-bhp/master/harga-barang/{harga}` | `kelola-barang-bhp` | `BarangController::updateHarga` / `destroyHarga` |
 | GET/POST/PUT/DELETE | `/distribusi-bhp/penyedia` | `lihat-distribusi-bhp` (read) / `kelola-penyedia-bhp` (write) | `PenyediaController` |
