@@ -109,7 +109,7 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                         </h1>
                         <p className="text-sm text-slate-500 mt-1">
                             Kelola divisi beserta akun operatornya. Username login otomatis berformat{' '}
-                            <code className="font-mono text-xs">{npsn ?? 'NPSN-belum-ada'}-{'{suffix}'}</code>.
+                            <code className="font-mono text-xs">{npsn ?? 'NPSN-belum-ada'}-{'{username divisi}'}</code>.
                         </p>
                     </div>
                     <button
