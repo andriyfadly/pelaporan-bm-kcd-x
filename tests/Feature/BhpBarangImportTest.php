@@ -83,14 +83,14 @@ class BhpBarangImportTest extends TestCase
         return new UploadedFile($path, 'barang.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
     }
 
-    private const HEADER = ['Kode Rekening*', 'Nama Barang*', 'Spesifikasi/NUSP', 'Satuan*', 'Harga Satuan*'];
+    private const HEADER = ['Kode Rekening*', 'Nama Barang*', 'Satuan*', 'Harga Satuan*'];
 
     public function test_import_barang_berhasil_membuat_barang_dan_harga(): void
     {
         $this->rekening();
         $file = $this->xlsx([
             self::HEADER,
-            ['5.1.02.01.01.0001', 'Kertas HVS', 'A4 70gsm', 'Rim', 50000],
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', 50000],
         ]);
 
         $this->actingAs($this->operator())
@@ -99,8 +99,8 @@ class BhpBarangImportTest extends TestCase
 
         $barang = Barang::firstOrFail();
         $this->assertSame('Kertas HVS', $barang->nama_barang);
-        $this->assertSame('1.1.7.01.01', $barang->kode_barang);
-        $this->assertSame('A4 70gsm', $barang->spesifikasi_barang_nusp);
+        $this->assertSame('1.1.7.01.01.001', $barang->kode_barang);
+        $this->assertSame('1.1.7.01.01.001', $barang->spesifikasi_barang_nusp);
         $this->assertSame(1, HargaBarang::where('barang_id', $barang->id)->count());
         $this->assertSame(50000, (int) HargaBarang::first()->harga_satuan);
     }
@@ -110,8 +110,8 @@ class BhpBarangImportTest extends TestCase
         $this->rekening();
         $file = $this->xlsx([
             self::HEADER,
-            ['5.1.02.01.01.0001', 'Kertas HVS', '', 'Rim', 50000],
-            ['5.1.02.01.01.0001', 'Kertas HVS', '', 'Rim', 55000],
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', 50000],
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', 55000],
         ]);
 
         $this->actingAs($this->operator())
@@ -122,14 +122,47 @@ class BhpBarangImportTest extends TestCase
         $this->assertSame(2, HargaBarang::count());
     }
 
+    public function test_import_menolak_duplikat_nama_dan_harga_sama(): void
+    {
+        $this->rekening();
+        $file = $this->xlsx([
+            self::HEADER,
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', 50000],
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', 50000],
+        ]);
+
+        $this->actingAs($this->operator())
+            ->post(route('distribusi-bhp.bos.barang.import'), ['file' => $file, 'sumber_dana' => 'BOS'])
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Barang::count());
+    }
+
+    public function test_import_menomori_nusp_berurutan_per_kode_rekening(): void
+    {
+        $this->rekening();
+        $file = $this->xlsx([
+            self::HEADER,
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', 50000],
+            ['5.1.02.01.01.0001', 'Pulpen', 'Pcs', 5000],
+        ]);
+
+        $this->actingAs($this->operator())
+            ->post(route('distribusi-bhp.bos.barang.import'), ['file' => $file, 'sumber_dana' => 'BOS'])
+            ->assertRedirect();
+
+        $kode = Barang::orderBy('kode_barang')->pluck('kode_barang')->all();
+        $this->assertSame(['1.1.7.01.01.001', '1.1.7.01.01.002'], $kode);
+    }
+
     public function test_import_batal_semua_saat_ada_baris_invalid(): void
     {
         $this->rekening();
         $file = $this->xlsx([
             self::HEADER,
-            ['5.1.02.01.01.0001', 'Kertas HVS', '', 'Rim', 50000],
-            ['5.1.02.01.01.9999', 'Pulpen', '', 'Pcs', 5000], // rekening tidak ada
-            ['5.1.02.01.01.0001', '', '', 'Pcs', 5000], // nama kosong
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', 50000],
+            ['5.1.02.01.01.9999', 'Pulpen', 'Pcs', 5000], // rekening tidak ada
+            ['5.1.02.01.01.0001', '', 'Pcs', 5000], // nama kosong
         ]);
 
         $this->actingAs($this->operator())
@@ -140,12 +173,27 @@ class BhpBarangImportTest extends TestCase
         $this->assertSame(0, HargaBarang::count());
     }
 
+    public function test_import_menolak_rekening_tanpa_kode_barang(): void
+    {
+        $this->rekening('5.1.02.01.01.0003', null);
+        $file = $this->xlsx([
+            self::HEADER,
+            ['5.1.02.01.01.0003', 'Kertas HVS', 'Rim', 50000],
+        ]);
+
+        $this->actingAs($this->operator())
+            ->post(route('distribusi-bhp.bos.barang.import'), ['file' => $file, 'sumber_dana' => 'BOS'])
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Barang::count());
+    }
+
     public function test_import_menolak_harga_nol_atau_negatif(): void
     {
         $this->rekening();
         $file = $this->xlsx([
             self::HEADER,
-            ['5.1.02.01.01.0001', 'Kertas HVS', '', 'Rim', 0],
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', 0],
         ]);
 
         $this->actingAs($this->operator())
@@ -171,8 +219,8 @@ class BhpBarangImportTest extends TestCase
         $this->rekening();
         $file = $this->xlsx([
             self::HEADER,
-            ['5.1.02.01.01.0001', 'Kertas HVS', '', 'Rim', '1.500.000'],
-        ], teksCells: [1 => [4]]);
+            ['5.1.02.01.01.0001', 'Kertas HVS', 'Rim', '1.500.000'],
+        ], teksCells: [1 => [3]]);
 
         $this->actingAs($this->operator())
             ->post(route('distribusi-bhp.bos.barang.import'), ['file' => $file, 'sumber_dana' => 'BOS'])
@@ -186,7 +234,7 @@ class BhpBarangImportTest extends TestCase
         $this->rekening('5.1.02.01.01.0002', '1.1.7.01.01', 'BOPD');
         $file = $this->xlsx([
             self::HEADER,
-            ['5.1.02.01.01.0002', 'Semen', '', 'Sak', 60000],
+            ['5.1.02.01.01.0002', 'Semen', 'Sak', 60000],
         ]);
 
         $this->actingAs($this->operator())

@@ -47,7 +47,6 @@ interface Stats {
 const EMPTY_FORM = {
     kode_barang: '',
     nama_barang: '',
-    spesifikasi_barang_nusp: '',
     satuan: '',
     kode_rekening_id: '',
     harga_satuan: 0,
@@ -88,8 +87,10 @@ export default function Index({
         );
     }, [items, search]);
 
+    // kode_barang kini berupa NUSP penuh (mis. "1.1.7.01.01.001"); uraian dicari
+    // dari opsi kode barang berdasarkan prefix kode-nya.
     const uraianFor = (kode: string | null) =>
-        kodeBarangOptions.find((o) => o.kode === kode)?.uraian;
+        kodeBarangOptions.find((o) => kode?.startsWith(o.kode))?.uraian;
 
     const submitCreate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -121,7 +122,6 @@ export default function Index({
         editForm.setData({
             kode_barang: item.kode_barang ?? '',
             nama_barang: item.nama_barang,
-            spesifikasi_barang_nusp: item.spesifikasi_barang_nusp ?? '',
             satuan: item.satuan ?? '',
             kode_rekening_id: item.kode_rekening_id ?? '',
             harga_satuan: 0,
@@ -172,95 +172,84 @@ export default function Index({
         URL.revokeObjectURL(url);
     };
 
-    const fields = (form: ReturnType<typeof useForm>, isEdit: boolean) => (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Rekening</label>
-                <select
-                    value={form.data.kode_rekening_id}
-                    onChange={(e) => {
-                        const selected = kodeRekening.find((r) => r.id === e.target.value);
-                        form.setData({
-                            ...form.data,
-                            kode_rekening_id: e.target.value,
-                            kode_barang: selected?.kode_barang || form.data.kode_barang,
-                        });
-                    }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
-                >
-                    <option value="">— Pilih Kode Rekening —</option>
-                    {kodeRekening.map((r) => (
-                        <option key={r.id} value={r.id}>{r.kode} — {r.nama}</option>
-                    ))}
-                </select>
-                {form.errors.kode_rekening_id && <p className="text-xs text-rose-600 mt-1">{form.errors.kode_rekening_id}</p>}
-            </div>
+    const fields = (form: ReturnType<typeof useForm>, isEdit: boolean) => {
+        const selectedRekening = kodeRekening.find((r) => r.id === form.data.kode_rekening_id);
+        const kodeBarangPreview = selectedRekening?.kode_barang ?? null;
 
-            <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Barang</label>
-                <select
-                    value={form.data.kode_barang}
-                    onChange={(e) => form.setData('kode_barang', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
-                >
-                    <option value="">— Pilih Kode Barang —</option>
-                    {kodeBarangOptions.map((o) => (
-                        <option key={o.kode} value={o.kode}>{o.kode} — {o.uraian}</option>
-                    ))}
-                </select>
-                {form.errors.kode_barang && <p className="text-xs text-rose-600 mt-1">{form.errors.kode_barang}</p>}
-            </div>
-
-            <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Satuan</label>
-                <input
-                    value={form.data.satuan}
-                    onChange={(e) => form.setData('satuan', e.target.value)}
-                    placeholder="Unit, Pcs, Kg, Liter, dll"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
-                />
-                {form.errors.satuan && <p className="text-xs text-rose-600 mt-1">{form.errors.satuan}</p>}
-            </div>
-
-            <div className="sm:col-span-2">
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Barang</label>
-                <input
-                    value={form.data.nama_barang}
-                    onChange={(e) => form.setData('nama_barang', e.target.value)}
-                    placeholder="Masukkan nama barang"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
-                />
-                {form.errors.nama_barang && <p className="text-xs text-rose-600 mt-1">{form.errors.nama_barang}</p>}
-            </div>
-
-            <div className="sm:col-span-2">
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
-                    NUSP (Nomor Urut Spesifikasi Barang)
-                </label>
-                <input
-                    value={form.data.spesifikasi_barang_nusp}
-                    onChange={(e) => form.setData('spesifikasi_barang_nusp', e.target.value)}
-                    placeholder="Opsional"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
-                />
-            </div>
-
-            {!isEdit && (
+        return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Harga Satuan</label>
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Rekening *</label>
+                    <select
+                        value={form.data.kode_rekening_id}
+                        onChange={(e) => form.setData('kode_rekening_id', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
+                    >
+                        <option value="">— Pilih Kode Rekening —</option>
+                        {kodeRekening.map((r) => (
+                            <option key={r.id} value={r.id}>{r.kode} — {r.nama}</option>
+                        ))}
+                    </select>
+                    {form.errors.kode_rekening_id && <p className="text-xs text-rose-600 mt-1">{form.errors.kode_rekening_id}</p>}
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Barang / NUSP</label>
+                    {isEdit ? (
+                        <input
+                            value={form.data.kode_barang}
+                            readOnly
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 text-slate-600 cursor-not-allowed font-mono"
+                        />
+                    ) : (
+                        <div className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 font-mono text-slate-600">
+                            {kodeBarangPreview ? `${kodeBarangPreview}.### (otomatis)` : '— Pilih kode rekening dulu —'}
+                        </div>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">
+                        NUSP di-generate otomatis dari kode barang kode rekening (mis. 1.1.7.01.01.001).
+                    </p>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Satuan</label>
                     <input
-                        type="number"
-                        value={form.data.harga_satuan}
-                        onChange={(e) => form.setData('harga_satuan', Number(e.target.value))}
-                        placeholder="Masukkan harga satuan"
+                        value={form.data.satuan}
+                        onChange={(e) => form.setData('satuan', e.target.value)}
+                        placeholder="Unit, Pcs, Kg, Liter, dll"
                         className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
                     />
-                    {form.errors.harga_satuan && <p className="text-xs text-rose-600 mt-1">{form.errors.harga_satuan}</p>}
-                    <p className="text-xs text-slate-400 mt-1">Harga referensi; harga aktual bisa berbeda saat penerimaan.</p>
+                    {form.errors.satuan && <p className="text-xs text-rose-600 mt-1">{form.errors.satuan}</p>}
                 </div>
-            )}
-        </div>
-    );
+
+                <div>
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Barang *</label>
+                    <input
+                        value={form.data.nama_barang}
+                        onChange={(e) => form.setData('nama_barang', e.target.value)}
+                        placeholder="Masukkan nama barang"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    />
+                    {form.errors.nama_barang && <p className="text-xs text-rose-600 mt-1">{form.errors.nama_barang}</p>}
+                </div>
+
+                {!isEdit && (
+                    <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Harga Satuan *</label>
+                        <input
+                            type="number"
+                            value={form.data.harga_satuan}
+                            onChange={(e) => form.setData('harga_satuan', Number(e.target.value))}
+                            placeholder="Masukkan harga satuan"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                        />
+                        {form.errors.harga_satuan && <p className="text-xs text-rose-600 mt-1">{form.errors.harga_satuan}</p>}
+                        <p className="text-xs text-slate-400 mt-1">Harga referensi; harga aktual bisa berbeda saat penerimaan.</p>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <AppLayout title="Data Barang BHP">
@@ -317,7 +306,7 @@ export default function Index({
                         <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
                             <tr>
                                 <th className="text-left py-3 px-4">Nama Barang</th>
-                                <th className="text-left py-3 px-4">Kode Barang</th>
+                                <th className="text-left py-3 px-4">Kode Barang / NUSP</th>
                                 <th className="text-left py-3 px-4">Satuan</th>
                                 <th className="text-left py-3 px-4">Harga Satuan</th>
                                 <th className="text-left py-3 px-4">Kode Rekening</th>
@@ -468,11 +457,12 @@ export default function Index({
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-600 space-y-1">
                         <p className="font-bold text-slate-700">Petunjuk:</p>
                         <ul className="list-disc list-inside space-y-0.5">
-                            <li>Urutan kolom: Kode Rekening, Nama Barang, Spesifikasi/NUSP, Satuan, Harga Satuan.</li>
-                            <li>Kode Barang & uraian diisi otomatis dari Kode Rekening.</li>
+                            <li>Urutan kolom: Kode Rekening, Nama Barang, Satuan, Harga Satuan.</li>
+                            <li>Kode Barang & NUSP di-generate otomatis dari Kode Rekening.</li>
+                            <li>Kode Rekening wajib sudah memiliki Kode Barang.</li>
                             <li>Kode Rekening, Nama Barang, Satuan, dan Harga Satuan wajib diisi.</li>
                             <li>Harga Satuan berupa angka tanpa Rp/titik.</li>
-                            <li>Nama barang yang sama akan menambah varian harga pada barang yang ada.</li>
+                            <li>Nama sama + harga beda → menambah varian harga; sama persis → ditolak (duplikat).</li>
                             <li>Import bersifat all-or-nothing: satu baris invalid membatalkan seluruh import.</li>
                             <li>Maksimal 1000 baris per upload, file maksimal 10MB.</li>
                         </ul>

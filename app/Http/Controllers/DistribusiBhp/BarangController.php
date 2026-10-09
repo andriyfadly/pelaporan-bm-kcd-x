@@ -9,6 +9,7 @@ use App\Models\DistribusiBhp\HargaBarang;
 use App\Models\DistribusiBhp\KodeRekening;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\PengajuanDetail;
+use App\Services\DistribusiBhp\NuspService;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +20,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
@@ -31,6 +33,8 @@ class BarangController extends Controller
         ['kode' => '1.1.7.01.04', 'uraian' => 'Obat-Obatan'],
         ['kode' => '1.1.7.01.07', 'uraian' => 'Naturan dan Pakan'],
     ];
+
+    public function __construct(private readonly NuspService $nusp) {}
 
     public function index(Request $request): Response
     {
@@ -63,32 +67,37 @@ class BarangController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'kode_barang' => ['nullable', 'string', 'max:100'],
             'nama_barang' => ['required', 'string', 'max:255'],
-            'spesifikasi_barang_nusp' => ['nullable', 'string', 'max:255'],
             'satuan' => ['nullable', 'string', 'max:50'],
-            'kode_rekening_id' => ['nullable', 'uuid'],
+            'kode_rekening_id' => ['required', 'uuid'],
             'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
-            'harga_satuan' => ['required', 'integer', 'min:0'],
+            'harga_satuan' => ['required', 'integer', 'min:1'],
         ]);
 
         $sumberDana = SumberDana::normalisasi($validated['sumber_dana']);
 
         return SumberDana::dengan($sumberDana, function () use ($validated, $request, $sumberDana): RedirectResponse {
-            if (! empty($validated['kode_rekening_id'])
-                && ! KodeRekening::whereKey($validated['kode_rekening_id'])->exists()) {
+            $rekening = KodeRekening::find($validated['kode_rekening_id']);
+
+            if (! $rekening) {
                 return back()->withErrors([
                     'kode_rekening_id' => 'Kode rekening tidak sesuai dengan sumber dana '.$sumberDana.'.',
                 ])->withInput();
             }
 
-            DB::transaction(function () use ($validated, $request) {
+            try {
+                $nusp = $this->nusp->generate($rekening);
+            } catch (RuntimeException $e) {
+                return back()->withErrors(['kode_rekening_id' => $e->getMessage()])->withInput();
+            }
+
+            DB::transaction(function () use ($validated, $request, $rekening, $nusp) {
                 $barang = Barang::create([
-                    'kode_barang' => $validated['kode_barang'] ?? null,
+                    'kode_barang' => $nusp,
                     'nama_barang' => $validated['nama_barang'],
-                    'spesifikasi_barang_nusp' => $validated['spesifikasi_barang_nusp'] ?? null,
+                    'spesifikasi_barang_nusp' => $nusp,
                     'satuan' => $validated['satuan'] ?? null,
-                    'kode_rekening_id' => $validated['kode_rekening_id'] ?? null,
+                    'kode_rekening_id' => $rekening->id,
                 ]);
 
                 $barang->harga()->create([
@@ -104,27 +113,40 @@ class BarangController extends Controller
     public function update(Request $request, Barang $barang): RedirectResponse
     {
         $validated = $request->validate([
-            'kode_barang' => ['nullable', 'string', 'max:100'],
             'nama_barang' => ['required', 'string', 'max:255'],
-            'spesifikasi_barang_nusp' => ['nullable', 'string', 'max:255'],
             'satuan' => ['nullable', 'string', 'max:50'],
-            'kode_rekening_id' => ['nullable', 'uuid'],
+            'kode_rekening_id' => ['required', 'uuid'],
             'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
         ]);
 
-        if (! empty($validated['kode_rekening_id'])
-            && ! KodeRekening::whereKey($validated['kode_rekening_id'])->exists()) {
+        $rekening = KodeRekening::find($validated['kode_rekening_id']);
+
+        if (! $rekening) {
             return back()->withErrors([
                 'kode_rekening_id' => 'Kode rekening tidak sesuai dengan sumber dana '.$barang->sumber_dana.'.',
             ])->withInput();
         }
 
+        // NUSP hanya di-generate ulang bila kode rekening berubah; selain itu
+        // NUSP lama dipertahankan (agar penomoran dokumen historis tetap valid).
+        $nusp = $barang->spesifikasi_barang_nusp;
+        $kodeBarang = $barang->kode_barang;
+
+        if ($barang->kode_rekening_id !== $rekening->id) {
+            try {
+                $nusp = $this->nusp->generate($rekening);
+                $kodeBarang = $nusp;
+            } catch (RuntimeException $e) {
+                return back()->withErrors(['kode_rekening_id' => $e->getMessage()])->withInput();
+            }
+        }
+
         $barang->update([
-            'kode_barang' => $validated['kode_barang'] ?? null,
+            'kode_barang' => $kodeBarang,
             'nama_barang' => $validated['nama_barang'],
-            'spesifikasi_barang_nusp' => $validated['spesifikasi_barang_nusp'] ?? null,
+            'spesifikasi_barang_nusp' => $nusp,
             'satuan' => $validated['satuan'] ?? null,
-            'kode_rekening_id' => $validated['kode_rekening_id'] ?? null,
+            'kode_rekening_id' => $rekening->id,
         ]);
 
         return back()->with('success', 'Barang berhasil diperbarui.');
@@ -192,12 +214,12 @@ class BarangController extends Controller
     /**
      * Impor data barang dari Excel (all-or-nothing: satu baris invalid = batal semua).
      *
-     * Kolom (index berbasis 0): [0] Kode Rekening*, [1] Nama Barang*, [2] Spesifikasi/NUSP,
-     * [3] Satuan*, [4] Harga Satuan*. Baris 1 = header, dilewati.
+     * Kolom (index berbasis 0): [0] Kode Rekening*, [1] Nama Barang*, [2] Satuan*,
+     * [3] Harga Satuan*. Baris 1 = header, dilewati.
      *
-     * Kode Barang & uraian diambil otomatis dari kode rekening. Untuk nama barang
-     * yang sama (dalam sekolah & sumber dana ini), harga baru ditambahkan ke daftar
-     * harga barang yang sudah ada.
+     * Kode Barang & NUSP di-generate otomatis dari kode rekening. Untuk nama barang
+     * yang sama dengan harga berbeda, harga baru ditambahkan ke daftar harga barang
+     * yang sudah ada; nama & harga yang sama persis ditolak (duplikat).
      */
     public function import(Request $request): RedirectResponse
     {
@@ -230,43 +252,67 @@ class BarangController extends Controller
                 return back()->with('error', 'Berkas tidak berisi data untuk diimpor.');
             }
 
-            $errors = [];
             $rekeningPerKode = KodeRekening::whereIn('kode', $dataRows->pluck(0)->map(fn ($v) => trim((string) $v))->filter()->unique())
                 ->get()
                 ->keyBy(fn (KodeRekening $r): string => (string) $r->kode);
 
             // Barang yang sudah ada, di-index per (nama lowercase) → instance.
-            $barangPerNama = Barang::all()
+            $barangPerNama = Barang::with('harga')
+                ->get()
                 ->keyBy(fn (Barang $b): string => mb_strtolower(trim($b->nama_barang)));
 
+            $errors = [];
             $hargaPerBaris = [];
+            $terlihat = []; // "nama|harga" yang sudah muncul di berkas ini
             foreach ($dataRows as $i => $row) {
                 $noBaris = $i + 2;
                 $raw = fn (int $idx): mixed => $row[$idx] ?? null;
                 $get = fn (int $idx): string => trim((string) ($raw($idx) ?? ''));
 
                 $kodeRekening = $get(0);
+                $rekening = $kodeRekening !== '' ? $rekeningPerKode->get($kodeRekening) : null;
+
                 if ($kodeRekening === '') {
                     $errors[] = "Baris {$noBaris}: Kode Rekening wajib diisi.";
-                } elseif (! $rekeningPerKode->has($kodeRekening)) {
+                } elseif (! $rekening) {
                     $errors[] = "Baris {$noBaris}: Kode Rekening \"{$kodeRekening}\" tidak ditemukan.";
+                } elseif (trim((string) $rekening->kode_barang) === '') {
+                    $errors[] = "Baris {$noBaris}: Kode Rekening \"{$kodeRekening}\" belum memiliki Kode Barang.";
                 }
 
-                if ($get(1) === '') {
+                $nama = $get(1);
+                if ($nama === '') {
                     $errors[] = "Baris {$noBaris}: Nama Barang wajib diisi.";
                 }
 
-                if ($get(3) === '') {
+                if ($get(2) === '') {
                     $errors[] = "Baris {$noBaris}: Satuan wajib diisi.";
                 }
 
-                if (! $this->angkaBulat($raw(4))) {
+                if (! $this->angkaBulat($raw(3))) {
                     $errors[] = "Baris {$noBaris}: Harga Satuan wajib berupa bilangan bulat.";
-                } elseif ((int) $this->normalisasiAngka($raw(4)) <= 0) {
+                } elseif ((int) $this->normalisasiAngka($raw(3)) <= 0) {
                     $errors[] = "Baris {$noBaris}: Harga Satuan harus lebih dari 0.";
                 }
 
-                $hargaPerBaris[$i] = (int) $this->normalisasiAngka($raw(4));
+                $harga = (int) $this->normalisasiAngka($raw(3));
+                $hargaPerBaris[$i] = $harga;
+
+                if ($nama !== '') {
+                    $key = mb_strtolower($nama);
+                    $jejak = $key.'|'.$harga;
+
+                    if (isset($terlihat[$jejak])) {
+                        $errors[] = "Baris {$noBaris}: \"{$nama}\" dengan harga Rp".number_format($harga, 0, ',', '.').' muncul lebih dari sekali di berkas.';
+                    } else {
+                        $terlihat[$jejak] = true;
+                    }
+
+                    $existing = $barangPerNama->get($key);
+                    if ($existing && $existing->harga->contains(fn ($h) => (int) $h->harga_satuan === $harga)) {
+                        $errors[] = "Baris {$noBaris}: \"{$nama}\" dengan harga Rp".number_format($harga, 0, ',', '.').' sudah ada (duplikat).';
+                    }
+                }
             }
 
             if ($errors !== []) {
@@ -292,11 +338,12 @@ class BarangController extends Controller
                         $barang = $barangPerNama->get($key);
 
                         if (! $barang) {
+                            $nusp = $this->nusp->generate($rekening);
                             $barang = Barang::create([
-                                'kode_barang' => $rekening->kode_barang,
+                                'kode_barang' => $nusp,
                                 'nama_barang' => $nama,
-                                'spesifikasi_barang_nusp' => $get(2) ?: null,
-                                'satuan' => $get(3),
+                                'spesifikasi_barang_nusp' => $nusp,
+                                'satuan' => $get(2),
                                 'kode_rekening_id' => $rekening->id,
                             ]);
                             $barangPerNama->put($key, $barang);
@@ -332,7 +379,6 @@ class BarangController extends Controller
             ->map(fn (KodeRekening $r): array => [
                 'kode_rekening' => (string) $r->kode,
                 'nama_barang' => '',
-                'spesifikasi' => '',
                 'satuan' => '',
                 'harga_satuan' => 0,
             ])

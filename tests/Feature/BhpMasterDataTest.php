@@ -45,7 +45,7 @@ class BhpMasterDataTest extends TestCase
         return $user;
     }
 
-    /** Operator sekolah — hanya `lihat-distribusi-bhp`; tulis master ditolak. */
+    /** Operator sekolah — boleh kelola barang (`kelola-barang-bhp`); tulis master lain ditolak. */
     private function operator(): User
     {
         $user = User::create([
@@ -116,11 +116,15 @@ class BhpMasterDataTest extends TestCase
     public function test_admin_dapat_membuat_barang_beserta_harga(): void
     {
         $admin = $this->admin();
-        $rekening = KodeRekening::create(['kode' => '5.1.02.01.01.0011', 'nama' => 'Bahan C', 'sumber_dana' => 'BOS']);
+        $rekening = KodeRekening::create([
+            'kode' => '5.1.02.01.01.0011',
+            'nama' => 'Bahan C',
+            'kode_barang' => '1.1.7.01.01',
+            'sumber_dana' => 'BOS',
+        ]);
 
         $this->actingAs($admin)
             ->post(route('distribusi-bhp.barang.store'), [
-                'kode_barang' => '1.1.7.01.01',
                 'nama_barang' => 'Semen Portland',
                 'satuan' => 'Sak',
                 'kode_rekening_id' => $rekening->id,
@@ -131,18 +135,37 @@ class BhpMasterDataTest extends TestCase
 
         $barang = Barang::firstOrFail();
         $this->assertSame('BOS', $barang->sumber_dana);
+        $this->assertSame('1.1.7.01.01.001', $barang->kode_barang);
+        $this->assertSame('1.1.7.01.01.001', $barang->spesifikasi_barang_nusp);
         $this->assertSame(1, HargaBarang::where('barang_id', $barang->id)->count());
         $this->assertSame(50000, (int) HargaBarang::first()->harga_satuan);
+    }
+
+    public function test_barang_menolak_rekening_tanpa_kode_barang(): void
+    {
+        $admin = $this->admin();
+        $rekening = KodeRekening::create(['kode' => '5.1.02.01.01.0099', 'nama' => 'Tanpa Kode', 'sumber_dana' => 'BOS']);
+
+        $this->actingAs($admin)
+            ->post(route('distribusi-bhp.barang.store'), [
+                'nama_barang' => 'Semen Portland',
+                'satuan' => 'Sak',
+                'kode_rekening_id' => $rekening->id,
+                'sumber_dana' => 'BOS',
+                'harga_satuan' => 50000,
+            ])
+            ->assertSessionHasErrors('kode_rekening_id');
+
+        $this->assertSame(0, Barang::count());
     }
 
     public function test_barang_menolak_rekening_dari_sumber_dana_berbeda(): void
     {
         $admin = $this->admin();
-        $rekeningBopd = KodeRekening::create(['kode' => '5.1.02.01.01.0012', 'nama' => 'Bahan D', 'sumber_dana' => 'BOPD']);
+        $rekeningBopd = KodeRekening::create(['kode' => '5.1.02.01.01.0012', 'nama' => 'Bahan D', 'kode_barang' => '1.1.7.01.02', 'sumber_dana' => 'BOPD']);
 
         $this->actingAs($admin)
             ->post(route('distribusi-bhp.barang.store'), [
-                'kode_barang' => '1.1.7.01.02',
                 'nama_barang' => 'Semen BOPD',
                 'satuan' => 'Sak',
                 'kode_rekening_id' => $rekeningBopd->id,
@@ -175,25 +198,53 @@ class BhpMasterDataTest extends TestCase
     public function test_admin_dapat_memperbarui_barang(): void
     {
         $admin = $this->admin();
+        $rekening = KodeRekening::create(['kode' => '5.1.02.01.01.0020', 'nama' => 'Bahan E', 'kode_barang' => '1.1.7.01.03', 'sumber_dana' => 'BOS']);
         $barang = Barang::create([
-            'kode_barang' => '1.1.7.01.03',
+            'kode_barang' => '1.1.7.01.03.001',
+            'spesifikasi_barang_nusp' => '1.1.7.01.03.001',
             'nama_barang' => 'Kertas HVS',
             'satuan' => 'Rim',
+            'kode_rekening_id' => $rekening->id,
             'sumber_dana' => 'BOS',
         ]);
 
         $this->actingAs($admin)
             ->put(route('distribusi-bhp.bos.barang.update', $barang), [
-                'kode_barang' => '1.1.7.01.04',
                 'nama_barang' => 'Kertas HVS A4',
                 'satuan' => 'Rim',
+                'kode_rekening_id' => $rekening->id,
                 'sumber_dana' => 'BOS',
             ])
             ->assertRedirect();
 
         $barang->refresh();
         $this->assertSame('Kertas HVS A4', $barang->nama_barang);
-        $this->assertSame('1.1.7.01.04', $barang->kode_barang);
+        // NUSP dipertahankan karena kode rekening tidak berubah.
+        $this->assertSame('1.1.7.01.03.001', $barang->kode_barang);
+    }
+
+    public function test_mengganti_kode_rekening_menggenerate_ulang_nusp(): void
+    {
+        $admin = $this->admin();
+        $rekeningA = KodeRekening::create(['kode' => '5.1.02.01.01.0021', 'nama' => 'A', 'kode_barang' => '1.1.7.01.03', 'sumber_dana' => 'BOS']);
+        $rekeningB = KodeRekening::create(['kode' => '5.1.02.01.01.0022', 'nama' => 'B', 'kode_barang' => '1.1.7.01.04', 'sumber_dana' => 'BOS']);
+        $barang = Barang::create([
+            'kode_barang' => '1.1.7.01.03.001',
+            'spesifikasi_barang_nusp' => '1.1.7.01.03.001',
+            'nama_barang' => 'Kertas HVS',
+            'kode_rekening_id' => $rekeningA->id,
+            'sumber_dana' => 'BOS',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('distribusi-bhp.bos.barang.update', $barang), [
+                'nama_barang' => 'Kertas HVS',
+                'kode_rekening_id' => $rekeningB->id,
+                'sumber_dana' => 'BOS',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('1.1.7.01.04.001', $barang->fresh()->kode_barang);
     }
 
     public function test_admin_dapat_menghapus_barang_beserta_harga(): void
@@ -257,15 +308,19 @@ class BhpMasterDataTest extends TestCase
     public function test_operator_sekolah_dapat_memperbarui_barang(): void
     {
         $operator = $this->operator();
+        $rekening = KodeRekening::create(['kode' => '5.1.02.01.01.0030', 'nama' => 'Bahan F', 'kode_barang' => '1.1.7.01.03', 'sumber_dana' => 'BOS']);
         $barang = Barang::create([
-            'kode_barang' => '1.1.7.01.03',
+            'kode_barang' => '1.1.7.01.03.001',
+            'spesifikasi_barang_nusp' => '1.1.7.01.03.001',
             'nama_barang' => 'Kertas HVS',
+            'kode_rekening_id' => $rekening->id,
             'sumber_dana' => 'BOS',
         ]);
 
         $this->actingAs($operator)
             ->put(route('distribusi-bhp.bos.barang.update', $barang), [
                 'nama_barang' => 'Kertas HVS Folio',
+                'kode_rekening_id' => $rekening->id,
                 'sumber_dana' => 'BOS',
             ])
             ->assertRedirect();
@@ -298,11 +353,12 @@ class BhpMasterDataTest extends TestCase
     public function test_operator_sekolah_dapat_mengelola_barang(): void
     {
         $operator = $this->operator();
+        $rekening = KodeRekening::create(['kode' => '5.1.02.01.01.0031', 'nama' => 'Bahan G', 'kode_barang' => '1.1.7.01.01', 'sumber_dana' => 'BOS']);
 
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.barang.store'), [
-                'kode_barang' => '1.1.7.01.05',
                 'nama_barang' => 'Pulpen',
+                'kode_rekening_id' => $rekening->id,
                 'sumber_dana' => 'BOS',
                 'harga_satuan' => 5000,
             ])
