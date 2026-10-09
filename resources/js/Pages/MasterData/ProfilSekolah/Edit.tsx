@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
+import { Save, Loader2 } from 'lucide-react';
 
 interface Sekolah {
     id: string;
@@ -155,8 +156,9 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                         </div>
                     </div>
 
-                    <button type="submit" disabled={form.processing} className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
-                        Simpan Profil
+                    <button type="submit" disabled={form.processing} className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                        {form.processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        {form.processing ? 'Menyimpan...' : 'Simpan Profil'}
                     </button>
                 </form>
             </div>
