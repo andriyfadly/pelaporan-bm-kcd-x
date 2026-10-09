@@ -1,6 +1,7 @@
 import { Link, usePage, router } from '@inertiajs/react';
 import React, { useState, useEffect, ReactNode } from 'react';
 import ConfirmDialog from '@/Components/ConfirmDialog';
+import { Toaster, toast } from 'sonner';
 import {
     LayoutDashboard,
     Database,
@@ -249,6 +250,12 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const { auth } = usePage<any>().props;
+    const { flash } = usePage<any>().props;
+
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+        if (flash?.error) toast.error(flash.error);
+    }, [flash?.success, flash?.error]);
 
     const user = auth?.user;
     const sekolah = user?.sekolah;
@@ -665,6 +672,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                 confirmText="Ya, Keluar"
                 isDestructive={true}
             />
+
+            <Toaster richColors position="top-right" closeButton />
         </div>
     );
 }
