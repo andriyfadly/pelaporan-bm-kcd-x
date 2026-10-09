@@ -53,7 +53,6 @@ class PeranDanHakAksesSeeder extends Seeder
             'hapus-spj-bm',
             'cetak-laporan-bm',
             'lihat-distribusi-bhp',
-            'kelola-master-bhp',
             'kelola-penerimaan-bhp',
             'kelola-pengajuan-bhp',
             'cetak-dokumen-bhp',
