@@ -18,7 +18,7 @@
 | Kelola user (`kelola-user`) | ✅ | ✅* | ❌ |
 | Lihat log aktivitas (`lihat-log-aktivitas`) | ✅ | ✅\*\* | ❌ |
 
-### Distribusi BHP (10 permission)
+### Distribusi BHP (11 permission)
 
 | Kemampuan | super_admin | admin_kcd | operator_sekolah | bendahara_sekolah | operator_divisi |
 |-----------|:-----------:|:---------:|:----------------:|:----------------:|:---------------:|
@@ -31,6 +31,7 @@
 | Cetak/export (`cetak-dokumen-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Kelola divisi (`kelola-divisi-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Kelola penyedia (`kelola-penyedia-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Kelola barang (`kelola-barang-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Role `operator_divisi` adalah role baru khusus BHP (pemohon lintas sekolah,
 tanpa akses master/approval). Wewenang dihitung server-side via middleware

@@ -33,6 +33,7 @@ class PeranDanHakAksesSeeder extends Seeder
             'cetak-dokumen-bhp',
             'kelola-divisi-bhp',
             'kelola-penyedia-bhp',
+            'kelola-barang-bhp',
             'kelola-master-data-sekolah',
         ];
 
@@ -59,6 +60,7 @@ class PeranDanHakAksesSeeder extends Seeder
             'cetak-dokumen-bhp',
             'kelola-divisi-bhp',
             'kelola-penyedia-bhp',
+            'kelola-barang-bhp',
             'kelola-master-data-sekolah',
         ]);
 

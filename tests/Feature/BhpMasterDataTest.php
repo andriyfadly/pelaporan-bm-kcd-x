@@ -172,6 +172,107 @@ class BhpMasterDataTest extends TestCase
         $this->assertSame(2, HargaBarang::where('barang_id', $barang->id)->count());
     }
 
+    public function test_admin_dapat_memperbarui_barang(): void
+    {
+        $admin = $this->admin();
+        $barang = Barang::create([
+            'kode_barang' => '1.1.7.01.03',
+            'nama_barang' => 'Kertas HVS',
+            'satuan' => 'Rim',
+            'sumber_dana' => 'BOS',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('distribusi-bhp.bos.barang.update', $barang), [
+                'kode_barang' => '1.1.7.01.04',
+                'nama_barang' => 'Kertas HVS A4',
+                'satuan' => 'Rim',
+                'sumber_dana' => 'BOS',
+            ])
+            ->assertRedirect();
+
+        $barang->refresh();
+        $this->assertSame('Kertas HVS A4', $barang->nama_barang);
+        $this->assertSame('1.1.7.01.04', $barang->kode_barang);
+    }
+
+    public function test_admin_dapat_menghapus_barang_beserta_harga(): void
+    {
+        $admin = $this->admin();
+        $barang = Barang::create([
+            'kode_barang' => '1.1.7.01.03',
+            'nama_barang' => 'Kertas HVS',
+            'sumber_dana' => 'BOS',
+        ]);
+        $barang->harga()->create(['harga_satuan' => 100000, 'created_by' => $admin->id]);
+
+        $this->actingAs($admin)
+            ->delete(route('distribusi-bhp.bos.barang.destroy', $barang))
+            ->assertRedirect();
+
+        $this->assertSame(0, Barang::whereKey($barang->id)->count());
+        $this->assertSame(0, HargaBarang::where('barang_id', $barang->id)->count());
+    }
+
+    public function test_halaman_kelola_harga_menampilkan_daftar_harga(): void
+    {
+        $admin = $this->admin();
+        $barang = Barang::create([
+            'kode_barang' => '1.1.7.01.03',
+            'nama_barang' => 'Kertas HVS',
+            'sumber_dana' => 'BOS',
+        ]);
+        $barang->harga()->create(['harga_satuan' => 100000, 'created_by' => $admin->id]);
+
+        $this->actingAs($admin)
+            ->get(route('distribusi-bhp.bos.barang.harga.index', $barang))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('DistribusiBhp/Master/Barang/KelolaHarga')
+                ->where('barang.id', $barang->id)
+                ->has('hargaList', 1));
+    }
+
+    public function test_admin_dapat_mengubah_dan_menghapus_harga(): void
+    {
+        $admin = $this->admin();
+        $barang = Barang::create([
+            'kode_barang' => '1.1.7.01.03',
+            'nama_barang' => 'Kertas HVS',
+            'sumber_dana' => 'BOS',
+        ]);
+        $harga = $barang->harga()->create(['harga_satuan' => 100000, 'created_by' => $admin->id]);
+
+        $this->actingAs($admin)
+            ->put(route('distribusi-bhp.bos.barang.harga.update', $harga), ['harga_satuan' => 150000])
+            ->assertRedirect();
+        $this->assertSame(150000, (int) $harga->fresh()->harga_satuan);
+
+        $this->actingAs($admin)
+            ->delete(route('distribusi-bhp.bos.barang.harga.destroy', $harga))
+            ->assertRedirect();
+        $this->assertSame(0, HargaBarang::whereKey($harga->id)->count());
+    }
+
+    public function test_operator_sekolah_dapat_memperbarui_barang(): void
+    {
+        $operator = $this->operator();
+        $barang = Barang::create([
+            'kode_barang' => '1.1.7.01.03',
+            'nama_barang' => 'Kertas HVS',
+            'sumber_dana' => 'BOS',
+        ]);
+
+        $this->actingAs($operator)
+            ->put(route('distribusi-bhp.bos.barang.update', $barang), [
+                'nama_barang' => 'Kertas HVS Folio',
+                'sumber_dana' => 'BOS',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('Kertas HVS Folio', $barang->fresh()->nama_barang);
+    }
+
     public function test_admin_dapat_membuat_penyedia(): void
     {
         $admin = $this->admin();
@@ -192,6 +293,22 @@ class BhpMasterDataTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame(1, Penyedia::where('nama', 'CV Sekolah Jaya')->count());
+    }
+
+    public function test_operator_sekolah_dapat_mengelola_barang(): void
+    {
+        $operator = $this->operator();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.barang.store'), [
+                'kode_barang' => '1.1.7.01.05',
+                'nama_barang' => 'Pulpen',
+                'sumber_dana' => 'BOS',
+                'harga_satuan' => 5000,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, Barang::where('nama_barang', 'Pulpen')->count());
     }
 
     public function test_operator_sekolah_tidak_dapat_menulis_master_bhp(): void

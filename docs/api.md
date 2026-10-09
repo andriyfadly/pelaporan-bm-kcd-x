@@ -144,8 +144,10 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 | GET | `/distribusi-bhp/master/kode-rekening` | `lihat-distribusi-bhp` | `KodeRekeningController::index` |
 | POST | `/distribusi-bhp/master/kode-rekening` | `kelola-master-bhp` | `KodeRekeningController::store` |
 | POST | `/distribusi-bhp/master/kode-rekening/batch-assign` | `lihat-distribusi-bhp` | `KodeRekeningController::batchAssign` |
-| GET/POST | `/distribusi-bhp/master/barang` | `lihat-distribusi-bhp` / `kelola-master-bhp` | `BarangController` |
-| POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-master-bhp` | `BarangController::storeHarga` — `sumber_dana` wajib & harus cocok dengan barang ter-binding |
+| GET/POST/PUT/DELETE | `/distribusi-bhp/master/barang` | `lihat-distribusi-bhp` (read) / `kelola-barang-bhp` (write) | `BarangController` |
+| GET | `/distribusi-bhp/master/barang/{barang}/kelola-harga` | `lihat-distribusi-bhp` | `BarangController::hargaIndex` — halaman kelola harga barang |
+| POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-barang-bhp` | `BarangController::storeHarga` — `sumber_dana` wajib |
+| PUT/DELETE | `/distribusi-bhp/master/harga-barang/{harga}` | `kelola-barang-bhp` | `BarangController::updateHarga` / `destroyHarga` |
 | GET/POST/PUT/DELETE | `/distribusi-bhp/penyedia` | `lihat-distribusi-bhp` (read) / `kelola-penyedia-bhp` (write) | `PenyediaController` |
 | GET/POST | `/distribusi-bhp/penerimaan` | `kelola-penerimaan-bhp` | `PenerimaanController` |
 | DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hapus **seluruh** saldo awal (header + semua detail) milik sekolah sendiri yang belum dipakai |

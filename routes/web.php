@@ -122,10 +122,16 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/master/barang', [BhpBarangController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')->name('barang.index');
-        Route::post('/master/barang', [BhpBarangController::class, 'store'])
-            ->middleware('permission:kelola-master-bhp')->name('barang.store');
-        Route::post('/master/barang/{barang}/harga', [BhpBarangController::class, 'storeHarga'])
-            ->middleware('permission:kelola-master-bhp')->name('barang.harga.store');
+        Route::get('/master/barang/{barang}/kelola-harga', [BhpBarangController::class, 'hargaIndex'])
+            ->middleware('permission:lihat-distribusi-bhp')->name('barang.harga.index');
+        Route::middleware('permission:kelola-barang-bhp')->group(function () {
+            Route::post('/master/barang', [BhpBarangController::class, 'store'])->name('barang.store');
+            Route::put('/master/barang/{barang}', [BhpBarangController::class, 'update'])->name('barang.update');
+            Route::delete('/master/barang/{barang}', [BhpBarangController::class, 'destroy'])->name('barang.destroy');
+            Route::post('/master/barang/{barang}/harga', [BhpBarangController::class, 'storeHarga'])->name('barang.harga.store');
+            Route::put('/master/harga-barang/{harga}', [BhpBarangController::class, 'updateHarga'])->name('barang.harga.update');
+            Route::delete('/master/harga-barang/{harga}', [BhpBarangController::class, 'destroyHarga'])->name('barang.harga.destroy');
+        });
 
         Route::middleware('permission:kelola-penerimaan-bhp')->group(function () {
             Route::get('/penerimaan', [BhpPenerimaanController::class, 'index'])->name('penerimaan.index');

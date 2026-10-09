@@ -117,9 +117,13 @@ Penyaluran, dan Laporan — mirror struktur asli aplikasi sistem-manajemen-aset.
 
 1. **Kode Rekening** (`/distribusi-bhp/{bos|bopd}/master/kode-rekening`) — satu kode per
    sumber dana.
-2. **Barang** (`/distribusi-bhp/{bos|bopd}/master/barang`) — isi kode, nama, satuan, kode
-   rekening, dan harga satuan.
-3. **Penyedia** (`/distribusi-bhp/{bos|bopd}/master/penyedia`) — data rekanan/supplier.
+2. **Barang** (`/distribusi-bhp/{bos|bopd}/master/barang`) — isi kode rekening, kode barang,
+   nama, satuan, dan harga satuan. Tabel menampilkan kode barang (dengan uraian), satuan,
+   harga terakhir (jumlah varian harga), dan kode rekening. Tombol **Kelola Harga**
+   membuka halaman untuk menambah/mengubah/menghapus semua varian harga barang; **Edit**
+   dan **Hapus** mengelola data barangnya (barang yang masih dipakai penerimaan/pengajuan
+   tidak dapat dihapus). Halaman ini juga punya kartu statistik dan export CSV.
+3. **Penyedia** (`/distribusi-bhp/penyedia`) — data rekanan/supplier (berlaku lintas sumber dana).
 4. **Pejabat Sekolah** (`/master-data/pejabat`, menu Master Data sekolah — di luar menu BHP) — data penandatangan
    dokumen: **Kepala Sekolah**, **Wakasek Sarana Prasarana**, dan **Pembantu
    Pengurus Barang**. Isi nama, pangkat/golongan, NIP, jenis jabatan
