@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Penyedia;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,5 +31,30 @@ class PenyediaController extends Controller
         Penyedia::create($validated);
 
         return back()->with('success', 'Penyedia berhasil ditambahkan.');
+    }
+
+    public function update(Request $request, Penyedia $penyedia): RedirectResponse
+    {
+        $validated = $request->validate([
+            'nama' => ['required', 'string', 'max:255', Rule::unique('bhp_penyedia', 'nama')->ignore($penyedia->id)],
+            'alamat' => ['nullable', 'string', 'max:255'],
+            'telepon' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        $penyedia->update($validated);
+
+        return back()->with('success', 'Penyedia berhasil diperbarui.');
+    }
+
+    public function destroy(Penyedia $penyedia): RedirectResponse
+    {
+        if ($penyedia->penerimaan()->exists()) {
+            return back()->with('error', 'Penyedia tidak dapat dihapus karena masih dipakai pada penerimaan.');
+        }
+
+        $penyedia->delete();
+
+        return back()->with('success', 'Penyedia berhasil dihapus.');
     }
 }

@@ -217,6 +217,11 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                         </Link>
                     )}
                     {canMaster && (
+                        <Link href="/distribusi-bhp/penyedia" className={itemClass(currentPath.startsWith('/distribusi-bhp/penyedia'))}>
+                            Penyedia
+                        </Link>
+                    )}
+                    {canMaster && (
                         <Link href="/distribusi-bhp/settings" className={itemClass(currentPath.startsWith('/distribusi-bhp/settings'))}>
                             Settings BHP
                         </Link>

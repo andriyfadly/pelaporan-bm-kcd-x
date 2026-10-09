@@ -127,11 +127,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/master/barang/{barang}/harga', [BhpBarangController::class, 'storeHarga'])
             ->middleware('permission:kelola-master-bhp')->name('barang.harga.store');
 
-        Route::get('/master/penyedia', [BhpPenyediaController::class, 'index'])
-            ->middleware('permission:lihat-distribusi-bhp')->name('penyedia.index');
-        Route::post('/master/penyedia', [BhpPenyediaController::class, 'store'])
-            ->middleware('permission:kelola-master-bhp')->name('penyedia.store');
-
         Route::middleware('permission:kelola-penerimaan-bhp')->group(function () {
             Route::get('/penerimaan', [BhpPenerimaanController::class, 'index'])->name('penerimaan.index');
             Route::post('/penerimaan', [BhpPenerimaanController::class, 'store'])->name('penerimaan.store');
@@ -201,6 +196,15 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:kelola-divisi-bhp')->name('divisi.operator.password');
         Route::put('/divisi/operator/{operator}/toggle', [BhpDivisiController::class, 'toggleActive'])
             ->middleware('permission:kelola-divisi-bhp')->name('divisi.operator.toggle');
+
+        Route::get('/penyedia', [BhpPenyediaController::class, 'index'])
+            ->middleware('permission:lihat-distribusi-bhp')->name('penyedia.index');
+        Route::post('/penyedia', [BhpPenyediaController::class, 'store'])
+            ->middleware('permission:kelola-master-bhp')->name('penyedia.store');
+        Route::put('/penyedia/{penyedia}', [BhpPenyediaController::class, 'update'])
+            ->middleware('permission:kelola-master-bhp')->name('penyedia.update');
+        Route::delete('/penyedia/{penyedia}', [BhpPenyediaController::class, 'destroy'])
+            ->middleware('permission:kelola-master-bhp')->name('penyedia.destroy');
 
         // Per-sumber-dana routes — middleware baca sumber dana dari prefix
         Route::prefix('bos')->name('bos.')->middleware('sumber-dana-bhp')->group($bhpRoutes);
