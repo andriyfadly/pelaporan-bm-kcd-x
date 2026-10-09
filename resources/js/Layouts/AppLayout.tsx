@@ -213,7 +213,7 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                     </Link>
                     {canDivisi && (
                         <Link href="/distribusi-bhp/divisi" className={itemClass(currentPath.startsWith('/distribusi-bhp/divisi'))}>
-                            Divisi & Operator
+                            Divisi
                         </Link>
                     )}
                     {canMaster && (
