@@ -115,6 +115,7 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                             value={form.data.alamat}
                             onChange={(e) => form.setData('alamat', e.target.value)}
                             rows={3}
+                            placeholder="Contoh: Jl. Raya Kuningan No. 123, Kuningan"
                             className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
                         />
                         {form.errors.alamat && <p className="text-xs text-rose-600 mt-1">{form.errors.alamat}</p>}
@@ -126,6 +127,7 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                             <input
                                 value={form.data.telepon}
                                 onChange={(e) => form.setData('telepon', e.target.value)}
+                                placeholder="Contoh: 0232 123456"
                                 className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
                             />
                             {form.errors.telepon && <p className="text-xs text-rose-600 mt-1">{form.errors.telepon}</p>}
@@ -146,6 +148,7 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                                 type="email"
                                 value={form.data.email}
                                 onChange={(e) => form.setData('email', e.target.value)}
+                                placeholder="Contoh: info@sekolah.sch.id"
                                 className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
                             />
                             {form.errors.email && <p className="text-xs text-rose-600 mt-1">{form.errors.email}</p>}
