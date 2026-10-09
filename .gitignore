@@ -27,3 +27,4 @@ _test_env.php
 
 # OMC runtime state
 .omc/
+storage/app/*

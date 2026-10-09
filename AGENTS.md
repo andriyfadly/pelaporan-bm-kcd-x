@@ -98,6 +98,11 @@ Dokumentasi sistem proyek dikelola di dalam direktori `docs/`:
 - **DILARANG KERAS MENGGUNAKAN ABSOLUTE PATH**: Agent DILARANG KERAS memasukkan absolute path sistem lokal (seperti `/Users/...`, `/home/...`, `C:\...`) ke dalam file dokumentasi (`docs/`) maupun file markdown lainnya (`.md`).
 - **WAJIB GUNAKAN RELATIVE PATH**: Selalu gunakan relative path dari root repository (contoh: `docs/index.md`, `app/Http/Controllers/PelaporanBm/DashboardController.php`, `resources/js/...`).
 
+## DILARANG `migrate:fresh`
+
+- **DILARANG KERAS** menjalankan `php artisan migrate:fresh` atau `php artisan migrate:fresh --seed` tanpa persetujuan eksplisit dari user. Perintah ini menghapus seluruh data di database utama. Gunakan test (sqlite :memory:) untuk reset skema.
+- Jika perlu reset database, tanya user dulu.
+
 ## Replies
 
 - Be concise in your explanations - focus on what's important rather than explaining obvious details.

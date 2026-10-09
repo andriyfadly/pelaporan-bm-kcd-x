@@ -37,13 +37,20 @@ php artisan key:generate
 # DB_USERNAME=postgres
 # DB_PASSWORD=
 
-# 5. Jalankan migrasi & seeder
+# 5. Letakkan file SQL dump legacy di storage/
+cp /path/to/bm-kcd-x.sql storage/
+
+# 6. Jalankan migrasi & seeder
 php artisan migrate --seed
 # Seeder otomatis menghasilkan:
-# - Akun Developer: username `developer` (password: `#SidiptaBeuKCD10`, role: `super_admin`)
-# - Akun Admin KCD: username `admin_kcd` (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
-# - Akun Operator Sekolah: username `[npsn]-admin` (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
+# - Akun Developer:  username `developer`  (password: `#SidiptaBeuKCD10`, role: `super_admin`)
+# - Akun Admin KCD:  username `admin_kcd`  (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
+# - Akun Operator:   username `{npsn}-admin`  (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
 # - Permission & role BHP (19 permission, 5 role termasuk `operator_divisi`)
+#
+# Catatan: KodeSekolahSeeder mengisi NPSN secara otomatis dari tabel
+# `data_barang_acuan` di file bm-kcd-x.sql. Tanpa file tersebut NPSN tetap
+# null dan user operator tidak dibuat.
 #
 # Seeder juga memanggil DistribusiBhpImportSeeder: mengimpor master + penerimaan
 # BHP dari DB SQLite sumber. Default path:
