@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import { FileSpreadsheet, Search } from 'lucide-react';
@@ -61,17 +61,7 @@ export default function KartuPersediaan({
                         <h1 className="text-lg font-bold text-slate-900">Kartu Persediaan BHP — {sumberDana}</h1>
                         <p className="text-sm text-slate-500">Mutasi masuk dan keluar beserta saldo berjalan per barang.</p>
                     </div>
-                    <div className="flex gap-2">
-                        {['BOS', 'BOPD'].map((dana) => (
-                            <Link
-                                key={dana}
-                                href={`/distribusi-bhp/laporan/kartu-persediaan?sumber_dana=${dana}`}
-                                className={`px-3 py-2 rounded-xl text-sm font-semibold border ${dana === sumberDana ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'}`}
-                            >
-                                {dana}
-                            </Link>
-                        ))}
-                    </div>
+                    
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-wrap gap-3 items-end">

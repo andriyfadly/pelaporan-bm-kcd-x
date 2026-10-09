@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { useState } from 'react';
 
@@ -126,21 +126,7 @@ export default function Index({
                         <h1 className="text-lg font-bold text-slate-900">Pengajuan BHP — {sumberDana}</h1>
                         <p className="text-sm text-slate-500">Buat draft, lalu submit untuk mereservasi stok.</p>
                     </div>
-                    <div className="flex gap-2">
-                        {['BOS', 'BOPD'].map((dana) => (
-                            <Link
-                                key={dana}
-                                href={`/distribusi-bhp/pengajuan?sumber_dana=${dana}`}
-                                className={`px-3 py-2 rounded-xl text-sm font-semibold border ${
-                                    dana === sumberDana
-                                        ? 'bg-blue-600 text-white border-blue-600'
-                                        : 'bg-white text-slate-700 border-slate-300'
-                                }`}
-                            >
-                                {dana}
-                            </Link>
-                        ))}
-                    </div>
+                    
                 </div>
 
                 <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">

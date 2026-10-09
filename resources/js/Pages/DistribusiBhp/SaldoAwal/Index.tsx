@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import CardStat from '@/Components/CardStat';
 import ConfirmDialog from '@/Components/ConfirmDialog';
@@ -76,15 +76,6 @@ export default function Index({
                         <p className="text-xs text-slate-500 mt-1">Saldo awal memengaruhi stok fisik dan perhitungan tersedia.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        {['BOS', 'BOPD'].map((dana) => (
-                            <Link
-                                key={dana}
-                                href={`/distribusi-bhp/saldo-awal?sumber_dana=${dana}&periode=${periode}`}
-                                className={`px-3 py-2 rounded-xl text-sm font-semibold border ${dana === sumberDana ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'}`}
-                            >
-                                {dana}
-                            </Link>
-                        ))}
                         <select
                             value={periode}
                             onChange={(e) => pindah({ periode: Number(e.target.value) })}

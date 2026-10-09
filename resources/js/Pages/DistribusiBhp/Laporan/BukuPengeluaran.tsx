@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { FileSpreadsheet } from 'lucide-react';
 
@@ -28,15 +28,6 @@ export default function BukuPengeluaran({
                 <div className="flex items-center justify-between">
                     <h1 className="text-lg font-bold text-slate-900">{jenisLabel} — {sumberDana}</h1>
                     <div className="flex gap-2">
-                        {['BOS', 'BOPD'].map((dana) => (
-                            <Link
-                                key={dana}
-                                href={`/distribusi-bhp/laporan/buku-pengeluaran?sumber_dana=${dana}`}
-                                className={`px-3 py-2 rounded-xl text-sm font-semibold border ${dana === sumberDana ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'}`}
-                            >
-                                {dana}
-                            </Link>
-                        ))}
                         <a
                             href={`/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=pengeluaran`}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"

@@ -25,17 +25,7 @@ export default function LunasBayar({
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-lg font-bold text-slate-900">Lunas Bayar — {sumberDana}</h1>
-                    <div className="flex gap-2">
-                        {['BOS', 'BOPD'].map((dana) => (
-                            <Link
-                                key={dana}
-                                href={`/distribusi-bhp/penerimaan/lunas-bayar?sumber_dana=${dana}`}
-                                className={`px-3 py-2 rounded-xl text-sm font-semibold border ${dana === sumberDana ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'}`}
-                            >
-                                {dana}
-                            </Link>
-                        ))}
-                    </div>
+                    
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

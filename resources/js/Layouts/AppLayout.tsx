@@ -30,6 +30,8 @@ interface BhpMenuProps {
 
 /** Menu navigasi domain Distribusi BHP, dengan dua grup terpisah per sumber dana. */
 function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions }: BhpMenuProps) {
+    const [openBhpBos, setOpenBhpBos] = useState(false);
+    const [openBhpBopd, setOpenBhpBopd] = useState(false);
     const canMaster = permissions.includes('kelola-master-bhp');
     const canTerima = permissions.includes('kelola-penerimaan-bhp');
     const canPengajuan = permissions.includes('kelola-pengajuan-bhp');
@@ -256,8 +258,6 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const canBhp = permissions.includes('lihat-distribusi-bhp');
     const canMasterData = permissions.includes('kelola-master-bhp');
     const [openBhp, setOpenBhp] = useState(true);
-    const [openBhpBos, setOpenBhpBos] = useState(true);
-    const [openBhpBopd, setOpenBhpBopd] = useState(true);
 
     const isMasterActive =
         currentPath.startsWith('/admin/kode-barang') ||
