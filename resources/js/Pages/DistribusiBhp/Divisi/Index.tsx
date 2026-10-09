@@ -22,6 +22,7 @@ interface DivisiItem {
 export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: string | null }) {
     const [resetTarget, setResetTarget] = useState<OperatorDivisi | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [showCreate, setShowCreate] = useState(false);
 
     const {
         data,
@@ -41,7 +42,11 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
         e.preventDefault();
         post('/distribusi-bhp/divisi', {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                setShowCreate(false);
+                setShowPassword(false);
+            },
         });
     };
 
@@ -97,83 +102,29 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
             <Head title="Divisi BHP" />
 
             <div className="space-y-6">
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                    <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-blue-600" /> Divisi Sekolah
-                    </h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Kelola divisi beserta akun operatornya. Username login otomatis berformat{' '}
-                        <code className="font-mono text-xs">{npsn ?? 'NPSN-belum-ada'}-{'{suffix}'}</code>.
-                    </p>
-                </div>
-
-                <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 max-w-4xl">
-                    <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Tambah Divisi + Operator</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Divisi</label>
-                            <input
-                                value={data.nama_divisi}
-                                onChange={(e) => setData('nama_divisi', e.target.value)}
-                                placeholder="Sarpras"
-                                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
-                            />
-                            {errors.nama_divisi && <p className="text-xs text-rose-600 mt-1">{errors.nama_divisi}</p>}
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Operator</label>
-                            <input
-                                value={data.nama_operator}
-                                onChange={(e) => setData('nama_operator', e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
-                            />
-                            {errors.nama_operator && <p className="text-xs text-rose-600 mt-1">{errors.nama_operator}</p>}
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Username</label>
-                            <div className="flex items-center">
-                                <span className="px-3 py-2 bg-slate-100 border border-r-0 border-slate-300 rounded-l-xl text-sm font-mono text-slate-500 whitespace-nowrap">
-                                    {npsn ?? '???'}-
-                                </span>
-                                <input
-                                    value={data.username_suffix}
-                                    onChange={(e) => setData('username_suffix', e.target.value.toLowerCase())}
-                                    placeholder="sarpras"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-r-xl text-sm font-mono"
-                                />
-                            </div>
-                            {errors.username_suffix && <p className="text-xs text-rose-600 mt-1">{errors.username_suffix}</p>}
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Password Awal</label>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={data.password}
-                                    onChange={(e) => setData('password', e.target.value)}
-                                    className="w-full px-3 py-2 pr-9 border border-slate-300 rounded-xl text-sm"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword((v) => !v)}
-                                    className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600"
-                                    aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                                >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-                            {errors.password && <p className="text-xs text-rose-600 mt-1">{errors.password}</p>}
-                        </div>
+                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <Building2 className="w-5 h-5 text-blue-600" /> Divisi Sekolah
+                        </h1>
+                        <p className="text-sm text-slate-500 mt-1">
+                            Kelola divisi beserta akun operatornya. Username login otomatis berformat{' '}
+                            <code className="font-mono text-xs">{npsn ?? 'NPSN-belum-ada'}-{'{suffix}'}</code>.
+                        </p>
                     </div>
-                    <button type="submit" disabled={processing} className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
-                        <UserPlus className="w-4 h-4" /> Buat Divisi & Operator
+                    <button
+                        type="button"
+                        onClick={() => setShowCreate(true)}
+                        className="inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition"
+                    >
+                        <UserPlus className="w-4 h-4" /> Tambah Divisi
                     </button>
-                </form>
+                </div>
 
                 <div className="space-y-4">
                     {divisis.length === 0 && (
                         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm text-sm text-slate-500">
-                            Belum ada divisi. Buat divisi pertama melalui form di atas.
+                            Belum ada divisi. Klik "Tambah Divisi" untuk membuat divisi pertama.
                         </div>
                     )}
                     {divisis.map((divisi) => (
@@ -255,6 +206,75 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                         </button>
                         <button type="submit" disabled={resetPasswordForm.processing} className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
                             Reset
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Tambah Divisi + Operator" maxWidth="2xl">
+                <form onSubmit={submit} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Divisi</label>
+                            <input
+                                value={data.nama_divisi}
+                                onChange={(e) => setData('nama_divisi', e.target.value)}
+                                placeholder="Sarpras"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                            />
+                            {errors.nama_divisi && <p className="text-xs text-rose-600 mt-1">{errors.nama_divisi}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Operator</label>
+                            <input
+                                value={data.nama_operator}
+                                onChange={(e) => setData('nama_operator', e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                            />
+                            {errors.nama_operator && <p className="text-xs text-rose-600 mt-1">{errors.nama_operator}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Username</label>
+                            <div className="flex items-center">
+                                <span className="px-3 py-2 bg-slate-100 border border-r-0 border-slate-300 rounded-l-xl text-sm font-mono text-slate-500 whitespace-nowrap">
+                                    {npsn ?? '???'}-
+                                </span>
+                                <input
+                                    value={data.username_suffix}
+                                    onChange={(e) => setData('username_suffix', e.target.value.toLowerCase())}
+                                    placeholder="sarpras"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-r-xl text-sm font-mono"
+                                />
+                            </div>
+                            {errors.username_suffix && <p className="text-xs text-rose-600 mt-1">{errors.username_suffix}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Password Awal</label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                    className="w-full px-3 py-2 pr-9 border border-slate-300 rounded-xl text-sm"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600"
+                                    aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                            {errors.password && <p className="text-xs text-rose-600 mt-1">{errors.password}</p>}
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
+                            Batal
+                        </button>
+                        <button type="submit" disabled={processing} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
+                            <UserPlus className="w-4 h-4" /> Buat Divisi & Operator
                         </button>
                     </div>
                 </form>
