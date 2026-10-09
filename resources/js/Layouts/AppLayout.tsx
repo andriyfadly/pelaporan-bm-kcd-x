@@ -30,14 +30,12 @@ interface BhpMenuProps {
 
 /** Menu navigasi domain Distribusi BHP, dengan dua grup terpisah per sumber dana. */
 function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions }: BhpMenuProps) {
-    const [forceBos, setForceBos] = useState<boolean | null>(null);
-    const [forceBopd, setForceBopd] = useState<boolean | null>(null);
-    const openBhpBos = forceBos ?? currentPath.startsWith('/distribusi-bhp/bos/');
-    const openBhpBopd = forceBopd ?? currentPath.startsWith('/distribusi-bhp/bopd/');
+    const [openBhpBos, setOpenBhpBos] = useState(currentPath.startsWith('/distribusi-bhp/bos/'));
+    const [openBhpBopd, setOpenBhpBopd] = useState(currentPath.startsWith('/distribusi-bhp/bopd/'));
 
-    // Reset overrides when leaving a BHP subsection page
-    if (openBhpBos && !currentPath.startsWith('/distribusi-bhp/bos/')) setForceBos(null);
-    if (openBhpBopd && !currentPath.startsWith('/distribusi-bhp/bopd/')) setForceBopd(null);
+    // Auto-buka section saat berada di halaman di bawahnya.
+    useEffect(() => { if (currentPath.startsWith('/distribusi-bhp/bos/')) setOpenBhpBos(true); }, [currentPath]);
+    useEffect(() => { if (currentPath.startsWith('/distribusi-bhp/bopd/')) setOpenBhpBopd(true); }, [currentPath]);
     const canMaster = permissions.includes('kelola-master-bhp');
     const canTerima = permissions.includes('kelola-penerimaan-bhp');
     const canPengajuan = permissions.includes('kelola-pengajuan-bhp');
@@ -223,8 +221,8 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                             Settings BHP
                         </Link>
                     )}
-                    {section('bos', openBhpBos, (v) => { setForceBos(v); setForceBopd(null); })}
-                    {section('bopd', openBhpBopd, (v) => { setForceBopd(v); setForceBos(null); })}
+                    {section('bos', openBhpBos, setOpenBhpBos)}
+                    {section('bopd', openBhpBopd, setOpenBhpBopd)}
                     {canMaster && (
                         <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
                             Pejabat Sekolah
