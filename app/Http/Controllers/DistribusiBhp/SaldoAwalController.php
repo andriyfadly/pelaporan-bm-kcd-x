@@ -42,7 +42,9 @@ class SaldoAwalController extends Controller
             'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
             'periode' => ['nullable', 'integer', 'between:2000,2100'],
         ]);
-        $sumberDana = SumberDana::normalisasi($validated['sumber_dana'] ?? SumberDana::BOS);
+        $sumberDana = SumberDana::normalisasi(
+            $validated['sumber_dana'] ?? SumberDana::aktif() ?? SumberDana::BOS,
+        );
         $periode = isset($validated['periode']) ? (int) $validated['periode'] : (int) now()->year;
 
         return SumberDana::dengan($sumberDana, function () use ($sekolahId, $sumberDana, $periode): Response {

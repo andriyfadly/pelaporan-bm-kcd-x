@@ -22,15 +22,37 @@ class BhpMasterDataTest extends TestCase
         $this->seed(PeranDanHakAksesSeeder::class);
     }
 
+    private function sekolah(): Sekolah
+    {
+        return Sekolah::create(['nama_sekolah' => 'SMKN Master', 'kota_kab' => 'Kota Bandung']);
+    }
+
+    /**
+     * Admin KCD — satu-satunya role yang memegang `kelola-master-bhp`
+     * (tulis master kode rekening/barang/penyedia).
+     */
+    private function admin(): User
+    {
+        $user = User::create([
+            'name' => 'Admin',
+            'username' => 'admin.master',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $this->sekolah()->id,
+            'password_changed_at' => now(),
+        ]);
+        $user->assignRole('admin_kcd');
+
+        return $user;
+    }
+
+    /** Operator sekolah — hanya `lihat-distribusi-bhp`; tulis master ditolak. */
     private function operator(): User
     {
-        $sekolah = Sekolah::create(['nama_sekolah' => 'SMKN Master', 'kota_kab' => 'Kota Bandung']);
-
         $user = User::create([
             'name' => 'Operator',
             'username' => 'op.master',
             'password' => bcrypt('password'),
-            'sekolah_id' => $sekolah->id,
+            'sekolah_id' => $this->sekolah()->id,
             'password_changed_at' => now(),
         ]);
         $user->assignRole('operator_sekolah');
@@ -38,11 +60,11 @@ class BhpMasterDataTest extends TestCase
         return $user;
     }
 
-    public function test_operator_dapat_membuat_kode_rekening_bos_dan_bopd(): void
+    public function test_admin_dapat_membuat_kode_rekening_bos_dan_bopd(): void
     {
-        $operator = $this->operator();
+        $admin = $this->admin();
 
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.kode-rekening.store'), [
                 'kode' => '5.1.02.01.01.0001',
                 'nama' => 'Bahan Bangunan',
@@ -50,7 +72,7 @@ class BhpMasterDataTest extends TestCase
             ])
             ->assertRedirect();
 
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.kode-rekening.store'), [
                 'kode' => '5.1.02.01.01.0001',
                 'nama' => 'Bahan Bangunan',
@@ -65,11 +87,11 @@ class BhpMasterDataTest extends TestCase
 
     public function test_kode_rekening_duplikat_pada_sumber_dana_sama_ditolak(): void
     {
-        $operator = $this->operator();
+        $admin = $this->admin();
 
         KodeRekening::create(['kode' => '5.1.02.01.01.0009', 'nama' => 'Bahan A', 'sumber_dana' => 'BOS']);
 
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.kode-rekening.store'), [
                 'kode' => '5.1.02.01.01.0009',
                 'nama' => 'Bahan A',
@@ -80,9 +102,9 @@ class BhpMasterDataTest extends TestCase
 
     public function test_sumber_dana_selain_bos_bopd_ditolak(): void
     {
-        $operator = $this->operator();
+        $admin = $this->admin();
 
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.kode-rekening.store'), [
                 'kode' => '5.1.02.01.01.0010',
                 'nama' => 'Bahan B',
@@ -91,12 +113,12 @@ class BhpMasterDataTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_operator_dapat_membuat_barang_beserta_harga(): void
+    public function test_admin_dapat_membuat_barang_beserta_harga(): void
     {
-        $operator = $this->operator();
+        $admin = $this->admin();
         $rekening = KodeRekening::create(['kode' => '5.1.02.01.01.0011', 'nama' => 'Bahan C', 'sumber_dana' => 'BOS']);
 
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.barang.store'), [
                 'kode_barang' => '1.1.7.01.01',
                 'nama_barang' => 'Semen Portland',
@@ -115,10 +137,10 @@ class BhpMasterDataTest extends TestCase
 
     public function test_barang_menolak_rekening_dari_sumber_dana_berbeda(): void
     {
-        $operator = $this->operator();
+        $admin = $this->admin();
         $rekeningBopd = KodeRekening::create(['kode' => '5.1.02.01.01.0012', 'nama' => 'Bahan D', 'sumber_dana' => 'BOPD']);
 
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.barang.store'), [
                 'kode_barang' => '1.1.7.01.02',
                 'nama_barang' => 'Semen BOPD',
@@ -130,9 +152,9 @@ class BhpMasterDataTest extends TestCase
             ->assertSessionHasErrors('kode_rekening_id');
     }
 
-    public function test_operator_dapat_menambah_dan_mengubah_harga_barang(): void
+    public function test_admin_dapat_menambah_dan_mengubah_harga_barang(): void
     {
-        $operator = $this->operator();
+        $admin = $this->admin();
         $barang = Barang::create([
             'kode_barang' => '1.1.7.01.03',
             'nama_barang' => 'Kertas HVS',
@@ -140,25 +162,42 @@ class BhpMasterDataTest extends TestCase
             'sumber_dana' => 'BOS',
         ]);
 
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.bos.barang.harga.store', $barang), ['sumber_dana' => 'BOS', 'harga_satuan' => 200000])
             ->assertRedirect();
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.bos.barang.harga.store', $barang), ['sumber_dana' => 'BOS', 'harga_satuan' => 220000])
             ->assertRedirect();
 
         $this->assertSame(2, HargaBarang::where('barang_id', $barang->id)->count());
     }
 
-    public function test_operator_dapat_membuat_penyedia(): void
+    public function test_admin_dapat_membuat_penyedia(): void
     {
-        $operator = $this->operator();
+        $admin = $this->admin();
 
-        $this->actingAs($operator)
+        $this->actingAs($admin)
             ->post(route('distribusi-bhp.penyedia.store'), ['nama' => 'CV Sumber Rejeki'])
             ->assertRedirect();
 
         $this->assertSame(1, Penyedia::where('nama', 'CV Sumber Rejeki')->count());
+    }
+
+    public function test_operator_sekolah_tidak_dapat_menulis_master_bhp(): void
+    {
+        $operator = $this->operator();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.kode-rekening.store'), [
+                'kode' => '5.1.02.01.01.9998',
+                'nama' => 'X',
+                'sumber_dana' => 'BOS',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.penyedia.store'), ['nama' => 'CV Terlarang'])
+            ->assertForbidden();
     }
 
     public function test_user_tanpa_permission_master_bhp_ditolak(): void

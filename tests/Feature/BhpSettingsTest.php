@@ -22,7 +22,7 @@ class BhpSettingsTest extends TestCase
         $this->seed(PeranDanHakAksesSeeder::class);
     }
 
-    private function operator(): User
+    private function admin(): User
     {
         $sekolah = Sekolah::create(['nama_sekolah' => 'SMKN Settings', 'kota_kab' => 'Kota Bandung']);
         $user = User::create([
@@ -32,7 +32,7 @@ class BhpSettingsTest extends TestCase
             'sekolah_id' => $sekolah->id,
             'password_changed_at' => now(),
         ]);
-        $user->assignRole('operator_sekolah');
+        $user->assignRole('admin_kcd');
 
         return $user;
     }
@@ -55,9 +55,9 @@ class BhpSettingsTest extends TestCase
         $this->assertSame('BAST-BOPD-0001/2026', $nomor);
     }
 
-    public function test_operator_dapat_membuka_halaman_settings(): void
+    public function test_admin_dapat_membuka_halaman_settings(): void
     {
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->get(route('distribusi-bhp.settings.edit', ['sumber_dana' => 'BOS']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -66,9 +66,9 @@ class BhpSettingsTest extends TestCase
             );
     }
 
-    public function test_operator_dapat_update_settings_bos(): void
+    public function test_admin_dapat_update_settings_bos(): void
     {
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->put(route('distribusi-bhp.settings.update'), [
                 'sumber_dana' => 'BOS',
                 'format_nomor' => '{urut:2}/{kode}/{tahun}',
@@ -175,7 +175,7 @@ class BhpSettingsTest extends TestCase
 
     public function test_format_dengan_placeholder_tidak_aman_ditolak(): void
     {
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->put(route('distribusi-bhp.settings.update'), [
                 'sumber_dana' => 'BOS',
                 'format_nomor' => '{urut:3}/{sumber_dana}/{placeholder_asing}',
@@ -192,7 +192,7 @@ class BhpSettingsTest extends TestCase
     {
         $format = '{urut:4}-{kode}-{sumber_dana}-{bulan_romawi}-{bulan}-{tahun}';
 
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->put(route('distribusi-bhp.settings.update'), [
                 'sumber_dana' => 'BOS',
                 'format_nomor' => $format,
@@ -204,7 +204,7 @@ class BhpSettingsTest extends TestCase
 
     public function test_format_kosong_ditolak(): void
     {
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->put(route('distribusi-bhp.settings.update'), [
                 'sumber_dana' => 'BOS',
                 'format_nomor' => '',
@@ -215,7 +215,7 @@ class BhpSettingsTest extends TestCase
     public function test_format_tanpa_placeholder_ditolak(): void
     {
         // Format tanpa placeholder menghasilkan nomor dokumen duplikat — ditolak.
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->put(route('distribusi-bhp.settings.update'), [
                 'sumber_dana' => 'BOS',
                 'format_nomor' => 'TANPA-PLACEHOLDER',
@@ -302,7 +302,7 @@ class BhpSettingsTest extends TestCase
 
     public function test_format_per_jenis_bisa_diisi_via_api(): void
     {
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->put(route('distribusi-bhp.settings.update'), [
                 'sumber_dana' => 'BOS',
                 'format_nomor' => '{urut:3}/{kode}/{tahun}',
@@ -321,7 +321,7 @@ class BhpSettingsTest extends TestCase
 
     public function test_format_per_jenis_validasi_placeholder_asing_ditolak(): void
     {
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->put(route('distribusi-bhp.settings.update'), [
                 'sumber_dana' => 'BOS',
                 'format_nomor' => '{urut:3}/{kode}',
@@ -332,7 +332,7 @@ class BhpSettingsTest extends TestCase
 
     public function test_format_per_jenis_tanpa_placeholder_ditolak(): void
     {
-        $this->actingAs($this->operator())
+        $this->actingAs($this->admin())
             ->put(route('distribusi-bhp.settings.update'), [
                 'sumber_dana' => 'BOS',
                 'format_nomor' => '{urut:3}/{kode}',

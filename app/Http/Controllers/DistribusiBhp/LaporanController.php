@@ -156,17 +156,26 @@ class LaporanController extends Controller
 
     public function export(Request $request): BinaryFileResponse|RedirectResponse
     {
-        $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS));
-
         $validated = $request->validate([
-            'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
+            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
             'jenis' => ['required', Rule::in(['stok', 'pengeluaran', 'kartu_persediaan'])],
-            'barang_id' => ['required_if:jenis,kartu_persediaan', 'uuid', SumberDana::existsRule('barang', $sumberDana)],
+            'barang_id' => ['required_if:jenis,kartu_persediaan', 'uuid'],
         ]);
 
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = SumberDana::normalisasi($validated['sumber_dana']);
+        $sumberDana = SumberDana::normalisasi(
+            $validated['sumber_dana']
+                ?? SumberDana::aktif()
+                ?? SumberDana::BOS,
+        );
         $jenis = $validated['jenis'];
+
+        if ($jenis === 'kartu_persediaan') {
+            validator(
+                ['barang_id' => $validated['barang_id'] ?? null],
+                ['barang_id' => ['required', 'uuid', SumberDana::existsRule('barang', $sumberDana)]],
+            )->validate();
+        }
 
         if ($jenis === 'stok') {
             $rows = $this->laporan->laporanStok($sumberDana, $sekolahId);

@@ -92,12 +92,12 @@ class BhpDokumenTest extends TestCase
         $c = $service->generate('nota_permintaan', 'BOPD', 2026, 6);
         $d = $service->generate('nota_permintaan', 'BOS', 2026, 7);
 
-        // Default format tidak lagi memuat {sumber_dana} (implisit dari tabel),
-        // tetapi penomoran tetap terpisah per sumber dana.
-        $this->assertSame('001/BHP/NPB/VI/2026', $a);
-        $this->assertSame('002/BHP/NPB/VI/2026', $b);
-        $this->assertSame('001/BHP/NPB/VI/2026', $c);
-        $this->assertSame('001/BHP/NPB/VII/2026', $d);
+        // Default format memuat {sumber_dana}; penomoran tetap terpisah per
+        // sumber dana (BOS dan BOPD masing-masing mulai dari 001).
+        $this->assertSame('001/BHP/NPB/BOS/VI/2026', $a);
+        $this->assertSame('002/BHP/NPB/BOS/VI/2026', $b);
+        $this->assertSame('001/BHP/NPB/BOPD/VI/2026', $c);
+        $this->assertSame('001/BHP/NPB/BOS/VII/2026', $d);
     }
 
     public function test_tabel_sequence_dan_dokumen_ada(): void

@@ -524,7 +524,7 @@ class BhpPenerimaanTest extends TestCase
                     ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
                 ],
             ])
-            ->assertStatus(422);
+            ->assertSessionHasErrors('sumber_dana');
     }
 
     public function test_penyedia_invalid_ditolak(): void
