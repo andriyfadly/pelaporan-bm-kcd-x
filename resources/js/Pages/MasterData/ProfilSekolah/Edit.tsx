@@ -108,8 +108,6 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                         </div>
                     </div>
 
-                    <p className="text-xs text-slate-400">Nama, NPSN, dan kota/kabupaten dikelola admin. Anda dapat mengisi data kontak di bawah.</p>
-
                     <div>
                         <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Alamat</label>
                         <textarea
