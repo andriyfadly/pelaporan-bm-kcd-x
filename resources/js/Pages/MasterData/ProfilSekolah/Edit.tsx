@@ -50,7 +50,7 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                         <p className="text-sm text-slate-500">Pilih sekolah terlebih dahulu untuk mengelola profilnya.</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-xl space-y-4">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
                         {sekolahOptions.length === 0 ? (
                             <EmptyState
                                 title="Belum ada sekolah"
@@ -90,7 +90,7 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                     <p className="text-sm text-slate-500">Data kontak sekolah untuk kop dan pengirim dokumen.</p>
                 </div>
 
-                <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5 max-w-3xl">
+                <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
                     <input type="hidden" value={form.data.sekolah_id} readOnly />
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
