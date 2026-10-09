@@ -36,6 +36,8 @@ Browser (React SPA via Inertia)
   `resources/js/Pages/` (Auth 2, Admin 3, PelaporanBm 11 + Dashboard).
 - Shared props (`HandleInertiaRequests`): `auth.user` (id, name, username,
   roles, permissions, sekolah), `flash`, `turnstileSiteKey`.
+- Flash `success`/`error` ditampilkan sebagai toast Sonner oleh listener
+  `router.on('success')` di `resources/js/app.tsx` (sekali per kunjungan).
 - Route URL tersedia di frontend via Ziggy.
 
 ## 3. Struktur Direktori (ringkas, aktual)

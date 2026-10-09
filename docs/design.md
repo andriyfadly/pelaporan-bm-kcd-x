@@ -242,7 +242,7 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 ## 9. Yang Belum / Batasan Diketahui
 
 - Mode gelap belum ada (seluruh token terang).
-- Notifikasi hanya flash session (tanpa toast persisten / real-time).
+- Notifikasi: toast Sonner (`<Toaster richColors position="top-right" closeButton>`) dipicu dari `flash.success`/`flash.error` via event `router.on('success')` di `app.tsx` — tampil sekali per kunjungan, tanpa notifikasi real-time.
 - Bahasa tunggal Indonesia; format angka/tanggal id-ID hardcode.
 - Avatar = inisial huruf (tanpa foto profil).
 
