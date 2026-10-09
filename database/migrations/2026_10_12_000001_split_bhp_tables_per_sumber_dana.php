@@ -65,9 +65,11 @@ return new class extends Migration
 
         $this->buatSettings();
 
-        // Bersihkan tabel lama yang kini dipecah.
+        // Bersihkan tabel lama yang kini dipecah (CASCADE untuk tangani FK lintas tabel).
         foreach ($this->tabelLama as $tabel) {
-            Schema::dropIfExists($tabel);
+            if (Schema::hasTable($tabel)) {
+                Schema::dropIfExists($tabel);
+            }
         }
     }
 
@@ -308,7 +310,12 @@ return new class extends Migration
     private function buatSettings(): void
     {
         foreach (['bos', 'bopd'] as $dana) {
-            Schema::create("bhp_{$dana}_settings", function (Blueprint $table) {
+            $tabel = "bhp_{$dana}_settings";
+            if (Schema::hasTable($tabel)) {
+                continue;
+            }
+
+            Schema::create($tabel, function (Blueprint $table) {
                 $table->uuid('id')->primary();
                 $table->boolean('is_singleton')->default(true);
                 $table->string('format_nomor', 200)

@@ -8,19 +8,25 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Tetapkan sumber dana BHP aktif untuk request ini dari input/query
- * `sumber_dana`. Nilai invalid ditolak (422) — tidak fallback ke BOS.
- * Hanya bila parameter tidak diberikan sama sekali, default BOS dipakai.
- *
- * Route model binding untuk model BHP menangani sendiri pencarian lintas tabel
- * (lihat trait HasSumberDanaTable::resolveRouteBinding) sehingga middleware ini
- * cukup menyetel sumber dana untuk aksi non-binding (index/store).
+ * Tetapkan sumber dana BHP aktif dari route prefix `{bos|bopd}` di URL.
+ * Middleware ini hanya dipasang di grup `distribusi-bhp/bos/*` dan `distribusi-bhp/bopd/*`
+ * — route di luar grup (dashboard/settings/divisi) tidak disetel.
  */
 class SetSumberDanaBhp
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $sumberDana = $request->input('sumber_dana') ?? $request->query('sumber_dana');
+        // Parse sumber dana dari URL path: /distribusi-bhp/{bos|bopd}/...
+        $path = $request->path();
+        $sumberDana = null;
+
+        if (preg_match('#^distribusi-bhp/(bos|bopd)(/|$)#', $path, $m)) {
+            $sumberDana = $m[1];
+        }
+
+        if ($sumberDana === null) {
+            $sumberDana = $request->input('sumber_dana') ?? $request->query('sumber_dana');
+        }
 
         if ($sumberDana !== null) {
             if (! SumberDana::valid($sumberDana)) {

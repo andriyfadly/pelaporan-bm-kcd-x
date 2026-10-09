@@ -248,7 +248,7 @@ class BhpIsolasiSekolahTest extends TestCase
         $this->terima($barang, 999, $sekolahB);
 
         $this->actingAs($userA)
-            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'stok']))
+            ->get(route('distribusi-bhp.bos.laporan.export', ['jenis' => 'stok']))
             ->assertOk();
     }
 
@@ -258,7 +258,7 @@ class BhpIsolasiSekolahTest extends TestCase
         $user = $this->user($sekolah, 'op.iso.guard');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.pengajuan.index', ['sumber_dana' => 'APBN']))
+            ->get('/distribusi-bhp/pengajuan?sumber_dana=APBN')
             ->assertStatus(422);
     }
 }

@@ -42,7 +42,7 @@ class BhpSettingsTest extends TestCase
         $service = app(SettingsService::class);
         $nomor = app(NomorDokumenService::class)->generate('nota_permintaan', 'BOS', 2026, 6);
 
-        $this->assertSame('001/BHP/NPB/VI/2026', $nomor);
+        $this->assertSame('001/BHP/NPB/BOS/VI/2026', $nomor);
         $this->assertNotNull($service->get());
     }
 
@@ -168,7 +168,7 @@ class BhpSettingsTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(
-            SettingsService::DEFAULT_FORMAT_NOMOR,
+            Settings::DEFAULT_FORMAT,
             app(SettingsService::class)->get('BOS')->format_nomor,
         );
     }
@@ -183,7 +183,7 @@ class BhpSettingsTest extends TestCase
             ->assertSessionHasErrors('format_nomor');
 
         $this->assertSame(
-            SettingsService::DEFAULT_FORMAT_NOMOR,
+            Settings::DEFAULT_FORMAT,
             app(SettingsService::class)->get('BOS')->format_nomor,
         );
     }
@@ -231,29 +231,29 @@ class BhpSettingsTest extends TestCase
         $bos2 = $service->generate('buku_pengeluaran', 'BOS', 2026, 6);
         $bopd1 = $service->generate('buku_pengeluaran', 'BOPD', 2026, 6);
 
-        $this->assertSame('001/BHP/BPB/VI/2026', $bos1);
-        $this->assertSame('002/BHP/BPB/VI/2026', $bos2);
+        $this->assertSame('001/BHP/BPB/BOS/VI/2026', $bos1);
+        $this->assertSame('002/BHP/BPB/BOS/VI/2026', $bos2);
         // BOPD mulai dari 001 lagi — bukan melanjutkan counter BOS.
-        $this->assertSame('001/BHP/BPB/VI/2026', $bopd1);
+        $this->assertSame('001/BHP/BPB/BOPD/VI/2026', $bopd1);
     }
 
     public function test_sequence_terpisah_per_jenis_dokumen(): void
     {
         $service = app(NomorDokumenService::class);
 
-        $this->assertSame('001/BHP/NPB/VI/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
-        $this->assertSame('001/BHP/BAST/VI/2026', $service->generate('bast', 'BOS', 2026, 6));
-        $this->assertSame('002/BHP/NPB/VI/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
+        $this->assertSame('001/BHP/NPB/BOS/VI/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
+        $this->assertSame('001/BHP/BAST/BOS/VI/2026', $service->generate('bast', 'BOS', 2026, 6));
+        $this->assertSame('002/BHP/NPB/BOS/VI/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
     }
 
     public function test_sequence_terpisah_per_tahun_dan_bulan(): void
     {
         $service = app(NomorDokumenService::class);
 
-        $this->assertSame('001/BHP/NPB/VI/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
-        $this->assertSame('001/BHP/NPB/VII/2026', $service->generate('nota_permintaan', 'BOS', 2026, 7));
-        $this->assertSame('001/BHP/NPB/VI/2027', $service->generate('nota_permintaan', 'BOS', 2027, 6));
-        $this->assertSame('002/BHP/NPB/VI/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
+        $this->assertSame('001/BHP/NPB/BOS/VI/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
+        $this->assertSame('001/BHP/NPB/BOS/VII/2026', $service->generate('nota_permintaan', 'BOS', 2026, 7));
+        $this->assertSame('001/BHP/NPB/BOS/VI/2027', $service->generate('nota_permintaan', 'BOS', 2027, 6));
+        $this->assertSame('002/BHP/NPB/BOS/VI/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
     }
 
     public function test_generate_nomor_berurutan_tidak_pernah_duplikat(): void
@@ -266,7 +266,7 @@ class BhpSettingsTest extends TestCase
         }
 
         $this->assertCount(25, array_unique($nomor), 'Nomor dokumen tidak boleh duplikat.');
-        $this->assertSame('025/BHP/NPB/VI/2026', end($nomor));
+        $this->assertSame('025/BHP/NPB/BOS/VI/2026', end($nomor));
     }
 
     public function test_placeholder_urut_berbeda_mengikuti_padding_masing_masing(): void
@@ -281,5 +281,63 @@ class BhpSettingsTest extends TestCase
             $service->generate('bast', 'BOS', 2026, 6);
         }
         $this->assertSame('12-12-012-0012', $service->generate('bast', 'BOS', 2026, 6));
+    }
+
+    public function test_format_per_jenis_dokumen_override_format_umum(): void
+    {
+        // Set format umum + override spesifik untuk surat_permintaan.
+        app(SettingsService::class)->update([
+            'format_nomor' => '{kode}/{urut:3}/{tahun}',
+            'format_nomor_surat_permintaan' => 'SPB-{sumber_dana}-{urut:4}/{tahun}',
+        ], 'BOS');
+
+        $service = app(NomorDokumenService::class);
+
+        // surat_permintaan pakai override.
+        $this->assertSame('SPB-BOS-0001/2026', $service->generate('surat_permintaan', 'BOS', 2026, 6));
+
+        // jenis lain (nota_permintaan) fallback ke format umum.
+        $this->assertSame('NPB/001/2026', $service->generate('nota_permintaan', 'BOS', 2026, 6));
+    }
+
+    public function test_format_per_jenis_bisa_diisi_via_api(): void
+    {
+        $this->actingAs($this->operator())
+            ->put(route('distribusi-bhp.settings.update'), [
+                'sumber_dana' => 'BOS',
+                'format_nomor' => '{urut:3}/{kode}/{tahun}',
+                'format_nomor_bast' => 'BAST-{bulan_romawi}-{urut:4}/{tahun}',
+                'format_nomor_bap' => 'BAP/BOS/{tahun}/{urut:2}',
+            ])
+            ->assertRedirect();
+
+        $settings = app(SettingsService::class)->get('BOS');
+        $this->assertSame('BAST-{bulan_romawi}-{urut:4}/{tahun}', $settings->format_nomor_bast);
+        $this->assertSame('BAP/BOS/{tahun}/{urut:2}', $settings->format_nomor_bap);
+
+        // Default umum juga tersimpan.
+        $this->assertSame('{urut:3}/{kode}/{tahun}', $settings->format_nomor);
+    }
+
+    public function test_format_per_jenis_validasi_placeholder_asing_ditolak(): void
+    {
+        $this->actingAs($this->operator())
+            ->put(route('distribusi-bhp.settings.update'), [
+                'sumber_dana' => 'BOS',
+                'format_nomor' => '{urut:3}/{kode}',
+                'format_nomor_bast' => '{unknown}/{urut:3}',
+            ])
+            ->assertSessionHasErrors('format_nomor_bast');
+    }
+
+    public function test_format_per_jenis_tanpa_placeholder_ditolak(): void
+    {
+        $this->actingAs($this->operator())
+            ->put(route('distribusi-bhp.settings.update'), [
+                'sumber_dana' => 'BOS',
+                'format_nomor' => '{urut:3}/{kode}',
+                'format_nomor_surat_permintaan' => 'TANPA-PLACEHOLDER',
+            ])
+            ->assertSessionHasErrors('format_nomor_surat_permintaan');
     }
 }

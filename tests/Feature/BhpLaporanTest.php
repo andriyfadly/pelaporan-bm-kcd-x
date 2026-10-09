@@ -191,7 +191,7 @@ class BhpLaporanTest extends TestCase
         $user = $this->user($sekolah, 'op.lap4');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.index'))
+            ->get(route('distribusi-bhp.bos.laporan.index'))
             ->assertOk();
     }
 
@@ -207,7 +207,7 @@ class BhpLaporanTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.index'))
+            ->get(route('distribusi-bhp.bos.laporan.index'))
             ->assertForbidden();
     }
 
@@ -219,7 +219,7 @@ class BhpLaporanTest extends TestCase
         $this->terima($barang, 100, $sekolah);
 
         $response = $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'stok']));
+            ->get(route('distribusi-bhp.bos.laporan.export', ['jenis' => 'stok']));
 
         $response->assertOk();
         $this->assertStringContainsString('spreadsheet', strtolower((string) $response->headers->get('content-type')));
@@ -233,7 +233,7 @@ class BhpLaporanTest extends TestCase
         $this->terima($barang, 100, $sekolah);
 
         $response = $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'pengeluaran']));
+            ->get(route('distribusi-bhp.bos.laporan.export', ['jenis' => 'pengeluaran']));
 
         $response->assertOk();
         $this->assertStringContainsString('spreadsheet', strtolower((string) $response->headers->get('content-type')));
@@ -245,7 +245,7 @@ class BhpLaporanTest extends TestCase
         $user = $this->user($sekolah, 'op.lap7');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'sembarang']))
+            ->get(route('distribusi-bhp.bos.laporan.export', ['jenis' => 'sembarang']))
             ->assertSessionHasErrors('jenis');
     }
 
@@ -256,7 +256,7 @@ class BhpLaporanTest extends TestCase
         $user = $this->user($sekolah, 'bend.lap', 'bendahara_sekolah');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'stok']))
+            ->get(route('distribusi-bhp.bos.laporan.export', ['jenis' => 'stok']))
             ->assertForbidden();
     }
 }

@@ -205,7 +205,7 @@ class BhpDivisiTest extends TestCase
         PenerimaanDetail::create(['bhp_penerimaan_id' => $penerimaan->id, 'barang_id' => $barang->id, 'jumlah' => 100, 'harga_satuan' => 1, 'nilai_total' => 100]);
 
         $this->actingAs($opDivisi)
-            ->post(route('distribusi-bhp.pengajuan.store'), [
+            ->post(route('distribusi-bhp.bos.pengajuan.store'), [
                 'sumber_dana' => 'BOS',
                 'tanggal' => '2026-06-17',
                 'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 10]],
@@ -237,7 +237,7 @@ class BhpDivisiTest extends TestCase
         }
 
         $this->actingAs($opA)
-            ->get(route('distribusi-bhp.pengajuan.index'))
+            ->get(route('distribusi-bhp.bos.pengajuan.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('items.data', 1)
                 ->where('items.data.0.divisi_id', $divisiA->id));
@@ -262,7 +262,7 @@ class BhpDivisiTest extends TestCase
         $pengajuan->details()->create(['barang_id' => Barang::create(['kode_barang' => 'X1', 'nama_barang' => 'X', 'satuan' => 'Unit', 'sumber_dana' => 'BOS'])->id, 'jumlah_diminta' => 1]);
 
         $this->actingAs($opA)
-            ->post(route('distribusi-bhp.pengajuan.submit', $pengajuan))
+            ->post(route('distribusi-bhp.bos.pengajuan.submit', $pengajuan))
             ->assertForbidden();
 
         $this->assertSame('draft', $pengajuan->fresh()->status);
@@ -327,7 +327,7 @@ class BhpDivisiTest extends TestCase
 
         // Operator sekolah (tanpa divisi_id) melihat pengajuan semua divisi.
         $this->actingAs($opSekolah)
-            ->get(route('distribusi-bhp.pengajuan.index'))
+            ->get(route('distribusi-bhp.bos.pengajuan.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('items.data', 1));
     }

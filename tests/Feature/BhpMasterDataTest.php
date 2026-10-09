@@ -141,10 +141,10 @@ class BhpMasterDataTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.barang.harga.store', $barang), ['sumber_dana' => 'BOS', 'harga_satuan' => 200000])
+            ->post(route('distribusi-bhp.bos.barang.harga.store', $barang), ['sumber_dana' => 'BOS', 'harga_satuan' => 200000])
             ->assertRedirect();
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.barang.harga.store', $barang), ['sumber_dana' => 'BOS', 'harga_satuan' => 220000])
+            ->post(route('distribusi-bhp.bos.barang.harga.store', $barang), ['sumber_dana' => 'BOS', 'harga_satuan' => 220000])
             ->assertRedirect();
 
         $this->assertSame(2, HargaBarang::where('barang_id', $barang->id)->count());

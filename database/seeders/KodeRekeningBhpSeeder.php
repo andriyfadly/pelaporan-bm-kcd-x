@@ -29,7 +29,7 @@ class KodeRekeningBhpSeeder extends Seeder
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->getRowIterator(2);
 
-            SumberDana::dengan($dana, function () use ($rows, $dana, &$total) {
+            SumberDana::dengan($dana, function () use ($rows, &$total) {
                 foreach ($rows as $row) {
                     $cells = [];
                     foreach ($row->getCellIterator() as $cell) {

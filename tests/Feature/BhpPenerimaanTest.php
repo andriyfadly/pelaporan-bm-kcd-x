@@ -62,7 +62,7 @@ class BhpPenerimaanTest extends TestCase
         $penyedia = Penyedia::create(['nama' => 'CV Maju']);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'no_nota_invoice' => 'INV-001',
                 'no_kwitansi' => 'KW-001',
@@ -92,7 +92,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'tanggal_titimangsa' => '2026-06-17',
                 'details' => [
@@ -112,7 +112,7 @@ class BhpPenerimaanTest extends TestCase
         $barangBopd = $this->barang($sekolah, 'BOPD');
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'tanggal_titimangsa' => '2026-06-17',
                 'details' => [
@@ -131,7 +131,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -152,7 +152,7 @@ class BhpPenerimaanTest extends TestCase
         $operator = $this->operator($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'details' => [],
             ])
@@ -166,7 +166,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'details' => [
@@ -185,7 +185,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [
@@ -212,10 +212,10 @@ class BhpPenerimaanTest extends TestCase
             ],
         ];
 
-        $this->actingAs($operator)->post(route('distribusi-bhp.penerimaan.store'), $payload)->assertRedirect();
+        $this->actingAs($operator)->post(route('distribusi-bhp.bos.penerimaan.store'), $payload)->assertRedirect();
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), $payload)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $payload)
             ->assertSessionHasErrors();
 
         $this->assertSame(1, Penerimaan::count());
@@ -229,7 +229,7 @@ class BhpPenerimaanTest extends TestCase
         $barangBopd = $this->barang($sekolah, 'BOPD');
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -240,7 +240,7 @@ class BhpPenerimaanTest extends TestCase
             ->assertRedirect();
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOPD',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -262,7 +262,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -282,7 +282,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -304,7 +304,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolahA);
 
         $this->actingAs($operatorA)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'details' => [
                     ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
@@ -322,7 +322,7 @@ class BhpPenerimaanTest extends TestCase
         $operatorB->assignRole('operator_sekolah');
 
         $this->actingAs($operatorB)
-            ->get(route('distribusi-bhp.penerimaan.index', ['sumber_dana' => 'BOS']))
+            ->get(route('distribusi-bhp.bos.penerimaan.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('items.data', 0));
     }
@@ -334,7 +334,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -347,7 +347,7 @@ class BhpPenerimaanTest extends TestCase
         $penerimaan = Penerimaan::firstOrFail();
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $penerimaan))
             ->assertRedirect();
 
         $this->assertSame(0, Penerimaan::count());
@@ -363,7 +363,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -391,7 +391,7 @@ class BhpPenerimaanTest extends TestCase
         $penerimaan = Penerimaan::firstOrFail();
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $penerimaan))
             ->assertSessionHas('error');
 
         $this->assertSame(1, Penerimaan::count());
@@ -405,7 +405,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolahA);
 
         $this->actingAs($operatorA)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -427,7 +427,7 @@ class BhpPenerimaanTest extends TestCase
         $operatorB->assignRole('operator_sekolah');
 
         $this->actingAs($operatorB)
-            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $penerimaan))
             ->assertForbidden();
 
         $this->assertSame(1, Penerimaan::count());
@@ -440,7 +440,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'details' => [
                     ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
@@ -451,7 +451,7 @@ class BhpPenerimaanTest extends TestCase
         $penerimaan = Penerimaan::firstOrFail();
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $penerimaan))
             ->assertSessionHas('error');
 
         $this->assertSame(1, Penerimaan::count());
@@ -465,7 +465,7 @@ class BhpPenerimaanTest extends TestCase
         $pulpen = Barang::create(['kode_barang' => 'E2E-PULPEN-MULTI', 'nama_barang' => 'Pulpen Multi', 'satuan' => 'Pcs', 'sumber_dana' => 'BOS']);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'is_saldo_awal' => true,
                 'periode_tahun' => 2026,
@@ -481,7 +481,7 @@ class BhpPenerimaanTest extends TestCase
 
         // Delete header-level menghapus SELURUH saldo awal, bukan satu barang.
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.penerimaan.destroy', $penerimaan))
+            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $penerimaan))
             ->assertRedirect();
 
         $this->assertSame(0, Penerimaan::count());
@@ -490,8 +490,8 @@ class BhpPenerimaanTest extends TestCase
 
     public function test_guest_tidak_bisa_mengakses_penerimaan(): void
     {
-        $this->get(route('distribusi-bhp.penerimaan.index'))->assertRedirect(route('login'));
-        $this->post(route('distribusi-bhp.penerimaan.store'))->assertRedirect(route('login'));
+        $this->get(route('distribusi-bhp.bos.penerimaan.index'))->assertRedirect(route('login'));
+        $this->post(route('distribusi-bhp.bos.penerimaan.store'))->assertRedirect(route('login'));
     }
 
     public function test_bendahara_tanpa_permission_ditolak_penerimaan(): void
@@ -507,7 +507,7 @@ class BhpPenerimaanTest extends TestCase
         $bendahara->assignRole('bendahara_sekolah');
 
         $this->actingAs($bendahara)
-            ->post(route('distribusi-bhp.penerimaan.store'), ['sumber_dana' => 'BOS'])
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), ['sumber_dana' => 'BOS'])
             ->assertForbidden();
     }
 
@@ -518,7 +518,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'APBN',
                 'details' => [
                     ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
@@ -534,7 +534,7 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'penyedia_id' => '00000000-0000-0000-0000-000000000000',
                 'details' => [
@@ -550,7 +550,7 @@ class BhpPenerimaanTest extends TestCase
         $operator = $this->operator($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.penerimaan.store'), [
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
                 'details' => [
                     ['barang_id' => '00000000-0000-0000-0000-000000000000', 'jumlah' => 10, 'harga_satuan' => 45000],

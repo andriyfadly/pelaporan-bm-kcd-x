@@ -6,23 +6,32 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Penandatangan dokumen BHP kini berasal dari master pejabat sekolah
-     * (pejabat_sekolah) dengan snapshot di payload dokumen. Kolom
-     * penyetuju global pada settings tidak lagi dipakai.
-     */
     public function up(): void
     {
-        Schema::table('bhp_settings', function (Blueprint $table) {
-            $table->dropColumn(['jabatan_penyetuju', 'nama_penyetuju']);
-        });
+        $tables = Schema::hasTable('bhp_bos_settings')
+            ? ['bhp_bos_settings', 'bhp_bopd_settings']
+            : ['bhp_settings'];
+
+        foreach ($tables as $table) {
+            $columns = Schema::getColumnListing($table);
+            $drop = array_intersect($columns, ['jabatan_penyetuju', 'nama_penyetuju']);
+            if ($drop) {
+                Schema::table($table, fn ($t) => $t->dropColumn($drop));
+            }
+        }
     }
 
     public function down(): void
     {
-        Schema::table('bhp_settings', function (Blueprint $table) {
-            $table->string('jabatan_penyetuju', 255)->nullable();
-            $table->string('nama_penyetuju', 255)->nullable();
-        });
+        $tables = Schema::hasTable('bhp_bos_settings')
+            ? ['bhp_bos_settings', 'bhp_bopd_settings']
+            : ['bhp_settings'];
+
+        foreach ($tables as $table) {
+            Schema::table($table, function (Blueprint $t) {
+                $t->string('jabatan_penyetuju', 255)->nullable();
+                $t->string('nama_penyetuju', 255)->nullable();
+            });
+        }
     }
 };

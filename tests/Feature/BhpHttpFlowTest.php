@@ -70,20 +70,20 @@ class BhpHttpFlowTest extends TestCase
         $barang = $this->barang($sekolah, 'BOS', 100);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.pengajuan.store'), [
+            ->post(route('distribusi-bhp.bos.pengajuan.store'), [
                 'sumber_dana' => 'BOS',
                 'tanggal' => '2026-06-17',
                 'items' => [
                     ['barang_id' => $barang->id, 'jumlah_diminta' => 30],
                 ],
             ])
-            ->assertRedirect(route('distribusi-bhp.pengajuan.index', ['sumber_dana' => 'BOS']));
+            ->assertRedirect(route('distribusi-bhp.bos.pengajuan.index'));
 
         $pengajuan = Pengajuan::firstOrFail();
         $this->assertSame('draft', $pengajuan->status);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.pengajuan.submit', $pengajuan))
+            ->post(route('distribusi-bhp.bos.pengajuan.submit', $pengajuan))
             ->assertRedirect();
 
         $this->assertSame('submitted', $pengajuan->fresh()->status);
@@ -96,7 +96,7 @@ class BhpHttpFlowTest extends TestCase
         $barang = $this->barang($sekolah, 'BOPD', 50);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.pengajuan.store'), [
+            ->post(route('distribusi-bhp.bos.pengajuan.store'), [
                 'sumber_dana' => 'BOS',
                 'tanggal' => '2026-06-17',
                 'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 5]],
@@ -127,7 +127,7 @@ class BhpHttpFlowTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.review-pengajuan.approve', $pengajuan), [
+            ->post(route('distribusi-bhp.bos.review-pengajuan.approve', $pengajuan), [
                 'jumlah_disetujui' => [$detail->id => 30],
             ])
             ->assertForbidden();
@@ -151,7 +151,7 @@ class BhpHttpFlowTest extends TestCase
         ]);
 
         $this->actingAs($operatorA)
-            ->post(route('distribusi-bhp.pengajuan.submit', $pengajuan))
+            ->post(route('distribusi-bhp.bos.pengajuan.submit', $pengajuan))
             ->assertForbidden();
     }
 
@@ -161,7 +161,7 @@ class BhpHttpFlowTest extends TestCase
         $operator = $this->user($sekolah, 'operator_sekolah', 'op.edit');
         $barang = $this->barang($sekolah, 'BOS', 100);
 
-        $this->actingAs($operator)->post(route('distribusi-bhp.pengajuan.store'), [
+        $this->actingAs($operator)->post(route('distribusi-bhp.bos.pengajuan.store'), [
             'sumber_dana' => 'BOS',
             'tanggal' => '2026-06-17',
             'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 5]],
@@ -169,7 +169,7 @@ class BhpHttpFlowTest extends TestCase
 
         $pengajuan = Pengajuan::firstOrFail();
 
-        $this->actingAs($operator)->put(route('distribusi-bhp.pengajuan.update', $pengajuan), [
+        $this->actingAs($operator)->put(route('distribusi-bhp.bos.pengajuan.update', $pengajuan), [
             'sumber_dana' => 'BOS',
             'tanggal' => '2026-06-20',
             'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 8]],
@@ -178,7 +178,7 @@ class BhpHttpFlowTest extends TestCase
         $this->assertSame('2026-06-20', $pengajuan->fresh()->tanggal->toDateString());
         $this->assertSame(8, $pengajuan->fresh()->details()->sum('jumlah_diminta'));
 
-        $this->actingAs($operator)->delete(route('distribusi-bhp.pengajuan.destroy', $pengajuan))
+        $this->actingAs($operator)->delete(route('distribusi-bhp.bos.pengajuan.destroy', $pengajuan))
             ->assertRedirect();
 
         $this->assertSame(0, Pengajuan::count());
@@ -199,13 +199,13 @@ class BhpHttpFlowTest extends TestCase
         ]);
         $pengajuan->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 5]);
 
-        $this->actingAs($operator)->put(route('distribusi-bhp.pengajuan.update', $pengajuan), [
+        $this->actingAs($operator)->put(route('distribusi-bhp.bos.pengajuan.update', $pengajuan), [
             'sumber_dana' => 'BOS',
             'tanggal' => '2026-06-20',
             'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 8]],
         ])->assertSessionHas('error');
 
-        $this->actingAs($operator)->delete(route('distribusi-bhp.pengajuan.destroy', $pengajuan))
+        $this->actingAs($operator)->delete(route('distribusi-bhp.bos.pengajuan.destroy', $pengajuan))
             ->assertSessionHas('error');
 
         $this->assertSame('submitted', $pengajuan->fresh()->status);
@@ -229,7 +229,7 @@ class BhpHttpFlowTest extends TestCase
         ]);
         $pengajuanB->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 5]);
 
-        $this->actingAs($operatorA)->put(route('distribusi-bhp.pengajuan.update', $pengajuanB), [
+        $this->actingAs($operatorA)->put(route('distribusi-bhp.bos.pengajuan.update', $pengajuanB), [
             'sumber_dana' => 'BOS',
             'tanggal' => '2026-06-20',
             'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 8]],
@@ -257,7 +257,7 @@ class BhpHttpFlowTest extends TestCase
         ]);
         $user->assignRole('operator_sekolah');
 
-        $this->actingAs($user)->post(route('distribusi-bhp.pengajuan.store'), [
+        $this->actingAs($user)->post(route('distribusi-bhp.bos.pengajuan.store'), [
             'sumber_dana' => 'BOS',
             'tanggal' => '2026-06-17',
             'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 5]],
@@ -289,7 +289,7 @@ class BhpHttpFlowTest extends TestCase
         ]);
 
         $this->actingAs($adminA)
-            ->post(route('distribusi-bhp.review-pengajuan.approve', $pengajuanB), [
+            ->post(route('distribusi-bhp.bos.review-pengajuan.approve', $pengajuanB), [
                 'jumlah_disetujui' => [$detail->id => 10],
             ])
             ->assertForbidden();
@@ -320,7 +320,7 @@ class BhpHttpFlowTest extends TestCase
         ]);
 
         $this->actingAs($adminA)
-            ->post(route('distribusi-bhp.review-pengajuan.reject', $pengajuanB), [
+            ->post(route('distribusi-bhp.bos.review-pengajuan.reject', $pengajuanB), [
                 'rejection_reason' => 'Bukan wewenang saya',
             ])
             ->assertForbidden();
@@ -336,7 +336,7 @@ class BhpHttpFlowTest extends TestCase
         $barang = $this->barang($sekolahA, 'BOS', 100);
 
         // User A menyisipkan sekolah_id sekolah B; harus diabaikan total.
-        $this->actingAs($operatorA)->post(route('distribusi-bhp.pengajuan.store'), [
+        $this->actingAs($operatorA)->post(route('distribusi-bhp.bos.pengajuan.store'), [
             'sekolah_id' => $sekolahB->id,
             'sumber_dana' => 'BOS',
             'tanggal' => '2026-06-17',

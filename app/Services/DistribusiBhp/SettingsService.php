@@ -13,6 +13,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
  */
 class SettingsService
 {
+    /** @deprecated Gunakan Settings::DEFAULT_FORMAT */
     public const DEFAULT_FORMAT_NOMOR = '{urut:3}/BHP/{kode}/{bulan_romawi}/{tahun}';
 
     private const ROMAWI = [
@@ -52,6 +53,14 @@ class SettingsService
         });
     }
 
+    /** Format nomor dokumen per jenis (membaca kolom format_nomor_{jenis}). */
+    public function getFormat(string $jenis, ?string $sumberDana = null): string
+    {
+        return SumberDana::dengan($sumberDana ?? SumberDana::BOS, function () use ($jenis): string {
+            return $this->get()->getFormat($jenis);
+        });
+    }
+
     /**
      * Format nomor dokumen. Placeholder:
      * {urut:3} / {urut:N} counter padded, {kode} kode jenis, {sumber_dana},
@@ -59,7 +68,7 @@ class SettingsService
      */
     public function formatNomor(string $jenis, string $kodeJenis, string $sumberDana, int $tahun, int $bulan, int $urut): string
     {
-        $format = $this->get($sumberDana)->format_nomor ?: self::DEFAULT_FORMAT_NOMOR;
+        $format = $this->getFormat($jenis, $sumberDana);
 
         return str_replace(
             ['{urut:1}', '{urut:2}', '{urut:3}', '{urut:4}', '{kode}', '{sumber_dana}', '{bulan_romawi}', '{bulan}', '{tahun}'],

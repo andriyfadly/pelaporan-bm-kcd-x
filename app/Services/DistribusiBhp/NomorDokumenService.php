@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\DB;
  * `bhp_bopd_nomor_sequence`), memakai row lock agar aman terhadap request
  * bersamaan.
  *
- * Format diambil dari settings BHP per sumber dana, default:
- * "{urut:3}/{kode}/BHP/{bulan_romawi}/{tahun}"
+ * Format diambil dari settings BHP per jenis dokumen, fallback ke
+ * format_nomor umum (default: "{urut:3}/BHP/{kode}/{bulan_romawi}/{tahun}").
  */
 class NomorDokumenService
 {

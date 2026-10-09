@@ -171,17 +171,11 @@ Route::middleware(['auth'])->group(function () {
     };
 
     // Domain Distribusi BHP — terpisah dari Pelaporan BM.
-    Route::prefix('distribusi-bhp')->name('distribusi-bhp.')->middleware('sumber-dana-bhp')->group(function () use ($bhpRoutes) {
+    Route::prefix('distribusi-bhp')->name('distribusi-bhp.')->group(function () use ($bhpRoutes) {
+        // Flat routes (tanpa sumber dana)
         Route::get('/dashboard', [BhpDashboardController::class, 'index'])
             ->middleware('permission:lihat-distribusi-bhp')
             ->name('dashboard');
-
-        // Flat routes (backward compatible)
-        $bhpRoutes();
-
-        // Per-sumber-dana prefixed routes
-        Route::prefix('bos')->name('bos.')->group($bhpRoutes);
-        Route::prefix('bopd')->name('bopd.')->group($bhpRoutes);
 
         Route::get('/settings', [BhpSettingsController::class, 'edit'])
             ->middleware('permission:kelola-master-bhp')->name('settings.edit');
@@ -196,6 +190,13 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:kelola-divisi-bhp')->name('divisi.operator.password');
         Route::put('/divisi/operator/{operator}/toggle', [BhpDivisiController::class, 'toggleActive'])
             ->middleware('permission:kelola-divisi-bhp')->name('divisi.operator.toggle');
+
+        // Per-sumber-dana routes — middleware baca sumber dana dari prefix
+        Route::prefix('bos')->name('bos.')->middleware('sumber-dana-bhp')->group($bhpRoutes);
+        Route::prefix('bopd')->name('bopd.')->middleware('sumber-dana-bhp')->group($bhpRoutes);
+
+        // Backward compat: tanpa prefix sumber dana, default ke BOS
+        Route::middleware('sumber-dana-bhp')->group($bhpRoutes);
     });
 
     // Master data generic lintas domain — di luar prefix distribusi-bhp.

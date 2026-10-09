@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { Boxes, ClipboardList, PackageCheck } from 'lucide-react';
 
@@ -45,15 +45,7 @@ export default function Dashboard({ stats }: { stats: Stats }) {
                     ))}
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                    <Link
-                        href="/pelaporan-bm/spj/pilih-bulan"
-                        className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-                    >
-                        Buka Pelaporan Belanja Modal →
-                    </Link>
                 </div>
-            </div>
         </AppLayout>
     );
 }

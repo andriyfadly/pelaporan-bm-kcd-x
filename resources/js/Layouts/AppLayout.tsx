@@ -53,16 +53,29 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                 : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
         }`;
 
-    const section = (sumberDana: string) => {
+    const section = (sumberDana: string, openSection: boolean, setOpenSection: (v: boolean) => void) => {
         const prefix = `/distribusi-bhp/${sumberDana}`;
         const isBos = sumberDana === 'bos';
+        const label = `Distribusi BHP ${isBos ? 'BOS' : 'BOPD'}`;
+        const isActive = currentPath.startsWith(prefix);
+        const prefixSlash = prefix + '/';
 
         return (
             <div key={sumberDana} className="pt-1">
-                <div className={`text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-1 ${isBos ? 'pt-1' : ''}`}>
-                    Distribusi BHP {isBos ? 'BOS' : 'BOPD'}
-                </div>
-                <div className="pl-2 space-y-0.5">
+                <button
+                    type="button"
+                    onClick={() => setOpenSection(!openSection)}
+                    aria-expanded={openSection}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
+                        isActive ? 'text-[#2563eb] bg-blue-50/50' : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50'
+                    }`}
+                >
+                    <span className="uppercase tracking-wider">{label}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openSection ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openSection && (
+                    <div className="pl-2 space-y-0.5 pt-0.5">
                     {/* Saldo Awal */}
                     {canTerima && (
                         <Link href={`${prefix}/saldo-awal`} className={itemClass(currentPath.startsWith(`${prefix}/saldo-awal`))}>
@@ -148,6 +161,7 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                         </Link>
                     )}
                 </div>
+                )}
             </div>
         );
     };
@@ -191,11 +205,9 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                     <Link href="/distribusi-bhp/dashboard" className={itemClass(currentPath.startsWith('/distribusi-bhp/dashboard'))}>
                         Dashboard BHP
                     </Link>
-                    {section('bos')}
-                    {section('bopd')}
-                    {canMaster && (
-                        <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
-                            Pejabat Sekolah
+                    {canDivisi && (
+                        <Link href="/distribusi-bhp/divisi" className={itemClass(currentPath.startsWith('/distribusi-bhp/divisi'))}>
+                            Divisi & Operator
                         </Link>
                     )}
                     {canMaster && (
@@ -203,9 +215,11 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                             Settings BHP
                         </Link>
                     )}
-                    {canDivisi && (
-                        <Link href="/distribusi-bhp/divisi" className={itemClass(currentPath.startsWith('/distribusi-bhp/divisi'))}>
-                            Divisi & Operator
+                    {section('bos', openBhpBos, setOpenBhpBos)}
+                    {section('bopd', openBhpBopd, setOpenBhpBopd)}
+                    {canMaster && (
+                        <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
+                            Pejabat Sekolah
                         </Link>
                     )}
                 </div>
@@ -242,6 +256,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const canBhp = permissions.includes('lihat-distribusi-bhp');
     const canMasterData = permissions.includes('kelola-master-bhp');
     const [openBhp, setOpenBhp] = useState(true);
+    const [openBhpBos, setOpenBhpBos] = useState(true);
+    const [openBhpBopd, setOpenBhpBopd] = useState(true);
 
     const isMasterActive =
         currentPath.startsWith('/admin/kode-barang') ||

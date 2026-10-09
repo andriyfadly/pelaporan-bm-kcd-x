@@ -88,7 +88,7 @@ class PengajuanController extends Controller
             });
 
             return redirect()
-                ->route('distribusi-bhp.pengajuan.index', ['sumber_dana' => $sumberDana])
+                ->route('distribusi-bhp.'.strtolower($sumberDana).'.pengajuan.index')
                 ->with('success', 'Pengajuan berhasil dibuat sebagai draft.');
         });
     }
@@ -163,7 +163,7 @@ class PengajuanController extends Controller
         });
 
         return redirect()
-            ->route('distribusi-bhp.pengajuan.index', ['sumber_dana' => $pengajuan->sumber_dana])
+            ->route('distribusi-bhp.'.strtolower($pengajuan->sumber_dana).'.pengajuan.index')
             ->with('success', 'Pengajuan draft berhasil dihapus.');
     }
 

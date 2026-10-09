@@ -189,7 +189,7 @@ class BhpKartuPersediaanTest extends TestCase
         $this->terima($barang, 10, '2026-08-01', $sekolah);
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.kartu-persediaan', ['barang_id' => $barang->id, 'sumber_dana' => 'BOS']))
+            ->get(route('distribusi-bhp.bos.laporan.kartu-persediaan', ['barang_id' => $barang->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('DistribusiBhp/Laporan/KartuPersediaan')
@@ -208,7 +208,7 @@ class BhpKartuPersediaanTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.kartu-persediaan'))
+            ->get(route('distribusi-bhp.bos.laporan.kartu-persediaan'))
             ->assertForbidden();
     }
 
@@ -221,8 +221,7 @@ class BhpKartuPersediaanTest extends TestCase
         $this->pengajuan($sekolah, $user, $barang, 10, '2026-09-02');
 
         $response = $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.export', [
-                'sumber_dana' => 'BOS',
+            ->get(route('distribusi-bhp.bos.laporan.export', [
                 'jenis' => 'kartu_persediaan',
                 'barang_id' => $barang->id,
             ]));
@@ -237,7 +236,7 @@ class BhpKartuPersediaanTest extends TestCase
         $user = $this->user($sekolah, 'op.kartuvalid');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.export', ['sumber_dana' => 'BOS', 'jenis' => 'kartu_persediaan']))
+            ->get(route('distribusi-bhp.bos.laporan.export', ['jenis' => 'kartu_persediaan']))
             ->assertSessionHasErrors('barang_id');
     }
 
@@ -247,7 +246,7 @@ class BhpKartuPersediaanTest extends TestCase
         $user = $this->user($sekolah, 'op.kartubad');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.kartu-persediaan', ['barang_id' => 'bukan-uuid', 'sumber_dana' => 'BOS']))
+            ->get(route('distribusi-bhp.bos.laporan.kartu-persediaan', ['barang_id' => 'bukan-uuid']))
             ->assertSessionHasErrors('barang_id');
     }
 
@@ -257,7 +256,7 @@ class BhpKartuPersediaanTest extends TestCase
         $user = $this->user($sekolah, 'op.kartuunknown');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.kartu-persediaan', ['barang_id' => '00000000-0000-0000-0000-000000000000', 'sumber_dana' => 'BOS']))
+            ->get(route('distribusi-bhp.bos.laporan.kartu-persediaan', ['barang_id' => '00000000-0000-0000-0000-000000000000']))
             ->assertSessionHasErrors('barang_id');
     }
 
@@ -268,8 +267,7 @@ class BhpKartuPersediaanTest extends TestCase
         $barangBopd = $this->barang('Barang Mismatch', 'BOPD');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.laporan.export', [
-                'sumber_dana' => 'BOS',
+            ->get(route('distribusi-bhp.bos.laporan.export', [
                 'jenis' => 'kartu_persediaan',
                 'barang_id' => $barangBopd->id,
             ]))

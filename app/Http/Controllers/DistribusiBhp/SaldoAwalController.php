@@ -145,8 +145,7 @@ class SaldoAwalController extends Controller
         });
 
         return redirect()
-            ->route('distribusi-bhp.saldo-awal.index', [
-                'sumber_dana' => $sumberDana,
+            ->route('distribusi-bhp.'.strtolower($sumberDana).'.saldo-awal.index', [
                 'periode' => $validated['periode_tahun'],
             ])
             ->with('success', 'Saldo awal berhasil disimpan.');
@@ -326,7 +325,7 @@ class SaldoAwalController extends Controller
         }
 
         return redirect()
-            ->route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => $sumberDana, 'periode' => $periode])
+            ->route('distribusi-bhp.'.strtolower($sumberDana).'.saldo-awal.index', ['periode' => $periode])
             ->with('success', count($details).' barang saldo awal berhasil diimpor.');
     }
 

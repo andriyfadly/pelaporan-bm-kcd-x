@@ -111,7 +111,7 @@ class BhpDomainBoundaryTest extends TestCase
         $user->assignRole('operator_sekolah');
 
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.dashboard', ['sumber_dana' => 'INVALID']))
+            ->get('/distribusi-bhp/saldo-awal?sumber_dana=INVALID')
             ->assertStatus(422);
     }
 
@@ -191,13 +191,13 @@ class BhpDomainBoundaryTest extends TestCase
 
         // BOS hanya punya 2025
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS']))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index'))
             ->assertInertia(fn ($page) => $page
                 ->where('availablePeriods', [2025]));
 
         // BOPD hanya punya 2026
         $this->actingAs($user)
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOPD']))
+            ->get(route('distribusi-bhp.bopd.saldo-awal.index'))
             ->assertInertia(fn ($page) => $page
                 ->where('availablePeriods', [2026]));
     }

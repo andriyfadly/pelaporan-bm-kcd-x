@@ -59,7 +59,7 @@ class BhpSaldoAwalTest extends TestCase
     public function test_operator_dapat_membuka_halaman_saldo_awal(): void
     {
         $this->actingAs($this->operator($this->sekolah()))
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('DistribusiBhp/SaldoAwal/Index')
@@ -83,13 +83,13 @@ class BhpSaldoAwalTest extends TestCase
         $bendahara->assignRole('bendahara_sekolah');
 
         $this->actingAs($bendahara)
-            ->get(route('distribusi-bhp.saldo-awal.index'))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index'))
             ->assertForbidden();
     }
 
     public function test_guest_dialihkan_ke_login(): void
     {
-        $this->get(route('distribusi-bhp.saldo-awal.index'))->assertRedirect(route('login'));
+        $this->get(route('distribusi-bhp.bos.saldo-awal.index'))->assertRedirect(route('login'));
     }
 
     public function test_operator_dapat_menambah_saldo_awal_dan_melihat_statistik(): void
@@ -99,20 +99,20 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang();
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [
                     ['barang_id' => $barang->id, 'jumlah' => 30, 'harga_satuan' => 45000],
                 ],
             ])
-            ->assertRedirect(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]));
+            ->assertRedirect(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2026]));
 
         $this->assertSame(1, Penerimaan::count());
         $this->assertTrue(Penerimaan::firstOrFail()->is_saldo_awal);
 
         $this->actingAs($operator)
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->has('items', 1)
@@ -127,7 +127,7 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang();
 
         $this->actingAs($this->operator($this->sekolah()))
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'details' => [['barang_id' => $barang->id, 'jumlah' => 5, 'harga_satuan' => 1000]],
             ])
@@ -141,7 +141,7 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang('BOPD');
 
         $this->actingAs($this->operator($this->sekolah()))
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [['barang_id' => $barang->id, 'jumlah' => 5, 'harga_satuan' => 1000]],
@@ -162,8 +162,8 @@ class BhpSaldoAwalTest extends TestCase
             'details' => [['barang_id' => $barang->id, 'jumlah' => 5, 'harga_satuan' => 1000]],
         ];
 
-        $this->actingAs($operator)->post(route('distribusi-bhp.saldo-awal.store'), $payload)->assertRedirect();
-        $this->actingAs($operator)->post(route('distribusi-bhp.saldo-awal.store'), $payload)->assertSessionHasErrors();
+        $this->actingAs($operator)->post(route('distribusi-bhp.bos.saldo-awal.store'), $payload)->assertRedirect();
+        $this->actingAs($operator)->post(route('distribusi-bhp.bos.saldo-awal.store'), $payload)->assertSessionHasErrors();
 
         $this->assertSame(1, Penerimaan::count());
     }
@@ -177,7 +177,7 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang();
 
         $this->actingAs($operatorA)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [['barang_id' => $barang->id, 'jumlah' => 7, 'harga_satuan' => 1000]],
@@ -186,11 +186,11 @@ class BhpSaldoAwalTest extends TestCase
 
         // Operator A melihat 1 baris; operator B melihat 0.
         $this->actingAs($operatorA)
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2026]))
             ->assertInertia(fn ($page) => $page->has('items', 1));
 
         $this->actingAs($operatorB)
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2026]))
             ->assertInertia(fn ($page) => $page->has('items', 0));
     }
 
@@ -201,7 +201,7 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang();
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [['barang_id' => $barang->id, 'jumlah' => 12, 'harga_satuan' => 1000]],
@@ -211,7 +211,7 @@ class BhpSaldoAwalTest extends TestCase
         $detail = PenerimaanDetail::firstOrFail();
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.saldo-awal.destroy', $detail))
+            ->delete(route('distribusi-bhp.bos.saldo-awal.destroy', $detail))
             ->assertRedirect();
 
         $this->assertSame(0, Penerimaan::count());
@@ -226,7 +226,7 @@ class BhpSaldoAwalTest extends TestCase
         $pulpen = $this->barang('BOS', 'Pulpen Biru');
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [
@@ -243,7 +243,7 @@ class BhpSaldoAwalTest extends TestCase
         $detailKertas = PenerimaanDetail::where('barang_id', $kertas->id)->firstOrFail();
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.saldo-awal.destroy', $detailKertas))
+            ->delete(route('distribusi-bhp.bos.saldo-awal.destroy', $detailKertas))
             ->assertRedirect();
 
         // Header dan barang lain harus tetap ada.
@@ -254,7 +254,7 @@ class BhpSaldoAwalTest extends TestCase
 
         // Statistik halaman konsisten dengan sisa data.
         $this->actingAs($operator)
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2026]))
             ->assertInertia(fn ($page) => $page
                 ->has('items', 1)
                 ->where('stats.total_barang', 1)
@@ -271,7 +271,7 @@ class BhpSaldoAwalTest extends TestCase
         $pulpen = $this->barang('BOS', 'Pulpen Biru');
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [
@@ -284,7 +284,7 @@ class BhpSaldoAwalTest extends TestCase
         foreach ([$kertas, $pulpen] as $barang) {
             $detail = PenerimaanDetail::where('barang_id', $barang->id)->firstOrFail();
             $this->actingAs($operator)
-                ->delete(route('distribusi-bhp.saldo-awal.destroy', $detail))
+                ->delete(route('distribusi-bhp.bos.saldo-awal.destroy', $detail))
                 ->assertRedirect();
         }
 
@@ -299,7 +299,7 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang('BOS', 'Kertas HVS');
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [['barang_id' => $barang->id, 'jumlah' => 20, 'harga_satuan' => 50000]],
@@ -321,7 +321,7 @@ class BhpSaldoAwalTest extends TestCase
         $detail = PenerimaanDetail::firstOrFail();
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.saldo-awal.destroy', $detail))
+            ->delete(route('distribusi-bhp.bos.saldo-awal.destroy', $detail))
             ->assertSessionHas('error');
 
         $this->assertSame(1, PenerimaanDetail::count());
@@ -335,7 +335,7 @@ class BhpSaldoAwalTest extends TestCase
         $barangBopd = $this->barang('BOPD', 'Barang BOPD');
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [['barang_id' => $barangBos->id, 'jumlah' => 20, 'harga_satuan' => 50000]],
@@ -358,7 +358,7 @@ class BhpSaldoAwalTest extends TestCase
         $detail = PenerimaanDetail::sumberDana('BOS')->where('barang_id', $barangBos->id)->firstOrFail();
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.saldo-awal.destroy', $detail))
+            ->delete(route('distribusi-bhp.bos.saldo-awal.destroy', $detail))
             ->assertRedirect()
             ->assertSessionHas('success');
 
@@ -385,7 +385,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.saldo-awal.destroy', $detail))
+            ->delete(route('distribusi-bhp.bos.saldo-awal.destroy', $detail))
             ->assertNotFound();
     }
 
@@ -397,7 +397,7 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang();
 
         $this->actingAs($operatorA)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [['barang_id' => $barang->id, 'jumlah' => 4, 'harga_satuan' => 1000]],
@@ -407,7 +407,7 @@ class BhpSaldoAwalTest extends TestCase
         $detail = PenerimaanDetail::firstOrFail();
 
         $this->actingAs($this->operator($sekolahB, 'op.b2'))
-            ->delete(route('distribusi-bhp.saldo-awal.destroy', $detail))
+            ->delete(route('distribusi-bhp.bos.saldo-awal.destroy', $detail))
             ->assertForbidden();
 
         $this->assertSame(1, PenerimaanDetail::count());
@@ -420,7 +420,7 @@ class BhpSaldoAwalTest extends TestCase
 
         foreach ([2025, 2026] as $tahun) {
             $this->actingAs($operator)
-                ->post(route('distribusi-bhp.saldo-awal.store'), [
+                ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                     'sumber_dana' => 'BOS',
                     'periode_tahun' => $tahun,
                     'details' => [['barang_id' => $barang->id, 'jumlah' => 1, 'harga_satuan' => 1000]],
@@ -429,7 +429,7 @@ class BhpSaldoAwalTest extends TestCase
         }
 
         $this->actingAs($operator)
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2025]))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2025]))
             ->assertInertia(fn ($page) => $page
                 ->has('items', 1)
                 ->where('availablePeriods', fn ($periods) => collect($periods)->contains(2026))
@@ -441,7 +441,7 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang('BOS', 'Pulpen Biru');
 
         $response = $this->actingAs($this->operator($this->sekolah()))
-            ->get(route('distribusi-bhp.saldo-awal.template', ['sumber_dana' => 'BOS']));
+            ->get(route('distribusi-bhp.bos.saldo-awal.template'));
 
         $response->assertOk();
         $this->assertStringContainsString('attachment', (string) $response->headers->get('content-disposition'));
@@ -463,12 +463,12 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), [
                 'file' => $file,
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
             ])
-            ->assertRedirect(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]));
+            ->assertRedirect(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2026]));
 
         $this->assertSame(2, PenerimaanDetail::count());
         $this->assertSame(1, Penerimaan::count());
@@ -487,7 +487,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), [
                 'file' => $file,
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
@@ -509,7 +509,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), [
                 'file' => $file,
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
@@ -525,7 +525,7 @@ class BhpSaldoAwalTest extends TestCase
         $barang = $this->barang();
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 1000]],
@@ -538,7 +538,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), [
                 'file' => $file,
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
@@ -598,7 +598,7 @@ class BhpSaldoAwalTest extends TestCase
         $file = $this->xlsx([['Kode Barang*', 'Jumlah*', 'Harga Satuan*', 'Merek/Tipe', 'Keterangan']]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('error');
 
         $this->assertSame(0, Penerimaan::count());
@@ -615,7 +615,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('error');
 
         $this->assertSame(0, Penerimaan::count());
@@ -634,7 +634,7 @@ class BhpSaldoAwalTest extends TestCase
         ], [1 => [1, 2]]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('success');
 
         $detail = PenerimaanDetail::firstOrFail();
@@ -655,7 +655,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('error');
 
         $this->assertSame(0, Penerimaan::count());
@@ -675,7 +675,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('error');
 
         $this->assertSame(0, Penerimaan::count());
@@ -694,7 +694,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('error');
 
         $this->assertSame(0, Penerimaan::count());
@@ -712,7 +712,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('error');
 
         $this->assertSame(0, Penerimaan::count());
@@ -728,7 +728,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('error');
 
         $this->assertSame(0, Penerimaan::count());
@@ -745,7 +745,7 @@ class BhpSaldoAwalTest extends TestCase
         }
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $this->xlsx($rows)] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $this->xlsx($rows)] + $this->import())
             ->assertSessionHas('error');
 
         $this->assertSame(0, Penerimaan::count());
@@ -758,7 +758,7 @@ class BhpSaldoAwalTest extends TestCase
         $file = UploadedFile::fake()->create('data.pdf', 10, 'application/pdf');
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHasErrors('file');
 
         $this->assertSame(0, Penerimaan::count());
@@ -774,7 +774,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file, 'sumber_dana' => 'BOS', 'periode_tahun' => 1900])
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file, 'sumber_dana' => 'BOS', 'periode_tahun' => 1900])
             ->assertSessionHasErrors('periode_tahun');
 
         $this->assertSame(0, Penerimaan::count());
@@ -799,7 +799,7 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($bendahara)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertForbidden();
 
         $this->assertSame(0, Penerimaan::count());
@@ -815,7 +815,7 @@ class BhpSaldoAwalTest extends TestCase
         // Sekolah A sudah punya saldo awal periode 2026 untuk barang yang sama.
         $operatorA = $this->operator($sekolahA, 'op.import.a');
         $this->actingAs($operatorA)
-            ->post(route('distribusi-bhp.saldo-awal.store'), [
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
                 'sumber_dana' => 'BOS',
                 'periode_tahun' => 2026,
                 'details' => [['barang_id' => $barang->id, 'jumlah' => 5, 'harga_satuan' => 1000]],
@@ -829,14 +829,14 @@ class BhpSaldoAwalTest extends TestCase
         ]);
 
         $this->actingAs($operatorB)
-            ->post(route('distribusi-bhp.saldo-awal.import'), ['file' => $file] + $this->import())
+            ->post(route('distribusi-bhp.bos.saldo-awal.import'), ['file' => $file] + $this->import())
             ->assertSessionHas('success');
 
         $this->assertSame(2, Penerimaan::count());
 
         // Halaman sekolah B hanya menampilkan saldo awalnya (7 unit, bukan 5).
         $this->actingAs($operatorB)
-            ->get(route('distribusi-bhp.saldo-awal.index', ['sumber_dana' => 'BOS', 'periode' => 2026]))
+            ->get(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2026]))
             ->assertInertia(fn ($page) => $page
                 ->has('items', 1)
                 ->where('stats.total_unit', 7)
