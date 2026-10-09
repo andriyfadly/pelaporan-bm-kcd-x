@@ -1,7 +1,6 @@
 import { Link, usePage, router } from '@inertiajs/react';
 import React, { useState, useEffect, ReactNode } from 'react';
 import ConfirmDialog from '@/Components/ConfirmDialog';
-import { Toaster, toast } from 'sonner';
 import {
     LayoutDashboard,
     Database,
@@ -20,9 +19,6 @@ interface Props {
     title?: string;
     children: ReactNode;
 }
-
-/** Kunci flash terakhir yang sudah ditampilkan (modul-level, lintas mount). */
-let lastToastKey: string | null = null;
 
 interface BhpMenuProps {
     currentPath: string;
@@ -253,29 +249,12 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const { auth } = usePage<any>().props;
-    const { flash } = usePage<any>().props;
 
     const user = auth?.user;
     const sekolah = user?.sekolah;
     const namaSekolahTampil = sekolah?.nama_sekolah || 'Dinas / Administrator';
 
     const currentPath = window.location.pathname;
-
-    // Flash Inertia tetap ter-share di props selama session belum hangus;
-    // gunakan kunci modul-level agar tiap pesan hanya tampil sekali, walau
-    // layout di-mount ulang pada tiap navigasi. Saat flash kosong, reset kunci
-    // supaya pesan serupa di masa depan tetap bisa muncul.
-    useEffect(() => {
-        const key = `${flash?.success ?? ''}|${flash?.error ?? ''}`;
-        if (!flash?.success && !flash?.error) {
-            lastToastKey = null;
-            return;
-        }
-        if (key === lastToastKey) return;
-        lastToastKey = key;
-        if (flash?.success) toast.success(flash.success);
-        if (flash?.error) toast.error(flash.error);
-    }, [flash]);
 
     const roles: string[] = user?.roles || [];
     const permissions: string[] = user?.permissions || [];
@@ -686,8 +665,6 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                 confirmText="Ya, Keluar"
                 isDestructive={true}
             />
-
-            <Toaster richColors position="top-right" closeButton />
         </div>
     );
 }
