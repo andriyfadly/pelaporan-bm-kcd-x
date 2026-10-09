@@ -113,17 +113,24 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:approve-pengajuan-bhp')
             ->name('review-pengajuan.reject');
 
-        Route::middleware('permission:kelola-master-bhp')->group(function () {
-            Route::get('/master/kode-rekening', [BhpKodeRekeningController::class, 'index'])->name('kode-rekening.index');
-            Route::post('/master/kode-rekening', [BhpKodeRekeningController::class, 'store'])->name('kode-rekening.store');
+        Route::get('/master/kode-rekening', [BhpKodeRekeningController::class, 'index'])
+            ->middleware('permission:lihat-distribusi-bhp')->name('kode-rekening.index');
+        Route::post('/master/kode-rekening', [BhpKodeRekeningController::class, 'store'])
+            ->middleware('permission:kelola-master-bhp')->name('kode-rekening.store');
+        Route::post('/master/kode-rekening/batch-assign', [BhpKodeRekeningController::class, 'batchAssign'])
+            ->middleware('permission:lihat-distribusi-bhp')->name('kode-rekening.batch-assign');
 
-            Route::get('/master/barang', [BhpBarangController::class, 'index'])->name('barang.index');
-            Route::post('/master/barang', [BhpBarangController::class, 'store'])->name('barang.store');
-            Route::post('/master/barang/{barang}/harga', [BhpBarangController::class, 'storeHarga'])->name('barang.harga.store');
+        Route::get('/master/barang', [BhpBarangController::class, 'index'])
+            ->middleware('permission:lihat-distribusi-bhp')->name('barang.index');
+        Route::post('/master/barang', [BhpBarangController::class, 'store'])
+            ->middleware('permission:kelola-master-bhp')->name('barang.store');
+        Route::post('/master/barang/{barang}/harga', [BhpBarangController::class, 'storeHarga'])
+            ->middleware('permission:kelola-master-bhp')->name('barang.harga.store');
 
-            Route::get('/master/penyedia', [BhpPenyediaController::class, 'index'])->name('penyedia.index');
-            Route::post('/master/penyedia', [BhpPenyediaController::class, 'store'])->name('penyedia.store');
-        });
+        Route::get('/master/penyedia', [BhpPenyediaController::class, 'index'])
+            ->middleware('permission:lihat-distribusi-bhp')->name('penyedia.index');
+        Route::post('/master/penyedia', [BhpPenyediaController::class, 'store'])
+            ->middleware('permission:kelola-master-bhp')->name('penyedia.store');
 
         Route::middleware('permission:kelola-penerimaan-bhp')->group(function () {
             Route::get('/penerimaan', [BhpPenerimaanController::class, 'index'])->name('penerimaan.index');

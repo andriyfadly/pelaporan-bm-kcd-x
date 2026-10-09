@@ -34,6 +34,9 @@ Khusus role Operator Sekolah dengan alur yang identik dengan legacy:
    - Fitur Live Search instan (SPK, Nama Barang, Merk/Tipe).
    - Aksi Tambah SPJ (modal pilihan kategori: Peralatan & Mesin vs Buku), Edit SPK, dan Hapus Item/SPK.
    - **Import Excel SPJ** (tombol "Import Excel" + modal unggah, hanya tampil untuk sekolah dengan NPSN di daftar allowlist): unggah template `/templates/template_import_spj.xlsx` berisi 13 kolom (No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\*, Jenis\*). Nilai Jenis wajib `Peralatan & Mesin` atau `Buku` dan disimpan ke `kategori`; `nama_barang`/`jenis_aset` tetap di-lookup dari katalog via `kode_barang`. Parsing via `maatwebsite/excel`; **all-or-nothing** (satu baris invalid → seluruh impor dibatalkan dengan pesan no. baris + alasan); baris `no_spk` sama digabung jadi 1 SPK multi-item; limit 5.000 baris; diblokir saat laporan terkunci.
+- **Master Kode Rekening BHP (`/distribusi-bhp/master/kode-rekening`)**:
+  - **Admin KCD**: form tambah kode rekening (kode, nama, dropdown kode barang dari 5 opsi statis).
+  - **Operator/Bendahara Sekolah**: tabel read-only + kolom "Assign" berupa dropdown per baris untuk kode rekening yang belum punya `kode_barang`. Pilih kode barang → tombol `Simpan N Assignment` di atas tabel. Data dikirim ke `POST /distribusi-bhp/master/kode-rekening/batch-assign`.
    - Hapus item/SPK ikut menghapus data `pelaporan_bm_realisasi` terkait (transaksi DB) agar tidak ada realisasi yatim.
    - Seluruh mutasi diblokir ketika laporan `status_kunci` aktif atau `status_kirim` `menunggu_approval`/`disetujui` (readonly + gembok).
 3. **Form Dokumen SPK Multi-Item (`/pelaporan-bm/spj/create` & `/pelaporan-bm/spj/edit-spk/{no_spk}`)**:

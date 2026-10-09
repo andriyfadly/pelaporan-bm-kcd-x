@@ -131,7 +131,7 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 `HasSumberDanaTable::resolveRouteBinding`.
 
 | Method | Path | Permission | Controller::method |
-|---|---|---|---|
+|---|---|---|---|---|
 | GET | `/distribusi-bhp/dashboard` | `lihat-distribusi-bhp` | `DashboardController::index` |
 | GET | `/distribusi-bhp/pengajuan` | `lihat-distribusi-bhp` | `PengajuanController::index` |
 | POST | `/distribusi-bhp/pengajuan` | `kelola-pengajuan-bhp` | `PengajuanController::store` |
@@ -141,10 +141,12 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 | GET | `/distribusi-bhp/review-pengajuan` | `review-pengajuan-bhp` | `ReviewPengajuanController::index` |
 | POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/approve` | `approve-pengajuan-bhp` | `ReviewPengajuanController::approve` |
 | POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/reject` | `approve-pengajuan-bhp` | `ReviewPengajuanController::reject` |
-| GET/POST | `/distribusi-bhp/master/kode-rekening` | `kelola-master-bhp` | `KodeRekeningController` |
-| GET/POST | `/distribusi-bhp/master/barang` | `kelola-master-bhp` | `BarangController` |
+| GET | `/distribusi-bhp/master/kode-rekening` | `lihat-distribusi-bhp` | `KodeRekeningController::index` |
+| POST | `/distribusi-bhp/master/kode-rekening` | `kelola-master-bhp` | `KodeRekeningController::store` |
+| POST | `/distribusi-bhp/master/kode-rekening/batch-assign` | `lihat-distribusi-bhp` | `KodeRekeningController::batchAssign` |
+| GET/POST | `/distribusi-bhp/master/barang` | `lihat-distribusi-bhp` / `kelola-master-bhp` | `BarangController` |
 | POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-master-bhp` | `BarangController::storeHarga` — `sumber_dana` wajib & harus cocok dengan barang ter-binding |
-| GET/POST | `/distribusi-bhp/master/penyedia` | `kelola-master-bhp` | `PenyediaController` |
+| GET/POST | `/distribusi-bhp/master/penyedia` | `lihat-distribusi-bhp` / `kelola-master-bhp` | `PenyediaController` |
 | GET/POST | `/distribusi-bhp/penerimaan` | `kelola-penerimaan-bhp` | `PenerimaanController` |
 | DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hapus **seluruh** saldo awal (header + semua detail) milik sekolah sendiri yang belum dipakai |
 | GET/POST | `/distribusi-bhp/saldo-awal` | `kelola-penerimaan-bhp` | `SaldoAwalController` — halaman saldo awal (filter `sumber_dana`, `periode`) |
@@ -191,6 +193,13 @@ Rute generic lintas domain (di luar `distribusi-bhp`). Dijaga permission
 
 Payload penting:
 
+- `POST kode-rekening`: `kode` (string), `nama` (string), `sumber_dana` (`BOS`/`BOPD`),
+  `kode_barang` (opsional, salah satu dari 5 nilai `KODE_BARANG_OPTIONS`),
+  `uraian_kode_barang` (opsional). Akses `kelola-master-bhp` (admin KCD).
+- `POST kode-rekening/batch-assign`: `assignments[]` — array objek (`id` UUID,
+  `kode_barang` string dari 5 opsi, `uraian_kode_barang` string). Akses
+  `lihat-distribusi-bhp` (sekolah). Update massal field
+  `kode_barang`/`uraian_kode_barang`.
 - `POST pengajuan`: `sumber_dana` (`BOS`/`BOPD`), `tanggal`, `items[]`
   (`barang_id`, `jumlah_diminta`, `keperluan`). `PUT pengajuan/{pengajuan}`
   memakai payload sama dan hanya berlaku untuk status `draft`.

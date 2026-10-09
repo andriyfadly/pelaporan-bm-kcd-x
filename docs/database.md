@@ -169,8 +169,8 @@ Semua suffix di bawah punya **dua tabel fisik** (`bhp_bos_*` dan
 tabel.
 
 | Tabel | Kolom penting |
-|---|---|
-| `bhp_{dana}_kode_rekening` | `kode` (100) · `nama` · `kode_barang` · `uraian_kode_barang` · unique `kode` per tabel |
+|---|---|---|
+| `bhp_{dana}_kode_rekening` | `kode` (100) · `nama` · `kode_barang` (100, nullable) · `uraian_kode_barang` (255, nullable) · unique `kode` per tabel. `kode_barang` diisi dari 5 opsi statis (`1.1.7.01.01`–`1.1.7.01.07`, lihat `KodeRekeningController::KODE_BARANG_OPTIONS`) — bukan FK, diisi via batch-assign oleh role sekolah atau manual admin saat tambah. |
 | `bhp_{dana}_barang` | `kode_barang` · `nama_barang` · `spesifikasi_barang_nusp` · `satuan` · `kode_rekening_id` (FK nullable) |
 | `bhp_{dana}_harga_barang` | `barang_id` FK · `harga_satuan` bigint · `created_by` (uuid nullable) |
 | `bhp_penyedia` *(bersama)* | `nama` (unique) · `alamat` · `telepon` · `email` |
@@ -235,6 +235,13 @@ selalu dihitung (`StokService`).
   `bhp_{dana}_settings.is_singleton` (partial),
   partial unique saldo awal `(sekolah_id, periode_tahun) WHERE is_saldo_awal`,
   `pejabat_sekolah` satu pejabat aktif per `(sekolah_id, jabatan)` (partial).
+- `bhp_{dana}_kode_rekening.kode_barang` diisi dari 5 opsi statis (mirror sistem
+  manajemen aset): `1.1.7.01.01` (Bahan), `1.1.7.01.02` (Suku Cadang),
+  `1.1.7.01.03` (Alat/Bahan Untuk Kegiatan Kantor), `1.1.7.01.04` (Obat-Obatan),
+  `1.1.7.01.07` (Naturan dan Pakan). Nilai hardcoded di
+  `KodeRekeningController::KODE_BARANG_OPTIONS` — bukan FK ke tabel manapun.
+  Role sekolah (operator/bendahara) dapat batch-assign via dropdown per baris;
+  admin KCD mengisi langsung saat tambah kode rekening.
 - Migrasi legacy: kolom `*_lama` (BM) dan `source_id` (BHP) + `updateOrCreate`
   idempoten.
 
