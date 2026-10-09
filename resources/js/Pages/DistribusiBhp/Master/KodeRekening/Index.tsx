@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 
 interface KodeRekeningItem {
@@ -13,6 +13,10 @@ interface Paginated<T> {
 }
 
 export default function Index({ items, sumberDana }: { items: Paginated<KodeRekeningItem>; sumberDana: string }) {
+    const { auth } = usePage<any>().props;
+    const roles: string[] = auth?.user?.roles || [];
+    const isAdmin = roles.includes('admin_kcd') || roles.includes('super_admin');
+
     const form = useForm({ kode: '', nama: '', sumber_dana: sumberDana });
 
     const submit = (e: React.FormEvent) => {
@@ -27,24 +31,25 @@ export default function Index({ items, sumberDana }: { items: Paginated<KodeReke
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-lg font-bold text-slate-900">Kode Rekening BHP — {sumberDana}</h1>
-                    
                 </div>
 
-                <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                    <div>
-                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode</label>
-                        <input value={form.data.kode} onChange={(e) => form.setData('kode', e.target.value)} placeholder="Contoh: 5.1.02.01.01.0001" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
-                        {form.errors.kode && <p className="text-xs text-rose-600 mt-1">{form.errors.kode}</p>}
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama</label>
-                        <input value={form.data.nama} onChange={(e) => form.setData('nama', e.target.value)} placeholder="Masukkan nama rekening" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
-                        {form.errors.nama && <p className="text-xs text-rose-600 mt-1">{form.errors.nama}</p>}
-                    </div>
-                    <button type="submit" disabled={form.processing} className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
-                        Tambah Kode Rekening
-                    </button>
-                </form>
+                {isAdmin && (
+                    <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode</label>
+                            <input value={form.data.kode} onChange={(e) => form.setData('kode', e.target.value)} placeholder="Contoh: 5.1.02.01.01.0001" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            {form.errors.kode && <p className="text-xs text-rose-600 mt-1">{form.errors.kode}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama</label>
+                            <input value={form.data.nama} onChange={(e) => form.setData('nama', e.target.value)} placeholder="Masukkan nama rekening" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            {form.errors.nama && <p className="text-xs text-rose-600 mt-1">{form.errors.nama}</p>}
+                        </div>
+                        <button type="submit" disabled={form.processing} className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                            Tambah Kode Rekening
+                        </button>
+                    </form>
+                )}
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <table className="w-full text-sm">
