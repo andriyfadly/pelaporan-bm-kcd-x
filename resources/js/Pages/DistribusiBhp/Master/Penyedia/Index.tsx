@@ -135,22 +135,22 @@ export default function Index({ items }: { items: { data: PenyediaItem[] } }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama</label>
-                            <input value={createForm.data.nama} onChange={(e) => createForm.setData('nama', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <input value={createForm.data.nama} onChange={(e) => createForm.setData('nama', e.target.value)} placeholder="cth. CV Sumber Rejeki" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {createForm.errors.nama && <p className="text-xs text-rose-600 mt-1">{createForm.errors.nama}</p>}
                         </div>
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Alamat</label>
-                            <input value={createForm.data.alamat} onChange={(e) => createForm.setData('alamat', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <input value={createForm.data.alamat} onChange={(e) => createForm.setData('alamat', e.target.value)} placeholder="cth. Jl. Merdeka No. 10, Bandung" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {createForm.errors.alamat && <p className="text-xs text-rose-600 mt-1">{createForm.errors.alamat}</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Telepon</label>
-                            <input value={createForm.data.telepon} onChange={(e) => createForm.setData('telepon', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <input value={createForm.data.telepon} onChange={(e) => createForm.setData('telepon', e.target.value)} placeholder="cth. 0812-3456-7890" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {createForm.errors.telepon && <p className="text-xs text-rose-600 mt-1">{createForm.errors.telepon}</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Email</label>
-                            <input value={createForm.data.email} onChange={(e) => createForm.setData('email', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <input value={createForm.data.email} onChange={(e) => createForm.setData('email', e.target.value)} placeholder="cth. supplier@contoh.co.id" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {createForm.errors.email && <p className="text-xs text-rose-600 mt-1">{createForm.errors.email}</p>}
                         </div>
                     </div>
@@ -170,22 +170,22 @@ export default function Index({ items }: { items: { data: PenyediaItem[] } }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama</label>
-                            <input value={editForm.data.nama} onChange={(e) => editForm.setData('nama', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <input value={editForm.data.nama} onChange={(e) => editForm.setData('nama', e.target.value)} placeholder="cth. CV Sumber Rejeki" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {editForm.errors.nama && <p className="text-xs text-rose-600 mt-1">{editForm.errors.nama}</p>}
                         </div>
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Alamat</label>
-                            <input value={editForm.data.alamat} onChange={(e) => editForm.setData('alamat', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <input value={editForm.data.alamat} onChange={(e) => editForm.setData('alamat', e.target.value)} placeholder="cth. Jl. Merdeka No. 10, Bandung" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {editForm.errors.alamat && <p className="text-xs text-rose-600 mt-1">{editForm.errors.alamat}</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Telepon</label>
-                            <input value={editForm.data.telepon} onChange={(e) => editForm.setData('telepon', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <input value={editForm.data.telepon} onChange={(e) => editForm.setData('telepon', e.target.value)} placeholder="cth. 0812-3456-7890" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {editForm.errors.telepon && <p className="text-xs text-rose-600 mt-1">{editForm.errors.telepon}</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Email</label>
-                            <input value={editForm.data.email} onChange={(e) => editForm.setData('email', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <input value={editForm.data.email} onChange={(e) => editForm.setData('email', e.target.value)} placeholder="cth. supplier@contoh.co.id" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {editForm.errors.email && <p className="text-xs text-rose-600 mt-1">{editForm.errors.email}</p>}
                         </div>
                     </div>
