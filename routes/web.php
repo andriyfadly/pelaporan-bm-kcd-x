@@ -193,6 +193,10 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:kelola-divisi-bhp')->name('divisi.index');
         Route::post('/divisi', [BhpDivisiController::class, 'store'])
             ->middleware('permission:kelola-divisi-bhp')->name('divisi.store');
+        Route::put('/divisi/{divisi}', [BhpDivisiController::class, 'update'])
+            ->middleware('permission:kelola-divisi-bhp')->name('divisi.update');
+        Route::delete('/divisi/{divisi}', [BhpDivisiController::class, 'destroy'])
+            ->middleware('permission:kelola-divisi-bhp')->name('divisi.destroy');
         Route::put('/divisi/operator/{operator}/password', [BhpDivisiController::class, 'resetPassword'])
             ->middleware('permission:kelola-divisi-bhp')->name('divisi.operator.password');
         Route::put('/divisi/operator/{operator}/toggle', [BhpDivisiController::class, 'toggleActive'])

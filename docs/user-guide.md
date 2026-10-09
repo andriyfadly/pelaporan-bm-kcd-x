@@ -126,6 +126,12 @@ Penyaluran, dan Laporan — mirror struktur asli aplikasi sistem-manajemen-aset.
    (definitif/Plt./Plh.), dan masa jabatan. **Wajib lengkap ketiga jabatan
    sebelum pengajuan dapat disetujui.** Riwayat pejabat lama tetap tersimpan;
    menambah pejabat aktif otomatis menutup masa jabatan pejabat sebelumnya.
+5. **Divisi & Operator** (`/distribusi-bhp/divisi`) — buat divisi sekaligus akun
+   operatornya (username otomatis `{npsn}-{suffix}`). Tiap kartu divisi punya
+   tombol **Edit** (ubah nama divisi via modal) dan **Hapus** (modal konfirmasi;
+   menghapus divisi sekaligus seluruh akun operatornya — ditolak bila divisi
+   masih memiliki pengajuan). Reset password & aktif/nonaktif operator juga dari
+   halaman ini.
 
 ### 6.3 Mencatat Penerimaan Barang
 

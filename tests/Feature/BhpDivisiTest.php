@@ -425,4 +425,68 @@ class BhpDivisiTest extends TestCase
                 ->where('stats.pengajuanSubmitted', 1)
                 ->where('stats.pengajuanApproved', 1));
     }
+
+    public function test_operator_sekolah_mengubah_nama_divisi(): void
+    {
+        $sekolah = $this->sekolah('SMKN Ubah Divisi', '20222222');
+        $opSekolah = $this->user($sekolah, '20222222-admin', 'operator_sekolah');
+        $divisi = $this->buatDivisi($sekolah, 'Sarpras');
+
+        $this->actingAs($opSekolah)
+            ->put(route('distribusi-bhp.divisi.update', $divisi), ['nama_divisi' => 'Sarana Prasarana'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('bhp_divisi', ['id' => $divisi->id, 'nama' => 'Sarana Prasarana']);
+    }
+
+    public function test_operator_sekolah_tidak_bisa_mengubah_divisi_sekolah_lain(): void
+    {
+        $sekolahA = $this->sekolah('SMKN Ubah A', '20223333');
+        $sekolahB = $this->sekolah('SMKN Ubah B', '20224444');
+        $opA = $this->user($sekolahA, '20223333-admin', 'operator_sekolah');
+        $divisiB = $this->buatDivisi($sekolahB, 'Divisi B');
+
+        $this->actingAs($opA)
+            ->put(route('distribusi-bhp.divisi.update', $divisiB), ['nama_divisi' => 'Hacked'])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('bhp_divisi', ['id' => $divisiB->id, 'nama' => 'Divisi B']);
+    }
+
+    public function test_operator_sekolah_menghapus_divisi_beserta_operatornya(): void
+    {
+        $sekolah = $this->sekolah('SMKN Hapus Divisi', '20225555');
+        $opSekolah = $this->user($sekolah, '20225555-admin', 'operator_sekolah');
+        $divisi = $this->buatDivisi($sekolah, 'Sarpras');
+        $operatorDivisi = $this->user($sekolah, '20225555-sarpras', 'operator_divisi', $divisi);
+
+        $this->actingAs($opSekolah)
+            ->delete(route('distribusi-bhp.divisi.destroy', $divisi))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('bhp_divisi', ['id' => $divisi->id]);
+        $this->assertDatabaseMissing('users', ['id' => $operatorDivisi->id]);
+    }
+
+    public function test_divisi_dengan_pengajuan_tidak_bisa_dihapus(): void
+    {
+        $sekolah = $this->sekolah('SMKN Hapus Tolak', '20226666');
+        $opSekolah = $this->user($sekolah, '20226666-admin', 'operator_sekolah');
+        $divisi = $this->buatDivisi($sekolah, 'Sarpras');
+
+        Pengajuan::create([
+            'sekolah_id' => $sekolah->id,
+            'divisi_id' => $divisi->id,
+            'user_id' => $opSekolah->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'draft',
+            'tanggal' => '2026-06-17',
+        ]);
+
+        $this->actingAs($opSekolah)
+            ->delete(route('distribusi-bhp.divisi.destroy', $divisi))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('bhp_divisi', ['id' => $divisi->id]);
+    }
 }

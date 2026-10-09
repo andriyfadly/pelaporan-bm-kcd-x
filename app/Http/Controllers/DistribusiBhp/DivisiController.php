@@ -99,6 +99,58 @@ class DivisiController extends Controller
         return back()->with('success', 'Divisi dan akun operator berhasil dibuat.');
     }
 
+    /** Ubah nama divisi milik sekolah sendiri. */
+    public function update(Request $request, Divisi $divisi): RedirectResponse
+    {
+        abort_unless($divisi->sekolah_id === $request->user()->sekolah_id, 403, 'Tidak memiliki akses ke divisi ini.');
+
+        $validated = $request->validate([
+            'nama_divisi' => 'required|string|max:150',
+        ]);
+
+        $divisi->update(['nama' => $validated['nama_divisi']]);
+
+        activity('sistem')
+            ->performedOn($divisi)
+            ->event('ubah-divisi')
+            ->withProperties([
+                'ringkasan' => "Ubah divisi {$divisi->nama}",
+                'sekolah_id' => $divisi->sekolah_id,
+            ])
+            ->log('ubah-divisi');
+
+        return back()->with('success', 'Divisi berhasil diperbarui.');
+    }
+
+    /** Hapus divisi beserta seluruh akun operatornya. Ditolak bila masih ada pengajuan. */
+    public function destroy(Request $request, Divisi $divisi): RedirectResponse
+    {
+        abort_unless($divisi->sekolah_id === $request->user()->sekolah_id, 403, 'Tidak memiliki akses ke divisi ini.');
+
+        if ($divisi->pengajuan()->exists()) {
+            return back()->with('error', 'Divisi tidak dapat dihapus karena masih memiliki pengajuan.');
+        }
+
+        $nama = $divisi->nama;
+
+        DB::transaction(function () use ($divisi, $nama, $request) {
+            $operatorIds = $divisi->users()->pluck('id');
+            DB::table('sessions')->whereIn('user_id', $operatorIds)->delete();
+            $divisi->users()->delete();
+            $divisi->delete();
+
+            activity('sistem')
+                ->event('hapus-divisi')
+                ->withProperties([
+                    'ringkasan' => "Hapus divisi {$nama}",
+                    'sekolah_id' => $request->user()->sekolah_id,
+                ])
+                ->log('hapus-divisi');
+        });
+
+        return back()->with('success', 'Divisi dan akun operatornya berhasil dihapus.');
+    }
+
     /** Reset password akun operator divisi milik sekolah sendiri. */
     public function resetPassword(Request $request, User $operator): RedirectResponse
     {
