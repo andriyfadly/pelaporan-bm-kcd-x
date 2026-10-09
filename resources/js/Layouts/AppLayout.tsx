@@ -30,8 +30,14 @@ interface BhpMenuProps {
 
 /** Menu navigasi domain Distribusi BHP, dengan dua grup terpisah per sumber dana. */
 function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions }: BhpMenuProps) {
-    const [openBhpBos, setOpenBhpBos] = useState(false);
-    const [openBhpBopd, setOpenBhpBopd] = useState(false);
+    const [forceBos, setForceBos] = useState<boolean | null>(null);
+    const [forceBopd, setForceBopd] = useState<boolean | null>(null);
+    const openBhpBos = forceBos ?? currentPath.startsWith('/distribusi-bhp/bos/');
+    const openBhpBopd = forceBopd ?? currentPath.startsWith('/distribusi-bhp/bopd/');
+
+    // Reset overrides when leaving a BHP subsection page
+    if (openBhpBos && !currentPath.startsWith('/distribusi-bhp/bos/')) setForceBos(null);
+    if (openBhpBopd && !currentPath.startsWith('/distribusi-bhp/bopd/')) setForceBopd(null);
     const canMaster = permissions.includes('kelola-master-bhp');
     const canTerima = permissions.includes('kelola-penerimaan-bhp');
     const canPengajuan = permissions.includes('kelola-pengajuan-bhp');
@@ -217,8 +223,8 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                             Settings BHP
                         </Link>
                     )}
-                    {section('bos', openBhpBos, setOpenBhpBos)}
-                    {section('bopd', openBhpBopd, setOpenBhpBopd)}
+                    {section('bos', openBhpBos, (v) => { setForceBos(v); setForceBopd(null); })}
+                    {section('bopd', openBhpBopd, (v) => { setForceBopd(v); setForceBos(null); })}
                     {canMaster && (
                         <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
                             Pejabat Sekolah
@@ -269,8 +275,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
 
     const isLaporanActive = currentPath.startsWith('/pelaporan-bm/cetak');
 
-    const [openMaster, setOpenMaster] = useState(true);
-    const [openLaporan, setOpenLaporan] = useState(true);
+    const [openMaster, setOpenMaster] = useState(isMasterActive);
+    const [openLaporan, setOpenLaporan] = useState(isLaporanActive);
 
     useEffect(() => {
         document.body.style.overflow = mobileOpen ? 'hidden' : '';
@@ -278,6 +284,11 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
             document.body.style.overflow = '';
         };
     }, [mobileOpen]);
+
+    // Auto-open dropdowns when their child page is active
+    useEffect(() => { if (isMasterActive) setOpenMaster(true); }, [isMasterActive]);
+    useEffect(() => { if (isLaporanActive) setOpenLaporan(true); }, [isLaporanActive]);
+    useEffect(() => { if (currentPath.startsWith('/distribusi-bhp/')) setOpenBhp(true); }, [currentPath]);
 
     return (
         <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans flex">
