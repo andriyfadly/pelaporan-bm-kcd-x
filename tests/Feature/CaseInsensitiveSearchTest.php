@@ -68,6 +68,14 @@ class CaseInsensitiveSearchTest extends TestCase
                     continue;
                 }
 
+                // whereColumn(... 'like' ...) membandingkan dua KOLOM (prefix
+                // hierarki kode barang), bukan input user. Tidak ada padanan
+                // whereColumnLike di Laravel dan nilainya angka/titik, jadi
+                // case-sensitivity tidak relevan di sini.
+                if (str_contains($baris, 'whereColumn')) {
+                    continue;
+                }
+
                 if (preg_match("/'like'/i", $baris) === 1) {
                     $pelanggaran[] = $file->getRelativePathname().':'.($nomor + 1).' → '.trim($baris);
                 }

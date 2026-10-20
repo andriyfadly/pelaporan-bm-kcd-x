@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Controller;
 use App\Models\Master\KodeBarang;
 use Illuminate\Http\JsonResponse;
@@ -13,20 +14,14 @@ use Inertia\Response;
 
 class KodeBarangController extends Controller
 {
+    use SearchesText;
+
     public function index(Request $request): Response|JsonResponse
     {
         $search = trim((string) $request->input('search', $request->input('q', '')));
 
         $query = KodeBarang::query()
-            ->when($search, function ($q) use ($search) {
-                $escaped = addcslashes($search, '%_\\');
-                $q->where(function ($q) use ($escaped) {
-                    $q->where('kode_barang', 'like', "%{$escaped}%")
-                        ->orWhere('uraian', 'like', "%{$escaped}%")
-                        ->orWhere('kodering_aset', 'like', "%{$escaped}%")
-                        ->orWhere('jenis_aset', 'like', "%{$escaped}%");
-                });
-            })
+            ->when($search, fn ($q) => $this->whereAnyLike($q, ['kode_barang', 'uraian', 'kodering_aset', 'jenis_aset'], $search))
             ->orderBy('kode_barang', 'asc');
 
         if ($request->wantsJson() || $request->has('ajax')) {

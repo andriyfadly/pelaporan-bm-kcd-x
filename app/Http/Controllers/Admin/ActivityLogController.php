@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\User;
@@ -12,6 +13,8 @@ use Spatie\Activitylog\Models\Activity;
 
 class ActivityLogController extends Controller
 {
+    use SearchesText;
+
     public function index(Request $request): Response
     {
         $validated = $request->validate([
@@ -61,11 +64,7 @@ class ActivityLogController extends Controller
         }
 
         if (! empty($validated['q'])) {
-            $keyword = trim($validated['q']);
-            $query->where(function ($q) use ($keyword) {
-                $q->where('description', 'like', "%{$keyword}%")
-                    ->orWhere('properties->ringkasan', 'like', "%{$keyword}%");
-            });
+            $this->whereAnyLike($query, ['description', 'properties->ringkasan'], trim($validated['q']));
         }
 
         if (! empty($validated['dari'])) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\PelaporanBm;
 
 use App\Exports\SpjRekapExport;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
+use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Controller;
 use App\Models\Master\KodeBarang;
 use App\Models\PelaporanBm\Acuan;
@@ -23,7 +24,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SpjController extends Controller
 {
-    use ResolvesSekolah;
+    use ResolvesSekolah, SearchesText;
 
     /**
      * NPSN sekolah yang diizinkan memakai fitur import Excel SPJ.
@@ -680,21 +681,17 @@ class SpjController extends Controller
     public function cariBarang(Request $request): JsonResponse
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $q = trim((string) $request->input('q', ''));
-        if ($q === '') {
+        $term = trim((string) $request->input('q', ''));
+        if ($term === '') {
             return response()->json([]);
         }
 
         // Samakan perilaku legacy ajax_cari_barang.php:
-        // lowercase matching, escape wildcard LIKE, hanya kode leaf, limit 100
-        $keyword = mb_strtolower($q, 'UTF-8');
-        $escaped = addcslashes($keyword, '%_\\');
-        $searchParam = '%'.$escaped.'%';
-
+        // pencarian tidak peka huruf besar/kecil, escape wildcard LIKE,
+        // hanya kode leaf, limit 100
         $masterResults = KodeBarang::query()
-            ->where(function ($query) use ($searchParam) {
-                $query->whereRaw('LOWER(kode_barang) LIKE ?', [$searchParam])
-                    ->orWhereRaw('LOWER(uraian) LIKE ?', [$searchParam]);
+            ->where(function ($query) use ($term): void {
+                $this->whereAnyLike($query, ['kode_barang', 'uraian'], $term);
             })
             ->whereNotExists(function ($sub) {
                 $sub->selectRaw(1)
@@ -712,9 +709,8 @@ class SpjController extends Controller
 
         $results = Spj::select('kode_barang', 'nama_barang', 'jenis_aset', 'satuan')
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
-            ->where(function ($query) use ($searchParam) {
-                $query->whereRaw('LOWER(kode_barang) LIKE ?', [$searchParam])
-                    ->orWhereRaw('LOWER(nama_barang) LIKE ?', [$searchParam]);
+            ->where(function ($query) use ($term): void {
+                $this->whereAnyLike($query, ['kode_barang', 'nama_barang'], $term);
             })
             ->distinct()
             ->limit(10)

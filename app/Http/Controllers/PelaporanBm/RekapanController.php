@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\PelaporanBm;
 
 use App\Http\Controllers\Concerns\ResolvesSekolah;
+use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Acuan;
@@ -14,7 +15,7 @@ use Inertia\Response;
 
 class RekapanController extends Controller
 {
-    use ResolvesSekolah;
+    use ResolvesSekolah, SearchesText;
 
     public function index(Request $request): Response
     {
@@ -36,12 +37,7 @@ class RekapanController extends Controller
 
         $sekolahs = Sekolah::query()
             ->whereIn('id', $allAcuan->keys())
-            ->when($search, function ($q) use ($search) {
-                $escaped = addcslashes($search, '%_\\');
-                $q->where(fn ($w) => $w
-                    ->where('nama_sekolah', 'like', "%{$escaped}%")
-                    ->orWhere('npsn', 'like', "%{$escaped}%"));
-            })
+            ->when($search, fn ($q) => $this->whereAnyLike($q, ['nama_sekolah', 'npsn'], $search))
             ->orderBy('nama_sekolah')
             ->get();
 
