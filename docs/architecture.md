@@ -7,13 +7,13 @@
 
 | Lapisan | Teknologi | Versi |
 |---------|-----------|-------|
-| Backend | Laravel | 13.34 (PHP 8.4) |
+| Backend | Laravel | 13.37 (PHP 8.4) |
 | Frontend | Inertia.js React + TypeScript | Inertia 3, React 19, TS 7 |
-| Styling / build | Tailwind CSS 4, Vite 7 | — |
+| Styling / build | Tailwind CSS 4, Vite 8 | Node >= 22.12 |
 | Database | **PostgreSQL** (dev & prod) | PDO pgsql |
-| Auth | Fortify 1.40 (session) + 2FA TOTP + passkeys (webauthn) | — |
-| RBAC | spatie/laravel-permission | 8.3 |
-| Activity log | spatie/laravel-activitylog | 5.1.1 (log `sistem`) |
+| Auth | Fortify 1.41 (session) + 2FA TOTP + passkeys (webauthn) | — |
+| RBAC | spatie/laravel-permission | 8.3.2 |
+| Activity log | spatie/laravel-activitylog | 5.1.3 (log `sistem`) |
 | Export Excel | maatwebsite/excel 4 + PhpSpreadsheet 5 | `.xlsx` langsung |
 | Captcha login | Cloudflare Turnstile (`TurnstileService`) | opsional via env |
 | Test | PHPUnit 13, Pint, `tsc --noEmit` | coverage gate 80% |

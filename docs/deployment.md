@@ -5,7 +5,7 @@
 ## 1. Prasyarat Server
 
 - PHP ≥ 8.4 (`pdo_pgsql`, `mbstring`, `bcmath`, `curl`, `zip`), Composer ≥ 2.8
-- Node ≥ 20 + npm ≥ 10 (build), PostgreSQL ≥ 14, Nginx/Apache, HTTPS aktif
+- Node ≥ 20.19 (Vite 8) + npm ≥ 10 (build), PostgreSQL ≥ 14, Nginx/Apache, HTTPS aktif
 - Akun Cloudflare (Turnstile), akses cron (backup/scheduler bila dipakai)
 
 ## 2. Deploy Awal

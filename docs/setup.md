@@ -7,7 +7,7 @@ Petunjuk instalasi, konfigurasi environment lokal, dan deployment aplikasi Pelap
 ## 1. Kebutuhan Sistem (Prerequisites)
 
 - **PHP**: &ge; 8.4 (ekstensi: `pdo`, `pdo_pgsql`, `mbstring`, `bcmath`, `curl`, `zip`)
-- **Node.js**: &ge; 20.x & npm &ge; 10.x
+- **Node.js**: &ge; 20.19 (Vite 8; 22.12+ disarankan) & npm &ge; 10.x
 - **Composer**: &ge; 2.8
 - **Database**: PostgreSQL &ge; 14 (dev & prod; test memakai SQLite in-memory)
 - **Web Server**: Nginx, Apache, atau Laravel Valet/Herd
