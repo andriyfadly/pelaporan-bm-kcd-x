@@ -88,11 +88,58 @@ Rollback: `git reset --hard <tag>` + `php artisan migrate:rollback --step=N`
 
 ## 6. Backup & Restore
 
+### 6.1 Backup otomatis (spatie/laravel-backup)
+
+Backup aplikasi + database dijadwalkan **tiap akhir bulan pukul 23:00**
+(`routes/console.php`), diikuti `backup:clean` pukul 23:30 dan `backup:monitor`
+harian pukul 04:00. Hasil zip disimpan di `storage/app/private/<BACKUP_NAME>/`
+pada disk `local`.
+
+Scheduler Laravel butuh satu entri cron di server:
+
 ```bash
-# harian via cron (contoh)
-pg_dump -Fc pelaporan_bm > /backup/pelaporan_bm_$(date +%F).dump
+* * * * * cd /var/www/aset-kcd-x-superapps && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Perintah manual dan verifikasi:
+
+```bash
+php artisan backup:run          # buat backup sekarang
+php artisan backup:list         # daftar backup + ukuran
+php artisan backup:monitor      # cek umur/ukuran backup
+php artisan backup:clean        # terapkan retensi
+php artisan schedule:list       # pastikan jadwal terbaca
+```
+
+Konfigurasi di `config/backup.php`; nilai per-environment lewat `.env`:
+`BACKUP_NAME`, `BACKUP_NOTIFICATION_EMAIL`, opsional `BACKUP_ARCHIVE_PASSWORD`
+(bila diisi, zip terenkripsi AES-256 dan password wajib disimpan di luar server).
+
+Retensi default: 7 hari simpan semua, 16 hari harian, 8 minggu mingguan,
+4 bulan bulanan, 2 tahun tahunan, dan total maksimum 5000 MB.
+
+Restore (v10 tidak menyediakan `backup:restore`, jadi lakukan manual):
+
+```bash
+# lihat isi zip lalu ekstrak
+php artisan backup:list
+unzip -l storage/app/private/<BACKUP_NAME>/<nama-zip>.zip | grep db-dumps
+unzip -o storage/app/private/<BACKUP_NAME>/<nama-zip>.zip 'db-dumps/*' -d /tmp/restore
+gunzip -c /tmp/restore/db-dumps/*.sql.gz | psql -U <user> -d <db>
+# file aplikasi (opsional, hati-hati menimpa .env):
+unzip -o storage/app/private/<BACKUP_NAME>/<nama-zip>.zip -d /tmp/restore/files
+```
+
+### 6.2 Backup manual saat migrasi/deploy
+
+`deploy.sh` sudah mem-backup DB ke `storage/backups/<db>_<tanggal>.dump`
+(`pg_dump -Fc`) sebelum migrasi, dan membatalkan deploy bila dump kosong.
+
+```bash
+# manual
+pg_dump -Fc pelaporan_bm > storage/backups/pelaporan_bm_$(date +%F).dump
 # restore
-pg_restore -d pelaporan_bm_baru /backup/pelaporan_bm_TANGGAL.dump
+pg_restore -d pelaporan_bm_baru storage/backups/pelaporan_bm_TANGGAL.dump
 ```
 
 Simpan juga `storage/app/private/*.xlsx` sementara bila dijadikan arsip
