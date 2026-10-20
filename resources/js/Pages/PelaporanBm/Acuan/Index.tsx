@@ -337,12 +337,12 @@ export default function Index({
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                             <div className="md:col-span-7">
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                                    Cari Satuan Pendidikan
+                                    Cari Satuan Pendidikan / Uraian Barang
                                 </label>
                                 <SearchInput
                                     value={searchInput}
                                     onChange={handleSearchChange}
-                                    placeholder="Ketik nama sekolah vendor... (Contoh: SMKN 1 KUNINGAN)"
+                                    placeholder="Nama sekolah, NPSN, atau uraian barang... (Contoh: SMKN 1 KUNINGAN)"
                                 />
                             </div>
                             <div className="md:col-span-5">

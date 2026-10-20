@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\PelaporanBm;
 
 use App\Http\Controllers\Concerns\ResolvesSekolah;
+use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Acuan;
@@ -14,7 +15,7 @@ use Inertia\Response;
 
 class AcuanController extends Controller
 {
-    use ResolvesSekolah;
+    use ResolvesSekolah, SearchesText;
 
     public function index(Request $request): Response
     {
@@ -33,10 +34,9 @@ class AcuanController extends Controller
         }
 
         if (! empty($searchSatuan)) {
-            $escapedSatuan = addcslashes($searchSatuan, '%_\\');
-            $query->whereHas('sekolah', function ($s) use ($escapedSatuan) {
-                $s->where('nama_sekolah', 'like', "%{$escapedSatuan}%")
-                    ->orWhere('npsn', 'like', "%{$escapedSatuan}%");
+            $query->where(function ($q) use ($searchSatuan): void {
+                $this->whereAnyLike($q, ['uraian'], $searchSatuan);
+                $q->orWhereHas('sekolah', fn ($s) => $this->whereAnyLike($s, ['nama_sekolah', 'npsn'], $searchSatuan));
             });
         }
 

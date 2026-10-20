@@ -122,6 +122,40 @@ class AcuanIndexEdgeTest extends TestCase
             ->assertInertia(fn ($page) => $page->has('items.data', 0));
     }
 
+    public function test_search_satuan_tidak_peka_huruf_besar_kecil(): void
+    {
+        // Data sekolah tersimpan HURUF BESAR; user mengetik huruf kecil.
+        $admin = $this->adminTanpaSekolah('admin_acuan_case');
+        $sekolah = $this->sekolah('SMKN 1 CIREBON', '20251234');
+        $this->acuan($sekolah, ['bulan' => 5, 'uraian' => 'Komputer']);
+
+        $this->actingAs($admin)
+            ->get(route('pelaporan-bm.acuan.index', ['bulan' => 5, 'search_satuan' => 'smkn 1 cirebon']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('items.data', 1));
+
+        $this->actingAs($admin)
+            ->get(route('pelaporan-bm.acuan.index', ['bulan' => 5, 'search_satuan' => '20251234']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('items.data', 1));
+    }
+
+    public function test_search_satuan_juga_mencari_uraian_barang(): void
+    {
+        $admin = $this->adminTanpaSekolah('admin_acuan_uraian');
+        $sekolah = $this->sekolah('SMKN 2 Uraian', '20255555');
+        $this->acuan($sekolah, ['bulan' => 5, 'uraian' => 'Laptop Lenovo']);
+        $this->acuan($sekolah, ['bulan' => 5, 'uraian' => 'Meja Kerja']);
+
+        $this->actingAs($admin)
+            ->get(route('pelaporan-bm.acuan.index', ['bulan' => 5, 'search_satuan' => 'laptop']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('items.data', 1)
+                ->where('items.data.0.uraian', 'Laptop Lenovo')
+            );
+    }
+
     public function test_parse_tanggal_kosong_menghasilkan_string_kosong(): void
     {
         $controller = new AcuanController;
