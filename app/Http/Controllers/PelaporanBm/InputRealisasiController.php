@@ -275,11 +275,16 @@ class InputRealisasiController extends Controller
                 ->lockForUpdate()
                 ->get();
 
-            $totalRealisasiSaatIni = (float) Realisasi::where('sekolah_id', $sekolahId)
+            // Lock baris realisasi lalu jumlahkan di PHP: PostgreSQL menolak
+            // "FOR UPDATE" pada query agregat (SQLSTATE 0A000), dan SQLite
+            // membuang klausa lock sehingga bug ini lolos test.
+            $lockedRealisasi = Realisasi::where('sekolah_id', $sekolahId)
                 ->where('bulan_realisasi', $bulan)
                 ->where('kodering_belanja', $kodering)
                 ->lockForUpdate()
-                ->sum('nilai_perolehan');
+                ->get(['nilai_perolehan']);
+
+            $totalRealisasiSaatIni = (float) $lockedRealisasi->sum('nilai_perolehan');
 
             if ((float) $items->sum('nilai_perolehan') > (float) $lockedAcuanRows->sum('nominal') - $totalRealisasiSaatIni + 0.01) {
                 $allocationError = 'Gagal Simpan: Jumlah inputan melebihi sisa anggaran acuan target.';
