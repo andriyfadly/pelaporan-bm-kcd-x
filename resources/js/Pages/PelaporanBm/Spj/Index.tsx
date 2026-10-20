@@ -39,6 +39,7 @@ interface SpjItem {
     volume: number;
     harga_satuan: number;
     nilai_perolehan: number;
+    sekolah?: { nama_sekolah: string; npsn?: string | null } | null;
 }
 
 interface Props {
@@ -112,7 +113,9 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                     (it) =>
                         it.kode_barang.toLowerCase().includes(q) ||
                         it.nama_barang.toLowerCase().includes(q) ||
-                        (it.merk_tipe || '').toLowerCase().includes(q)
+                        (it.merk_tipe || '').toLowerCase().includes(q) ||
+                        (it.sekolah?.nama_sekolah || '').toLowerCase().includes(q) ||
+                        (it.sekolah?.npsn || '').toLowerCase().includes(q)
                 );
                 if (matchSpk) return g;
                 if (matchingItems.length > 0) return { ...g, items: matchingItems };
@@ -247,7 +250,7 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                 <SearchInput
                     value={searchQuery}
                     onChange={setSearchQuery}
-                    placeholder="Cari Data SPJ / Barang (Nomor SPK, Nama Barang, Kode, atau Merk)..."
+                    placeholder="Cari SPK / Barang / Sekolah (Nomor SPK, Nama Barang, Kode, Merk, Nama Sekolah, NPSN)..."
                     ariaLabel="Cari data SPJ atau barang"
                     className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm"
                 />

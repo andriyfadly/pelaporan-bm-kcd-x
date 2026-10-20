@@ -154,7 +154,8 @@ export default function Index({ users, sekolahs, auth }: Props) {
             const username = u.username.toLowerCase();
             const namaSekolah = (u.sekolah?.nama_sekolah || 'induk kcd').toLowerCase();
             const idSekolah = (u.sekolah_id || '').toLowerCase();
-            return username.includes(q) || namaSekolah.includes(q) || idSekolah.includes(q);
+            const npsn = (u.sekolah?.npsn || '').toLowerCase();
+            return username.includes(q) || namaSekolah.includes(q) || idSekolah.includes(q) || npsn.includes(q);
         });
     }, [users, searchQuery]);
 
@@ -242,7 +243,7 @@ export default function Index({ users, sekolahs, auth }: Props) {
                         <SearchInput
                             value={searchQuery}
                             onChange={setSearchQuery}
-                            placeholder="Cari sekolah / username..."
+                            placeholder="Cari sekolah / NPSN / username..."
                             ariaLabel="Cari sekolah atau username"
                             className="flex-1 md:w-72"
                         />
