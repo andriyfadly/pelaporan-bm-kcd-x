@@ -55,6 +55,7 @@ interface Props {
     items: PaginatedData;
     filters: {
         filter_barang: string;
+        filter_sekolah: string;
         filter_bulan: number | null;
         filter_tahun: number | null;
     };
@@ -64,6 +65,7 @@ interface Props {
 
 export default function Index({ items, filters, totalNilaiPerolehan, availableYears }: Props) {
     const [filterBarang, setFilterBarang] = useState(filters.filter_barang || '');
+    const [filterSekolah, setFilterSekolah] = useState(filters.filter_sekolah || '');
     const [filterBulan, setFilterBulan] = useState(filters.filter_bulan ? String(filters.filter_bulan) : '');
     const [filterTahun, setFilterTahun] = useState(filters.filter_tahun ? String(filters.filter_tahun) : '');
 
@@ -71,6 +73,7 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
         e.preventDefault();
         router.get('/pelaporan-bm/realisasi', {
             filter_barang: filterBarang,
+            filter_sekolah: filterSekolah,
             filter_bulan: filterBulan,
             filter_tahun: filterTahun,
         }, {
@@ -81,6 +84,7 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
 
     const handleReset = () => {
         setFilterBarang('');
+        setFilterSekolah('');
         setFilterBulan('');
         setFilterTahun('');
         router.get('/pelaporan-bm/realisasi');
@@ -97,6 +101,7 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
 
     const unduhUrl = `/pelaporan-bm/realisasi/unduh?${new URLSearchParams({
         filter_barang: filterBarang,
+        filter_sekolah: filterSekolah,
         filter_bulan: filterBulan,
         filter_tahun: filterTahun,
     }).toString()}`;
@@ -133,7 +138,19 @@ export default function Index({ items, filters, totalNilaiPerolehan, availableYe
                     <Filter className="w-4 h-4 text-blue-600" /> Filter Pencarian Realisasi
                 </h3>
                 <form onSubmit={handleFilter} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-                    <div className="lg:col-span-4">
+                    <div className="lg:col-span-3">
+                        <label className="text-xs font-semibold text-slate-500 mb-1 block">
+                            Nama Sekolah / NPSN
+                        </label>
+                        <input
+                            type="text"
+                            value={filterSekolah}
+                            onChange={(e) => setFilterSekolah(e.target.value)}
+                            placeholder="Contoh: SMKN 1 CIREBON"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div className="lg:col-span-3">
                         <label className="text-xs font-semibold text-slate-500 mb-1 block">
                             Nama / Kode Barang
                         </label>

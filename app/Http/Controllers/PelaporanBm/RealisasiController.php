@@ -4,6 +4,7 @@ namespace App\Http\Controllers\PelaporanBm;
 
 use App\Exports\RealisasiBmExport;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
+use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Controller;
 use App\Models\PelaporanBm\Realisasi;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,12 +16,13 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class RealisasiController extends Controller
 {
-    use ResolvesSekolah;
+    use ResolvesSekolah, SearchesText;
 
     private function applyFilters(Request $request): Builder
     {
         $user = $request->user();
         $filterBarang = trim($request->input('filter_barang', ''));
+        $filterSekolah = trim($request->input('filter_sekolah', ''));
         $filterBulan = (int) $request->input('filter_bulan', 0);
         $filterTahun = (int) $request->input('filter_tahun', 0);
 
@@ -36,11 +38,11 @@ class RealisasiController extends Controller
         }
 
         if (! empty($filterBarang)) {
-            $escapedBarang = addcslashes($filterBarang, '%_\\');
-            $query->where(function ($q) use ($escapedBarang) {
-                $q->where('nama_barang', 'like', "%{$escapedBarang}%")
-                    ->orWhere('kode_barang', 'like', "%{$escapedBarang}%");
-            });
+            $this->whereAnyLike($query, ['nama_barang', 'kode_barang'], $filterBarang);
+        }
+
+        if ($filterSekolah !== '') {
+            $query->whereHas('sekolah', fn ($s) => $this->whereAnyLike($s, ['nama_sekolah', 'npsn'], $filterSekolah));
         }
 
         if ($filterBulan >= 1 && $filterBulan <= 12) {
@@ -76,6 +78,7 @@ class RealisasiController extends Controller
             'items' => $items,
             'filters' => [
                 'filter_barang' => trim($request->input('filter_barang', '')),
+                'filter_sekolah' => trim($request->input('filter_sekolah', '')),
                 'filter_bulan' => (int) $request->input('filter_bulan', 0) ?: null,
                 'filter_tahun' => (int) $request->input('filter_tahun', 0) ?: null,
             ],

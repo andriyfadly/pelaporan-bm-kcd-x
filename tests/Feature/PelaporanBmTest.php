@@ -439,6 +439,62 @@ class PelaporanBmTest extends TestCase
         $this->assertStringContainsString('.xlsx', $response->headers->get('content-disposition'));
     }
 
+    public function test_realisasi_filter_sekolah_mencari_nama_dan_npsn_tanpa_peka_huruf(): void
+    {
+        $this->seed(\Database\Seeders\PeranDanHakAksesSeeder::class);
+
+        $admin = activity()->withoutLogging(fn () => User::create([
+            'name' => 'Admin KCD',
+            'username' => 'admin_realisasi_sekolah',
+            'password' => bcrypt('Password123!'),
+            'password_changed_at' => now(),
+        ]));
+        $admin->assignRole('admin_kcd');
+
+        $smkn = activity()->withoutLogging(fn () => Sekolah::create([
+            'nama_sekolah' => 'SMKN 1 CIREBON',
+            'kota_kab' => 'Kota Cirebon',
+            'npsn' => '20259999',
+        ]));
+        $smpn = activity()->withoutLogging(fn () => Sekolah::create([
+            'nama_sekolah' => 'SMPN 2 LAIN',
+            'kota_kab' => 'Kota Cirebon',
+            'npsn' => '20258888',
+        ]));
+
+        foreach ([[$smkn, 'Laptop'], [$smpn, 'Monitor']] as [$sekolah, $barang]) {
+            activity()->withoutLogging(fn () => Realisasi::create([
+                'sekolah_id' => $sekolah->id,
+                'kode_barang' => '1.3.2.01',
+                'nama_barang' => $barang,
+                'kodering_belanja' => '5.2.02.01',
+                'bulan_realisasi' => 7,
+                'volume' => 1,
+                'harga_satuan' => 100000,
+                'nilai_perolehan' => 100000,
+                'ba_tgl' => '2026-07-10',
+            ]));
+        }
+
+        // Huruf kecil semua: harus tetap ketemu (PostgreSQL LIKE peka huruf).
+        $this->actingAs($admin)
+            ->get(route('pelaporan-bm.realisasi.index', ['filter_sekolah' => 'smkn 1 cirebon']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('items.data', 1)
+                ->where('items.data.0.nama_barang', 'Laptop')
+            );
+
+        // Cari lewat NPSN.
+        $this->actingAs($admin)
+            ->get(route('pelaporan-bm.realisasi.index', ['filter_sekolah' => '20258888']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('items.data', 1)
+                ->where('items.data.0.nama_barang', 'Monitor')
+            );
+    }
+
     public function test_multi_item_spk_and_input_realisasi_workflow(): void
     {
         $sekolah = Sekolah::create([
