@@ -78,4 +78,15 @@ class BackupNotificationConfigTest extends TestCase
         $this->assertContains(base_path('node_modules'), $exclude);
         $this->assertContains(base_path('.git'), $exclude);
     }
+
+    public function test_backup_tidak_menyertakan_kredensial_env(): void
+    {
+        $exclude = config('backup.backup.source.files.exclude');
+
+        $this->assertContains(
+            base_path('.env'),
+            $exclude,
+            'Zip backup tidak boleh memuat .env: isinya APP_KEY, password DB, dan secret Turnstile.'
+        );
+    }
 }

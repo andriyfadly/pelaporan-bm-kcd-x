@@ -41,8 +41,13 @@ return [
                     base_path('node_modules'),
                     base_path('.git'),
                     base_path('legacy'),
+                    // Kredensial tidak boleh masuk zip: APP_KEY, password DB,
+                    // dan secret Turnstile ada di .env.
+                    base_path('.env'),
                     storage_path('framework'),
                     storage_path('logs'),
+                    // Dump pg_dump buatan deploy.sh — sudah berupa backup sendiri.
+                    storage_path('backups'),
                 ],
 
                 /*
