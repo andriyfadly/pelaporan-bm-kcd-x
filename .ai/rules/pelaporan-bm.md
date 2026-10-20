@@ -17,3 +17,6 @@ Paritas legacy/rekapan_admin.php: baris tabel = sekolah dengan acuan di bulan te
 
 ## lockForUpdate tidak boleh digabung agregat (PostgreSQL 0A000)
 PostgreSQL menolak `select sum(...) ... for update` (SQLSTATE 0A000) dan SQLite membuang klausa lock, jadi bug ini lolos seluruh suite lokal lalu pecah di produksi. Untuk hitung-terkunci, ambil barisnya dulu (`->lockForUpdate()->get(['nilai_perolehan'])`) lalu jumlahkan di PHP. Produksi sempat 500 di InputRealisasiController::simpan karena pola agregat+lock. Verifikasi perubahan query ber-lock: jalankan suite dengan `DB_CONNECTION=pgsql` ke DB lokal kosong (SQLite tidak akan menangkapnya).
+
+## Pencarian wajib whereLike (ILIKE), bukan 'like' mentah
+`master_data_sekolah.nama_sekolah` tersimpan HURUF BESAR dan PostgreSQL `LIKE` peka huruf besar/kecil, sedangkan SQLite (engine test) tidak — input huruf kecil mengembalikan 0 baris di produksi sementara test lokal tetap hijau. Selalu pakai `SearchesText::whereAnyLike()` (`app/Http/Controllers/Concerns/SearchesText.php`) yang mengompilasi ke `ILIKE` lewat `whereLike()`; method ini juga meng-escape wildcard (`likePattern()`). Pengecualian yang sah: `whereColumn(... 'like' ...)` untuk membandingkan dua kolom (prefix hierarki kode barang). Penjaga: `CaseInsensitiveSearchTest` (assert grammar PostgreSQL + scan `app/Http/Controllers` dari `'like'` mentah).

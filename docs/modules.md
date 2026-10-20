@@ -38,7 +38,7 @@ Khusus role Operator Sekolah dengan alur yang identik dengan legacy:
    - Seluruh mutasi diblokir ketika laporan `status_kunci` aktif atau `status_kirim` `menunggu_approval`/`disetujui` (readonly + gembok).
 3. **Form Dokumen SPK Multi-Item (`/pelaporan-bm/spj/create` & `/pelaporan-bm/spj/edit-spk/{no_spk}`)**:
    - Tampilan identik `legacy/data_barang_input.php`: sticky category badge (Peralatan & Mesin / Buku), seksi I Dokumen & Administrasi Keuangan (SP2D, Sumber Dana, SPK, BAST No & Tgl), seksi II & III Detail Item Barang dengan accordion dinamis.
-   - Pencarian kode barang live dari katalog pagu (endpoint `/pelaporan-bm/cari-barang`) yang mereplikasi `legacy/ajax_cari_barang.php`: matching lowercase, escape wildcard LIKE, hanya kode leaf (bukan prefix parent), limit 100.
+   - Pencarian kode barang live dari katalog pagu (endpoint `/pelaporan-bm/cari-barang`) yang mereplikasi `legacy/ajax_cari_barang.php`: pencarian tidak peka huruf besar/kecil (`ILIKE` via `whereLike`), escape wildcard LIKE, hanya kode leaf (bukan prefix parent), limit 100.
    - Draft autosave localStorage per sekolah+bulan (`draft_spj_barang_{sekolah_id}_{bulan}` + suffix no_spk saat edit): pulih otomatis saat halaman dimuat, terhapus saat simpan sukses.
    - Datalist history autocomplete untuk Merk/Tipe, No Sertifikat, dan Satuan dari nilai unik yang sudah diketik (identik legacy `history_merk`/`history_sertifikat`/`history_satuan`).
    - Mode kategori **Buku**: default Jenis Aset = `Buku`, No Sertifikat wajib diisi (validasi client & server).
