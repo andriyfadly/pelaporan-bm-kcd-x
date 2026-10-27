@@ -119,6 +119,9 @@ class DokumenInventarisController extends Controller
     public function suratPengembalian(Request $request, InventarisUnit $unit): RedirectResponse
     {
         $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
+        $validated = $request->validate(['tanggal' => ['nullable', 'date']]);
+        $tanggal = $validated['tanggal'] ?? now()->toDateString();
+
         $mutasi = Mutasi::where('inventaris_unit_id', $unit->id)
             ->where('jenis', 'pengembalian')
             ->latest('tanggal')
@@ -134,9 +137,9 @@ class DokumenInventarisController extends Controller
         $dokumen = Dokumen::create([
             'sekolah_id' => $unit->sekolah_id,
             'jenis' => 'surat_pengembalian',
-            'tanggal' => $request->input('tanggal', now()->toDateString()),
+            'tanggal' => $tanggal,
             'inventaris_unit_id' => $unit->id,
-            'payload' => $this->payloadDasar($unit->fresh(), $request, $request->input('tanggal')) + [
+            'payload' => $this->payloadDasar($unit->fresh(), $request, $tanggal) + [
                 'mutasi' => $this->qr->snapshotMutasi($mutasi),
             ],
             'user_id' => $request->user()->id,

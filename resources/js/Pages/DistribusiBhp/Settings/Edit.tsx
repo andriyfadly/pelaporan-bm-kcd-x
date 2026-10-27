@@ -69,7 +69,7 @@ export default function Edit({ settings, sumberDana }: { settings: BhpSettings; 
                     </p>
 
                     <p className="text-xs text-slate-400">
-                        Data penandatangan dokumen dikelola di menu <strong>Pejabat Sekolah</strong>.
+                        Data penandatangan dokumen dikelola di menu <strong>Master Data → Penugasan Pegawai</strong>.
                     </p>
 
                     <button type="submit" disabled={form.processing} className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">

@@ -61,7 +61,7 @@ class InventarisController extends Controller
         $unit->load([
             'realisasi:id,no_spk,ba_no,ba_tgl,sumber_perolehan',
             'ruang:id,nama_ruang',
-            'pegawai:id,nama_lengkap,nip,jabatan',
+            'pegawai:id,nama_lengkap,nip',
         ]);
 
         $mutasi = Mutasi::where('inventaris_unit_id', $unit->id)

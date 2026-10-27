@@ -127,6 +127,25 @@ class PencatatanBmHttpFlowTest extends TestCase
                 ->has('pegawaiList', 0));
     }
 
+    public function test_detail_unit_dengan_pegawai_tetap_tampil(): void
+    {
+        $this->siapkanUnit();
+        $unit = InventarisUnit::firstOrFail();
+        $pegawai = activity()->withoutLogging(fn () => Pegawai::create([
+            'sekolah_id' => $this->sekolah->id,
+            'nama_lengkap' => 'Budi',
+            'nip' => '198001012005011001',
+        ]));
+        $unit->update(['pegawai_id' => $pegawai->id]);
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.inventaris.show', $unit))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('unit.pegawai_id', $pegawai->id)
+                ->where('unit.pegawai.nama_lengkap', 'Budi'));
+    }
+
     public function test_ubah_kondisi_dan_penempatan_unit(): void
     {
         $this->siapkanUnit();

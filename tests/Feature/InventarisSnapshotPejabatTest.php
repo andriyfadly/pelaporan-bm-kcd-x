@@ -197,6 +197,44 @@ class InventarisSnapshotPejabatTest extends TestCase
         $this->assertSame('plt', $dokumen->payload['pegawai']['jenis_penugasan']);
     }
 
+    public function test_surat_pengembalian_backdate_memakai_pejabat_pada_tanggal_dokumen(): void
+    {
+        foreach (Jabatan::KODE_PENANDATANGAN as $kode) {
+            $this->penugasan([
+                'jabatan' => $kode,
+                'nama' => 'Pejabat 2024 '.$kode,
+                'mulai_menjabat' => '2024-01-01',
+                'selesai_menjabat' => '2024-12-31',
+            ]);
+            $this->penugasan([
+                'jabatan' => $kode,
+                'nama' => 'Pejabat 2026 '.$kode,
+                'mulai_menjabat' => '2026-01-01',
+            ]);
+        }
+
+        $unit = $this->unit();
+        $ruang = activity()->withoutLogging(fn () => Ruang::create([
+            'sekolah_id' => $this->sekolah->id,
+            'nama_ruang' => 'Ruang Guru',
+        ]));
+        $unit->update(['ruang_id' => $ruang->id]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.pengembalian.store', $unit), ['kondisi' => 'RR', 'tanggal' => '2024-06-10'])
+            ->assertRedirect();
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.surat-pengembalian', $unit), ['tanggal' => '2024-06-17'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $dokumen = Dokumen::where('jenis', 'surat_pengembalian')->firstOrFail();
+
+        $this->assertSame('2024-06-17', $dokumen->tanggal->toDateString());
+        $this->assertSame('Pejabat 2024 kepala_sekolah', $dokumen->payload['pejabat']['kepala_sekolah']['nama']);
+    }
+
     public function test_kolom_jabatan_dan_ruang_pada_master_pegawai_sudah_dihapus(): void
     {
         $this->assertFalse(Schema::hasColumn('master_data_pegawai', 'jabatan'));
