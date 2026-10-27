@@ -5,7 +5,7 @@ namespace App\Http\Controllers\PencatatanBm;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\PencatatanBm\Concerns\TenantScope;
-use App\Models\PencatatanBm\Pegawai;
+use App\Models\Master\Pegawai;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;

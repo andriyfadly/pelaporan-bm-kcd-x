@@ -3,9 +3,9 @@
 namespace App\Providers;
 
 use App\Listeners\CatatLoginLogout;
+use App\Models\Master\Pegawai;
+use App\Models\Master\Ruang;
 use App\Models\PencatatanBm\InventarisUnit;
-use App\Models\PencatatanBm\Pegawai;
-use App\Models\PencatatanBm\Ruang;
 use App\Policies\InventarisPolicy;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;

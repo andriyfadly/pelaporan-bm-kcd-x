@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Master\Pegawai;
+use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PencatatanBm\Foto;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\Mutasi;
-use App\Models\PencatatanBm\Pegawai;
-use App\Models\PencatatanBm\Ruang;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,8 +61,8 @@ class InventarisModelTest extends TestCase
     public function test_skema_inventaris_lengkap_dengan_kolom_wajib(): void
     {
         foreach ([
-            'inventaris_unit', 'inventaris_register_sequences', 'inventaris_ruang',
-            'inventaris_pegawai', 'inventaris_mutasi', 'inventaris_dokumen',
+            'inventaris_unit', 'inventaris_register_sequences', 'master_data_ruang',
+            'master_data_pegawai', 'inventaris_mutasi', 'inventaris_dokumen',
             'inventaris_foto', 'inventaris_sync_logs',
         ] as $tabel) {
             $this->assertTrue(Schema::hasTable($tabel), "Tabel {$tabel} tidak ada.");
@@ -184,7 +184,7 @@ class InventarisModelTest extends TestCase
 
         $ruang->delete();
 
-        $this->assertSoftDeleted('inventaris_ruang', ['id' => $ruang->id]);
+        $this->assertSoftDeleted('master_data_ruang', ['id' => $ruang->id]);
 
         $this->expectException(UniqueConstraintViolationException::class);
 

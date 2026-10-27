@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Master\Pegawai;
+use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\Mutasi;
-use App\Models\PencatatanBm\Pegawai;
-use App\Models\PencatatanBm\Ruang;
 use App\Models\User;
 use App\Services\PencatatanBm\SinkronisasiInventarisService;
 use Database\Seeders\PeranDanHakAksesSeeder;
@@ -184,7 +184,7 @@ class InventarisReturnTest extends TestCase
 
         $mutasi = Mutasi::where('inventaris_unit_id', $this->unit->id)->firstOrFail();
 
-        $this->assertSoftDeleted('inventaris_ruang', ['id' => $this->ruang->id]);
+        $this->assertSoftDeleted('master_data_ruang', ['id' => $this->ruang->id]);
         $this->assertSame(1, Mutasi::count(), 'Histori mutasi tidak boleh ikut terhapus.');
         // FK nullOnDelete hanya melepas referensi; baris histori tetap ada.
         $this->assertNotNull($mutasi->fresh());
@@ -199,7 +199,7 @@ class InventarisReturnTest extends TestCase
             ->delete(route('master-data.pegawai.destroy', $this->pegawai))
             ->assertRedirect();
 
-        $this->assertSoftDeleted('inventaris_pegawai', ['id' => $this->pegawai->id]);
+        $this->assertSoftDeleted('master_data_pegawai', ['id' => $this->pegawai->id]);
         $this->assertSame(1, Mutasi::count());
 
         // Pegawai terhapus tidak lagi muncul sebagai penanggung jawab, tetapi

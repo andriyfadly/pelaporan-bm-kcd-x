@@ -36,11 +36,11 @@ class MutasiRequest extends FormRequest
         return [
             'ruang_id' => [
                 'nullable', 'uuid',
-                Rule::exists('inventaris_ruang', 'id')->where('sekolah_id', $sekolahId)->whereNull('deleted_at'),
+                Rule::exists('master_data_ruang', 'id')->where('sekolah_id', $sekolahId)->whereNull('deleted_at'),
             ],
             'pegawai_id' => [
                 'nullable', 'uuid',
-                Rule::exists('inventaris_pegawai', 'id')->where('sekolah_id', $sekolahId)->whereNull('deleted_at'),
+                Rule::exists('master_data_pegawai', 'id')->where('sekolah_id', $sekolahId)->whereNull('deleted_at'),
             ],
             'kondisi' => ['nullable', Rule::in(array_keys(InventarisUnit::KONDISI))],
             'tanggal' => ['required', 'date'],

@@ -1,21 +1,33 @@
 <?php
 
-namespace App\Models\PencatatanBm;
+namespace App\Models\Master;
 
-use App\Models\Master\Sekolah;
+use App\Models\PencatatanBm\InventarisUnit;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Master ruang sekolah: tempat fisik penempatan unit inventaris. Soft delete
+ * dipakai supaya histori mutasi tetap bisa menunjuk ruang yang sudah tidak
+ * dipakai.
+ */
 class Ruang extends Model
 {
     use HasUuids, SoftDeletes;
 
-    protected $table = 'inventaris_ruang';
+    protected $table = 'master_data_ruang';
 
-    protected $fillable = ['sekolah_id', 'nama_ruang', 'kode'];
+    protected $fillable = ['sekolah_id', 'nama_ruang', 'kode', 'aktif'];
+
+    protected $attributes = ['aktif' => true];
+
+    protected function casts(): array
+    {
+        return ['aktif' => 'boolean'];
+    }
 
     public function sekolah(): BelongsTo
     {

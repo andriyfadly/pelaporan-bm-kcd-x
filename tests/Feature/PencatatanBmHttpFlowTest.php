@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Master\Pegawai;
+use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PencatatanBm\InventarisUnit;
-use App\Models\PencatatanBm\Pegawai;
-use App\Models\PencatatanBm\Ruang;
 use App\Models\User;
 use App\Services\PencatatanBm\SinkronisasiInventarisService;
 use Database\Seeders\PeranDanHakAksesSeeder;
@@ -61,7 +61,7 @@ class PencatatanBmHttpFlowTest extends TestCase
             ->delete(route('master-data.ruang.destroy', $ruang))
             ->assertRedirect();
 
-        $this->assertSoftDeleted('inventaris_ruang', ['id' => $ruang->id]);
+        $this->assertSoftDeleted('master_data_ruang', ['id' => $ruang->id]);
     }
 
     public function test_nama_ruang_ganda_di_sekolah_sama_ditolak(): void
@@ -91,7 +91,7 @@ class PencatatanBmHttpFlowTest extends TestCase
             ->delete(route('master-data.pegawai.destroy', $pegawai))
             ->assertRedirect();
 
-        $this->assertSoftDeleted('inventaris_pegawai', ['id' => $pegawai->id]);
+        $this->assertSoftDeleted('master_data_pegawai', ['id' => $pegawai->id]);
     }
 
     public function test_filter_dan_pencarian_inventaris(): void

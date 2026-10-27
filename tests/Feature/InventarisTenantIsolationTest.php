@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Master\Pegawai;
+use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PencatatanBm\InventarisUnit;
-use App\Models\PencatatanBm\Pegawai;
-use App\Models\PencatatanBm\Ruang;
 use App\Models\User;
 use App\Services\PencatatanBm\SinkronisasiInventarisService;
 use Database\Seeders\PeranDanHakAksesSeeder;
@@ -138,7 +138,7 @@ class InventarisTenantIsolationTest extends TestCase
             ->delete(route('master-data.pegawai.destroy', $pegawaiB))
             ->assertNotFound();
 
-        $this->assertNotSoftDeleted('inventaris_pegawai', ['id' => $pegawaiB->id]);
+        $this->assertNotSoftDeleted('master_data_pegawai', ['id' => $pegawaiB->id]);
     }
 
     public function test_operator_sekolah_tanpa_sekolah_id_ditolak(): void

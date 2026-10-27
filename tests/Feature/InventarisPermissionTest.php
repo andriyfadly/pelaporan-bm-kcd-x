@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Master\Pegawai;
+use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PencatatanBm\InventarisUnit;
-use App\Models\PencatatanBm\Pegawai;
-use App\Models\PencatatanBm\Ruang;
 use App\Models\User;
 use App\Services\PencatatanBm\SinkronisasiInventarisService;
 use Database\Seeders\PeranDanHakAksesSeeder;

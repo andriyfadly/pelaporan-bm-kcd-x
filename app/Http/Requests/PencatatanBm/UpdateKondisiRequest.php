@@ -27,11 +27,11 @@ class UpdateKondisiRequest extends FormRequest
             'keterangan' => ['nullable', 'string', 'max:1000'],
             'ruang_id' => [
                 'nullable', 'uuid',
-                Rule::exists('inventaris_ruang', 'id')->where('sekolah_id', $this->unit()->sekolah_id),
+                Rule::exists('master_data_ruang', 'id')->where('sekolah_id', $this->unit()->sekolah_id),
             ],
             'pegawai_id' => [
                 'nullable', 'uuid',
-                Rule::exists('inventaris_pegawai', 'id')->where('sekolah_id', $this->unit()->sekolah_id),
+                Rule::exists('master_data_pegawai', 'id')->where('sekolah_id', $this->unit()->sekolah_id),
             ],
         ];
     }

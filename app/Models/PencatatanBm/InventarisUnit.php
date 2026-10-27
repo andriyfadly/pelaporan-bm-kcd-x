@@ -2,6 +2,8 @@
 
 namespace App\Models\PencatatanBm;
 
+use App\Models\Master\Pegawai;
+use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Realisasi;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;

@@ -3,11 +3,11 @@
 namespace App\Services\PencatatanBm;
 
 use App\Models\Master\PejabatSekolah;
+use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PencatatanBm\Dokumen;
 use App\Models\PencatatanBm\Foto;
 use App\Models\PencatatanBm\InventarisUnit;
-use App\Models\PencatatanBm\Ruang;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
