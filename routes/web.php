@@ -26,6 +26,7 @@ use App\Http\Controllers\PelaporanBm\KunciLaporanController;
 use App\Http\Controllers\PelaporanBm\RealisasiController;
 use App\Http\Controllers\PelaporanBm\RekapanController;
 use App\Http\Controllers\PelaporanBm\SpjController;
+use App\Http\Controllers\PencatatanBm\BeritaAcaraController as PencatatanBeritaAcaraController;
 use App\Http\Controllers\PencatatanBm\DashboardController as PencatatanDashboardController;
 use App\Http\Controllers\PencatatanBm\DokumenInventarisController as PencatatanDokumenController;
 use App\Http\Controllers\PencatatanBm\InventarisController as PencatatanInventarisController;
@@ -313,6 +314,12 @@ Route::middleware(['auth'])->group(function () {
                 Route::post('/fakta-integritas/{pegawai}', [PencatatanDokumenController::class, 'faktaIntegritas'])->name('fakta-integritas');
                 Route::post('/surat-pengembalian/{unit}', [PencatatanDokumenController::class, 'suratPengembalian'])->name('surat-pengembalian');
                 Route::get('/{dokumen}/pdf', [PencatatanDokumenController::class, 'pdf'])->name('pdf');
+            });
+
+            Route::prefix('berita-acara')->name('berita-acara.')->group(function () {
+                Route::get('/', [PencatatanBeritaAcaraController::class, 'index'])->name('index');
+                Route::put('/{dokumen}', [PencatatanBeritaAcaraController::class, 'update'])->name('update');
+                Route::delete('/{dokumen}', [PencatatanBeritaAcaraController::class, 'destroy'])->name('destroy');
             });
 
             Route::prefix('label')->name('label.')->group(function () {

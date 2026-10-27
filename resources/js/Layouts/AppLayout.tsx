@@ -573,6 +573,24 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Pengembalian
                                             </Link>
+                                            <Link
+                                                href="/pencatatan-bm/berita-acara"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/berita-acara')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Berita Acara
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/dokumen"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/dokumen')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Dokumen
+                                            </Link>
                                             {canSyncInventaris && (
                                                 <Link
                                                     href="/pencatatan-bm/sinkronisasi"

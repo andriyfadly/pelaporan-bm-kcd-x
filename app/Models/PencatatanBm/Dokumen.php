@@ -22,6 +22,7 @@ class Dokumen extends Model
         'sekolah_id',
         'jenis',
         'nomor',
+        'nomor_dibatalkan_pada',
         'tanggal',
         'inventaris_unit_id',
         'inventaris_pegawai_id',
@@ -35,6 +36,7 @@ class Dokumen extends Model
     {
         return [
             'tanggal' => 'date',
+            'nomor_dibatalkan_pada' => 'datetime',
             'payload' => 'array',
         ];
     }
