@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\PencatatanBm;
 
 use App\Http\Controllers\Concerns\ResolvesSekolah;
+use App\Http\Controllers\Concerns\TenantScope;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\PencatatanBm\Concerns\TenantScope;
 use App\Models\PencatatanBm\Foto;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Services\PencatatanBm\DokumenInventarisService;

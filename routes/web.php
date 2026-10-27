@@ -17,8 +17,10 @@ use App\Http\Controllers\DistribusiBhp\ReviewPengajuanController as BhpReviewPen
 use App\Http\Controllers\DistribusiBhp\SaldoAwalController as BhpSaldoAwalController;
 use App\Http\Controllers\DistribusiBhp\SettingsController as BhpSettingsController;
 use App\Http\Controllers\Master\JabatanController as MasterJabatanController;
+use App\Http\Controllers\Master\PegawaiController as MasterPegawaiController;
 use App\Http\Controllers\Master\PenugasanPegawaiController as MasterPenugasanPegawaiController;
 use App\Http\Controllers\Master\ProfilSekolahController as MasterProfilSekolahController;
+use App\Http\Controllers\Master\RuangController as MasterRuangController;
 use App\Http\Controllers\PelaporanBm\AcuanController;
 use App\Http\Controllers\PelaporanBm\CetakController;
 use App\Http\Controllers\PelaporanBm\DashboardController;
@@ -32,9 +34,7 @@ use App\Http\Controllers\PencatatanBm\DashboardController as PencatatanDashboard
 use App\Http\Controllers\PencatatanBm\DokumenInventarisController as PencatatanDokumenController;
 use App\Http\Controllers\PencatatanBm\InventarisController as PencatatanInventarisController;
 use App\Http\Controllers\PencatatanBm\MutasiController as PencatatanMutasiController;
-use App\Http\Controllers\PencatatanBm\PegawaiController as PencatatanPegawaiController;
 use App\Http\Controllers\PencatatanBm\PengembalianController as PencatatanPengembalianController;
-use App\Http\Controllers\PencatatanBm\RuangController as PencatatanRuangController;
 use App\Http\Controllers\PencatatanBm\SyncController as PencatatanSyncController;
 use App\Http\Controllers\PencatatanBm\UnitInventarisController as PencatatanUnitController;
 use Illuminate\Support\Facades\Route;
@@ -249,17 +249,17 @@ Route::middleware(['auth'])->group(function () {
     // kelola-master-data-sekolah.
     Route::prefix('master-data')->name('master-data.')->group(function () {
         Route::prefix('ruang')->name('ruang.')->middleware('permission:kelola-ruang-bm')->group(function () {
-            Route::get('/', [PencatatanRuangController::class, 'index'])->name('index');
-            Route::post('/', [PencatatanRuangController::class, 'store'])->name('store');
-            Route::put('/{ruang}', [PencatatanRuangController::class, 'update'])->name('update');
-            Route::delete('/{ruang}', [PencatatanRuangController::class, 'destroy'])->name('destroy');
+            Route::get('/', [MasterRuangController::class, 'index'])->name('index');
+            Route::post('/', [MasterRuangController::class, 'store'])->name('store');
+            Route::put('/{ruang}', [MasterRuangController::class, 'update'])->name('update');
+            Route::delete('/{ruang}', [MasterRuangController::class, 'destroy'])->name('destroy');
         });
 
         Route::prefix('pegawai')->name('pegawai.')->middleware('permission:kelola-pegawai-bm')->group(function () {
-            Route::get('/', [PencatatanPegawaiController::class, 'index'])->name('index');
-            Route::post('/', [PencatatanPegawaiController::class, 'store'])->name('store');
-            Route::put('/{pegawai}', [PencatatanPegawaiController::class, 'update'])->name('update');
-            Route::delete('/{pegawai}', [PencatatanPegawaiController::class, 'destroy'])->name('destroy');
+            Route::get('/', [MasterPegawaiController::class, 'index'])->name('index');
+            Route::post('/', [MasterPegawaiController::class, 'store'])->name('store');
+            Route::put('/{pegawai}', [MasterPegawaiController::class, 'update'])->name('update');
+            Route::delete('/{pegawai}', [MasterPegawaiController::class, 'destroy'])->name('destroy');
         });
 
         Route::prefix('jabatan')->name('jabatan.')->middleware('permission:kelola-jabatan-bm')->group(function () {

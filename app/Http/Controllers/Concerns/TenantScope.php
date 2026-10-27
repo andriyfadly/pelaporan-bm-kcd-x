@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\PencatatanBm\Concerns;
+namespace App\Http\Controllers\Concerns;
 
 use Illuminate\Http\Request;
 

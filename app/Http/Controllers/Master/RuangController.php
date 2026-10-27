@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\PencatatanBm;
+namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\PencatatanBm\Concerns\TenantScope;
+use App\Http\Controllers\Concerns\TenantScope;
 use App\Models\Master\Ruang;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
