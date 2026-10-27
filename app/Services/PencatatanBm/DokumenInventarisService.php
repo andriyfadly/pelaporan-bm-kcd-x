@@ -2,12 +2,12 @@
 
 namespace App\Services\PencatatanBm;
 
-use App\Models\Master\PejabatSekolah;
 use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PencatatanBm\Dokumen;
 use App\Models\PencatatanBm\Foto;
 use App\Models\PencatatanBm\InventarisUnit;
+use App\Services\Master\PenugasanPegawaiService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -15,13 +15,16 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Cetak dokumen inventaris. Semua dokumen memakai data sekolah target
- * (master_data_sekolah + pejabat_sekolah) dan snapshot tersimpan, bukan data
- * hidup — cetak ulang tetap sama setelah koreksi.
+ * Cetak dokumen inventaris. Data sekolah dan penandatangan dibaca dari master
+ * data, lalu snapshot-nya disimpan di payload dokumen — cetak ulang tetap sama
+ * setelah koreksi master.
  */
 class DokumenInventarisService
 {
-    public function __construct(private readonly QrLabelService $qr) {}
+    public function __construct(
+        private readonly QrLabelService $qr,
+        private readonly PenugasanPegawaiService $penugasan,
+    ) {}
 
     /**
      * @param  Collection<int, InventarisUnit>  $units
@@ -116,22 +119,15 @@ class DokumenInventarisService
     }
 
     /**
-     * Snapshot tiga jabatan penandatangan; dokumen tetap bisa dicetak walau
-     * salah satu jabatan belum diisi (tidak seperti approval pengajuan BHP).
+     * Snapshot tiga jabatan penandatangan pada tanggal dokumen; dokumen tetap
+     * bisa dicetak walau salah satu jabatan belum diisi (tidak seperti
+     * approval pengajuan BHP).
      *
      * @return array<string, array<string, mixed>|null>
      */
-    public function pejabat(string $sekolahId): array
+    public function pejabat(string $sekolahId, ?string $tanggal = null): array
     {
-        $hasil = [];
-
-        foreach (PejabatSekolah::JABATAN as $jabatan) {
-            $hasil[$jabatan] = PejabatSekolah::berlakuPada($sekolahId, $jabatan, now()->toDateString())
-                ->first()
-                ?->toSnapshot();
-        }
-
-        return $hasil;
+        return $this->penugasan->pejabatPada($sekolahId, $tanggal);
     }
 
     private function pdf(string $view, array $data, string $orientation = 'portrait')

@@ -6,11 +6,12 @@ use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
-use App\Models\Master\PejabatSekolah;
+use App\Models\Master\Jabatan;
+use App\Models\Master\PenugasanPegawai;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use App\Services\DistribusiBhp\DokumenService;
-use App\Services\PejabatSekolahService;
+use App\Services\Master\PenugasanPegawaiService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -47,10 +48,10 @@ class BhpPejabatSekolahTest extends TestCase
     /** Isi ketiga jabatan wajib untuk sekolah. */
     private function lengkapiPejabat(Sekolah $sekolah, string $prefix = 'pj'): void
     {
-        $service = app(PejabatSekolahService::class);
+        $service = app(PenugasanPegawaiService::class);
         $userId = (string) $this->user($sekolah, $prefix.'.admin', 'admin_kcd')->id;
 
-        foreach (PejabatSekolah::JABATAN as $i => $jabatan) {
+        foreach (Jabatan::KODE_PENANDATANGAN as $i => $jabatan) {
             $service->simpan((string) $sekolah->id, $userId, [
                 'jabatan' => $jabatan,
                 'nama' => 'Pejabat '.$jabatan,
@@ -128,7 +129,7 @@ class BhpPejabatSekolahTest extends TestCase
         $this->assertSame('approved', $pengajuan->fresh()->status);
         $pengajuan->fresh()->dokumen->each(function ($dokumen) {
             $this->assertArrayHasKey('penandatangan', $dokumen->payload);
-            foreach (PejabatSekolah::JABATAN as $jabatan) {
+            foreach (Jabatan::KODE_PENANDATANGAN as $jabatan) {
                 $this->assertArrayHasKey($jabatan, $dokumen->payload['penandatangan']);
                 $this->assertNotSame('', $dokumen->payload['penandatangan'][$jabatan]['nama']);
                 $this->assertArrayHasKey('nip', $dokumen->payload['penandatangan'][$jabatan]);
@@ -147,14 +148,15 @@ class BhpPejabatSekolahTest extends TestCase
         app(DokumenService::class)->approveDanGenerate($pengajuan->load('details'), $admin);
 
         // Kepala sekolah berganti.
-        $lama = PejabatSekolah::aktif((string) $sekolah->id, 'kepala_sekolah')->firstOrFail();
-        app(PejabatSekolahService::class)->akhiriMasaJabatan(
+        $jabatan = Jabatan::where('sekolah_id', $sekolah->id)->where('kode', 'kepala_sekolah')->firstOrFail();
+        $lama = PenugasanPegawai::aktif((string) $sekolah->id, (string) $jabatan->id)->firstOrFail();
+        app(PenugasanPegawaiService::class)->akhiri(
             (string) $sekolah->id,
             (string) $admin->id,
             $lama,
             '2026-06-30',
         );
-        app(PejabatSekolahService::class)->simpan((string) $sekolah->id, (string) $admin->id, [
+        app(PenugasanPegawaiService::class)->simpan((string) $sekolah->id, (string) $admin->id, [
             'jabatan' => 'kepala_sekolah',
             'nama' => 'Kepala Baru',
             'mulai_menjabat' => '2026-07-01',
@@ -173,11 +175,11 @@ class BhpPejabatSekolahTest extends TestCase
         $operator = $this->user($sekolah, 'op.backdate');
         $admin = $this->user($sekolah, 'admin.backdate', 'admin_kcd');
 
-        $service = app(PejabatSekolahService::class);
+        $service = app(PenugasanPegawaiService::class);
         $userId = (string) $admin->id;
 
         // Pejabat lama: 2025-01-01 s.d. 2025-12-31. Pengajuan backdate 2025-06-17.
-        foreach (PejabatSekolah::JABATAN as $jabatan) {
+        foreach (Jabatan::KODE_PENANDATANGAN as $jabatan) {
             $service->simpan((string) $sekolah->id, $userId, [
                 'jabatan' => $jabatan,
                 'nama' => 'Pejabat 2025',
@@ -207,17 +209,18 @@ class BhpPejabatSekolahTest extends TestCase
         $this->lengkapiPejabat($sekolah);
 
         // Menambah pejabat aktif untuk jabatan yang sama harus menutup yang lama (H-1).
-        app(PejabatSekolahService::class)->simpan((string) $sekolah->id, (string) $admin->id, [
+        app(PenugasanPegawaiService::class)->simpan((string) $sekolah->id, (string) $admin->id, [
             'jabatan' => 'kepala_sekolah',
             'nama' => 'Kepala Kedua',
             'mulai_menjabat' => '2026-08-01',
         ]);
 
-        $aktif = PejabatSekolah::aktif((string) $sekolah->id, 'kepala_sekolah')->get();
+        $jabatan = Jabatan::where('sekolah_id', $sekolah->id)->where('kode', 'kepala_sekolah')->firstOrFail();
+        $aktif = PenugasanPegawai::aktif((string) $sekolah->id, (string) $jabatan->id)->get();
         $this->assertSame(1, $aktif->count());
-        $this->assertSame('Kepala Kedua', $aktif->first()->nama);
+        $this->assertSame('Kepala Kedua', $aktif->first()->pegawai->nama_lengkap);
 
-        $lama = PejabatSekolah::where('nama', 'Pejabat kepala_sekolah')->firstOrFail();
+        $lama = PenugasanPegawai::whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'Pejabat kepala_sekolah'))->firstOrFail();
         $this->assertSame('2026-07-31', $lama->selesai_menjabat->toDateString());
     }
 
@@ -225,7 +228,7 @@ class BhpPejabatSekolahTest extends TestCase
     {
         $sekolah = $this->sekolah();
         $admin = $this->user($sekolah, 'admin.overlap', 'admin_kcd');
-        $service = app(PejabatSekolahService::class);
+        $service = app(PenugasanPegawaiService::class);
 
         $service->simpan((string) $sekolah->id, (string) $admin->id, [
             'jabatan' => 'wakasek_sarpras',
@@ -252,22 +255,22 @@ class BhpPejabatSekolahTest extends TestCase
         $sekolahA = $this->sekolah('SMKN PA');
         $sekolahB = $this->sekolah('SMKN PB');
         $operatorA = $this->user($sekolahA, 'op.pa');
-        $pejabatB = PejabatSekolah::create([
-            'sekolah_id' => $sekolahB->id,
+        $userId = (string) $this->user($sekolahB, 'op.pb', 'admin_kcd')->id;
+        $pejabatB = app(PenugasanPegawaiService::class)->simpan((string) $sekolahB->id, $userId, [
             'jabatan' => 'kepala_sekolah',
             'nama' => 'Kepala B',
             'mulai_menjabat' => '2026-01-01',
         ]);
 
         $this->actingAs($operatorA)
-            ->put(route('master-data.pejabat.update', $pejabatB), [
+            ->put(route('master-data.penugasan.update', $pejabatB), [
                 'jabatan' => 'kepala_sekolah',
                 'nama' => 'Diretas',
                 'mulai_menjabat' => '2026-01-01',
             ])
-            ->assertForbidden();
+            ->assertNotFound();
 
-        $this->assertSame('Kepala B', $pejabatB->fresh()->nama);
+        $this->assertSame('Kepala B', $pejabatB->fresh()->pegawai->nama_lengkap);
     }
 
     public function test_operator_sekolah_dapat_melihat_dan_menambah_pejabat(): void
@@ -276,12 +279,12 @@ class BhpPejabatSekolahTest extends TestCase
         $operator = $this->user($sekolah, 'op.crud');
 
         $this->actingAs($operator)
-            ->get(route('master-data.pejabat.index'))
+            ->get(route('master-data.penugasan.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('MasterData/Pejabat/Index'));
+            ->assertInertia(fn ($page) => $page->component('MasterData/Penugasan/Index'));
 
         $this->actingAs($operator)
-            ->post(route('master-data.pejabat.store'), [
+            ->post(route('master-data.penugasan.store'), [
                 'jabatan' => 'kepala_sekolah',
                 'nama' => 'Drs. Kepala Sekolah',
                 'pangkat_golongan' => 'IV/a',
@@ -291,10 +294,13 @@ class BhpPejabatSekolahTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('pejabat_sekolah', [
+        $this->assertDatabaseHas('master_data_pegawai', [
             'sekolah_id' => $sekolah->id,
-            'jabatan' => 'kepala_sekolah',
-            'nama' => 'Drs. Kepala Sekolah',
+            'nama_lengkap' => 'Drs. Kepala Sekolah',
+        ]);
+        $this->assertDatabaseHas('master_data_jabatan', [
+            'sekolah_id' => $sekolah->id,
+            'kode' => 'kepala_sekolah',
         ]);
     }
 
@@ -303,7 +309,7 @@ class BhpPejabatSekolahTest extends TestCase
         $sekolah = $this->sekolah();
         $operator = $this->user($sekolah, 'op.semuakurang');
         $admin = $this->user($sekolah, 'admin.semuakurang', 'admin_kcd');
-        $service = app(PejabatSekolahService::class);
+        $service = app(PenugasanPegawaiService::class);
 
         // Hanya kepala sekolah yang diisi.
         $service->simpan((string) $sekolah->id, (string) $admin->id, [

@@ -230,11 +230,7 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                     )}
                     {section('bos', openBhpBos, setOpenBhpBos)}
                     {section('bopd', openBhpBopd, setOpenBhpBopd)}
-                    {canMaster && (
-                        <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
-                            Pejabat Sekolah
-                        </Link>
-                    )}
+
                 </div>
             )}
         </div>
@@ -271,6 +267,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const canPencatatan = permissions.includes('lihat-pencatatan-bm');
     const canRuang = permissions.includes('kelola-ruang-bm');
     const canPegawai = permissions.includes('kelola-pegawai-bm');
+    const canJabatan = permissions.includes('kelola-jabatan-bm');
+    const canPenugasan = permissions.includes('kelola-penugasan-pegawai-bm');
     const canSyncInventaris = permissions.includes('sinkronisasi-inventaris-bm');
     const [openBhp, setOpenBhp] = useState(true);
 
@@ -745,7 +743,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 </div>
                             )}
 
-                            {(canRuang || canPegawai || canMasterData) && (
+                            {(canRuang || canPegawai || canJabatan || canPenugasan || canMasterData) && (
                                 <div>
                                     <button
                                         type="button"
@@ -791,6 +789,28 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                                         }`}
                                                 >
                                                     Pegawai
+                                                </Link>
+                                            )}
+                                            {canJabatan && (
+                                                <Link
+                                                    href="/master-data/jabatan"
+                                                    className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/master-data/jabatan')
+                                                            ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                            : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                        }`}
+                                                >
+                                                    Jabatan
+                                                </Link>
+                                            )}
+                                            {canPenugasan && (
+                                                <Link
+                                                    href="/master-data/penugasan"
+                                                    className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/master-data/penugasan')
+                                                            ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                            : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                        }`}
+                                                >
+                                                    Penugasan Pegawai
                                                 </Link>
                                             )}
                                             {canMasterData && (

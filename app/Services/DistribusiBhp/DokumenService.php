@@ -5,7 +5,7 @@ namespace App\Services\DistribusiBhp;
 use App\Models\DistribusiBhp\Dokumen;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Models\User;
-use App\Services\PejabatSekolahService;
+use App\Services\Master\PenugasanPegawaiService;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +43,7 @@ class DokumenService
         private readonly StokService $stok,
         private readonly NomorDokumenService $nomor,
         private readonly LaporanService $laporan,
-        private readonly PejabatSekolahService $pejabat,
+        private readonly PenugasanPegawaiService $pejabat,
     ) {}
 
     /**

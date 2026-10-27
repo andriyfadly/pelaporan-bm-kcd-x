@@ -5,9 +5,10 @@ namespace App\Http\Controllers\DistribusiBhp;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Pengajuan;
-use App\Models\Master\PejabatSekolah;
+use App\Models\Master\Jabatan;
 use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\StokService;
+use App\Services\Master\PenugasanPegawaiService;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,9 +46,11 @@ class ReviewPengajuanController extends Controller
         // tetap divalidasi ulang di service).
         $pejabatWarning = null;
         if ($sekolahId && $items->isNotEmpty()) {
-            $kurang = collect(PejabatSekolah::JABATAN)
-                ->filter(fn ($jabatan) => ! PejabatSekolah::aktif($sekolahId, $jabatan)->exists())
-                ->map(fn ($jabatan) => PejabatSekolah::LABEL_JABATAN[$jabatan])
+            $pejabat = app(PenugasanPegawaiService::class);
+
+            $kurang = collect(Jabatan::KODE_PENANDATANGAN)
+                ->filter(fn (string $kode) => $pejabat->berlakuPada($sekolahId, $kode, now()->toDateString()) === null)
+                ->map(fn (string $kode) => Jabatan::LABEL_PENANDATANGAN[$kode])
                 ->values();
 
             if ($kurang->isNotEmpty()) {

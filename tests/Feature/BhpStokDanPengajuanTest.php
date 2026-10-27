@@ -7,11 +7,11 @@ use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Models\DistribusiBhp\PengajuanDetail;
-use App\Models\Master\PejabatSekolah;
+use App\Models\Master\Jabatan;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use App\Services\DistribusiBhp\StokService;
-use App\Services\PejabatSekolahService;
+use App\Services\Master\PenugasanPegawaiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -67,8 +67,8 @@ class BhpStokDanPengajuanTest extends TestCase
     /** Approval mensyaratkan pejabat penandatangan lengkap. */
     private function lengkapiPejabat(Sekolah $sekolah, User $oleh): void
     {
-        $service = app(PejabatSekolahService::class);
-        foreach (PejabatSekolah::JABATAN as $i => $jabatan) {
+        $service = app(PenugasanPegawaiService::class);
+        foreach (Jabatan::KODE_PENANDATANGAN as $i => $jabatan) {
             $service->simpan((string) $sekolah->id, (string) $oleh->id, [
                 'jabatan' => $jabatan,
                 'nama' => 'Pejabat '.$jabatan,

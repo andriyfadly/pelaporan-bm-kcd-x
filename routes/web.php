@@ -16,7 +16,8 @@ use App\Http\Controllers\DistribusiBhp\PenyediaController as BhpPenyediaControll
 use App\Http\Controllers\DistribusiBhp\ReviewPengajuanController as BhpReviewPengajuanController;
 use App\Http\Controllers\DistribusiBhp\SaldoAwalController as BhpSaldoAwalController;
 use App\Http\Controllers\DistribusiBhp\SettingsController as BhpSettingsController;
-use App\Http\Controllers\Master\PejabatSekolahController as MasterPejabatSekolahController;
+use App\Http\Controllers\Master\JabatanController as MasterJabatanController;
+use App\Http\Controllers\Master\PenugasanPegawaiController as MasterPenugasanPegawaiController;
 use App\Http\Controllers\Master\ProfilSekolahController as MasterProfilSekolahController;
 use App\Http\Controllers\PelaporanBm\AcuanController;
 use App\Http\Controllers\PelaporanBm\CetakController;
@@ -238,18 +239,14 @@ Route::middleware(['auth'])->group(function () {
 
     // Master data generic lintas domain — di luar prefix distribusi-bhp.
     Route::prefix('master-data')->name('master-data.')->middleware('permission:kelola-master-data-sekolah')->group(function () {
-        Route::get('/pejabat', [MasterPejabatSekolahController::class, 'index'])->name('pejabat.index');
-        Route::post('/pejabat', [MasterPejabatSekolahController::class, 'store'])->name('pejabat.store');
-        Route::put('/pejabat/{pejabat}', [MasterPejabatSekolahController::class, 'update'])->name('pejabat.update');
-        Route::put('/pejabat/{pejabat}/akhiri', [MasterPejabatSekolahController::class, 'akhiri'])->name('pejabat.akhiri');
-
         Route::get('/profil-sekolah', [MasterProfilSekolahController::class, 'edit'])->name('profil-sekolah.edit');
         Route::put('/profil-sekolah', [MasterProfilSekolahController::class, 'update'])->name('profil-sekolah.update');
     });
 
     // Master aset milik sekolah — dipakai sebagai penempatan/penanggung jawab
-    // unit inventaris. Gate-nya kelola-ruang-bm / kelola-pegawai-bm (operator
-    // dan bendahara sekolah), bukan kelola-master-data-sekolah.
+    // unit inventaris, jabatan, dan riwayat penugasan pegawai. Gate-nya
+    // permission granular (operator dan bendahara sekolah), bukan
+    // kelola-master-data-sekolah.
     Route::prefix('master-data')->name('master-data.')->group(function () {
         Route::prefix('ruang')->name('ruang.')->middleware('permission:kelola-ruang-bm')->group(function () {
             Route::get('/', [PencatatanRuangController::class, 'index'])->name('index');
@@ -263,6 +260,21 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/', [PencatatanPegawaiController::class, 'store'])->name('store');
             Route::put('/{pegawai}', [PencatatanPegawaiController::class, 'update'])->name('update');
             Route::delete('/{pegawai}', [PencatatanPegawaiController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::prefix('jabatan')->name('jabatan.')->middleware('permission:kelola-jabatan-bm')->group(function () {
+            Route::get('/', [MasterJabatanController::class, 'index'])->name('index');
+            Route::post('/', [MasterJabatanController::class, 'store'])->name('store');
+            Route::put('/{jabatan}', [MasterJabatanController::class, 'update'])->name('update');
+            Route::delete('/{jabatan}', [MasterJabatanController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::prefix('penugasan')->name('penugasan.')->middleware('permission:kelola-penugasan-pegawai-bm')->group(function () {
+            Route::get('/', [MasterPenugasanPegawaiController::class, 'index'])->name('index');
+            Route::post('/', [MasterPenugasanPegawaiController::class, 'store'])->name('store');
+            Route::put('/{penugasan}', [MasterPenugasanPegawaiController::class, 'update'])->name('update');
+            Route::put('/{penugasan}/akhiri', [MasterPenugasanPegawaiController::class, 'akhiri'])->name('akhiri');
+            Route::put('/{penugasan}/mutasi', [MasterPenugasanPegawaiController::class, 'mutasi'])->name('mutasi');
         });
     });
 
