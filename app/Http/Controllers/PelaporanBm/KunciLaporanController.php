@@ -4,8 +4,10 @@ namespace App\Http\Controllers\PelaporanBm;
 
 use App\Http\Controllers\Controller;
 use App\Models\PelaporanBm\KunciLaporan;
+use App\Services\PencatatanBm\SinkronisasiInventarisService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 class KunciLaporanController extends Controller
 {
@@ -82,6 +84,27 @@ class KunciLaporanController extends Controller
                 'status_kirim' => $statusKirim,
             ])
             ->log('verifikasi-laporan');
+
+        // Sinkronisasi inventaris menyusul persetujuan. Kegagalannya tidak
+        // membatalkan status: dicatat di inventaris_sync_logs dan bisa diulang.
+        if ($statusKirim === 'disetujui') {
+            try {
+                $hasil = app(SinkronisasiInventarisService::class)->syncPeriode(
+                    (string) $kunci->sekolah_id,
+                    (int) $kunci->bulan,
+                    (int) $kunci->tahun,
+                    (string) $request->user()->id,
+                );
+
+                if ($hasil->perluReview > 0) {
+                    return back()->with('warning', $hasil->perluReview.' unit perlu ditinjau manual karena sudah pernah dimutasi.');
+                }
+            } catch (Throwable $e) {
+                report($e);
+
+                return back()->with('warning', "Status disetujui, tetapi sinkronisasi inventaris gagal: {$e->getMessage()}");
+            }
+        }
 
         return back()->with('success', "Status laporan berhasil diperbarui menjadi {$statusKirim}.");
     }
