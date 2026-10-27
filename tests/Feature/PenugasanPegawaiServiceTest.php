@@ -202,7 +202,7 @@ class PenugasanPegawaiServiceTest extends TestCase
             $this->service->snapshotPenandatangan($this->sekolah->id, '2026-06-01');
             $this->fail('Snapshot seharusnya gagal.');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('Wakasek Sarana Prasarana', $e->getMessage());
+            $this->assertStringContainsString('Wakasek Sarpras', $e->getMessage());
             $this->assertStringContainsString('Pembantu Pengurus Barang', $e->getMessage());
             $this->assertStringNotContainsString('Kepala Sekolah (', $e->getMessage());
         }

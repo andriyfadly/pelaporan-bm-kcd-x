@@ -23,7 +23,7 @@ class Jabatan extends Model
 
     public const LABEL_PENANDATANGAN = [
         'kepala_sekolah' => 'Kepala Sekolah',
-        'wakasek_sarpras' => 'Wakasek Sarana Prasarana',
+        'wakasek_sarpras' => 'Wakasek Sarpras',
         'pembantu_pengurus_barang' => 'Pembantu Pengurus Barang',
     ];
 
@@ -36,6 +36,8 @@ class Jabatan extends Model
     protected $fillable = ['sekolah_id', 'kode', 'nama', 'kategori', 'aktif'];
 
     protected $attributes = ['aktif' => true];
+
+    protected $appends = ['wajib'];
 
     protected function casts(): array
     {
@@ -58,5 +60,27 @@ class Jabatan extends Model
         return $query->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
             ->where('aktif', true)
             ->orderBy('nama');
+    }
+
+    /** Jabatan penandatangan dokumen: wajib ada, tidak boleh dihapus/diubah namanya. */
+    public function isWajib(): bool
+    {
+        return in_array($this->kode, self::KODE_PENANDATANGAN, true);
+    }
+
+    public function getWajibAttribute(): bool
+    {
+        return $this->isWajib();
+    }
+
+    /** Buat tiga jabatan wajib bila belum ada; aman dijalankan berulang. */
+    public static function pastikanWajib(string $sekolahId): void
+    {
+        foreach (self::KODE_PENANDATANGAN as $kode) {
+            self::withTrashed()->firstOrCreate(
+                ['sekolah_id' => $sekolahId, 'kode' => $kode],
+                ['nama' => self::LABEL_PENANDATANGAN[$kode]],
+            )->restore();
+        }
     }
 }

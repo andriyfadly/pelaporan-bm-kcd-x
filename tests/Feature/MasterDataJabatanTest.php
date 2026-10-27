@@ -7,6 +7,7 @@ use App\Models\Master\Pegawai;
 use App\Models\Master\PenugasanPegawai;
 use App\Models\Master\Sekolah;
 use App\Models\User;
+use Database\Seeders\JabatanWajibSeeder;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -101,7 +102,7 @@ class MasterDataJabatanTest extends TestCase
         $sekolah = $this->sekolah();
         $operator = $this->operator($sekolah);
 
-        $jabatan = Jabatan::create(['sekolah_id' => $sekolah->id, 'kode' => 'kepala_sekolah', 'nama' => 'Kepala Sekolah']);
+        $jabatan = Jabatan::create(['sekolah_id' => $sekolah->id, 'kode' => 'bendahara', 'nama' => 'Bendahara']);
         $pegawai = Pegawai::create(['sekolah_id' => $sekolah->id, 'nama_lengkap' => 'Budi']);
         PenugasanPegawai::create([
             'sekolah_id' => $sekolah->id,
@@ -186,5 +187,84 @@ class MasterDataJabatanTest extends TestCase
             ->get(route('master-data.pegawai.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('pegawai', 1));
+    }
+
+    public function test_halaman_jabatan_membuat_tiga_jabatan_wajib_otomatis(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+
+        $this->actingAs($operator)->get(route('master-data.jabatan.index'))->assertOk();
+
+        $this->assertSame(
+            collect(Jabatan::KODE_PENANDATANGAN)->sort()->values()->all(),
+            Jabatan::where('sekolah_id', $sekolah->id)->pluck('kode')->sort()->values()->all(),
+        );
+        $this->assertSame('Kepala Sekolah', Jabatan::where('kode', 'kepala_sekolah')->value('nama'));
+        $this->assertSame('Wakasek Sarpras', Jabatan::where('kode', 'wakasek_sarpras')->value('nama'));
+
+        // Membuka halaman dua kali tidak menggandakan baris.
+        $this->actingAs($operator)->get(route('master-data.jabatan.index'))->assertOk();
+        $this->assertSame(3, Jabatan::where('sekolah_id', $sekolah->id)->count());
+    }
+
+    public function test_jabatan_wajib_tidak_bisa_dihapus(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        Jabatan::pastikanWajib($sekolah->id);
+        $wajib = Jabatan::where('kode', 'wakasek_sarpras')->firstOrFail();
+
+        $this->actingAs($operator)
+            ->delete(route('master-data.jabatan.destroy', $wajib))
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertNotSoftDeleted('master_data_jabatan', ['id' => $wajib->id]);
+    }
+
+    public function test_nama_dan_kode_jabatan_wajib_tidak_bisa_diubah(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        Jabatan::pastikanWajib($sekolah->id);
+        $wajib = Jabatan::where('kode', 'kepala_sekolah')->firstOrFail();
+
+        $this->actingAs($operator)
+            ->put(route('master-data.jabatan.update', $wajib), [
+                'kode' => 'kepsek',
+                'nama' => 'Kepala',
+            ])
+            ->assertSessionHasErrors(['kode', 'nama']);
+
+        $wajib->refresh();
+        $this->assertSame('kepala_sekolah', $wajib->kode);
+        $this->assertSame('Kepala Sekolah', $wajib->nama);
+
+        // Kategori tetap boleh diubah.
+        $this->actingAs($operator)
+            ->put(route('master-data.jabatan.update', $wajib), [
+                'kode' => 'kepala_sekolah',
+                'nama' => 'Kepala Sekolah',
+                'kategori' => 'pimpinan',
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertSame('pimpinan', $wajib->fresh()->kategori);
+    }
+
+    public function test_seeder_jabatan_wajib_idempoten_untuk_semua_sekolah(): void
+    {
+        $sekolahA = $this->sekolah('SMA A');
+        $sekolahB = $this->sekolah('SMA B');
+
+        $this->seed(JabatanWajibSeeder::class);
+        $this->seed(JabatanWajibSeeder::class);
+
+        foreach ([$sekolahA, $sekolahB] as $sekolah) {
+            $this->assertSame(3, Jabatan::where('sekolah_id', $sekolah->id)->count());
+        }
+
+        $this->assertSame(6, Jabatan::count());
     }
 }

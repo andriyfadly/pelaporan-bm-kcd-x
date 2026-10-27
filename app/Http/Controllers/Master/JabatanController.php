@@ -20,6 +20,10 @@ class JabatanController extends Controller
     {
         $sekolahId = $this->resolveSekolahIdWajib($request);
 
+        // Tiga jabatan penandatangan selalu ada: dibuat otomatis saat halaman
+        // dibuka, jadi sekolah baru tidak perlu menambah manual.
+        Jabatan::pastikanWajib($sekolahId);
+
         return Inertia::render('MasterData/Jabatan/Index', [
             'jabatan' => Jabatan::query()
                 ->where('sekolah_id', $sekolahId)
@@ -44,6 +48,23 @@ class JabatanController extends Controller
         $sekolahId = $this->resolveSekolahId($request);
         abort_unless($jabatan->sekolah_id === $sekolahId, 404);
 
+        if ($jabatan->isWajib()) {
+            // Kode dan nama tiga jabatan penandatangan dipakai sebagai kunci
+            // dokumen (dan label pada PDF), jadi tidak boleh berubah.
+            $request->validate([
+                'kode' => ['nullable', Rule::in([$jabatan->kode])],
+                'nama' => ['nullable', Rule::in([$jabatan->nama])],
+                'kategori' => ['nullable', Rule::in(Jabatan::KATEGORI)],
+            ], [
+                'kode.in' => 'Kode jabatan wajib tidak dapat diubah.',
+                'nama.in' => 'Nama jabatan wajib tidak dapat diubah.',
+            ]);
+
+            $jabatan->update(['kategori' => $request->input('kategori', $jabatan->kategori)]);
+
+            return back()->with('success', 'Kategori jabatan diperbarui.');
+        }
+
         $jabatan->update($this->validated($request, $sekolahId, $jabatan->id));
 
         return back()->with('success', 'Jabatan diperbarui.');
@@ -53,6 +74,10 @@ class JabatanController extends Controller
     {
         $sekolahId = $this->resolveSekolahId($request);
         abort_unless($jabatan->sekolah_id === $sekolahId, 404);
+
+        if ($jabatan->isWajib()) {
+            return back()->with('error', 'Jabatan wajib penandatangan tidak dapat dihapus.');
+        }
 
         // Jabatan yang pernah dipakai tetap dibutuhkan histori penugasan;
         // nonaktifkan alih-alih hapus.

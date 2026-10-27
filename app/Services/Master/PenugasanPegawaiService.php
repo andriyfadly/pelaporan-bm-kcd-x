@@ -205,10 +205,18 @@ class PenugasanPegawaiService
 
     private function jabatan(string $sekolahId, string $kode): Jabatan
     {
-        return Jabatan::firstOrCreate(
+        // Jabatan penandatangan wajib selalu tersedia; kalau pernah terhapus
+        // (data lama), pulihkan supaya penugasan bisa disimpan.
+        $jabatan = Jabatan::withTrashed()->firstOrCreate(
             ['sekolah_id' => $sekolahId, 'kode' => $kode],
             ['nama' => Jabatan::LABEL_PENANDATANGAN[$kode] ?? ucwords(str_replace('_', ' ', $kode))],
         );
+
+        if ($jabatan->trashed()) {
+            $jabatan->restore();
+        }
+
+        return $jabatan;
     }
 
     /**

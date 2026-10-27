@@ -4,7 +4,7 @@ import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import EmptyState from '@/Components/EmptyState';
-import { BadgeCheck, Building2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BadgeCheck, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
 
 interface Jabatan {
     id: string;
@@ -12,6 +12,7 @@ interface Jabatan {
     nama: string;
     kategori: string | null;
     aktif: boolean;
+    wajib: boolean;
     penugasan_aktif_count: number;
 }
 
@@ -112,7 +113,14 @@ export default function Index({ jabatan, kategoriList }: Props) {
                             <tbody>
                                 {jabatan.map((item) => (
                                     <tr key={item.id} className="border-b border-slate-50 last:border-0">
-                                        <td className="px-4 py-3 font-semibold text-slate-700">{item.nama}</td>
+                                        <td className="px-4 py-3 font-semibold text-slate-700">
+                                            {item.nama}
+                                            {item.wajib && (
+                                                <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                                                    Wajib
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 font-mono text-xs text-slate-500">{item.kode}</td>
                                         <td className="px-4 py-3 text-slate-600">{item.kategori ?? '-'}</td>
                                         <td className="px-4 py-3">
@@ -135,14 +143,23 @@ export default function Index({ jabatan, kategoriList }: Props) {
                                                 >
                                                     <Pencil className="w-4 h-4" />
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setHapusTarget(item)}
-                                                    aria-label={`Hapus jabatan ${item.nama}`}
-                                                    className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                {item.wajib ? (
+                                                    <span
+                                                        title="Jabatan wajib penandatangan tidak dapat dihapus"
+                                                        className="rounded-lg p-1.5 text-slate-300"
+                                                    >
+                                                        <Lock className="w-4 h-4" />
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setHapusTarget(item)}
+                                                        aria-label={`Hapus jabatan ${item.nama}`}
+                                                        className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -162,7 +179,8 @@ export default function Index({ jabatan, kategoriList }: Props) {
                             value={form.data.kode}
                             onChange={(e) => form.setData('kode', e.target.value)}
                             placeholder="kepala_sekolah"
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-sm"
+                            disabled={editTarget?.wajib ?? false}
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-sm disabled:bg-slate-50 disabled:text-slate-400"
                         />
                         {form.errors.kode && <p className="mt-1 text-xs text-rose-600">{form.errors.kode}</p>}
                     </label>
@@ -172,10 +190,16 @@ export default function Index({ jabatan, kategoriList }: Props) {
                             type="text"
                             value={form.data.nama}
                             onChange={(e) => form.setData('nama', e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            disabled={editTarget?.wajib ?? false}
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
                         />
                         {form.errors.nama && <p className="mt-1 text-xs text-rose-600">{form.errors.nama}</p>}
                     </label>
+                    {editTarget?.wajib && (
+                        <p className="rounded-xl bg-blue-50 px-3 py-2 text-[11px] font-semibold text-blue-700">
+                            Jabatan wajib penandatangan: kode dan nama dikunci, hanya kategori yang dapat diubah.
+                        </p>
+                    )}
                     <label className="block text-xs font-semibold text-slate-600">
                         Kategori
                         <select
@@ -191,15 +215,17 @@ export default function Index({ jabatan, kategoriList }: Props) {
                             ))}
                         </select>
                     </label>
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                        <input
-                            type="checkbox"
-                            checked={form.data.aktif}
-                            onChange={(e) => form.setData('aktif', e.target.checked)}
-                            className="rounded border-slate-300"
-                        />
-                        Aktif (muncul sebagai pilihan penugasan)
-                    </label>
+                    {!editTarget?.wajib && (
+                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                            <input
+                                type="checkbox"
+                                checked={form.data.aktif}
+                                onChange={(e) => form.setData('aktif', e.target.checked)}
+                                className="rounded border-slate-300"
+                            />
+                            Aktif (muncul sebagai pilihan penugasan)
+                        </label>
+                    )}
                     <div className="flex justify-end gap-2 pt-2">
                         <button
                             type="button"

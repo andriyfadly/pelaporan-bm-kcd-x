@@ -323,7 +323,7 @@ class BhpPejabatSekolahTest extends TestCase
             $this->fail('Snapshot seharusnya gagal.');
         } catch (\RuntimeException $e) {
             // Kepala sekolah sudah terisi; dua jabatan lain wajib disebut.
-            $this->assertStringContainsString('Wakasek Sarana Prasarana', $e->getMessage());
+            $this->assertStringContainsString('Wakasek Sarpras', $e->getMessage());
             $this->assertStringContainsString('Pembantu Pengurus Barang', $e->getMessage());
             $this->assertStringNotContainsString('Kepala Sekolah (', $e->getMessage());
         }

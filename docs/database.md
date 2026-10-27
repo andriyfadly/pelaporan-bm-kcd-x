@@ -198,7 +198,7 @@ selalu dihitung (`StokService`).
 | `bhp_{dana}_nomor_sequence` | `jenis` · `tahun` · `bulan` · `counter` — dikunci `lockForUpdate` saat generate; insert row pertama aman terhadap race (catch `UniqueConstraintViolationException` lalu lock row pemenang) |
 | `bhp_{dana}_batch_dokumen` | `jenis` · `bhp_pengajuan_id` FK set null · `status` (`pending`/`selesai`/`sebagian`/`gagal`) · `total`/`berhasil`/`gagal` · `files` json · `created_by` · `error_message` |
 | `bhp_{dana}_settings` | `format_nomor` · `is_singleton` (unique: maks satu baris per tabel dana). **`paper_size` & `orientation` dihapus** (2026-10-13) — ukuran/orientasi PDF hardcode per jenis dokumen di `DokumenController::PAPER`. Penandatangan TIDAK lagi di sini — lihat `master_data_penugasan_pegawai` |
-| `master_data_jabatan` *(generic, non-BHP)* | `sekolah_id` FK · `kode` · `nama` · `kategori` · `aktif` · soft deletes · unique `(sekolah_id, kode)`. Tiga kode wajib untuk penandatangan: `kepala_sekolah`, `wakasek_sarpras`, `pembantu_pengurus_barang` |
+| `master_data_jabatan` *(generic, non-BHP)* | `sekolah_id` FK · `kode` · `nama` · `kategori` · `aktif` · soft deletes · unique `(sekolah_id, kode)`. Tiga kode wajib untuk penandatangan: `kepala_sekolah`, `wakasek_sarpras`, `pembantu_pengurus_barang`. Dibuat otomatis (`Jabatan::pastikanWajib`, dibuka saat halaman dibuka + `JabatanWajibSeeder`); kode & namanya dikunci, hanya `kategori` yang dapat diubah, dan tidak dapat dihapus |
 | `master_data_penugasan_pegawai` *(generic, non-BHP)* | `sekolah_id` FK · `pegawai_id` FK · `jabatan_id` FK · `jenis_penugasan` (`definitif`/`plt`/`plh`) · `mulai_menjabat`/`selesai_menjabat` date · `created_by`/`updated_by` · unique `(sekolah_id, jabatan_id, mulai_menjabat)` + partial unique satu-pemegang `(sekolah_id, jabatan_id) WHERE selesai_menjabat IS NULL` |
 
 ## 6. Konvensi & Batasan
@@ -338,7 +338,8 @@ dari `master_data_penugasan_pegawai`, penempatan aset dari `inventaris_unit.ruan
 ### `master_data_jabatan` / `master_data_penugasan_pegawai`
 
 `master_data_jabatan` mendefinisikan jabatan per sekolah (kode stabil, nama
-bebas diubah). `master_data_penugasan_pegawai` menyimpan satu periode per baris:
+bebas diubah — kecuali tiga jabatan wajib penandatangan yang kode dan namanya
+dikunci). `master_data_penugasan_pegawai` menyimpan satu periode per baris:
 `definitif`/`plt`/`plh`. Menambah penugasan aktif menutup periode sebelumnya
 (H-1), jadi satu jabatan hanya punya satu pemegang efektif dan tidak ada
 periode beririsan. Pemilihan pejabat untuk dokumen bertanggal `T` memakai
