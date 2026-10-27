@@ -1,9 +1,9 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
 import { formatRupiah } from '@/Utils/format';
-import { ArrowLeft, History } from 'lucide-react';
+import { ArrowLeft, FileText, History, QrCode, Tag, Upload } from 'lucide-react';
 
 interface Unit {
     id: string;
@@ -62,6 +62,34 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
         ruang_id: unit.ruang_id ?? '',
         pegawai_id: unit.pegawai_id ?? '',
     });
+
+    const [berkas, setBerkas] = useState<File | null>(null);
+    const [unggah, setUnggah] = useState(false);
+    const [errorFoto, setErrorFoto] = useState<string | null>(null);
+
+    const kirimFoto = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!berkas) {
+            return;
+        }
+
+        setUnggah(true);
+        setErrorFoto(null);
+        const data = new FormData();
+        data.append('foto', berkas);
+
+        router.post(`/pencatatan-bm/inventaris/${unit.id}/foto`, data, {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: () => setBerkas(null),
+            onError: (bag) => setErrorFoto(bag.foto ?? 'Berkas ditolak.'),
+            onFinish: () => setUnggah(false),
+        });
+    };
+
+    const buatBast = () => {
+        router.post(`/pencatatan-bm/dokumen/bast/${unit.id}`, { tanggal: new Date().toISOString().slice(0, 10) }, { preserveScroll: true });
+    };
 
     const simpan = (e: React.FormEvent) => {
         e.preventDefault();
@@ -190,6 +218,51 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
                         </section>
                     )}
                 </div>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <h2 className="mb-3 font-bold text-slate-800">Dokumen & Label</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <a
+                            href={`/pencatatan-bm/label/${unit.id}/pdf`}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                            <Tag className="w-3.5 h-3.5" /> Label PDF
+                        </a>
+                        <a
+                            href={`/pencatatan-bm/label/${unit.id}/qr`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                            <QrCode className="w-3.5 h-3.5" /> QR
+                        </a>
+                        <button
+                            type="button"
+                            onClick={buatBast}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                            <FileText className="w-3.5 h-3.5" /> Buat BAST
+                        </button>
+                    </div>
+
+                    <form onSubmit={kirimFoto} className="mt-4 flex flex-wrap items-center gap-2">
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) => setBerkas(e.target.files?.[0] ?? null)}
+                            aria-label="Pilih foto unit"
+                            className="text-xs text-slate-600"
+                        />
+                        <button
+                            type="submit"
+                            disabled={!berkas || unggah}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50"
+                        >
+                            <Upload className="w-3.5 h-3.5" /> Unggah Foto
+                        </button>
+                        {errorFoto && <p className="text-xs text-rose-600">{errorFoto}</p>}
+                    </form>
+                </section>
 
                 <section className="rounded-2xl border border-slate-200 bg-white">
                     <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">

@@ -38,11 +38,6 @@ class InventarisPolicy
         return $user->can('proses-pengembalian-bm');
     }
 
-    public function cetak(User $user): bool
-    {
-        return $user->can('cetak-inventaris-bm');
-    }
-
     public function kelolaRuang(User $user, Ruang $ruang): bool
     {
         return $user->can('kelola-ruang-bm');

@@ -27,12 +27,14 @@ use App\Http\Controllers\PelaporanBm\RealisasiController;
 use App\Http\Controllers\PelaporanBm\RekapanController;
 use App\Http\Controllers\PelaporanBm\SpjController;
 use App\Http\Controllers\PencatatanBm\DashboardController as PencatatanDashboardController;
+use App\Http\Controllers\PencatatanBm\DokumenInventarisController as PencatatanDokumenController;
 use App\Http\Controllers\PencatatanBm\InventarisController as PencatatanInventarisController;
 use App\Http\Controllers\PencatatanBm\MutasiController as PencatatanMutasiController;
 use App\Http\Controllers\PencatatanBm\PegawaiController as PencatatanPegawaiController;
 use App\Http\Controllers\PencatatanBm\PengembalianController as PencatatanPengembalianController;
 use App\Http\Controllers\PencatatanBm\RuangController as PencatatanRuangController;
 use App\Http\Controllers\PencatatanBm\SyncController as PencatatanSyncController;
+use App\Http\Controllers\PencatatanBm\UnitInventarisController as PencatatanUnitController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -298,6 +300,28 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:mutasi-inventaris-bm')->name('mutasi.store');
         Route::post('/pengembalian/{unit}', [PencatatanPengembalianController::class, 'store'])
             ->middleware('permission:proses-pengembalian-bm')->name('pengembalian.store');
+
+        Route::middleware('permission:cetak-inventaris-bm')->group(function () {
+            Route::prefix('dokumen')->name('dokumen.')->group(function () {
+                Route::get('/', [PencatatanDokumenController::class, 'index'])->name('index');
+                Route::get('/kir', [PencatatanDokumenController::class, 'kir'])->name('kir');
+                Route::get('/buku-inventaris', [PencatatanDokumenController::class, 'bukuInventaris'])->name('buku-inventaris');
+                Route::get('/sensus', [PencatatanDokumenController::class, 'sensus'])->name('sensus');
+                Route::post('/bast/{unit}', [PencatatanDokumenController::class, 'bast'])->name('bast');
+                Route::post('/fakta-integritas/{pegawai}', [PencatatanDokumenController::class, 'faktaIntegritas'])->name('fakta-integritas');
+                Route::post('/surat-pengembalian/{unit}', [PencatatanDokumenController::class, 'suratPengembalian'])->name('surat-pengembalian');
+                Route::get('/{dokumen}/pdf', [PencatatanDokumenController::class, 'pdf'])->name('pdf');
+            });
+
+            Route::prefix('label')->name('label.')->group(function () {
+                Route::get('/{unit}/qr', [PencatatanUnitController::class, 'qr'])->name('qr');
+                Route::get('/{unit}/pdf', [PencatatanUnitController::class, 'label'])->name('pdf');
+            });
+        });
+
+        Route::post('/inventaris/{unit}/foto', [PencatatanUnitController::class, 'storeFoto'])
+            ->middleware('permission:kelola-inventaris-bm')->name('inventaris.foto');
+        Route::get('/foto/{foto}', [PencatatanUnitController::class, 'foto'])->name('foto.show');
 
         Route::middleware('permission:sinkronisasi-inventaris-bm')->group(function () {
             Route::get('/sinkronisasi', [PencatatanSyncController::class, 'index'])->name('sinkronisasi.index');
