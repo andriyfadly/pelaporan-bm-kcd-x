@@ -150,7 +150,6 @@ class DokumenInventarisService
             'bast' => 'Berita Acara Serah Terima',
             'fakta_integritas' => 'Fakta Integritas',
             'surat_pengembalian' => 'Surat Permohonan Pengembalian',
-            'berita_acara' => 'Rekap Berita Acara',
             default => ucwords(str_replace('_', ' ', $jenis)),
         };
     }

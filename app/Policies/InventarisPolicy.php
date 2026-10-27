@@ -13,11 +13,6 @@ use App\Models\User;
  */
 class InventarisPolicy
 {
-    public function viewAny(User $user): bool
-    {
-        return $user->can('lihat-pencatatan-bm');
-    }
-
     public function view(User $user, InventarisUnit $unit): bool
     {
         return $user->can('lihat-pencatatan-bm');
