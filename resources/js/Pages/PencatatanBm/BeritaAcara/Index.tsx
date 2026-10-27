@@ -106,7 +106,7 @@ export default function Index({ daftar }: Props) {
                                         <td className="px-4 py-3 text-slate-600">
                                             {item.payload.unit?.nama_barang ?? '-'} · {item.payload.unit?.nomor_register ?? '-'}
                                         </td>
-                                        <td className="px-4 py-3 text-slate-600">{item.tanggal ?? item.created_at}</td>
+                                        <td className="px-4 py-3 text-slate-600">{item.tanggal?.slice(0, 10) ?? item.created_at}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center justify-end gap-1">
                                                 <button

@@ -26,6 +26,10 @@ class PenugasanPegawaiController extends Controller
         // konteks sekolah, bukan daftar lintas sekolah yang tercampur.
         $sekolahId = $this->resolveSekolahIdWajib($request);
 
+        // Tanpa ini, sekolah baru yang langsung membuka Penugasan akan melihat
+        // daftar jabatan kosong dan tidak bisa menyimpan apa pun.
+        Jabatan::pastikanWajib($sekolahId);
+
         $penugasan = PenugasanPegawai::query()
             ->with(['pegawai:id,nama_lengkap,nip,pangkat_golongan', 'jabatan:id,kode,nama'])
             ->where('sekolah_id', $sekolahId)

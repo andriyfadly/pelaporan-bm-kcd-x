@@ -128,7 +128,25 @@ class InventarisHalamanTest extends TestCase
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.dokumen.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('dokumen', 1));
+            ->assertInertia(fn ($page) => $page
+                ->has('dokumen', 1)
+                // Prop ini dipakai bagian "Cetak Langsung"; tanpa itu UI blank.
+                ->has('ruangList'));
+    }
+
+    public function test_halaman_dokumen_menyediakan_ruang_untuk_cetak_kir(): void
+    {
+        activity()->withoutLogging(fn () => Ruang::create([
+            'sekolah_id' => $this->sekolah->id,
+            'nama_ruang' => 'Ruang Cetak',
+        ]));
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.dokumen.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('ruangList', 1)
+                ->has('ruangList.0', fn ($item) => $item->hasAll(['id', 'nama_ruang'])->etc()));
     }
 
     public function test_surat_pengembalian_ditolak_bila_unit_belum_dikembalikan(): void

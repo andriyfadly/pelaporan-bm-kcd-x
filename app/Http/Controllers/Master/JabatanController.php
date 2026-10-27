@@ -51,7 +51,7 @@ class JabatanController extends Controller
         if ($jabatan->isWajib()) {
             // Kode dan nama tiga jabatan penandatangan dipakai sebagai kunci
             // dokumen (dan label pada PDF), jadi tidak boleh berubah.
-            $request->validate([
+            $data = $request->validate([
                 'kode' => ['nullable', Rule::in([$jabatan->kode])],
                 'nama' => ['nullable', Rule::in([$jabatan->nama])],
                 'kategori' => ['nullable', Rule::in(Jabatan::KATEGORI)],
@@ -60,7 +60,7 @@ class JabatanController extends Controller
                 'nama.in' => 'Nama jabatan wajib tidak dapat diubah.',
             ]);
 
-            $jabatan->update(['kategori' => $request->input('kategori', $jabatan->kategori)]);
+            $jabatan->update(['kategori' => ($data['kategori'] ?? null) ?: null]);
 
             return back()->with('success', 'Kategori jabatan diperbarui.');
         }

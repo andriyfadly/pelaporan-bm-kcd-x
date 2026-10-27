@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import EmptyState from '@/Components/EmptyState';
-import { PackageCheck, Undo2 } from 'lucide-react';
+import { FileText, PackageCheck, Undo2 } from 'lucide-react';
 
 interface Unit {
     id: string;
@@ -16,6 +16,7 @@ interface Unit {
 
 interface Riwayat {
     id: string;
+    inventaris_unit_id: string;
     tanggal: string;
     tujuan_kondisi: string | null;
     keterangan: string | null;
@@ -49,6 +50,20 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
             },
         );
     };
+
+    const buatSurat = (item: Riwayat) => {
+        router.post(`/pencatatan-bm/dokumen/surat-pengembalian/${item.inventaris_unit_id}`, {
+            tanggal: item.tanggal.slice(0, 10),
+        });
+    };
+
+    // Riwayat sudah urut terbaru dulu; surat membaca pengembalian terbaru per
+    // unit, jadi tombolnya hanya untuk baris pertama tiap unit.
+    const barisTerbaru = new Set(
+        riwayat
+            .filter((item, index) => riwayat.findIndex((lain) => lain.inventaris_unit_id === item.inventaris_unit_id) === index)
+            .map((item) => item.id),
+    );
 
     return (
         <AppLayout>
@@ -121,12 +136,25 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
                                         <span className="font-semibold text-slate-700">
                                             {item.unit?.nomor_register ?? '-'} · {item.unit?.nama_barang ?? '-'}
                                         </span>
-                                        <span className="text-xs text-slate-400">{item.tanggal}</span>
+                                        <span className="text-xs text-slate-400">{item.tanggal.slice(0, 10)}</span>
                                     </div>
                                     <p className="mt-1 text-xs text-slate-500">
                                         Dari {item.asal_ruang?.nama_ruang ?? '-'} / {item.asal_pegawai?.nama_lengkap ?? '-'} · kondisi akhir{' '}
                                         {kondisiList[item.tujuan_kondisi ?? ''] ?? item.tujuan_kondisi ?? '-'}
                                     </p>
+                                    {/* Surat pengembalian selalu membaca pengembalian terbaru unit,
+                                        jadi tombolnya hanya untuk baris terbaru per unit. */}
+                                    {barisTerbaru.has(item.id) && (
+                                        <div className="mt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => buatSurat(item)}
+                                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50"
+                                            >
+                                                <FileText className="w-3.5 h-3.5" /> Buat Surat Pengembalian
+                                            </button>
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>

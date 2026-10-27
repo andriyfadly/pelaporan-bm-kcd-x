@@ -167,6 +167,11 @@ class DokumenInventarisController extends Controller
                 ->latest('created_at')
                 ->limit(100)
                 ->get(['id', 'jenis', 'nomor', 'tanggal', 'created_at']),
+            // Cetak langsung tidak menyimpan dokumen; butuh daftar ruang untuk KIR.
+            'ruangList' => Ruang::query()
+                ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
+                ->orderBy('nama_ruang')
+                ->get(['id', 'nama_ruang']),
         ]);
     }
 

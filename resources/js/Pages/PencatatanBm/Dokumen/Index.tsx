@@ -1,8 +1,8 @@
 import { Head, router } from '@inertiajs/react';
-import React from 'react';
+import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, Printer } from 'lucide-react';
 
 interface DokumenItem {
     id: string;
@@ -12,8 +12,14 @@ interface DokumenItem {
     created_at: string;
 }
 
+interface RuangRingkas {
+    id: string;
+    nama_ruang: string;
+}
+
 interface Props {
     dokumen: DokumenItem[];
+    ruangList: RuangRingkas[];
 }
 
 const LABEL_JENIS: Record<string, string> = {
@@ -22,7 +28,10 @@ const LABEL_JENIS: Record<string, string> = {
     surat_pengembalian: 'Surat Permohonan Pengembalian',
 };
 
-export default function Index({ dokumen }: Props) {
+export default function Index({ dokumen, ruangList }: Props) {
+    const [ruangId, setRuangId] = useState(ruangList[0]?.id ?? '');
+    const [tahun, setTahun] = useState(() => new Date().getFullYear());
+
     return (
         <AppLayout>
             <Head title="Dokumen Inventaris" />
@@ -34,6 +43,63 @@ export default function Index({ dokumen }: Props) {
                         Dokumen tersimpan membawa snapshot saat dibuat, jadi cetak ulang tidak berubah setelah koreksi data.
                     </p>
                 </header>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <h2 className="mb-1 flex items-center gap-1.5 font-bold text-slate-800">
+                        <Printer className="w-4 h-4 text-slate-400" /> Cetak Langsung
+                    </h2>
+                    <p className="mb-3 text-xs text-slate-500">
+                        Cetak langsung memakai data dan pejabat yang aktif saat ini, dan tidak tersimpan sebagai dokumen.
+                    </p>
+
+                    <div className="flex flex-wrap items-end gap-3">
+                        <label className="block w-52 text-xs font-semibold text-slate-600">
+                            Ruang (KIR)
+                            <select
+                                value={ruangId}
+                                onChange={(e) => setRuangId(e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            >
+                                {ruangList.length === 0 && <option value="">Belum ada ruang</option>}
+                                {ruangList.map((ruang) => (
+                                    <option key={ruang.id} value={ruang.id}>
+                                        {ruang.nama_ruang}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <a
+                            href={`/pencatatan-bm/dokumen/kir?ruang=${ruangId}`}
+                            aria-disabled={!ruangId}
+                            className={`inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold ${
+                                ruangId ? 'text-slate-700 hover:bg-slate-50' : 'pointer-events-none text-slate-300'
+                            }`}
+                        >
+                            <FileText className="w-3.5 h-3.5" /> Kartu Inventaris Ruangan
+                        </a>
+                        <label className="block w-28 text-xs font-semibold text-slate-600">
+                            Tahun
+                            <input
+                                type="number"
+                                value={tahun}
+                                onChange={(e) => setTahun(Number(e.target.value))}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+                        {[
+                            { url: '/pencatatan-bm/dokumen/buku-inventaris', label: 'Buku Inventaris' },
+                            { url: '/pencatatan-bm/dokumen/sensus', label: 'Sensus Aset' },
+                        ].map((cetak) => (
+                            <a
+                                key={cetak.url}
+                                href={`${cetak.url}?tahun=${tahun}`}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                            >
+                                <FileText className="w-3.5 h-3.5" /> {cetak.label}
+                            </a>
+                        ))}
+                    </div>
+                </section>
 
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                     {dokumen.length === 0 ? (
@@ -59,7 +125,7 @@ export default function Index({ dokumen }: Props) {
                                             {LABEL_JENIS[item.jenis] ?? item.jenis}
                                         </td>
                                         <td className="px-4 py-3 text-slate-600">{item.nomor ?? '-'}</td>
-                                        <td className="px-4 py-3 text-slate-600">{item.tanggal ?? item.created_at}</td>
+                                        <td className="px-4 py-3 text-slate-600">{item.tanggal?.slice(0, 10) ?? item.created_at}</td>
                                         <td className="px-4 py-3 text-right">
                                             <button
                                                 type="button"
