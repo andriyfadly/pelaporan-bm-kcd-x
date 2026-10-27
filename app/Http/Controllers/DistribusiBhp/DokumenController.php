@@ -10,6 +10,7 @@ use App\Models\DistribusiBhp\Pengajuan;
 use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\SettingsService;
 use App\Services\DistribusiBhp\StokService;
+use App\Services\Master\PenugasanPegawaiService;
 use App\Support\DistribusiBhp\SumberDana;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +40,7 @@ class DokumenController extends Controller
         private readonly DokumenService $dokumenService,
         private readonly SettingsService $settings,
         private readonly StokService $stok,
+        private readonly PenugasanPegawaiService $penugasan,
     ) {}
 
     private const PAPER = [
@@ -110,7 +112,10 @@ class DokumenController extends Controller
                         'email' => $pengajuan->sekolah?->email ?? '',
                         'kodePos' => $pengajuan->sekolah?->kode_pos ?? '',
                         'pemohon' => $pengajuan->pemohon?->name ?? '-',
-                        'penandatangan' => $dokumenList->first()?->payload['penandatangan'] ?? [],
+                        // Tiap halaman kompilasi memakai snapshot dokumennya
+                        // sendiri: dokumen tambahan bisa dibuat pada tanggal
+                        // berbeda sehingga pejabatnya bisa berbeda.
+                        'labelJabatan' => $this->penugasan->labelPenandatangan((string) $pengajuan->sekolah_id),
                         'settings' => $this->settings->get($pengajuan->sumber_dana),
                     ])->render()
                 )->setPaper('a4', 'portrait');
@@ -181,6 +186,7 @@ class DokumenController extends Controller
             'kodePos' => $pengajuan->sekolah?->kode_pos ?? '',
             'pemohon' => $pengajuan->pemohon?->name ?? '-',
             'penandatangan' => $dokumen->payload['penandatangan'] ?? [],
+            'labelJabatan' => $this->penugasan->labelPenandatangan((string) $pengajuan->sekolah_id),
             'settings' => $this->settings->get($pengajuan->sumber_dana),
         ]);
     }

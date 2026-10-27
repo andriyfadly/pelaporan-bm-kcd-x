@@ -37,6 +37,7 @@ class DokumenInventarisService
             'units' => $units,
             'sekolah' => $ruang->sekolah,
             'pejabat' => $this->pejabat($ruang->sekolah_id),
+            'labelJabatan' => $this->penugasan->labelPenandatangan((string) $ruang->sekolah_id),
             'dicetakPada' => now()->translatedFormat('d F Y'),
         ], 'landscape')->download($this->namaFile('KIR', $ruang->nama_ruang));
     }
@@ -52,6 +53,7 @@ class DokumenInventarisService
             'units' => $units,
             'sekolah' => $sekolah,
             'pejabat' => $this->pejabat($sekolah->id),
+            'labelJabatan' => $this->penugasan->labelPenandatangan((string) $sekolah->id),
         ], 'landscape')->download($this->namaFile('Buku-Inventaris', (string) $tahun));
     }
 
@@ -66,6 +68,7 @@ class DokumenInventarisService
             'units' => $units,
             'sekolah' => $sekolah,
             'pejabat' => $this->pejabat($sekolah->id),
+            'labelJabatan' => $this->penugasan->labelPenandatangan((string) $sekolah->id),
         ], 'landscape')->download($this->namaFile('Sensus-Aset', (string) $tahun));
     }
 
@@ -80,6 +83,7 @@ class DokumenInventarisService
             'payload' => $dokumen->payload,
             'sekolah' => $dokumen->sekolah,
             'pejabat' => $this->pejabatTersimpan($dokumen),
+            'labelJabatan' => $this->penugasan->labelPenandatangan((string) $dokumen->sekolah_id),
         ], $tambahan));
 
         $path = "inventaris/dokumen/{$dokumen->sekolah_id}/{$dokumen->jenis}-{$dokumen->id}.pdf";
@@ -99,6 +103,7 @@ class DokumenInventarisService
             'payload' => $dokumen->payload,
             'sekolah' => $dokumen->sekolah,
             'pejabat' => $this->pejabatTersimpan($dokumen),
+            'labelJabatan' => $this->penugasan->labelPenandatangan((string) $dokumen->sekolah_id),
         ]);
 
         return $pdf->download($this->namaFile($this->judul($dokumen->jenis), $dokumen->nomor ?? $dokumen->id));

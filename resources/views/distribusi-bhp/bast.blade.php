@@ -48,12 +48,12 @@
 
     <table class="meta">
         <tr><td class="label"><strong>PIHAK KESATU</strong></td><td>: {{ $ws['nama'] ?? '-' }}</td></tr>
-        <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ws['jabatan'] ?? 'Wakasek Sarpras' }}</td></tr>
+        <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ws['jabatan'] ?? ($labelJabatan['wakasek_sarpras'] ?? '-') }}</td></tr>
         @if(!empty($ws['nip']))
             <tr><td class="label">&nbsp;&nbsp;NIP</td><td>: {{ $ws['nip'] }}</td></tr>
         @endif
         <tr><td class="label"><strong>PIHAK KEDUA</strong></td><td>: {{ $ppb['nama'] ?? '-' }}</td></tr>
-        <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ppb['jabatan'] ?? 'Pembantu Pengurus Barang' }}</td></tr>
+        <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ppb['jabatan'] ?? ($labelJabatan['pembantu_pengurus_barang'] ?? '-') }}</td></tr>
         @if(!empty($ppb['nip']))
             <tr><td class="label">&nbsp;&nbsp;NIP</td><td>: {{ $ppb['nip'] }}</td></tr>
         @endif

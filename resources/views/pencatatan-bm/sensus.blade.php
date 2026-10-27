@@ -90,14 +90,14 @@
 <table class="ttd">
     <tr>
         <td style="width:50%;">
-            Mengetahui,<br>{{ $pejabatKiri['jabatan'] ?? 'Kepala Sekolah' }}
+            Mengetahui,<br>{{ $pejabatKiri['jabatan'] ?? ($labelJabatan['kepala_sekolah'] ?? '-') }}
             <br><br><br>
             <strong>{{ $pejabatKiri['nama'] ?? '...........................' }}</strong><br>
             NIP {{ $pejabatKiri['nip'] ?? '...................' }}
         </td>
         <td style="width:50%;">
             {{ $sekolah->kota_kab ?? '' }}, {{ now()->translatedFormat('d F Y') }}<br>
-            {{ $pejabatKanan['jabatan'] ?? 'Pembantu Pengurus Barang' }}
+            {{ $pejabatKanan['jabatan'] ?? ($labelJabatan['pembantu_pengurus_barang'] ?? '-') }}
             <br><br><br>
             <strong>{{ $pejabatKanan['nama'] ?? '...........................' }}</strong><br>
             NIP {{ $pejabatKanan['nip'] ?? '...................' }}

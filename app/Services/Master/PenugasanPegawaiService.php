@@ -171,6 +171,27 @@ class PenugasanPegawaiService
         return $hasil;
     }
 
+    /**
+     * Nama jabatan penandatangan untuk satu sekolah, dibaca dari
+     * `master_data_jabatan`. Dipakai PDF supaya label jabatan pada blok tanda
+     * tangan tetap tercetak walau jabatan itu belum punya pemegang.
+     *
+     * @return array<string, string>
+     */
+    public function labelPenandatangan(string $sekolahId): array
+    {
+        $nama = Jabatan::where('sekolah_id', $sekolahId)
+            ->whereIn('kode', Jabatan::KODE_PENANDATANGAN)
+            ->pluck('nama', 'kode');
+
+        $hasil = [];
+        foreach (Jabatan::KODE_PENANDATANGAN as $kode) {
+            $hasil[$kode] = (string) ($nama[$kode] ?? Jabatan::LABEL_PENANDATANGAN[$kode]);
+        }
+
+        return $hasil;
+    }
+
     /** Penugasan yang menjabat efektif pada tanggal; null bila tidak ada. */
     public function berlakuPada(string $sekolahId, string $kodeJabatan, string $tanggal): ?PenugasanPegawai
     {

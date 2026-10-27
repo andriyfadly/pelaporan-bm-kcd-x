@@ -101,13 +101,13 @@
         <tr>
             <td>
                 Mengetahui,<br>
-                {{ $ws['jabatan'] ?? 'Wakasek Sarpras' }},<div class="space"></div>
+                {{ $ws['jabatan'] ?? ($labelJabatan['wakasek_sarpras'] ?? '-') }},<div class="space"></div>
                 <strong>{{ $ws['nama'] ?? '-' }}</strong>
                 @if(!empty($ws['nip']))<br>NIP. {{ $ws['nip'] }}@endif
             </td>
             <td>
                 {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}<br>
-                Pembantu Pengurus Barang,<div class="space"></div>
+                {{ $labelJabatan['pembantu_pengurus_barang'] ?? '-' }},<div class="space"></div>
                 <strong>{{ $ppb['nama'] ?? '-' }}</strong>
                 @if(!empty($ppb['nip']))<br>NIP. {{ $ppb['nip'] }}@endif
             </td>

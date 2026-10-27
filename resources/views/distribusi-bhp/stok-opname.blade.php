@@ -49,9 +49,9 @@
 
     <table class="meta">
         <tr>
-            <td class="label">Kepala Sekolah</td>
+            <td class="label">{{ $labelJabatan['kepala_sekolah'] ?? '-' }}</td>
             <td>: {{ $kasek['nama'] ?? '-' }}</td>
-            <td class="label">Wakasek Sarpras</td>
+            <td class="label">{{ $labelJabatan['wakasek_sarpras'] ?? '-' }}</td>
             <td>: {{ $ws['nama'] ?? '-' }}</td>
         </tr>
         <tr>
@@ -61,7 +61,7 @@
             <td>: {{ $ws['nip'] ?? '-' }}</td>
         </tr>
         <tr>
-            <td class="label">Pembantu Pengurus Barang</td>
+            <td class="label">{{ $labelJabatan['pembantu_pengurus_barang'] ?? '-' }}</td>
             <td>: {{ $ppb['nama'] ?? '-' }}</td>
             <td class="label">&nbsp;&nbsp;NIP</td>
             <td>: {{ $ppb['nip'] ?? '-' }}</td>
@@ -122,19 +122,19 @@
     <table class="ttd">
         <tr>
             <td>
-                Wakasek Sarpras,<div class="space"></div>
+                {{ $labelJabatan['wakasek_sarpras'] ?? '-' }},<div class="space"></div>
                 <strong>{{ $ws['nama'] ?? '-' }}</strong>
                 @if(!empty($ws['nip']))<br>NIP. {{ $ws['nip'] }}@endif
             </td>
             <td>
                 {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}<br>
-                Pembantu Pengurus Barang,<div class="space"></div>
+                {{ $labelJabatan['pembantu_pengurus_barang'] ?? '-' }},<div class="space"></div>
                 <strong>{{ $ppb['nama'] ?? '-' }}</strong>
                 @if(!empty($ppb['nip']))<br>NIP. {{ $ppb['nip'] }}@endif
             </td>
             <td>
                 Mengetahui,<br>
-                {{ $kasek['jabatan'] ?? 'Kepala Sekolah' }},<div class="space"></div>
+                {{ $kasek['jabatan'] ?? ($labelJabatan['kepala_sekolah'] ?? '-') }},<div class="space"></div>
                 <strong>{{ $kasek['nama'] ?? '-' }}</strong>
                 @if(!empty($kasek['nip']))<br>NIP. {{ $kasek['nip'] }}@endif
             </td>

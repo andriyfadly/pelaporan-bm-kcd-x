@@ -58,9 +58,12 @@
             </table>
 
             @php
-                $ppb = $penandatangan['pembantu_pengurus_barang'] ?? [];
-                $ws = $penandatangan['wakasek_sarpras'] ?? [];
-                $kasek = $penandatangan['kepala_sekolah'] ?? [];
+                // Snapshot milik dokumen ini sendiri — jangan memakai snapshot
+                // dokumen lain di batch yang bisa bertanggal berbeda.
+                $penandatanganHalaman = $dokumen->payload['penandatangan'] ?? [];
+                $ppb = $penandatanganHalaman['pembantu_pengurus_barang'] ?? [];
+                $ws = $penandatanganHalaman['wakasek_sarpras'] ?? [];
+                $kasek = $penandatanganHalaman['kepala_sekolah'] ?? [];
             @endphp
 
             @if($dokumen->jenis === 'nota_permintaan')
@@ -71,17 +74,17 @@
                 @php $sppb = $pengajuan->dokumen->where('jenis','surat_penyaluran')->first(); @endphp
                 <table class="meta">
                     <tr><td class="label"><strong>PIHAK KESATU</strong></td><td>: {{ $ws['nama'] ?? '-' }}</td></tr>
-                    <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ws['jabatan'] ?? 'Wakasek Sarpras' }}</td></tr>
+                    <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ws['jabatan'] ?? ($labelJabatan['wakasek_sarpras'] ?? '-') }}</td></tr>
                     <tr><td class="label"><strong>PIHAK KEDUA</strong></td><td>: {{ $ppb['nama'] ?? '-' }}</td></tr>
-                    <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ppb['jabatan'] ?? 'Pembantu Pengurus Barang' }}</td></tr>
+                    <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ppb['jabatan'] ?? ($labelJabatan['pembantu_pengurus_barang'] ?? '-') }}</td></tr>
                 </table>
             @endif
 
             @if($dokumen->jenis === 'stok_opname')
                 <table class="meta">
-                    <tr><td class="label">Kepala Sekolah</td><td>: {{ $kasek['nama'] ?? '-' }} ({{ $kasek['nip'] ?? '-' }})</td></tr>
-                    <tr><td class="label">Wakasek Sarpras</td><td>: {{ $ws['nama'] ?? '-' }} ({{ $ws['nip'] ?? '-' }})</td></tr>
-                    <tr><td class="label">Pembantu Pengurus Barang</td><td>: {{ $ppb['nama'] ?? '-' }} ({{ $ppb['nip'] ?? '-' }})</td></tr>
+                    <tr><td class="label">{{ $labelJabatan['kepala_sekolah'] ?? '-' }}</td><td>: {{ $kasek['nama'] ?? '-' }} ({{ $kasek['nip'] ?? '-' }})</td></tr>
+                    <tr><td class="label">{{ $labelJabatan['wakasek_sarpras'] ?? '-' }}</td><td>: {{ $ws['nama'] ?? '-' }} ({{ $ws['nip'] ?? '-' }})</td></tr>
+                    <tr><td class="label">{{ $labelJabatan['pembantu_pengurus_barang'] ?? '-' }}</td><td>: {{ $ppb['nama'] ?? '-' }} ({{ $ppb['nip'] ?? '-' }})</td></tr>
                 </table>
             @endif
 

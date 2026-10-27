@@ -46,7 +46,7 @@
 
     <table class="meta">
         <tr><td class="label">Petugas Pemeriksa</td><td>: {{ $ppb['nama'] ?? '-' }}</td></tr>
-        <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ppb['jabatan'] ?? 'Pembantu Pengurus Barang' }}</td></tr>
+        <tr><td class="label">&nbsp;&nbsp;Jabatan</td><td>: {{ $ppb['jabatan'] ?? ($labelJabatan['pembantu_pengurus_barang'] ?? '-') }}</td></tr>
         @if(!empty($ppb['nip']))
             <tr><td class="label">&nbsp;&nbsp;NIP</td><td>: {{ $ppb['nip'] }}</td></tr>
         @endif

@@ -99,14 +99,14 @@
 <table class="ttd">
     <tr>
         <td style="width:50%;">
-            Mengetahui,<br>{{ $pejabatKiri['jabatan'] ?? 'Kepala Sekolah' }}
+            Mengetahui,<br>{{ $pejabatKiri['jabatan'] ?? ($labelJabatan['kepala_sekolah'] ?? '-') }}
             <br><br><br><br>
             <strong>{{ $pejabatKiri['nama'] ?? '...........................' }}</strong><br>
             NIP {{ $pejabatKiri['nip'] ?? '...................' }}
         </td>
         <td style="width:50%;">
             {{ $sekolahPayload['kota_kab'] ?? '' }}, {{ $tanggal }}<br>
-            {{ $pegawai ? 'Yang menyatakan' : ($pejabatKanan['jabatan'] ?? 'Pembantu Pengurus Barang') }}
+            {{ $pegawai ? 'Yang menyatakan' : ($pejabatKanan['jabatan'] ?? ($labelJabatan['pembantu_pengurus_barang'] ?? '-')) }}
             <br><br><br><br>
             <strong>{{ $pegawai['nama_lengkap'] ?? ($pejabatKanan['nama'] ?? '...........................') }}</strong><br>
             NIP {{ $pegawai['nip'] ?? ($pejabatKanan['nip'] ?? '...................') }}
