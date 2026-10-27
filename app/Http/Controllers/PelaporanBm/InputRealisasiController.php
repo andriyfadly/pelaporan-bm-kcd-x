@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Http\Controllers\Concerns\LocksPelaporanBmPeriod;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\PelaporanBm\Acuan;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class InputRealisasiController extends Controller
 {
-    use ResolvesSekolah;
+    use LocksPelaporanBmPeriod, ResolvesSekolah;
 
     public function pilihBulan(Request $request): Response
     {
@@ -249,7 +250,15 @@ class InputRealisasiController extends Controller
 
         $allocationError = null;
 
-        DB::transaction(function () use ($itemIds, $sekolahId, $kodering, $bulan, $acuanRows, $acuan, &$allocationError) {
+        DB::transaction(function () use ($itemIds, $sekolahId, $kodering, $bulan, $acuanRows, $acuan, $user, &$allocationError) {
+            $kunci = $this->lockPelaporanPeriod($sekolahId, $bulan);
+            $canEditApproved = $user->hasRole('super_admin') && $kunci->status_kirim === 'disetujui';
+            if (! $canEditApproved && $this->pelaporanPeriodIsLocked($kunci)) {
+                $allocationError = 'Laporan bulan ini telah dikunci atau dikirim.';
+
+                return;
+            }
+
             $items = Spj::where('sekolah_id', $sekolahId)
                 ->where('bulan_realisasi', $bulan)
                 ->whereIn('id', $itemIds)
@@ -385,14 +394,27 @@ class InputRealisasiController extends Controller
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
-        if (! empty($uncheckIds) && is_array($uncheckIds)) {
-            // Scope ketat: hanya boleh menghapus baris pada bulan & kodering yang
-            // sedang diedit — cegah hapus lintas periode (ID ditebak/dikirim sembarang).
-            Realisasi::where('sekolah_id', $sekolahId)
-                ->where('bulan_realisasi', $bulan)
-                ->where('kodering_belanja', $kodering)
-                ->whereIn('id', $uncheckIds)
-                ->delete();
+        $mutationBlocked = false;
+        DB::transaction(function () use ($uncheckIds, $sekolahId, $bulan, $kodering, $user, &$mutationBlocked): void {
+            $kunci = $this->lockPelaporanPeriod($sekolahId, $bulan);
+            $canEditApproved = $user->hasRole('super_admin') && $kunci->status_kirim === 'disetujui';
+            if (! $canEditApproved && $this->pelaporanPeriodIsLocked($kunci)) {
+                $mutationBlocked = true;
+
+                return;
+            }
+
+            if (! empty($uncheckIds) && is_array($uncheckIds)) {
+                Realisasi::where('sekolah_id', $sekolahId)
+                    ->where('bulan_realisasi', $bulan)
+                    ->where('kodering_belanja', $kodering)
+                    ->whereIn('id', $uncheckIds)
+                    ->delete();
+            }
+        });
+
+        if ($mutationBlocked) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
         return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
@@ -409,47 +431,55 @@ class InputRealisasiController extends Controller
             return back()->with('error', 'Parameter tidak valid.');
         }
 
-        $kunciSaatIni = KunciLaporan::where('sekolah_id', $sekolahId)
-            ->where('bulan', $bulan)
-            ->first();
+        $error = null;
+        DB::transaction(function () use ($sekolahId, $bulan, &$error): void {
+            $kunci = $this->lockPelaporanPeriod($sekolahId, $bulan);
+            if (in_array($kunci->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
+                $error = 'Laporan bulan ini telah dikirim atau sedang menunggu persetujuan.';
 
-        if (in_array($kunciSaatIni?->status_kirim, ['menunggu_approval', 'disetujui'], true)) {
-            return back()->with('error', 'Laporan bulan ini telah dikirim atau sedang menunggu persetujuan.');
+                return;
+            }
+
+            $acuanList = Acuan::where('bulan', $bulan)
+                ->where('sekolah_id', $sekolahId)
+                ->lockForUpdate()
+                ->get();
+            if ($acuanList->isEmpty()) {
+                $error = 'Tidak ada target acuan untuk bulan ini.';
+
+                return;
+            }
+
+            $realisasi = Realisasi::where('sekolah_id', $sekolahId)
+                ->where('bulan_realisasi', $bulan)
+                ->lockForUpdate()
+                ->get();
+            $totalAcuan = (float) $acuanList->sum('nominal');
+            $totalRealisasi = (float) $realisasi->sum('nilai_perolehan');
+            if ($totalRealisasi < $totalAcuan) {
+                $error = 'Belum bisa kirim! Seluruh target acuan realisasi harus terpenuhi (balance) terlebih dahulu.';
+
+                return;
+            }
+
+            $kunci->update(['status_kirim' => 'menunggu_approval', 'status_kunci' => true]);
+
+            activity('sistem')
+                ->performedOn($kunci)
+                ->event('kirim-laporan')
+                ->withProperties([
+                    'ringkasan' => "Kirim laporan bulan {$bulan} (Rp ".number_format($totalRealisasi, 0, ',', '.').')',
+                    'sekolah_id' => $sekolahId,
+                    'bulan' => $bulan,
+                    'total_acuan' => $totalAcuan,
+                    'total_realisasi' => $totalRealisasi,
+                ])
+                ->log('kirim-laporan');
+        });
+
+        if ($error !== null) {
+            return back()->with('error', $error);
         }
-
-        $acuanList = Acuan::where('bulan', $bulan)
-            ->where('sekolah_id', $sekolahId)
-            ->get();
-
-        if ($acuanList->isEmpty()) {
-            return back()->with('error', 'Tidak ada target acuan untuk bulan ini.');
-        }
-
-        $totalAcuan = (float) $acuanList->sum('nominal');
-        $totalRealisasi = (float) Realisasi::where('sekolah_id', $sekolahId)
-            ->where('bulan_realisasi', $bulan)
-            ->sum('nilai_perolehan');
-
-        if ($totalRealisasi < $totalAcuan) {
-            return back()->with('error', 'Belum bisa kirim! Seluruh target acuan realisasi harus terpenuhi (balance) terlebih dahulu.');
-        }
-
-        $kunci = KunciLaporan::updateOrCreate(
-            ['sekolah_id' => $sekolahId, 'bulan' => $bulan],
-            ['status_kirim' => 'menunggu_approval', 'status_kunci' => true]
-        );
-
-        activity('sistem')
-            ->performedOn($kunci)
-            ->event('kirim-laporan')
-            ->withProperties([
-                'ringkasan' => "Kirim laporan bulan {$bulan} (Rp ".number_format($totalRealisasi, 0, ',', '.').')',
-                'sekolah_id' => $sekolahId,
-                'bulan' => $bulan,
-                'total_acuan' => $totalAcuan,
-                'total_realisasi' => $totalRealisasi,
-            ])
-            ->log('kirim-laporan');
 
         return redirect()->route('pelaporan-bm.input-realisasi.index', ['bulan_realisasi' => $bulan])
             ->with('success', 'Laporan realisasi berhasil dikirim ke Admin KCD.');

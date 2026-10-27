@@ -24,6 +24,7 @@ class Spj extends Model
         'no_sp2d',
         'sumber_perolehan',
         'bulan_realisasi',
+        'tahun',
         'no_spk',
         'ba_no',
         'ba_tgl',
@@ -39,6 +40,13 @@ class Spj extends Model
         'nilai_perolehan',
         'id_spj_lama',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $spj): void {
+            $spj->tahun ??= $spj->ba_tgl ? (int) date('Y', strtotime((string) $spj->ba_tgl)) : (int) now()->year;
+        });
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

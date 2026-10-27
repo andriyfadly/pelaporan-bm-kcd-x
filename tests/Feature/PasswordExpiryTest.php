@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\DistribusiBhp\Divisi;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class PasswordExpiryTest extends TestCase
@@ -18,9 +18,7 @@ class PasswordExpiryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Role::firstOrCreate(['name' => 'operator_sekolah']);
-        Role::firstOrCreate(['name' => 'admin_kcd']);
-        Role::firstOrCreate(['name' => 'super_admin']);
+        $this->seed(PeranDanHakAksesSeeder::class);
     }
 
     public function test_operator_with_null_password_changed_at_is_redirected_to_change_password(): void
@@ -130,6 +128,41 @@ class PasswordExpiryTest extends TestCase
 
         $response = $this->actingAs($admin)->get(route('dashboard'));
         $response->assertStatus(200);
+    }
+
+    public function test_operator_divisi_with_null_password_changed_at_is_forced_to_change_password(): void
+    {
+        $this->seed(PeranDanHakAksesSeeder::class);
+
+        $sekolah = Sekolah::create([
+            'nama_sekolah' => 'SMKN Divisi Password',
+            'kota_kab' => 'Kota Bandung',
+            'npsn' => '20221001',
+        ]);
+        $divisi = Divisi::create(['sekolah_id' => $sekolah->id, 'nama' => 'Sarpras']);
+
+        $user = User::create([
+            'name' => 'Operator Divisi',
+            'username' => '20221001-sarpras',
+            'password' => Hash::make('#SidiptaKCD10'),
+            'sekolah_id' => $sekolah->id,
+            'divisi_id' => $divisi->id,
+            'password_changed_at' => null,
+        ]);
+        $user->assignRole('operator_divisi');
+
+        $this->assertTrue($user->isPasswordExpired());
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('password.change'));
+
+        // Setelah ganti password, pembatasan domain tetap berlaku.
+        $user->forceFill(['password_changed_at' => now()])->save();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertForbidden();
     }
 
     public function test_change_password_page_renders(): void

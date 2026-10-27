@@ -51,10 +51,11 @@ class DbErrorHandlingTest extends TestCase
         $response->assertRedirect('/dashboard');
         $response->assertSessionHas('error', 'Terjadi gangguan database. Coba lagi beberapa saat.');
         Log::shouldHaveReceived('error')
-            ->withArgs(fn (string $pesan, array $konteks) => str_starts_with($pesan, 'db-error: ')
+            ->withArgs(fn (string $pesan, array $konteks) => $pesan === 'db-error'
                 && ($konteks['route'] ?? null) === '__db-gagal'
                 && ($konteks['username'] ?? null) === 'op_dberror'
-                && array_key_exists('sql', $konteks));
+                && array_key_exists('sql', $konteks)
+                && ! array_key_exists('bindings', $konteks));
     }
 
     public function test_db_error_json_500_tanpa_sql_bocor(): void

@@ -190,4 +190,25 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseMissing('users', ['username' => 'admin_salah']);
         $this->assertDatabaseMissing('users', ['username' => 'operator_salah']);
     }
+
+    public function test_update_memvalidasi_pasangan_role_dan_sekolah_final(): void
+    {
+        $admin = User::create([
+            'name' => 'Admin KCD', 'username' => 'admin_final_pair', 'password' => bcrypt('password'),
+        ]);
+        $admin->assignRole('admin_kcd');
+        $sekolah = Sekolah::create([
+            'nama_sekolah' => 'SMKN Final Pair',
+            'kota_kab' => 'Kota Bandung',
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.user.update', $admin), [
+                'username' => 'admin_final_pair',
+                'sekolah_id' => $sekolah->id,
+            ])
+            ->assertSessionHasErrors('sekolah_id');
+
+        $this->assertNull($admin->fresh()->sekolah_id);
+    }
 }

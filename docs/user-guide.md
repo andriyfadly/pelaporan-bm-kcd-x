@@ -8,8 +8,10 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 | Peran | Akses Halaman | Kredensial & Scope |
 |---|---|---|
-| **Operator Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi (Target Acuan), Data Realisasi, Cetak Laporan, Ubah Password | Username `[npsn]-admin`, default password `#SidiptaKCD10`. Terikat satu sekolah (`sekolah_id`). Wajib ganti password saat login pertama dan berkala tiap 3 bulan. |
-| **Admin KCD** | Dashboard Wilayah, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola Pengguna, Cetak Laporan | Username `admin_kcd`. Akun `admin` tanpa `sekolah_id`. Memiliki wewenang lintas sekolah dan kunci laporan. |
+| **Operator Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi (Target Acuan), Data Realisasi, Cetak Laporan, Ubah Password, **Distribusi BHP (master, penerimaan, pengajuan, review, dokumen, laporan)** | Username `[npsn]-admin`, default password `#SidiptaKCD10`. Terikat satu sekolah (`sekolah_id`). Wajib ganti password saat login pertama dan berkala tiap 3 bulan. |
+| **Admin KCD** | Dashboard Wilayah, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola Pengguna, Cetak Laporan, **Distribusi BHP** | Username `admin_kcd`. Akun `admin` tanpa `sekolah_id`. Memiliki wewenang lintas sekolah dan kunci laporan. |
+| **Operator Divisi** | **Distribusi BHP: Pengajuan saja** (buat & submit) | Role khusus BHP. Tanpa akses master, penerimaan, approval, atau cetak. |
+| **Bendahara Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi, Data Realisasi, Cetak Laporan, **Distribusi BHP (lihat + pengajuan)** | Terikat satu sekolah; tanpa approval/cetak BHP. |
 
 ---
 
@@ -58,7 +60,7 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 ---
 
-## 3. Alur Kerja Admin KCD
+## 4. Alur Kerja Admin KCD
 
 ### Langkah 1: Unggah Target Acuan Anggaran
 1. Buka menu **Acuan Belanja Modal** (`/pelaporan-bm/acuan`).
@@ -77,8 +79,7 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 ---
 
-## 4. Log Aktivitas (Super Admin & Admin KCD)
-
+## 5. Log Aktivitas (Super Admin & Admin KCD)
 Menu **Log Aktivitas** (`/admin/log-aktivitas`) terlihat untuk role `super_admin`
 dan `admin_kcd`. Berisi jejak audit sistem: pembuatan/ubah/hapus data
 (SPJ, realisasi, acuan, kode barang, user, kunci laporan), login/logout,
@@ -90,3 +91,133 @@ Aktivitas yang dilakukan `super_admin` hanya terlihat oleh super_admin sendiri.
    atau kata kunci ringkasan.
 3. Klik **Lihat perubahan** pada baris untuk membuka diff sebelum/sesudah
    (before/after) perubahan data.
+
+---
+
+## 6. Panduan Distribusi BHP
+
+Modul ini mengelola **Barang Habis Pakai** dengan sumber dana **BOS** atau
+**BOPD**. Aturan utama: pilih sumber dana lebih dulu, karena stok dan laporan
+BOS dan BOPD **tidak pernah tercampur**.
+
+Menu BHP di sidebar menampilkan dua grup terpisah: **Distribusi BHP BOS** dan
+**Distribusi BHP BOPD**, masing-masing dengan sub-grup Distribusi Barang,
+Penyaluran, dan Laporan — mirror struktur asli aplikasi sistem-manajemen-aset.
+
+### 6.1 Istilah Stok
+
+| Angka | Arti |
+|---|---|
+| **Fisik** | Total barang yang sudah diterima |
+| **Terpakai** | Jumlah yang sudah disetujui/disalurkan |
+| **Reservasi** | Jumlah pada pengajuan yang sudah disubmit tapi belum diputus |
+| **Tersedia** | Fisik − Terpakai − Reservasi (tidak pernah negatif) |
+
+### 6.2 Menyiapkan Master Data (Admin/Operator Sekolah)
+
+1. **Kode Rekening** (`/distribusi-bhp/{bos|bopd}/master/kode-rekening`) — satu kode per
+   sumber dana.
+2. **Barang** (`/distribusi-bhp/{bos|bopd}/master/barang`) — pilih kode rekening, isi nama,
+   satuan, dan harga satuan. **Kode Barang/NUSP di-generate otomatis** dari kode barang kode
+   rekening (format `{kode_barang}.{urut:3}`, mis. `1.1.7.01.01.001`) — kode rekening wajib
+   sudah memiliki Kode Barang. Tabel menampilkan NUSP, satuan, harga terakhir (jumlah varian
+   harga), dan kode rekening. Tombol **Kelola Harga** membuka halaman untuk menambah/mengubah/
+   menghapus varian harga; **Edit** dan **Hapus** mengelola data barangnya (barang yang masih
+   dipakai penerimaan/pengajuan tidak dapat dihapus). Halaman ini juga punya kartu statistik
+   dan export CSV.
+   **Import Excel**: unduh template (kolom: Kode Rekening, Nama Barang, Satuan, Harga Satuan),
+   isi, lalu unggah. Kode Barang/NUSP di-generate otomatis; nama barang sama dengan harga
+   berbeda menambah varian harga, nama & harga sama persis ditolak (duplikat). Import bersifat
+   **all-or-nothing** (satu baris invalid = batal semua; maksimal 1000 baris).
+3. **Penyedia** (`/distribusi-bhp/penyedia`) — data rekanan/supplier (berlaku lintas sumber dana).
+4. **Pejabat Sekolah** (`/master-data/pejabat`, menu Master Data sekolah — di luar menu BHP) — data penandatangan
+   dokumen: **Kepala Sekolah**, **Wakasek Sarana Prasarana**, dan **Pembantu
+   Pengurus Barang**. Isi nama, pangkat/golongan, NIP, jenis jabatan
+   (definitif/Plt./Plh.), dan masa jabatan. **Wajib lengkap ketiga jabatan
+   sebelum pengajuan dapat disetujui.** Riwayat pejabat lama tetap tersimpan;
+   menambah pejabat aktif otomatis menutup masa jabatan pejabat sebelumnya.
+5. **Divisi & Operator** (`/distribusi-bhp/divisi`) — buat divisi sekaligus akun
+   operatornya (username otomatis `{npsn}-{suffix}`). Tiap kartu divisi punya
+   tombol **Edit** (ubah nama divisi via modal) dan **Hapus** (modal konfirmasi;
+   menghapus divisi sekaligus seluruh akun operatornya — ditolak bila divisi
+   masih memiliki pengajuan). Reset password & aktif/nonaktif operator juga dari
+   halaman ini.
+
+### 6.3 Mencatat Penerimaan Barang
+
+1. Buka **Buku Penerimaan** (`/distribusi-bhp/{bos|bopd}/penerimaan`), pilih sumber dana (lewat navigasi ke grup BOS/BOPD).
+2. Isi dokumen (nota/invoice, BAST, kwitansi, penyedia, tanggal) lalu tambahkan
+   detail barang dan jumlahnya. Barang masuk akan menambah **stok fisik**.
+3. Untuk saldo awal tahun, buka **Saldo Awal** (`/distribusi-bhp/{bos|bopd}/saldo-awal`),
+   tandai sebagai **saldo awal** dan isi periode tahun.
+4. **Lunas Bayar** (`/distribusi-bhp/{bos|bopd}/penerimaan/lunas-bayar`) menampilkan
+   daftar penerimaan yang sudah dilunasi — read-only view.
+
+> **Stok selalu milik satu sekolah.** Tidak ada stok bersama antar sekolah —
+> penerimaan yang Anda catat hanya mengurangi stok sekolah Anda sendiri.
+
+**Saldo awal** juga punya halaman khusus **Saldo Awal BHP**
+(`/distribusi-bhp/saldo-awal`): pilih sumber dana (BOS/BOPD) dan periode,
+tambah manual, atau **import Excel** (unduh template dulu; satu baris salah
+membatalkan seluruh import). Tombol **Hapus** pada satu baris hanya menghapus
+barang itu — barang lain pada periode yang sama tetap ada. Barang yang sudah
+dipakai pengajuan aktif tidak dapat dihapus.
+
+### 6.4 Membuat & Mensubmit Pengajuan
+
+1. Buka **Pengajuan / Nota Permintaan** (`/distribusi-bhp/{bos|bopd}/pengajuan`, menu sidebar
+   di sub-grup **Distribusi Barang**), buat draft: pilih sumber dana (telah ditentukan
+   oleh grup BOS/BOPD yang dipilih), tanggal, lalu daftar barang + jumlah diminta.
+   Kolom barang menampilkan **stok tersedia** sekolah Anda.
+2. Draft bisa **Edit** (ubah tanggal/daftar barang) atau **Hapus** selama masih
+   `draft`. Setelah disubmit, draft terkunci — perubahan harus lewat Reject lalu
+   buat pengajuan baru.
+3. Klik **Submit**. Sistem memeriksa stok **Tersedia**; bila cukup, jumlah
+   tersebut **direservasi** (belum mengurangi stok terpakai). Bila tidak cukup,
+   submit ditolak dengan pesan sisa stok.
+
+### 6.5 Review & Approval (Admin)
+
+1. Buka **Review Pengajuan** (`/distribusi-bhp/{bos|bopd}/review-pengajuan`),
+   **menu sidebar terpisah** dari Pengajuan/Nota Permintaan. Pilih pengajuan
+   berstatus `submitted`.
+2. **Approve** — boleh mengoreksi jumlah yang disetujui (tidak boleh melebihi
+   yang diminta atau stok tersedia), atau **Reject** dengan alasan wajib.
+3. Approval ditolak bila pejabat penandatangan (kepala sekolah, wakasek
+   sarpras, pembantu pengurus barang) belum lengkap pada tanggal pengajuan;
+   halaman review menampilkan peringatannya.
+4. Saat approve, sistem otomatis membuat dokumen wajib (Nota Permintaan, Surat
+   Permintaan, Surat Perintah Penyaluran) lengkap dengan nomor resmi dan
+   snapshot nama pejabat saat itu — dokumen lama tidak berubah meski pejabat
+   berganti kemudian.
+
+### 6.6 Mencetak Dokumen
+
+1. Dari halaman pengajuan, buka **Dokumen**.
+2. **PDF** untuk mengunduh satu dokumen, atau **Unduh Batch PDF** untuk semua
+   dokumen sekaligus.
+3. Tombol **+ BAST / BAP / Stok Opname** membuat dokumen tambahan (sekali saja
+   per jenis; nomornya tetap bila diklik ulang). Snapshot pada dokumen stok
+   opname/buku hanya berisi data sekolah pengajuan.
+4. Operator divisi hanya dapat membuka dokumen pengajuan divisinya sendiri;
+   dokumen divisi lain ditolak (403).
+
+### 6.7 Melihat Laporan
+
+1. Buka **Laporan Stok** (`/distribusi-bhp/{bos|bopd}/laporan`), pilih sumber dana BOS/BOPD (lewat grup sidebar).
+2. Sub-grup **Laporan** di sidebar menyediakan halaman read-only per jenis:
+   - **BAST Internal**: dokumen BAST (`jenis=bast`)
+   - **Berita Acara Pemeriksaan**: dokumen BAP
+   - **Buku Pengeluaran**: item yang sudah disetujui
+   - **Buku Penyaluran**: dokumen penyaluran
+   - **Kartu Persediaan**: mutasi masuk/keluar dengan saldo berjalan
+   - **Stok Opname**: dokumen stok opname
+3. **Export Excel** tersedia untuk stok, buku pengeluaran, dan kartu
+   persediaan. Kartu persediaan wajib memilih barang yang sealiran sumber
+   dana laporan; jika tidak cocok, sistem menampilkan pesan error (bukan
+   halaman rusak).
+
+> Catatan peran: `operator_divisi` hanya dapat membuat dan mensubmit pengajuan
+> divisinya; review, approval, master, dan cetak dikerjakan role sekolah/admin
+> yang berwenang (`docs/security.md` §1). Dashboard operator divisi menampilkan
+> statistik pengajuan divisinya saja.

@@ -7,7 +7,7 @@ Petunjuk instalasi, konfigurasi environment lokal, dan deployment aplikasi Pelap
 ## 1. Kebutuhan Sistem (Prerequisites)
 
 - **PHP**: &ge; 8.4 (ekstensi: `pdo`, `pdo_pgsql`, `mbstring`, `bcmath`, `curl`, `zip`)
-- **Node.js**: &ge; 20.x & npm &ge; 10.x
+- **Node.js**: &ge; 20.19 (Vite 8; 22.12+ disarankan) & npm &ge; 10.x
 - **Composer**: &ge; 2.8
 - **Database**: PostgreSQL &ge; 14 (dev & prod; test memakai SQLite in-memory)
 - **Web Server**: Nginx, Apache, atau Laravel Valet/Herd
@@ -37,14 +37,31 @@ php artisan key:generate
 # DB_USERNAME=postgres
 # DB_PASSWORD=
 
-# 5. Jalankan migrasi & seeder
+# 5. Letakkan file SQL dump legacy di storage/
+cp /path/to/bm-kcd-x.sql storage/
+
+# 6. Jalankan migrasi & seeder
 php artisan migrate --seed
 # Seeder otomatis menghasilkan:
-# - Akun Developer: username `developer` (password: `#SidiptaBeuKCD10`, role: `super_admin`)
-# - Akun Admin KCD: username `admin_kcd` (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
-# - Akun Operator Sekolah: username `[npsn]-admin` (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
+# - Akun Developer:  username `developer`  (password: `#SidiptaBeuKCD10`, role: `super_admin`)
+# - Akun Admin KCD:  username `admin_kcd`  (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
+# - Akun Operator:   username `{npsn}-admin`  (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
+# - Permission & role BHP (19 permission, 5 role termasuk `operator_divisi`)
+#
+# Catatan: KodeSekolahSeeder mengisi NPSN secara otomatis dari tabel
+# `data_barang_acuan` di file bm-kcd-x.sql. Tanpa file tersebut NPSN tetap
+# null dan user operator tidak dibuat.
+#
+# Seeder juga memanggil DistribusiBhpImportSeeder: mengimpor master + penerimaan
+# BHP dari DB SQLite sumber. Default path:
+#   ../sistem-manajemen-aset/prisma/dev.db.backup.db
+# Bila file sumber tidak ada, impor dilewati dengan peringatan (tidak error).
+# Arahkan ke sumber lain / jalankan manual:
+#   php artisan db:seed --class=DistribusiBhpImportSeeder
+# atau via tinker:
+#   (new Database\Seeders\DistribusiBhpImportSeeder)->setSourcePath('/path/db')->run();
 
-# 5b. (Opsional) Impor data legacy: dump transaksional + katalog kode barang
+# 5b. (Opsional) Impor data legacy BM: dump transaksional + katalog kode barang
 # Letakkan file storage/bm-kcd-x.sql dan storage/db_inventaris.sql, lalu:
 php artisan app:migrasi-data-lama
 

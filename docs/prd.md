@@ -1,7 +1,11 @@
 # Product Requirements Document (PRD): SI DIPTA Beu! — Pelaporan Belanja Modal KCD
 
-> Status: menggambarkan implementasi berjalan (branch `feat/migrasi-laravel-12`).
+> Status: menggambarkan implementasi berjalan (branch `feat/distribusi-bhp`).
 > Stack rujukan: `docs/architecture.md`. Skema data: `docs/database.md`.
+>
+> Dokumen ini fokus pada domain **Pelaporan BM**. Domain **Distribusi BHP**
+> didokumentasikan di §4a di bawah dan detailnya di
+> `docs/requirements/distribusi-bhp-prd.md`.
 
 ## 1. Latar Belakang & Masalah
 
@@ -12,9 +16,15 @@ modal tahunan berbasis kodering rekening. Proses manual/parsial menimbulkan:
 2. Keterlambatan pelaporan bulanan dan format rekap tidak seragam saat konsolidasi dinas.
 3. Jejak audit lemah — siapa mengubah apa dan kapan tidak terlacak.
 
+Selain belanja modal, sekolah juga mengelola **Barang Habis Pakai (BHP)** —
+penerimaan, stok, dan distribusinya bersumber dana BOS/BOPD. Pencatatannya
+terpisah dari belanja modal dan memiliki masalah serupa (stok tidak real-time,
+dokumen dibuat manual, distribusi tidak terlacak).
+
 Sistem ini memigrasi aplikasi legacy PHP prosedural (`legacy/`) ke Laravel +
 Inertia React, menyamakan output Excel legacy (25/26 kolom + sheet `KODE BARANG`),
-dan menambahkan kontrol kunci laporan + log aktivitas sistem-wide.
+menambahkan kontrol kunci laporan + log aktivitas sistem-wide, dan memuat domain
+Distribusi BHP yang berdiri sendiri di bawah `/distribusi-bhp`.
 
 ## 2. Tujuan Produk
 
@@ -25,14 +35,19 @@ dan menambahkan kontrol kunci laporan + log aktivitas sistem-wide.
 | G3 | Standardisasi cetak | XLSX 25 kolom (realisasi) & 26 kolom (cetak) identik legacy, formula hidup |
 | G4 | Akuntabilitas & kontrol | Kunci bulanan + log aktivitas queryable (super_admin & admin_kcd) |
 | G5 | Migrasi aman dari legacy | Perintah `app:migrasi-data-lama` idempoten, terverifikasi test |
+| G6 | Stok BHP akurat & real-time | Stok 4-tier (fisik/terpakai/reservasi/tersedia) per sumber dana, tanpa stok negatif |
+| G7 | Dokumen BHP otomatis | Nomor dokumen atomic + generate otomatis saat approval; PDF satuan & batch |
+| G8 | Pemisahan domain | BM dan BHP tidak berbagi tabel transaksi/status/stok/laporan |
 
 ## 3. Persona & Peran
 
 | Role | Identitas | Kebutuhan utama |
 |------|-----------|-----------------|
-| `super_admin` (`developer`) | Tanpa `sekolah_id`, semua permission | Operasional penuh + melihat log aktivitas seluruh sistem || `admin_kcd` | Tanpa `sekolah_id` | Upload acuan, pantau kepatuhan, verifikasi/kunci, kelola master & user |
-| `operator_sekolah` (`[npsn]-admin`) | Terikat `sekolah_id` | Input SPK/barang, alokasi realisasi, kirim laporan, cetak |
-| `bendahara_sekolah` | Terikat `sekolah_id` | Sama seperti operator (hak setara saat ini) |
+| `super_admin` (`developer`) | Tanpa `sekolah_id`, semua permission | Operasional penuh + melihat log aktivitas seluruh sistem |
+| `admin_kcd` | Tanpa `sekolah_id` | Upload acuan, pantau kepatuhan, verifikasi/kunci, kelola master & user, review BHP |
+| `operator_sekolah` (`[npsn]-admin`) | Terikat `sekolah_id` | Input SPK/barang, alokasi realisasi, kirim laporan, cetak, BHP penuh di sekolahnya |
+| `bendahara_sekolah` | Terikat `sekolah_id` | Sama seperti operator kecuali kelola master/penerimaan BHP |
+| `operator_divisi` | Khusus BHP | Membuat & mensubmit pengajuan BHP (tanpa master/approval/cetak) |
 
 Kredensial default (wajib diganti, lihat `docs/setup.md`):
 operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
@@ -100,6 +115,57 @@ operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
 - Cloudflare Turnstile di login (opsional via env). 2FA (TOTP) + passkeys
   tersedia dari Fortify.
 
+## 4a. Ruang Lingkup Domain Distribusi BHP (`/distribusi-bhp`)
+
+Domain terpisah dari BM. Sumber dana `BOS`/`BOPD` tidak pernah tercampur.
+Detail kontrak: `docs/requirements/distribusi-bhp-prd.md` dan
+`docs/requirements/workflow-distribusi-bhp.md`.
+
+### B1 — Master Data BHP
+- Kode Rekening: unik per `(kode, sumber_dana)`.
+- Barang: kode, nama, spesifikasi, satuan, kode rekening, sumber dana + riwayat harga.
+- Penyedia: nama unik + kontak.
+
+### B2 — Penerimaan
+- Catat dokumen (nota/invoice, BAST, kwitansi, penyedia, titimangsa) + detail barang.
+- Barang masuk menambah stok fisik; mendukung penandaan **saldo awal** + periode tahun.
+
+### B3 — Pengajuan (pemohon)
+- Draft pengajuan (sumber dana, tanggal, item + jumlah diminta).
+- **Submit** memvalidasi stok tersedia lalu membuat reservasi; stok kurang ditolak
+  dengan pesan sisa.
+
+### B4 — Review & Approval (admin)
+- Approve (boleh koreksi `jumlah_disetujui`) atau reject (alasan wajib).
+- Approve + generate dokumen berjalan dalam **satu transaction**.
+
+### B5 — Dokumen & Cetak
+- Nomor otomatis `{urut:3}/BHP/{kode}/{sumber_dana}/{bulan_romawi}/{tahun}`, counter
+  atomic per (jenis, sumber dana, tahun, bulan).
+- Dokumen wajib dibuat saat approve; dokumen tambahan (BAST, BAP, stok opname, buku)
+  dibuat manual dan idempotent per jenis.
+- PDF per dokumen + Batch PDF dengan histori status (`bhp_{bos,bopd}_batch_dokumen`).
+
+### B6 — Laporan & Export
+- Laporan Stok (4-tier), Buku Pengeluaran, Kartu Barang, Kartu Persediaan (saldo berjalan).
+- Export Excel untuk stok, buku pengeluaran, dan kartu persediaan.
+
+### B7 — Impor Data Legacy
+- `DistribusiBhpImportSeeder`: impor master + penerimaan dari DB SQLite sumber;
+  idempotent, melewati baris soft-deleted dan detail keranjang.
+
+### Stok 4-tier (kontrak inti)
+
+```text
+Fisik     = Σ detail penerimaan
+Terpakai  = Σ jumlah_disetujui pada pengajuan status 'approved'
+Reservasi = Σ jumlah_direservasi pada pengajuan status 'submitted'
+Tersedia  = max(0, Fisik − Terpakai − Reservasi)
+```
+
+Semua mutasi lewat `StokService` dengan `lockForUpdate` pada pengajuan, detail,
+dan barang sehingga request bersamaan tidak menghasilkan stok negatif.
+
 ## 5. Kriteria Penerimaan
 
 ### Fungsional (ringkas)
@@ -113,10 +179,19 @@ operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
 - [ ] Setiap mutasi tercatat di `activity_log` (log `sistem`); password tak bocor.
 - [ ] Viewer log: super_admin 200, admin_kcd/operator 403.
 
+### BHP (ringkas)
+- [ ] Stok `Tersedia` tidak pernah negatif; submit melebihi tersedia ditolak.
+- [ ] Reservasi dilepas saat reject; dikonversi ke pemakaian saat approve.
+- [ ] BOS dan BOPD tidak pernah tercampur pada stok, laporan, maupun kartu persediaan.
+- [ ] Approve + generate dokumen atomic (gagal satu → semua rollback).
+- [ ] Nomor dokumen unik dan atomic; dokumen tambahan idempotent (nomor tetap bila diulang).
+- [ ] Pengguna tanpa permission BHP ditolak 403; lintas sekolah ditolak 403.
+- [ ] Impor legacy idempotent; `no_bast` duplikat/NULL tetap menjadi penerimaan terpisah.
+
 ### Non-fungsional
 - Keamanan: lihat `docs/security.md` (RBAC matrix, throttle, validasi).
 - Kualitas: Pint lolos, `tsc --noEmit` 0 error, PHPUnit coverage 100% (semua
-  file) via `composer test-coverage`, 179 test / 930 assertions saat dokumen
+  file) via `composer test-coverage`, 282 test / 1348 assertions saat dokumen
   diperbarui.
 - Dokumentasi: relative path saja (aturan `docs/guidelines.md`).
 
@@ -125,6 +200,8 @@ operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
 - Aplikasi mobile native; notifikasi real-time (email/WA/push).
 - Akuntansi ganda / integrasi SIPD/ARKAS; tanda tangan elektronik.
 - Retensi/purge otomatis log (disimpan permanen hingga diputuskan lain).
+- BHP: penggabungan stok lintas sumber dana, dan migrasi pengajuan/dokumen
+  legacy (hanya master + penerimaan yang diimpor saat ini).
 
 ## 7. Risiko & Mitigasi
 
@@ -134,6 +211,9 @@ operator `#SidiptaKCD10`, admin `#SidiptaBeuKCD10`. Rotasi password 90 hari.
 | Import raksasa memperlambat DB | Batas 5.000/20.000 baris + transaksi + throttle |
 | Kunci manual lupa dibuka | Toggle + status `draft` oleh admin, tercatat di log |
 | Kredensial default bocor | Wajib ganti perdana (middleware), kompleksitas, 2FA opsional |
+| Stok BHP jadi negatif karena request bersamaan | `StokService` + `lockForUpdate` dalam satu transaction; test khusus |
+| BOS/BOPD tercampur | Sumber dana jadi filter wajib; validasi silang; test isolasi |
+| Nomor dokumen dobel | Counter atomic per (jenis, dana, tahun, bulan) dengan row lock |
 
 ## 8. Lampiran
 

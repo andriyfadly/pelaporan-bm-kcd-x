@@ -30,3 +30,5 @@ _test_env.php
 
 # Hermes agent workspace state
 .hermes/
+
+storage/app/*

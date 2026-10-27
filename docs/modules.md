@@ -33,7 +33,10 @@ Khusus role Operator Sekolah dengan alur yang identik dengan legacy:
    - Urutan dokumen terbaru lebih dulu (identik legacy `ORDER BY id DESC`).
    - Fitur Live Search instan (SPK, Nama Barang, Merk/Tipe).
    - Aksi Tambah SPJ (modal pilihan kategori: Peralatan & Mesin vs Buku), Edit SPK, dan Hapus Item/SPK.
-    - **Import Excel SPJ** (tombol "Import Excel" + modal unggah, hanya tampil untuk sekolah dengan NPSN di daftar allowlist): unggah template `/templates/template_import_spj.xlsx` berisi 13 kolom (No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\*, Jenis\*). Nilai Jenis wajib `Peralatan & Mesin` atau `Buku` dan disimpan ke `kategori`; `nama_barang`/`jenis_aset` tetap di-lookup dari katalog via `kode_barang`. Parsing via `maatwebsite/excel`; **all-or-nothing** (satu baris invalid → seluruh impor dibatalkan dengan pesan no. baris + alasan); baris `no_spk` sama digabung jadi 1 SPK multi-item; limit 5.000 baris; diblokir saat laporan terkunci.
+   - **Import Excel SPJ** (tombol "Import Excel" + modal unggah, hanya tampil untuk sekolah dengan NPSN di daftar allowlist): unggah template `/templates/template_import_spj.xlsx` berisi 13 kolom (No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\*, Jenis\*). Nilai Jenis wajib `Peralatan & Mesin` atau `Buku` dan disimpan ke `kategori`; `nama_barang`/`jenis_aset` tetap di-lookup dari katalog via `kode_barang`. Parsing via `maatwebsite/excel`; **all-or-nothing** (satu baris invalid → seluruh impor dibatalkan dengan pesan no. baris + alasan); baris `no_spk` sama digabung jadi 1 SPK multi-item; limit 5.000 baris; diblokir saat laporan terkunci.
+- **Master Kode Rekening BHP (`/distribusi-bhp/master/kode-rekening`)**:
+  - **Admin KCD**: form tambah kode rekening (kode, nama, dropdown kode barang dari 5 opsi statis).
+  - **Operator/Bendahara Sekolah**: tabel read-only + kolom "Assign" berupa dropdown per baris untuk kode rekening yang belum punya `kode_barang`. Pilih kode barang → tombol `Simpan N Assignment` di atas tabel. Data dikirim ke `POST /distribusi-bhp/master/kode-rekening/batch-assign`.
    - Hapus item/SPK ikut menghapus data `pelaporan_bm_realisasi` terkait (transaksi DB) agar tidak ada realisasi yatim.
    - Seluruh mutasi diblokir ketika laporan `status_kunci` aktif atau `status_kirim` `menunggu_approval`/`disetujui` (readonly + gembok).
 3. **Form Dokumen SPK Multi-Item (`/pelaporan-bm/spj/create` & `/pelaporan-bm/spj/edit-spk/{no_spk}`)**:
@@ -50,9 +53,9 @@ Khusus role Operator Sekolah dengan alur yang identik dengan legacy:
    - Rekapitulasi target acuan vs realisasi per kode rekening (identik `legacy/input_realisasi.php`).
    - Accordion daftar uraian belanja per kodering, nominal acuan, realisasi, dan kekurangan.
    - Tombol alokasi SPJ ke kodering dan edit alokasi; alokasi dibatasi sisa anggaran kodering (diblokir bila melebihi).
-    - Panel status pengajuan laporan di bagian bawah: tombol Kirim Laporan ke KCD Wilayah X yang hanya aktif jika total kekurangan anggaran terpenuhi (= 0), dikonfirmasi via ConfirmDialog. Mengubah status menjadi `menunggu_approval` + mengunci laporan.
-    - Setelah `status_kirim` menjadi `menunggu_approval` atau `disetujui`, halaman menjadi read-only untuk Admin KCD dan akun sekolah.
-    - Role `super_admin` tetap dapat membuka halaman edit dan melepas alokasi item pada laporan `disetujui`, termasuk ketika `status_kunci = true`. Perubahan hanya menghapus baris realisasi yang dipilih dalam scope bulan+kodering; status laporan tetap `disetujui`.
+   - Panel status pengajuan laporan di bagian bawah: tombol Kirim Laporan ke KCD Wilayah X yang hanya aktif jika total kekurangan anggaran terpenuhi (= 0), dikonfirmasi via ConfirmDialog. Mengubah status menjadi `menunggu_approval` + mengunci laporan.
+   - Setelah `status_kirim` menjadi `menunggu_approval` atau `disetujui`, halaman menjadi read-only untuk Admin KCD dan akun sekolah.
+   - Role `super_admin` tetap dapat membuka halaman edit dan melepas alokasi item pada laporan `disetujui`, termasuk ketika `status_kunci = true`. Perubahan hanya menghapus baris realisasi yang dipilih dalam scope bulan+kodering; status laporan tetap `disetujui`.
 
 ---
 
@@ -93,8 +96,8 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
   - Rekapitulasi laporan seluruh sekolah per bulan, perbandingan acuan vs realisasi per kodering, serta toggle gembok laporan.
   - Paritas `legacy/rekapan_admin.php`: baris tabel = sekolah dengan acuan pada bulan terpilih (tanpa fallback ke semua sekolah); realisasi & log fisik dihitung dari baris `pelaporan_bm_realisasi` yang dialokasikan ke acuan (`acuan_id`), bukan dari seluruh SPJ bulan tersebut.
   - Detail drill-down dua tab: REKENING ACUAN (badge SESUAI/BELUM SESUAI ditentukan `kekurangan <= 0`) dan INPUT REALISASI (log fisik dengan kolom bulan realisasi).
-   - Aksi admin: ACC Laporan (status → Disetujui) dan Buka Kunci Edit (status → draft) via `/pelaporan-bm/kunci-laporan/status`.
-   - `super_admin` memiliki jalur koreksi langsung untuk edit alokasi realisasi yang sudah disetujui; Admin KCD tetap menggunakan alur Buka Kunci Edit sebelum koreksi.
+  - Aksi admin: ACC Laporan (status → Disetujui) dan Buka Kunci Edit (status → draft) via `/pelaporan-bm/kunci-laporan/status`.
+  - `super_admin` memiliki jalur koreksi langsung untuk edit alokasi realisasi yang sudah disetujui; Admin KCD tetap menggunakan alur Buka Kunci Edit sebelum koreksi.
 
 ---
 
@@ -104,3 +107,44 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
 - **Middleware Interseptor (`EnsurePasswordNotExpired`)**: Mencegah akses ke menu lain jika password operator berstatus kedaluwarsa (`password_changed_at = null` pada login awal, atau berusia &ge; 90 hari).
 - **Dedicated Page (`/ubah-password`)**: Halaman khusus mandiri untuk pembaruan password dengan validasi password rumit (min. 8 karakter, huruf besar/kecil, angka, simbol).
 - **Update Timestamp**: Menyimpan waktu perubahan password (`password_changed_at = now()`) dan mengembalikan hak akses penuh ke dashboard.
+---
+
+## 7. Modul Pencatatan BM (`/pencatatan-bm`)
+
+Alur pembentukan: **SPJ → realisasi → kirim laporan → Admin KCD setujui →
+sinkronisasi → unit inventaris**. SPJ/realisasi yang belum disetujui hanya
+sumber potensial, bukan inventaris aktif.
+
+- **Dashboard** (`/pencatatan-bm`): total unit, nilai perolehan, sebaran
+  kondisi (B/RR/RB), jumlah jenis barang, ruang & pegawai, 10 kode barang
+  terbanyak, dan status sinkronisasi terakhir.
+- **Inventaris** (`/pencatatan-bm/inventaris`): daftar unit per register,
+  filter kondisi, pencarian nama/kode/register/merek, ekspor Excel, dan
+  halaman detail (ubah kondisi/penempatan, unggah foto, label PDF, QR, BAST,
+  riwayat mutasi).
+- **Mutasi** (`/pencatatan-bm/mutasi`): penempatan pertama (`penempatan`) dan
+  perpindahan berikutnya (`mutasi`). Setiap perubahan state meninggalkan satu
+  baris histori; `sekolah_id` tidak berubah.
+- **Pengembalian** (`/pencatatan-bm/pengembalian`): menutup penempatan aktif,
+  kondisi akhir wajib diisi, histori tetap tersimpan.
+- **Berita Acara** (`/pencatatan-bm/berita-acara`): rekap BAST; nomor bisa
+  dikoreksi atau dibatalkan (dengan alasan) tanpa menghapus dokumen.
+- **Dokumen** (`/pencatatan-bm/dokumen`): daftar dokumen tersimpan + unduh PDF.
+  Cetak langsung: KIR per ruang, buku inventaris dan sensus per tahun.
+- **Sinkronisasi** (`/pencatatan-bm/sinkronisasi`, khusus `super_admin`): jalankan
+  ulang per periode, lihat log, dan daftar unit yang perlu tinjau manual.
+
+Master pendukung ada di **Master Data** (sidebar): `Ruang` dan `Pegawai`,
+terpisah dari `Profil Sekolah` dan `Pejabat Sekolah`.
+
+Hak akses:
+
+| Aksi | Operator/Bendahara | Admin KCD | Super Admin |
+|---|---|---|---|
+| Lihat dashboard/inventaris/mutasi/pengembalian | ✔ (sekolahnya) | ✔ (lintas sekolah, baca) | ✔ |
+| Kelola unit, ruang, pegawai, mutasi, pengembalian | ✔ (sekolahnya) | – | ✔ |
+| Cetak dokumen/label/ekspor | ✔ | ✔ | ✔ |
+| Sinkronisasi ulang | – | – | ✔ |
+
+Dokumen memakai kop dan pejabat dari data target (`master_data_sekolah`,
+`pejabat_sekolah`), bukan kop legacy. Data historis legacy tidak dimigrasikan.

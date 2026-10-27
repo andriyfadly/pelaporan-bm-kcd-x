@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\PelaporanBm;
 
 use App\Exports\SpjRekapExport;
+use App\Http\Controllers\Concerns\LocksPelaporanBmPeriod;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Controller;
@@ -24,7 +25,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SpjController extends Controller
 {
-    use ResolvesSekolah, SearchesText;
+    use LocksPelaporanBmPeriod, ResolvesSekolah, SearchesText;
 
     /**
      * NPSN sekolah yang diizinkan memakai fitur import Excel SPJ.
@@ -184,7 +185,7 @@ class SpjController extends Controller
             'ba_no' => 'nullable|string|max:150',
             'ba_tgl' => 'nullable|date',
             'items' => 'required|array|min:1',
-            'items.*.id' => 'nullable|string',
+            'items.*.id' => 'nullable|string|distinct',
             'items.*.kode_barang' => 'required|string|max:50',
             'items.*.nama_barang' => 'required|string|max:255',
             'items.*.jenis_aset' => 'required|string|max:100',
@@ -205,7 +206,14 @@ class SpjController extends Controller
         $isEdit = ! empty($validated['is_edit']);
         $noSpkLama = $validated['no_spk_lama'] ?? $validated['no_spk'];
 
-        DB::transaction(function () use ($validated, $sekolahId, $isEdit, $noSpkLama, $bulan) {
+        $mutationBlocked = false;
+        DB::transaction(function () use ($validated, $sekolahId, $isEdit, $noSpkLama, $bulan, &$mutationBlocked) {
+            if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($sekolahId, $bulan))) {
+                $mutationBlocked = true;
+
+                return;
+            }
+
             $itemIdsKept = [];
 
             foreach ($validated['items'] as $item) {
@@ -232,7 +240,12 @@ class SpjController extends Controller
                 ];
 
                 if (! empty($item['id'])) {
-                    $existing = Spj::where('sekolah_id', $sekolahId)->where('id', $item['id'])->first();
+                    $existing = Spj::where('sekolah_id', $sekolahId)
+                        ->where('id', $item['id'])
+                        ->where('no_spk', $noSpkLama)
+                        ->where('bulan_realisasi', $bulan)
+                        ->lockForUpdate()
+                        ->first();
                     if ($existing) {
                         $existing->update($itemPayload);
                         $itemIdsKept[] = $existing->id;
@@ -272,6 +285,8 @@ class SpjController extends Controller
 
                         continue;
                     }
+
+                    abort(422, 'Item SPJ tidak berasal dari dokumen yang sedang diedit.');
                 }
 
                 $newRecord = Spj::create($itemPayload);
@@ -305,6 +320,10 @@ class SpjController extends Controller
                 }
             }
         });
+
+        if ($mutationBlocked) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
 
         return redirect()->route('pelaporan-bm.spj.index', ['bulan' => $bulan])
             ->with('success', 'Dokumen SPK berhasil disimpan.');
@@ -405,7 +424,14 @@ class SpjController extends Controller
         }
 
         $count = 0;
-        DB::transaction(function () use ($dataRows, $katalog, $sekolahId, $bulan, &$count) {
+        $mutationBlocked = false;
+        DB::transaction(function () use ($dataRows, $katalog, $sekolahId, $bulan, &$count, &$mutationBlocked) {
+            if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($sekolahId, $bulan))) {
+                $mutationBlocked = true;
+
+                return;
+            }
+
             foreach ($dataRows as $row) {
                 $get = fn (int $idx): string => trim((string) ($row[$idx] ?? ''));
                 $kode = $get(5);
@@ -437,6 +463,10 @@ class SpjController extends Controller
                 $count++;
             }
         });
+
+        if ($mutationBlocked) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
 
         // Bulk import bukan aksi sensitif: tercatat, tapi disembunyikan dari admin_kcd
         // (pola sama dengan penyembunyian aktivitas super_admin di ActivityLogController).
@@ -511,7 +541,20 @@ class SpjController extends Controller
         $validated['sekolah_id'] = $sekolahId;
         $validated['nilai_perolehan'] = $validated['volume'] * $validated['harga_satuan'];
 
-        Spj::create($validated);
+        $mutationBlocked = false;
+        DB::transaction(function () use ($validated, $sekolahId, &$mutationBlocked): void {
+            if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($sekolahId, (int) $validated['bulan_realisasi']))) {
+                $mutationBlocked = true;
+
+                return;
+            }
+
+            Spj::create($validated);
+        });
+
+        if ($mutationBlocked) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
 
         return back()->with('success', 'Data SPJ berhasil disimpan.');
     }
@@ -541,10 +584,21 @@ class SpjController extends Controller
             return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
         }
 
-        DB::transaction(function () use ($spj) {
+        $mutationBlocked = false;
+        DB::transaction(function () use ($spj, &$mutationBlocked) {
+            if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($spj->sekolah_id, (int) $spj->bulan_realisasi))) {
+                $mutationBlocked = true;
+
+                return;
+            }
+
             $spj->realisasi()->delete();
             $spj->delete();
         });
+
+        if ($mutationBlocked) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
 
         return back()->with('success', 'Data item SPJ berhasil dihapus.');
     }
@@ -560,7 +614,14 @@ class SpjController extends Controller
         }
 
         $jumlah = 0;
-        DB::transaction(function () use ($sekolahId, $bulan, $no_spk, &$jumlah) {
+        $mutationBlocked = false;
+        DB::transaction(function () use ($sekolahId, $bulan, $no_spk, &$jumlah, &$mutationBlocked) {
+            if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($sekolahId, $bulan))) {
+                $mutationBlocked = true;
+
+                return;
+            }
+
             $items = Spj::where('sekolah_id', $sekolahId)
                 ->where('bulan_realisasi', $bulan)
                 ->where('no_spk', $no_spk)
@@ -577,6 +638,10 @@ class SpjController extends Controller
                 ->where('no_spk', $no_spk)
                 ->delete();
         });
+
+        if ($mutationBlocked) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
 
         // Query-builder delete bypass auto-log trait: catat ringkasan manual.
         activity('sistem')
@@ -636,7 +701,24 @@ class SpjController extends Controller
             }
         }
 
-        $spj->update($validated);
+        $mutationBlocked = false;
+        DB::transaction(function () use ($spj, $validated, &$mutationBlocked): void {
+            $periods = array_unique([(int) $spj->bulan_realisasi, (int) $validated['bulan_realisasi']]);
+            sort($periods);
+            foreach ($periods as $bulan) {
+                if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($spj->sekolah_id, $bulan))) {
+                    $mutationBlocked = true;
+
+                    return;
+                }
+            }
+
+            $spj->update($validated);
+        });
+
+        if ($mutationBlocked) {
+            return back()->with('error', 'Laporan bulan asal atau tujuan telah dikunci atau dikirim.');
+        }
 
         return back()->with('success', 'Data SPJ berhasil diperbarui.');
     }

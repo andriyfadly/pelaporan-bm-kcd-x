@@ -57,7 +57,13 @@ class FortifyActionsTest extends TestCase
 
     public function test_update_user_password_success_and_wrong_current(): void
     {
-        $user = User::create(['name' => 'A', 'username' => 'upd_me', 'password' => Hash::make('#SidiptaKCD10')]);
+        $user = User::create([
+            'name' => 'A',
+            'username' => 'upd_me',
+            'password' => Hash::make('#SidiptaKCD10'),
+            'password_changed_at' => '2025-01-01 00:00:00',
+        ]);
+        $this->travelTo('2026-10-10 12:00:00');
 
         $this->actingAs($user);
         (new UpdateUserPassword)->update($user, [
@@ -66,6 +72,7 @@ class FortifyActionsTest extends TestCase
             'password_confirmation' => self::STRONG,
         ]);
         $this->assertTrue(Hash::check(self::STRONG, $user->refresh()->password));
+        $this->assertSame('2026-10-10 12:00:00', $user->password_changed_at?->format('Y-m-d H:i:s'));
 
         try {
             (new UpdateUserPassword)->update($user, [

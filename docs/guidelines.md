@@ -109,3 +109,48 @@ Standar ini hasil audit UI seluruh halaman (Dashboard, Acuan, Rekapan, Cetak, Ko
    - Autentikasi menggunakan `username` unik tanpa dependensi email.
    - Password baru wajib rumit (`Password::min(8)->letters()->mixedCase()->numbers()->symbols()`).
    - Rotasi password wajib dilakukan tiap 90 hari melalui dedicated page `/ubah-password` yang diproteksi middleware `EnsurePasswordNotExpired`.
+
+## 8. Batas Domain BM vs BHP (WAJIB)
+
+BM (Belanja Modal) dan BHP (Barang Habis Pakai) adalah **domain berbeda** dalam
+satu aplikasi. Lihat `docs/requirements/domain-boundaries.md`.
+
+**Naming yang wajib dipatuhi:**
+
+```text
+App\Models\PelaporanBm\*        ↔  App\Models\DistribusiBhp\*
+App\Http\Controllers\PelaporanBm\*  ↔  App\Http\Controllers\DistribusiBhp\*
+resources/js/Pages/PelaporanBm/*    ↔  resources/js/Pages/DistribusiBhp/*
+/pelaporan-bm/*                 ↔  /distribusi-bhp/*
+preset tabel pelaporan_bm_*     ↔  preset tabel bhp_*
+permission *-bm                 ↔  permission *-bhp
+```
+
+**Larangan (diuji oleh `BhpDomainBoundaryTest`):**
+
+- Jangan menambahkan kolom/relasi BHP (mis. `stok_tereservasi`) ke model BM.
+- Jangan memakai model BM (`Realisasi`, `Acuan`, `Spj`) untuk perhitungan BHP.
+- Jangan memakai nomor/dokumen BHP untuk SPJ BM dan sebaliknya.
+- Jangan memakai `status_kirim` BM sebagai status pengajuan BHP.
+- Permission BM tidak otomatis memberi permission BHP, dan sebaliknya.
+
+**Aturan implementasi BHP:**
+
+- Semua mutasi stok **wajib** lewat `StokService` (jangan `update` jumlah stok langsung).
+- Sumber dana (`BOS`/`BOPD`) wajib menjadi filter pada query stok/laporan.
+- Operasi approve + generate dokumen dibungkus satu transaction; gunakan
+  `StokService::applyApprove` (yang tidak membuka transaction sendiri) bila
+  perlu digabung dengan langkah lain.
+- Endpoint mutasi wajib dijaga middleware `permission:*-bhp`, dan aksi ber-tenant
+  memanggil `resolveSekolahId` + cek kepemilikan record.
+- Dokumen baru cukup ditambah sebagai `jenis` di tabel dokumen per dana
+  (`bhp_{bos,bopd}_dokumen`); jangan membuat tabel baru per jenis dokumen
+  kecuali ada alasan kuat.
+- Tabel BHP dipisah fisik per sumber dana (`bhp_bos_*`/`bhp_bopd_*`); sumber
+  dana implisit dari nama tabel. Selalu resolve tabel/binding lewat
+  `App\Support\DistribusiBhp\SumberDana` (`tabel()`, `existsRule()`, `dengan()`)
+  dan trait `HasSumberDanaTable` — jangan hardcode nama tabel.
+- Endpoint yang menerima `sumber_dana` mengandalkan middleware
+  `sumber-dana-bhp` (fail-closed: invalid → 422). Bila menetapkan konteks dana
+  di service, pakai `SumberDana::dengan()` (restore otomatis), bukan
+  `setAktif()` permanen.

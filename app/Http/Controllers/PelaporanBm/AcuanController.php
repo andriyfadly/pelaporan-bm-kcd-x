@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\PelaporanBm;
 
+use App\Http\Controllers\Concerns\LocksPelaporanBmPeriod;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\Acuan;
+use App\Models\PelaporanBm\Realisasi;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,15 +17,16 @@ use Inertia\Response;
 
 class AcuanController extends Controller
 {
-    use ResolvesSekolah, SearchesText;
+    use LocksPelaporanBmPeriod, ResolvesSekolah, SearchesText;
 
     public function index(Request $request): Response
     {
         $filterBulan = $request->has('bulan') ? $request->input('bulan') : $this->defaultBulan();
+        $filterTahun = (int) $request->input('tahun', now()->year);
         $searchSatuan = trim((string) $request->input('search_satuan', ''));
         $sekolahId = $this->resolveSekolahId($request);
 
-        $query = Acuan::with('sekolah');
+        $query = Acuan::with('sekolah')->where('tahun', $filterTahun);
 
         if ($sekolahId) {
             $query->where('sekolah_id', $sekolahId);
@@ -44,6 +47,7 @@ class AcuanController extends Controller
         $totalSekolah = (int) (clone $query)->whereNotNull('sekolah_id')->distinct('sekolah_id')->count('sekolah_id');
 
         $listBulan = Acuan::query()
+            ->where('tahun', $filterTahun)
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
             ->whereNotNull('bulan')
             ->distinct()
@@ -60,6 +64,7 @@ class AcuanController extends Controller
             'totalNominal' => $totalNominal,
             'totalSekolah' => $totalSekolah,
             'filterBulan' => $filterBulan !== '' && $filterBulan !== null ? (int) $filterBulan : '',
+            'filterTahun' => $filterTahun,
             'searchSatuan' => $searchSatuan,
             'listBulan' => $listBulan,
             'sekolahs' => $request->user()->sekolah_id ? [] : Sekolah::select('id', 'nama_sekolah')->get(),
@@ -76,15 +81,27 @@ class AcuanController extends Controller
             'uraian' => 'required|string',
             'nominal' => 'required|numeric|min:0',
             'bulan' => 'required|integer|between:1,12',
+            'tahun' => 'nullable|integer|between:2026,9999',
         ]);
 
         // Tenant isolation: user sekolah selalu dipaksa ke sekolahnya sendiri,
         // sekolah_id kiriman request diabaikan (konsisten dengan ResolvesSekolah).
-        if ($request->user()->sekolah_id) {
-            $validated['sekolah_id'] = $request->user()->sekolah_id;
-        }
+        $validated['sekolah_id'] = $this->resolveSekolahIdWajib($request);
+        $validated['tahun'] = (int) ($validated['tahun'] ?? date('Y', strtotime($validated['tanggal'])));
+        $mutationBlocked = false;
+        DB::transaction(function () use ($validated, &$mutationBlocked): void {
+            if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($validated['sekolah_id'], (int) $validated['bulan'], $validated['tahun']))) {
+                $mutationBlocked = true;
 
-        Acuan::create($validated);
+                return;
+            }
+
+            Acuan::create($validated);
+        });
+
+        if ($mutationBlocked) {
+            return back()->with('error', 'Laporan bulan ini telah dikunci atau dikirim.');
+        }
 
         return back()->with('success', 'Data acuan berhasil ditambahkan.');
     }
@@ -107,7 +124,27 @@ class AcuanController extends Controller
             abort(403, 'Tidak memiliki akses');
         }
 
-        $acuan->delete();
+        $error = null;
+        DB::transaction(function () use ($acuan, &$error): void {
+            if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($acuan->sekolah_id, (int) $acuan->bulan, (int) $acuan->tahun))) {
+                $error = 'Laporan bulan ini telah dikunci atau dikirim.';
+
+                return;
+            }
+
+            $acuan = Acuan::whereKey($acuan->id)->lockForUpdate()->firstOrFail();
+            if ($acuan->spj()->exists() || $acuan->realisasi()->exists()) {
+                $error = 'Acuan sudah digunakan dan tidak dapat dihapus.';
+
+                return;
+            }
+
+            $acuan->delete();
+        });
+
+        if ($error !== null) {
+            return back()->with('error', $error);
+        }
 
         return back()->with('success', 'Data acuan berhasil dihapus.');
     }
@@ -115,6 +152,7 @@ class AcuanController extends Controller
     public function destroyAll(Request $request): RedirectResponse
     {
         $bulan = $request->input('bulan');
+        $tahun = (int) $request->input('tahun', now()->year);
         $query = Acuan::query();
         $sekolahId = $this->resolveSekolahId($request);
         if ($sekolahId) {
@@ -123,8 +161,33 @@ class AcuanController extends Controller
         if ($bulan !== '' && $bulan !== null) {
             $query->where('bulan', (int) $bulan);
         }
-        $jumlah = (int) (clone $query)->count();
-        $query->delete();
+        $query->where('tahun', $tahun);
+        $jumlah = 0;
+        $error = null;
+        DB::transaction(function () use ($query, &$jumlah, &$error): void {
+            $acuans = $query->orderBy('sekolah_id')->orderBy('bulan')->lockForUpdate()->get();
+            foreach ($acuans->unique(fn (Acuan $acuan) => $acuan->sekolah_id.'|'.$acuan->bulan.'|'.$acuan->tahun) as $acuan) {
+                if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($acuan->sekolah_id, (int) $acuan->bulan, (int) $acuan->tahun))) {
+                    $error = 'Salah satu periode telah dikunci atau dikirim.';
+
+                    return;
+                }
+            }
+
+            $ids = $acuans->modelKeys();
+            if (Realisasi::whereIn('acuan_id', $ids)->exists() || Acuan::whereIn('id', $ids)->whereHas('spj')->exists()) {
+                $error = 'Salah satu acuan sudah digunakan dan tidak dapat dihapus.';
+
+                return;
+            }
+
+            $jumlah = count($ids);
+            Acuan::whereIn('id', $ids)->delete();
+        });
+
+        if ($error !== null) {
+            return back()->with('error', $error);
+        }
 
         activity('sistem')
             ->event('hapus-massal-acuan')
@@ -164,7 +227,36 @@ class AcuanController extends Controller
             return back()->with('error', 'Berkas terlalu besar: maksimal 5000 baris data per impor.');
         }
 
-        DB::transaction(function () use ($rows, $sekolahId, $bulanInput, &$count, &$skipped) {
+        if (! $sekolahId) {
+            $npsnList = collect($rows)->pluck(1)->map(fn ($npsn) => trim((string) $npsn))->filter()->unique();
+            if (collect($rows)->contains(fn (array $row) => trim((string) ($row[1] ?? '')) === '')) {
+                return back()->with('error', 'Impor dibatalkan: setiap baris wajib memiliki NPSN untuk menentukan sekolah.');
+            }
+            $knownNpsn = Sekolah::whereIn('npsn', $npsnList)->pluck('id', 'npsn');
+            $unknownNpsn = $npsnList->reject(fn (string $npsn) => $knownNpsn->has($npsn));
+            if ($unknownNpsn->isNotEmpty()) {
+                return back()->with('error', 'Impor dibatalkan: NPSN tidak ditemukan: '.$unknownNpsn->implode(', ').'.');
+            }
+        }
+
+        $importError = null;
+        DB::transaction(function () use ($rows, $sekolahId, $bulanInput, &$count, &$skipped, &$importError) {
+            $periods = collect($rows)->map(function (array $row) use ($sekolahId, $bulanInput): array {
+                $targetSekolahId = $sekolahId ?: Sekolah::where('npsn', trim((string) ($row[1] ?? '')))->value('id');
+                $bulan = ! empty($row[7]) ? (int) $row[7] : ((int) $bulanInput ?: (int) date('n'));
+                $tahun = (int) date('Y', strtotime((string) ($row[2] ?? '')));
+
+                return ['sekolah_id' => $targetSekolahId, 'bulan' => $bulan, 'tahun' => $tahun];
+            })->unique(fn (array $period) => $period['sekolah_id'].'|'.$period['bulan'].'|'.$period['tahun'])->sortBy(fn (array $period) => $period['sekolah_id'].'|'.$period['tahun'].'|'.sprintf('%02d', $period['bulan']));
+
+            foreach ($periods as $period) {
+                if ($this->pelaporanPeriodIsLocked($this->lockPelaporanPeriod($period['sekolah_id'], $period['bulan'], $period['tahun']))) {
+                    $importError = 'Impor dibatalkan: salah satu periode telah dikunci atau dikirim.';
+
+                    return;
+                }
+            }
+
             foreach ($rows as $row) {
                 if (count($row) < 7) {
                     $skipped++;
@@ -199,10 +291,15 @@ class AcuanController extends Controller
                     'uraian' => $uraian,
                     'nominal' => $nominal,
                     'bulan' => $bulan,
+                    'tahun' => (int) date('Y', strtotime($tanggal)),
                 ]);
                 $count++;
             }
         });
+
+        if ($importError !== null) {
+            return back()->with('error', $importError);
+        }
 
         $pesan = "Berhasil mengimpor {$count} data acuan.";
         if ($skipped > 0) {
@@ -281,9 +378,15 @@ class AcuanController extends Controller
                         } elseif ($type === 'inlineStr') {
                             $val = (string) ($c->is->t ?? $val);
                         }
-                        $row[] = $val;
+                        preg_match('/^[A-Z]+/', (string) $c['r'], $coordinate);
+                        $column = 0;
+                        foreach (str_split($coordinate[0] ?? 'A') as $letter) {
+                            $column = ($column * 26) + ord($letter) - 64;
+                        }
+                        $row[$column - 1] = $val;
                     }
                     if (! empty(array_filter($row, fn ($v) => trim((string) $v) !== ''))) {
+                        $row = array_replace(array_fill(0, max(array_keys($row)) + 1, ''), $row);
                         $rows[] = $row;
                     }
                 }

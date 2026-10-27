@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Master\Sekolah;
 use App\Models\User;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,10 +34,12 @@ class NonaktifUserTest extends TestCase
 
     private function buatTarget(): User
     {
+        $sekolah = Sekolah::create(['nama_sekolah' => 'SMKN Target', 'kota_kab' => 'Kota Bandung']);
         $target = User::create([
             'name' => 'Operator Target',
             'username' => 'target_nonaktif',
             'password' => Hash::make('#SidiptaKCD10'),
+            'sekolah_id' => $sekolah->id,
         ]);
         $target->assignRole('operator_sekolah');
 

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsurePasswordNotExpired;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetSumberDanaBhp;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'sumber-dana-bhp' => SetSumberDanaBhp::class,
         ]);
         $middleware->web(append: [
             HandleInertiaRequests::class,
@@ -40,13 +42,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 'username' => $user?->username,
                 'sekolah_id' => $user?->sekolah_id,
                 'route' => request()->route()?->getName(),
-                'url' => request()->fullUrl(),
+                'connection' => $e->getConnectionName(),
+                'sqlstate' => $e->errorInfo[0] ?? $e->getCode(),
                 'sql' => $e->getSql(),
-                'bindings' => $e->getBindings(),
             ];
             // ponytail: sengaja hanya file log — activity_log ikut mati saat DB down (ayam-telur),
             // dan jejak audit super_admin tetap bersih dari noise infra
-            Log::error('db-error: '.$e->getMessage(), $konteks);
+            Log::error('db-error', $konteks);
         });
 
         $exceptions->render(function (QueryException $e, Request $request) {

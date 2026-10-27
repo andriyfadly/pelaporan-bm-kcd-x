@@ -116,3 +116,218 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
    - Cakupan (terverifikasi test `MigrasiLegacyTest`): 77 `kode_sekolah` → `Sekolah`, 717 `data_barang_acuan` (3 batch) → `Acuan` + backfill `npsn`, 490 `master_barang_sekolah` (4 batch) → `Spj`, 42 `realisasi_barang_sekolah` → `Realisasi`, 13 `laporan_realisasi` → `KunciLaporan` (status `disetujui` + `tanggal_kirim` terbawa), katalog kode barang via `upsert` chunk 500. Users legacy **tidak** dimigrasi (dilewati; akun dikelola `UserSeeder`).
   - Idempoten (`updateOrCreate` by id lama) — aman dijalankan ulang.
   - Wajib dijalankan sekali setelah `migrate --seed` pada instalasi baru yang menginginkan data legacy.
+
+### H. Distribusi BHP (`app/Http/Controllers/DistribusiBhp/*`)
+
+Semua rute ber-prefix `/distribusi-bhp`, name `distribusi-bhp.*`, dan dijaga
+permission BHP. Prefix ini tidak menyentuh `/pelaporan-bm` (lihat
+`docs/requirements/domain-boundaries.md`).
+
+Middleware `sumber-dana-bhp` (`SetSumberDanaBhp`) menyetel sumber dana aktif
+request dari input/query `sumber_dana` **fail-closed**: nilai yang dikirim
+tetapi tidak valid (mis. `APBN`) → **422**, nilai kosong → default `BOS`.
+State sumber dana dipulihkan di `finally` sehingga tidak bocor antar-request.
+Route model binding lintas tabel (BOS/BOPD) ditangani trait
+`HasSumberDanaTable::resolveRouteBinding`.
+
+| Method | Path | Permission | Controller::method |
+|---|---|---|---|---|
+| GET | `/distribusi-bhp/dashboard` | `lihat-distribusi-bhp` | `DashboardController::index` |
+| GET | `/distribusi-bhp/pengajuan` | `lihat-distribusi-bhp` | `PengajuanController::index` |
+| POST | `/distribusi-bhp/pengajuan` | `kelola-pengajuan-bhp` | `PengajuanController::store` |
+| PUT | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::update` — hanya draft |
+| DELETE | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::destroy` — hanya draft |
+| POST | `/distribusi-bhp/pengajuan/{pengajuan}/submit` | `kelola-pengajuan-bhp` | `PengajuanController::submit` |
+| GET | `/distribusi-bhp/review-pengajuan` | `review-pengajuan-bhp` | `ReviewPengajuanController::index` |
+| POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/approve` | `approve-pengajuan-bhp` | `ReviewPengajuanController::approve` |
+| POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/reject` | `approve-pengajuan-bhp` | `ReviewPengajuanController::reject` |
+| GET | `/distribusi-bhp/master/kode-rekening` | `lihat-distribusi-bhp` | `KodeRekeningController::index` |
+| POST | `/distribusi-bhp/master/kode-rekening` | `kelola-master-bhp` | `KodeRekeningController::store` |
+| POST | `/distribusi-bhp/master/kode-rekening/batch-assign` | `lihat-distribusi-bhp` | `KodeRekeningController::batchAssign` |
+| GET/POST/PUT/DELETE | `/distribusi-bhp/master/barang` | `lihat-distribusi-bhp` (read) / `kelola-barang-bhp` (write) | `BarangController` |
+| GET | `/distribusi-bhp/master/barang/{barang}/kelola-harga` | `lihat-distribusi-bhp` | `BarangController::hargaIndex` — halaman kelola harga barang |
+| GET | `/distribusi-bhp/master/barang/template` | `kelola-barang-bhp` | `BarangController::template` — unduh template Excel import barang |
+| POST | `/distribusi-bhp/master/barang/import` | `kelola-barang-bhp` | `BarangController::import` — import Excel (all-or-nothing, max 1000 baris, throttle 10/menit). Kolom: Kode Rekening, Nama Barang, Satuan, Harga Satuan. Kode Barang/NUSP di-generate otomatis |
+| POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-barang-bhp` | `BarangController::storeHarga` — `sumber_dana` wajib |
+| PUT/DELETE | `/distribusi-bhp/master/harga-barang/{harga}` | `kelola-barang-bhp` | `BarangController::updateHarga` / `destroyHarga` |
+| GET/POST/PUT/DELETE | `/distribusi-bhp/penyedia` | `lihat-distribusi-bhp` (read) / `kelola-penyedia-bhp` (write) | `PenyediaController` |
+| GET/POST | `/distribusi-bhp/penerimaan` | `kelola-penerimaan-bhp` | `PenerimaanController` |
+| DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hapus **seluruh** saldo awal (header + semua detail) milik sekolah sendiri yang belum dipakai |
+| GET/POST | `/distribusi-bhp/saldo-awal` | `kelola-penerimaan-bhp` | `SaldoAwalController` — halaman saldo awal (filter `sumber_dana`, `periode`) |
+| DELETE | `/distribusi-bhp/saldo-awal/{detail}` | `kelola-penerimaan-bhp` | `SaldoAwalController` — hapus **satu barang** saldo awal (barang lain tetap; header ikut terhapus bila detail habis). Ditolak bila barang dipakai pengajuan aktif (submitted/approved) |
+| POST | `/distribusi-bhp/saldo-awal/import` | `kelola-penerimaan-bhp` | `SaldoAwalController` — import Excel (all-or-nothing, throttle 10/menit) |
+| GET | `/distribusi-bhp/saldo-awal/template` | `kelola-penerimaan-bhp` | `SaldoAwalController` — unduh template import |
+| GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen` | `lihat-distribusi-bhp` | `DokumenController::show` |
+| GET | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/{dokumen}/pdf` | `cetak-dokumen-bhp` | `DokumenController::pdf` |
+| POST | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/batch` | `cetak-dokumen-bhp` | `DokumenController::batch` |
+| POST | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/tambahan` | `cetak-dokumen-bhp` | `DokumenController::tambahan` |
+| GET | `/distribusi-bhp/laporan` | `lihat-distribusi-bhp` | `LaporanController::index` |
+| GET | `/distribusi-bhp/laporan/kartu-persediaan` | `lihat-distribusi-bhp` | `LaporanController::kartuPersediaan` |
+| GET | `/distribusi-bhp/laporan/export` | `cetak-dokumen-bhp` | `LaporanController::export` |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/bast-internal` | `lihat-distribusi-bhp` | `LaporanController::bastInternal` — view dokumen BAST |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/berita-acara-pemeriksaan` | `lihat-distribusi-bhp` | `LaporanController::bap` — view dokumen BAP |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/buku-pengeluaran` | `lihat-distribusi-bhp` | `LaporanController::bukuPengeluaranPage` — view pengajuan approved |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/buku-penyaluran` | `lihat-distribusi-bhp` | `LaporanController::bukuPenyaluran` — view dokumen penyaluran |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/stok-opname` | `lihat-distribusi-bhp` | `LaporanController::stokOpname` — view dokumen stok opname |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/surat-permintaan-barang` | `lihat-distribusi-bhp` | `LaporanController::suratPermintaan` — view surat permintaan |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/surat-perintah-penyaluran` | `lihat-distribusi-bhp` | `LaporanController::suratPenyaluran` — view surat penyaluran |
+| GET | `/distribusi-bhp/{bos,bopd}/laporan/berita-acara-serah-terima` | `lihat-distribusi-bhp` | `LaporanController::bastSerahTerima` — view BAST serah terima |
+| GET | `/distribusi-bhp/{bos,bopd}/penerimaan/lunas-bayar` | `kelola-penerimaan-bhp` | `PenerimaanController::lunasBayar` — view penerimaan lunas |
+Total: **25 rute** (prefix distribusi-bhp), plus **25 rute × 2** (prefix
+`distribusi-bhp/bos/` dan `distribusi-bhp/bopd/`) dan **8 halaman read-only**
+(daftar dokumen per jenis). Sidebar menu mengarah ke rute per-sumber-dana
+(`/distribusi-bhp/{bos,bopd}/...`); flat routes tetap didukung untuk
+backward compatibility. Rute bos/bopd adalah duplikat dari tabel di atas
+dengan prefix tambahan, permission sama.
+
+### I. Master Data Sekolah (`app/Http/Controllers/Master/*`, prefix `/master-data`)
+
+Rute generic lintas domain (di luar `distribusi-bhp`). Dijaga permission
+`kelola-master-data-sekolah` (admin KCD, super admin, operator sekolah).
+`sekolah_id` selalu dari user login — operator hanya menyentuh sekolahnya.
+
+| Method | Path | Controller::method |
+|---|---|---|
+| GET | `/master-data/pejabat` | `PejabatSekolahController::index` |
+| POST | `/master-data/pejabat` | `PejabatSekolahController::store` |
+| PUT | `/master-data/pejabat/{pejabat}` | `PejabatSekolahController::update` |
+| PUT | `/master-data/pejabat/{pejabat}/akhiri` | `PejabatSekolahController::akhiri` |
+| GET | `/master-data/profil-sekolah` | `ProfilSekolahController::edit` |
+| PUT | `/master-data/profil-sekolah` | `ProfilSekolahController::update` |
+
+Payload penting:
+
+- `POST kode-rekening`: `kode` (string), `nama` (string), `sumber_dana` (`BOS`/`BOPD`),
+  `kode_barang` (opsional, salah satu dari 5 nilai `KODE_BARANG_OPTIONS`),
+  `uraian_kode_barang` (opsional). Akses `kelola-master-bhp` (admin KCD).
+- `POST kode-rekening/batch-assign`: `assignments[]` — array objek (`id` UUID,
+  `kode_barang` string dari 5 opsi, `uraian_kode_barang` string). Akses
+  `lihat-distribusi-bhp` (sekolah). Update massal field
+  `kode_barang`/`uraian_kode_barang`.
+- `POST pengajuan`: `sumber_dana` (`BOS`/`BOPD`), `tanggal`, `items[]`
+  (`barang_id`, `jumlah_diminta`, `keperluan`). `PUT pengajuan/{pengajuan}`
+  memakai payload sama dan hanya berlaku untuk status `draft`.
+  **Source-match guard**: `update`, `submit`, dan `destroy` menolak bila
+  `sumber_dana` request tidak cocok dengan sumber dana model ter-binding
+  (mencegah IDOR lintas sumber dana lewat route model binding).
+- `POST penerimaan` / `POST saldo-awal`: `sekolah_id` **selalu dari user login**
+  (input request diabaikan); domain BHP tidak mengenal pool pusat sehingga
+  konteks sekolah **wajib** — admin tanpa sekolah menerima 422.
+- `POST pejabat` / `PUT pejabat/{pejabat}`: `jabatan` ∈ {`kepala_sekolah`,
+  `wakasek_sarpras`, `pembantu_pengurus_barang`}, `jenis_jabatan` ∈
+  {`definitif`, `plt`, `plh`}, `nama`, `pangkat_golongan`, `nip`,
+  `mulai_menjabat`, `selesai_menjabat` (opsional). `PUT pejabat/{pejabat}/akhiri`:
+  `selesai_menjabat` (wajib). Menambah pejabat aktif otomatis menutup pejabat
+  aktif lama (H-1); periode overlap ditolak.
+- `POST dokumen/tambahan`: `jenis` ∈ {`bast`, `bap`, `stok_opname`,
+  `buku_pengeluaran`, `buku_penyaluran`}, `tanggal` (opsional). Idempotent per
+  jenis.
+- `GET laporan/export`: `sumber_dana`, `jenis` ∈ {`stok`, `pengeluaran`,
+  `kartu_persediaan`}; `barang_id` **wajib** bila `jenis=kartu_persediaan`
+  (divalidasi `uuid` + `exists` ke tabel barang **sesuai sumber dana** laporan,
+  via `SumberDana::existsRule('barang', $sumberDana)` — barang dana lain
+  ditolak sebagai validation error). Barang dengan sumber dana berbeda dari
+  `sumber_dana` laporan → redirect + flash `error` (bukan 500).
+- `GET laporan/kartu-persediaan`: `barang_id` (`uuid` + `exists` ke tabel barang
+  sesuai sumber dana, opsional), `sumber_dana` (opsional; default `BOS`).
+  Mengembalikan `kartu` berisi `barang` (saldo awal/masuk/keluar/akhir) +
+  `mutasi[]` dengan saldo berjalan.
+
+### J. Migrasi Data Legacy BHP (seeder)
+
+- **`php artisan db:seed --class=DistribusiBhpImportSeeder`**
+  (`database/seeders/DistribusiBhpImportSeeder.php`)
+  - Membaca DB SQLite sumber (Next/Prisma). Default:
+    `../sistem-manajemen-aset/prisma/dev.db.backup.db`; dapat diarahkan via
+    `setSourcePath()`.
+  - Cakupan: kode rekening, penyedia (`bhp_penyedia`, bersama),
+    barang, harga barang, penerimaan + detail. Baris sumber dana
+    `BOS`/`BOPD` dituliskan ke tabel fisik per dana (`bhp_bos_*`/`bhp_bopd_*`)
+    via konteks `SumberDana::dengan()`.
+  - Melewati baris `deleted_at` (bila kolom ada) dan detail
+    `cart_status != 'saved'`.
+  - Idempotent (upsert berbasis `source_id` untuk penerimaan, natural key untuk
+    master). Terdaftar di `DatabaseSeeder`, jadi ikut `migrate --seed`; bila
+    sumber tidak ada, seeder hanya memberi peringatan dan dilewati.
+  - Terverifikasi `BhpImportSeederTest`.
+
+---
+
+## 3. Pencatatan BM — Inventaris Aset (`app/Http/Controllers/PencatatanBm/*`, prefix `/pencatatan-bm`)
+
+Sumber tunggal unit inventaris adalah `pelaporan_bm_realisasi` yang periodenya
+(`sekolah_id`, `bulan_realisasi`, `tahun`) berstatus `disetujui` di
+`pelaporan_bm_kunci_laporan`. Tidak ada jalur input unit manual.
+
+`sekolah_id` selalu dari `resolveSekolahId()` (operator dipaksa ke sekolahnya;
+admin tanpa sekolah melihat lintas sekolah). Data sekolah lain dijawab **404**,
+bukan 403, agar UUID sekolah lain tidak membocorkan keberadaan data.
+
+| Method | Path | Controller::method | Permission |
+|---|---|---|---|
+| GET | `/pencatatan-bm` | `DashboardController::index` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/inventaris` | `InventarisController::index` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/inventaris-export` | `InventarisController::export` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/inventaris/{unit}` | `InventarisController::show` | `lihat-pencatatan-bm` |
+| PUT | `/pencatatan-bm/inventaris/{unit}/kondisi` | `InventarisController::updateKondisi` | `kelola-inventaris-bm` |
+| POST | `/pencatatan-bm/inventaris/{unit}/foto` | `UnitInventarisController::storeFoto` | `kelola-inventaris-bm` |
+| GET | `/pencatatan-bm/foto/{foto}` | `UnitInventarisController::foto` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/mutasi` | `MutasiController::index` | `lihat-pencatatan-bm` |
+| POST | `/pencatatan-bm/mutasi/{unit}` | `MutasiController::store` | `mutasi-inventaris-bm` |
+| GET | `/pencatatan-bm/pengembalian` | `PengembalianController::index` | `lihat-pencatatan-bm` |
+| POST | `/pencatatan-bm/pengembalian/{unit}` | `PengembalianController::store` | `proses-pengembalian-bm` |
+| GET | `/pencatatan-bm/berita-acara` | `BeritaAcaraController::index` | `cetak-inventaris-bm` |
+| PUT | `/pencatatan-bm/berita-acara/{dokumen}` | `BeritaAcaraController::update` | `cetak-inventaris-bm` |
+| DELETE | `/pencatatan-bm/berita-acara/{dokumen}` | `BeritaAcaraController::destroy` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen` | `DokumenInventarisController::index` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/kir?ruang={id}` | `DokumenInventarisController::kir` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/buku-inventaris?tahun=` | `DokumenInventarisController::bukuInventaris` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/sensus?tahun=` | `DokumenInventarisController::sensus` | `cetak-inventaris-bm` |
+| POST | `/pencatatan-bm/dokumen/bast/{unit}` | `DokumenInventarisController::bast` | `cetak-inventaris-bm` |
+| POST | `/pencatatan-bm/dokumen/fakta-integritas/{pegawai}` | `DokumenInventarisController::faktaIntegritas` | `cetak-inventaris-bm` |
+| POST | `/pencatatan-bm/dokumen/surat-pengembalian/{unit}` | `DokumenInventarisController::suratPengembalian` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/{dokumen}/pdf` | `DokumenInventarisController::pdf` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/label/{unit}/qr` | `UnitInventarisController::qr` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/label/{unit}/pdf` | `UnitInventarisController::label` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/sinkronisasi` | `SyncController::index` | `sinkronisasi-inventaris-bm` |
+| POST | `/pencatatan-bm/sinkronisasi` | `SyncController::store` | `sinkronisasi-inventaris-bm` |
+
+Master ruang & pegawai sekolah berada di grup `/master-data` (bukan
+`/pencatatan-bm`) karena dipakai juga oleh modul lain:
+
+| Method | Path | Controller::method | Permission |
+|---|---|---|---|
+| GET/POST | `/master-data/ruang` | `RuangController::index`/`store` | `kelola-ruang-bm` |
+| PUT/DELETE | `/master-data/ruang/{ruang}` | `RuangController::update`/`destroy` | `kelola-ruang-bm` |
+| GET/POST | `/master-data/pegawai` | `PegawaiController::index`/`store` | `kelola-pegawai-bm` |
+| PUT/DELETE | `/master-data/pegawai/{pegawai}` | `PegawaiController::update`/`destroy` | `kelola-pegawai-bm` |
+
+Payload penting:
+
+- `PUT inventaris/{unit}/kondisi`: `kondisi` ∈ {`B`, `RR`, `RB`} (wajib),
+  `keterangan`, `ruang_id`, `pegawai_id` (opsional). Ruang/pegawai **wajib**
+  milik sekolah unit (validasi `exists ... where sekolah_id`).
+- `POST mutasi/{unit}`: `tanggal` (wajib), `ruang_id`, `pegawai_id`,
+  `kondisi`, `keterangan`. Minimal satu dari ruang/pegawai/kondisi harus
+  berubah. Unit `dihapus_koreksi` ditolak.
+- `POST pengembalian/{unit}`: `kondisi` (wajib), `tanggal` (wajib),
+  `keterangan`. Ditolak bila unit tidak sedang ditempatkan.
+- `POST inventaris/{unit}/foto`: multipart `foto` — `image`,
+  `mimes:jpg,jpeg,png,webp`, maks 5120 KB. Nama file dibuat server-side;
+  path, MIME, ukuran, dan SHA-256 dicatat di `inventaris_foto`.
+- `DELETE berita-acara/{dokumen}`: `alasan` (wajib, maks 500). Nomor
+  dikosongkan dan alasan disimpan di `payload.pembatalan`; dokumen tidak dihapus.
+- `POST sinkronisasi`: `sekolah_id` (uuid), `bulan` (1–12), `tahun`. Aman
+  diulang; hanya periode `disetujui` yang menghasilkan unit. Kegagalan
+  dicatat di `inventaris_sync_logs`, status persetujuan tidak dibatalkan.
+
+QR unit berisi **signed URL** ke detail unit (`temporarySignedRoute`, 1 tahun),
+tanpa `sekolah_id` di payload. Scan tetap melewati otorisasi tenant.
+
+Command re-sync (admin/ops):
+
+```bash
+php artisan pencatatan-bm:resync --bulan=3 --tahun=2026            # semua sekolah
+php artisan pencatatan-bm:resync --bulan=3 --tahun=2026 --sekolah=<uuid>
+php artisan pencatatan-bm:resync --bulan=3 --tahun=2026 --dry-run  # rencana saja
+```

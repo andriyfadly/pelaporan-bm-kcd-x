@@ -10,12 +10,243 @@ import {
     LogOut,
     Menu,
     ChevronDown,
+    Boxes,
+    PackageCheck,
     User as UserIcon,
 } from 'lucide-react';
 
 interface Props {
     title?: string;
     children: ReactNode;
+}
+
+interface BhpMenuProps {
+    currentPath: string;
+    collapsed: boolean;
+    openBhp: boolean;
+    setOpenBhp: (open: boolean) => void;
+    permissions: string[];
+}
+
+/** Menu navigasi domain Distribusi BHP, dengan dua grup terpisah per sumber dana. */
+function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions }: BhpMenuProps) {
+    const [openBhpBos, setOpenBhpBos] = useState(currentPath.startsWith('/distribusi-bhp/bos/'));
+    const [openBhpBopd, setOpenBhpBopd] = useState(currentPath.startsWith('/distribusi-bhp/bopd/'));
+
+    // Auto-buka section saat berada di halaman di bawahnya.
+    useEffect(() => { if (currentPath.startsWith('/distribusi-bhp/bos/')) setOpenBhpBos(true); }, [currentPath]);
+    useEffect(() => { if (currentPath.startsWith('/distribusi-bhp/bopd/')) setOpenBhpBopd(true); }, [currentPath]);
+    const canMaster = permissions.includes('kelola-master-bhp');
+    const canTerima = permissions.includes('kelola-penerimaan-bhp');
+    const canPengajuan = permissions.includes('kelola-pengajuan-bhp');
+    const canReview = permissions.includes('review-pengajuan-bhp');
+    const canDivisi = permissions.includes('kelola-divisi-bhp');
+    const canKelolaPenyedia = permissions.includes('kelola-penyedia-bhp');
+    const canKelolaBarang = permissions.includes('kelola-barang-bhp');
+    const canCetak = permissions.includes('cetak-dokumen-bhp');
+
+    const isBhpActive = currentPath.startsWith('/distribusi-bhp');
+
+    const itemClass = (active: boolean) =>
+        `block px-3 py-2 text-[13.5px] rounded-lg transition ${
+            active
+                ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+        }`;
+
+    const subNavClass = (active: boolean) =>
+        `block px-3 py-1.5 text-[12.5px] rounded-lg transition ${
+            active
+                ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+        }`;
+
+    const section = (sumberDana: string, openSection: boolean, setOpenSection: (v: boolean) => void) => {
+        const prefix = `/distribusi-bhp/${sumberDana}`;
+        const isBos = sumberDana === 'bos';
+        const label = `Distribusi BHP ${isBos ? 'BOS' : 'BOPD'}`;
+        const isActive = currentPath.startsWith(prefix);
+        const prefixSlash = prefix + '/';
+
+        return (
+            <div key={sumberDana} className="pt-1">
+                <button
+                    type="button"
+                    onClick={() => setOpenSection(!openSection)}
+                    aria-expanded={openSection}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
+                        isActive ? 'text-[#2563eb] bg-blue-50/50' : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50'
+                    }`}
+                >
+                    <span className="uppercase tracking-wider">{label}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openSection ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openSection && (
+                    <div className="pl-2 space-y-0.5 pt-0.5">
+                    {/* Saldo Awal */}
+                    {canTerima && (
+                        <Link href={`${prefix}/saldo-awal`} className={itemClass(currentPath.startsWith(`${prefix}/saldo-awal`))}>
+                            Saldo Awal
+                        </Link>
+                    )}
+                    {/* Kode Rekening */}
+                    {canMaster && (
+                        <Link href={`${prefix}/master/kode-rekening`} className={itemClass(currentPath.startsWith(`${prefix}/master/kode-rekening`))}>
+                            Kode Rekening
+                        </Link>
+                    )}
+                    {/* Data Barang */}
+                    {canKelolaBarang && (
+                        <Link href={`${prefix}/master/barang`} className={itemClass(currentPath.startsWith(`${prefix}/master/barang`))}>
+                            Data Barang
+                        </Link>
+                    )}
+                    {/* Distribusi Barang group */}
+                    <PageGroupTitle title="Distribusi Barang" />
+                    {canTerima && (
+                        <Link href={`${prefix}/penerimaan/lunas-bayar`} className={subNavClass(currentPath.startsWith(`${prefix}/penerimaan/lunas-bayar`))}>
+                            Lunas Bayar
+                        </Link>
+                    )}
+                    {canTerima && (
+                        <Link href={`${prefix}/penerimaan`} className={subNavClass(currentPath === `${prefix}/penerimaan` || currentPath.startsWith(`${prefix}/penerimaan?`))}>
+                            Buku Penerimaan
+                        </Link>
+                    )}
+                    {canPengajuan && (
+                        <Link href={`${prefix}/pengajuan`} className={subNavClass(currentPath.startsWith(`${prefix}/pengajuan`))}>
+                            Nota Permintaan
+                        </Link>
+                    )}
+                    {/* Penyaluran group */}
+                    <PageGroupTitle title="Penyaluran" />
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/surat-permintaan-barang`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/surat-permintaan-barang`))}>
+                            Surat Permintaan Barang
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/surat-perintah-penyaluran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/surat-perintah-penyaluran`))}>
+                            Surat Perintah Penyaluran
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/berita-acara-serah-terima`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/berita-acara-serah-terima`))}>
+                            Berita Acara Serah Terima
+                        </Link>
+                    )}
+                    {/* Laporan group */}
+                    <PageGroupTitle title="Laporan" />
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/bast-internal`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/bast-internal`))}>
+                            BAST Internal
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/berita-acara-pemeriksaan`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/berita-acara-pemeriksaan`))}>
+                            Berita Acara Pemeriksaan
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/buku-pengeluaran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-pengeluaran`))}>
+                            Buku Pengeluaran
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/buku-penyaluran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-penyaluran`))}>
+                            Buku Penyaluran
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/kartu-persediaan`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/kartu-persediaan`))}>
+                            Kartu Persediaan
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/stok-opname`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/stok-opname`))}>
+                            Stok Opname
+                        </Link>
+                    )}
+                </div>
+                )}
+            </div>
+        );
+    };
+
+    const isSumberDanaBhp = (path: string) => {
+        if (!path.startsWith('/distribusi-bhp')) return false;
+        // paths with bos/bopd prefix
+        if (path.match(/^\/distribusi-bhp\/(bos|bopd)\//)) return true;
+        // current flat paths
+        return ['/distribusi-bhp/dashboard', '/distribusi-bhp/settings', '/distribusi-bhp/divisi'].some(p => path.startsWith(p));
+    };
+
+    return (
+        <div className="pt-4">
+            {!collapsed && (
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-2">
+                    Distribusi BHP
+                </div>
+            )}
+            <button
+                type="button"
+                onClick={() => setOpenBhp(!openBhp)}
+                aria-expanded={openBhp}
+                aria-controls="nav-bhp"
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${
+                    isBhpActive ? 'text-[#2563eb] bg-blue-50/30' : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                }`}
+                title={collapsed ? 'Distribusi BHP' : undefined}
+            >
+                <div className="flex items-center gap-3">
+                    <Boxes className="w-5 h-5 shrink-0" />
+                    {!collapsed && <span>Distribusi BHP</span>}
+                </div>
+                {!collapsed && (
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openBhp ? 'rotate-180' : ''}`} />
+                )}
+            </button>
+
+            {!collapsed && openBhp && (
+                <div id="nav-bhp" className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
+                    <Link href="/distribusi-bhp/dashboard" className={itemClass(currentPath.startsWith('/distribusi-bhp/dashboard'))}>
+                        Dashboard BHP
+                    </Link>
+                    {canDivisi && (
+                        <Link href="/distribusi-bhp/divisi" className={itemClass(currentPath.startsWith('/distribusi-bhp/divisi'))}>
+                            Divisi
+                        </Link>
+                    )}
+                    {canKelolaPenyedia && (
+                        <Link href="/distribusi-bhp/penyedia" className={itemClass(currentPath.startsWith('/distribusi-bhp/penyedia'))}>
+                            Penyedia
+                        </Link>
+                    )}
+                    {canMaster && (
+                        <Link href="/distribusi-bhp/settings" className={itemClass(currentPath.startsWith('/distribusi-bhp/settings'))}>
+                            Settings BHP
+                        </Link>
+                    )}
+                    {section('bos', openBhpBos, setOpenBhpBos)}
+                    {section('bopd', openBhpBopd, setOpenBhpBopd)}
+                    {canMaster && (
+                        <Link href="/master-data/pejabat" className={itemClass(currentPath.startsWith('/master-data/pejabat'))}>
+                            Pejabat Sekolah
+                        </Link>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function PageGroupTitle({ title }: { title: string }) {
+    return (
+        <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest px-1 pt-2 pb-0.5">
+            {title}
+        </div>
+    );
 }
 
 export default function AppLayout({ title = 'Dashboard', children }: Props) {
@@ -31,8 +262,17 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const currentPath = window.location.pathname;
 
     const roles: string[] = user?.roles || [];
+    const permissions: string[] = user?.permissions || [];
     const isAdmin = roles.includes('admin_kcd') || roles.includes('super_admin') || !user?.sekolah_id;
     const isSuperAdmin = roles.includes('super_admin');
+
+    const canBhp = permissions.includes('lihat-distribusi-bhp');
+    const canMasterData = permissions.includes('kelola-master-data-sekolah');
+    const canPencatatan = permissions.includes('lihat-pencatatan-bm');
+    const canRuang = permissions.includes('kelola-ruang-bm');
+    const canPegawai = permissions.includes('kelola-pegawai-bm');
+    const canSyncInventaris = permissions.includes('sinkronisasi-inventaris-bm');
+    const [openBhp, setOpenBhp] = useState(true);
 
     const isMasterActive =
         currentPath.startsWith('/admin/kode-barang') ||
@@ -40,10 +280,15 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
         currentPath.startsWith('/pelaporan-bm/rekapan') ||
         currentPath.startsWith('/admin/user');
 
+    const isMasterDataActive = currentPath.startsWith('/master-data');
+    const isPencatatanActive = currentPath.startsWith('/pencatatan-bm');
+
     const isLaporanActive = currentPath.startsWith('/pelaporan-bm/cetak');
 
-    const [openMaster, setOpenMaster] = useState(true);
-    const [openLaporan, setOpenLaporan] = useState(true);
+    const [openMaster, setOpenMaster] = useState(isMasterActive);
+    const [openMasterDataAset, setOpenMasterDataAset] = useState(isMasterDataActive);
+    const [openPencatatan, setOpenPencatatan] = useState(isPencatatanActive);
+    const [openLaporan, setOpenLaporan] = useState(isLaporanActive);
 
     useEffect(() => {
         document.body.style.overflow = mobileOpen ? 'hidden' : '';
@@ -51,6 +296,13 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
             document.body.style.overflow = '';
         };
     }, [mobileOpen]);
+
+    // Auto-open dropdowns when their child page is active
+    useEffect(() => { if (isMasterActive) setOpenMaster(true); }, [isMasterActive]);
+    useEffect(() => { if (isMasterDataActive) setOpenMasterDataAset(true); }, [isMasterDataActive]);
+    useEffect(() => { if (isPencatatanActive) setOpenPencatatan(true); }, [isPencatatanActive]);
+    useEffect(() => { if (isLaporanActive) setOpenLaporan(true); }, [isLaporanActive]);
+    useEffect(() => { if (currentPath.startsWith('/distribusi-bhp/')) setOpenBhp(true); }, [currentPath]);
 
     return (
         <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans flex">
@@ -256,6 +508,118 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                     </div>
                                 )}
                             </div>
+
+                            {canBhp && <BhpHtmlMenu currentPath={currentPath} collapsed={collapsed} openBhp={openBhp} setOpenBhp={setOpenBhp} permissions={permissions} />}
+
+                            {canPencatatan && (
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpenPencatatan(!openPencatatan)}
+                                        aria-expanded={openPencatatan}
+                                        aria-controls="nav-pencatatan"
+                                        className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${isPencatatanActive
+                                                ? 'text-[#2563eb] bg-blue-50/30'
+                                                : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                                            }`}
+                                        title={collapsed ? 'Pencatatan BM' : undefined}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Boxes className="w-5 h-5 shrink-0" />
+                                            {!collapsed && <span>Pencatatan BM</span>}
+                                        </div>
+                                        {!collapsed && (
+                                            <ChevronDown
+                                                className={`w-4 h-4 transition-transform duration-200 ${openPencatatan ? 'rotate-180' : ''}`}
+                                            />
+                                        )}
+                                    </button>
+
+                                    {(!collapsed && openPencatatan) && (
+                                        <div id="nav-pencatatan" className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
+                                            <Link
+                                                href="/pencatatan-bm"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath === '/pencatatan-bm'
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Dashboard
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/inventaris"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/inventaris')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Inventaris
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/mutasi"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/mutasi')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Mutasi
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/pengembalian"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengembalian')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Pengembalian
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/berita-acara"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/berita-acara')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Berita Acara
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/dokumen"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/dokumen')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Dokumen
+                                            </Link>
+                                            {canSyncInventaris && (
+                                                <Link
+                                                    href="/pencatatan-bm/sinkronisasi"
+                                                    className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/sinkronisasi')
+                                                            ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                            : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                        }`}
+                                                >
+                                                    Sinkronisasi
+                                                </Link>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {canMasterData && (
+                                <Link
+                                    href="/master-data/profil-sekolah"
+                                    className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition ${isMasterDataActive
+                                            ? 'bg-[#eff6ff] text-[#2563eb] border-l-4 border-[#2563eb] rounded-l-none'
+                                            : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                                        }`}
+                                    title={collapsed ? 'Profil Sekolah' : undefined}
+                                >
+                                    <UserIcon className="w-5 h-5 shrink-0" />
+                                    {!collapsed && <span>Profil Sekolah</span>}
+                                </Link>
+                            )}
                         </>
                     ) : (
                         <>
@@ -311,6 +675,139 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                 <FileSpreadsheet className="w-5 h-5 shrink-0" />
                                 {!collapsed && <span>Data Realisasi</span>}
                             </Link>
+
+                            {canBhp && <BhpHtmlMenu currentPath={currentPath} collapsed={collapsed} openBhp={openBhp} setOpenBhp={setOpenBhp} permissions={permissions} />}
+
+                            {canPencatatan && (
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpenPencatatan(!openPencatatan)}
+                                        aria-expanded={openPencatatan}
+                                        aria-controls="nav-pencatatan-user"
+                                        className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${isPencatatanActive
+                                                ? 'text-[#2563eb] bg-blue-50/30'
+                                                : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                                            }`}
+                                        title={collapsed ? 'Pencatatan BM' : undefined}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Boxes className="w-5 h-5 shrink-0" />
+                                            {!collapsed && <span>Pencatatan BM</span>}
+                                        </div>
+                                        {!collapsed && (
+                                            <ChevronDown
+                                                className={`w-4 h-4 transition-transform duration-200 ${openPencatatan ? 'rotate-180' : ''}`}
+                                            />
+                                        )}
+                                    </button>
+
+                                    {(!collapsed && openPencatatan) && (
+                                        <div id="nav-pencatatan-user" className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
+                                            <Link
+                                                href="/pencatatan-bm"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath === '/pencatatan-bm'
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Dashboard
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/inventaris"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/inventaris')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Inventaris
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/mutasi"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/mutasi')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Mutasi
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/pengembalian"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengembalian')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Pengembalian
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(canRuang || canPegawai || canMasterData) && (
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpenMasterDataAset(!openMasterDataAset)}
+                                        aria-expanded={openMasterDataAset}
+                                        aria-controls="nav-master-data-aset"
+                                        className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${isMasterDataActive
+                                                ? 'text-[#2563eb] bg-blue-50/30'
+                                                : 'text-slate-500 hover:bg-blue-50/50 hover:text-[#2563eb]'
+                                            }`}
+                                        title={collapsed ? 'Master Data' : undefined}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Database className="w-5 h-5 shrink-0" />
+                                            {!collapsed && <span>Master Data</span>}
+                                        </div>
+                                        {!collapsed && (
+                                            <ChevronDown
+                                                className={`w-4 h-4 transition-transform duration-200 ${openMasterDataAset ? 'rotate-180' : ''}`}
+                                            />
+                                        )}
+                                    </button>
+
+                                    {(!collapsed && openMasterDataAset) && (
+                                        <div id="nav-master-data-aset" className="pl-5 ml-6 border-l border-slate-200 my-1 space-y-1">
+                                            {canRuang && (
+                                                <Link
+                                                    href="/master-data/ruang"
+                                                    className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/master-data/ruang')
+                                                            ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                            : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                        }`}
+                                                >
+                                                    Ruang
+                                                </Link>
+                                            )}
+                                            {canPegawai && (
+                                                <Link
+                                                    href="/master-data/pegawai"
+                                                    className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/master-data/pegawai')
+                                                            ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                            : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                        }`}
+                                                >
+                                                    Pegawai
+                                                </Link>
+                                            )}
+                                            {canMasterData && (
+                                                <Link
+                                                    href="/master-data/profil-sekolah"
+                                                    className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/master-data/profil-sekolah')
+                                                            ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                            : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                        }`}
+                                                >
+                                                    Profil Sekolah
+                                                </Link>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </>
                     )}
                 </div>

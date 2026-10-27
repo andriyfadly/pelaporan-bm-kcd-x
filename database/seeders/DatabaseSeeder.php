@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PeranDanHakAksesSeeder::class,
             KodeSekolahSeeder::class,
             UserSeeder::class,
+            KodeRekeningBhpSeeder::class,
         ]);
     }
 }
