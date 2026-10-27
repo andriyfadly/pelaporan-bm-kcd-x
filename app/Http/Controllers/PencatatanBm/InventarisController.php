@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\PencatatanBm;
 
+use App\Exports\InventarisExport;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\PencatatanBm\Concerns\TenantScope;
@@ -16,6 +17,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class InventarisController extends Controller
 {
@@ -86,5 +89,23 @@ class InventarisController extends Controller
         $unit->update($request->validated());
 
         return back()->with('success', "Kondisi unit {$unit->nomor_register} diperbarui.");
+    }
+
+    public function export(Request $request): BinaryFileResponse
+    {
+        $sekolahId = $this->resolveSekolahIdWajib($request);
+        $kondisi = (string) $request->input('kondisi', '');
+
+        $query = InventarisUnit::query()
+            ->where('sekolah_id', $sekolahId)
+            ->when(in_array($kondisi, array_keys(InventarisUnit::KONDISI), true),
+                fn (Builder $q) => $q->where('kondisi', $kondisi))
+            ->orderBy('kode_barang')
+            ->orderBy('nomor_register');
+
+        return Excel::download(
+            new InventarisExport($query),
+            'inventaris-'.now()->format('Ymd-His').'.xlsx',
+        );
     }
 }

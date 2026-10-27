@@ -5,7 +5,7 @@ import Pagination from '@/Components/Pagination';
 import SearchInput from '@/Components/SearchInput';
 import EmptyState from '@/Components/EmptyState';
 import { formatRupiah } from '@/Utils/format';
-import { Boxes, Eye } from 'lucide-react';
+import { Boxes, Download, Eye } from 'lucide-react';
 
 interface UnitItem {
     id: string;
@@ -71,9 +71,17 @@ export default function Index({ units, filter, kondisiList }: Props) {
                         <h1 className="text-xl font-bold text-slate-800">Inventaris BM</h1>
                         <p className="text-sm text-slate-500">Daftar unit aset hasil sinkronisasi realisasi yang disetujui.</p>
                     </div>
-                    <span className="text-xs text-slate-400">
-                        Total: <strong>{units.total.toLocaleString('id-ID')}</strong> unit
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400">
+                            Total: <strong>{units.total.toLocaleString('id-ID')}</strong> unit
+                        </span>
+                        <a
+                            href={`/pencatatan-bm/inventaris-export${kondisi ? `?kondisi=${kondisi}` : ''}`}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                            <Download className="w-3.5 h-3.5" /> Ekspor Excel
+                        </a>
+                    </div>
                 </header>
 
                 <div className="flex flex-wrap items-center gap-2">

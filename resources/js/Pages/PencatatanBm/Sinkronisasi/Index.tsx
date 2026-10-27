@@ -15,8 +15,16 @@ interface SyncLog {
     created_at: string;
 }
 
+interface PerluReview {
+    id: string;
+    nomor_register: string;
+    kode_barang: string;
+    nama_barang: string | null;
+}
+
 interface Props {
     logs: SyncLog[];
+    perluReview: PerluReview[];
     sekolahList: { id: string; nama_sekolah: string }[];
     filter: { sekolah_id: string | null };
 }
@@ -27,7 +35,7 @@ const BADGE: Record<string, string> = {
     gagal: 'bg-rose-50 text-rose-700 border-rose-100',
 };
 
-export default function Index({ logs, sekolahList, filter }: Props) {
+export default function Index({ logs, perluReview, sekolahList, filter }: Props) {
     const form = useForm({
         sekolah_id: filter.sekolah_id ?? '',
         bulan: String(new Date().getMonth() + 1),
@@ -99,6 +107,25 @@ export default function Index({ logs, sekolahList, filter }: Props) {
                         <RefreshCw className="w-4 h-4" /> Jalankan
                     </button>
                 </form>
+
+                {perluReview.length > 0 && (
+                    <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                        <h2 className="font-bold text-amber-800">Perlu Tinjau Manual</h2>
+                        <p className="mt-1 text-xs text-amber-700">
+                            Unit di bawah ini sudah pernah dimutasi padahal volume realisasi sumbernya sudah turun, jadi tidak
+                            dipensiunkan otomatis.
+                        </p>
+                        <ul className="mt-2 space-y-1 text-xs text-amber-900">
+                            {perluReview.map((unit) => (
+                                <li key={unit.id}>
+                                    <a href={`/pencatatan-bm/inventaris/${unit.id}`} className="font-semibold underline">
+                                        {unit.nomor_register} · {unit.nama_barang ?? unit.kode_barang}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
 
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                     {logs.length === 0 ? (

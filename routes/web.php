@@ -291,6 +291,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/inventaris/{unit}', [PencatatanInventarisController::class, 'show'])->name('inventaris.show');
             Route::put('/inventaris/{unit}/kondisi', [PencatatanInventarisController::class, 'updateKondisi'])
                 ->middleware('permission:kelola-inventaris-bm')->name('inventaris.kondisi');
+            Route::get('/inventaris-export', [PencatatanInventarisController::class, 'export'])
+                ->middleware(['permission:cetak-inventaris-bm', 'throttle:30,1'])->name('inventaris.export');
 
             Route::get('/mutasi', [PencatatanMutasiController::class, 'index'])->name('mutasi.index');
             Route::get('/pengembalian', [PencatatanPengembalianController::class, 'index'])->name('pengembalian.index');
