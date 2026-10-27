@@ -287,6 +287,86 @@ class MasterDataPenugasanHttpTest extends TestCase
         $this->assertNull($penugasan->fresh()->selesai_menjabat);
     }
 
+    public function test_daftar_penugasan_hanya_berisi_sekolah_sendiri(): void
+    {
+        $sekolahA = $this->sekolah('SMA A');
+        $sekolahB = $this->sekolah('SMA B');
+        $operatorA = $this->operator($sekolahA, 'op.list.a');
+        $operatorB = $this->operator($sekolahB, 'op.list.b');
+
+        $this->actingAs($operatorB)->post(route('master-data.penugasan.store'), $this->payload([
+            'nama' => 'Pegawai B',
+            'nip' => '197001011990011001',
+        ]))->assertSessionHas('success');
+
+        $this->actingAs($operatorA)
+            ->get(route('master-data.penugasan.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('penugasan', 0));
+    }
+
+    public function test_nip_pegawai_sekolah_lain_tidak_menyambung_ke_pegawai_itu(): void
+    {
+        $sekolahA = $this->sekolah('SMA A');
+        $sekolahB = $this->sekolah('SMA B');
+        $operatorA = $this->operator($sekolahA, 'op.nip.a');
+        $operatorB = $this->operator($sekolahB, 'op.nip.b');
+        $nipBersama = '198001012005011001';
+
+        $this->actingAs($operatorB)->post(route('master-data.penugasan.store'), $this->payload([
+            'nama' => 'Pegawai B',
+            'nip' => $nipBersama,
+        ]))->assertSessionHas('success');
+
+        $this->actingAs($operatorA)->post(route('master-data.penugasan.store'), $this->payload([
+            'nama' => 'Pegawai A',
+            'nip' => $nipBersama,
+        ]))->assertSessionHas('success');
+
+        // NIP sama di dua sekolah = dua orang berbeda, bukan satu baris yang
+        // dipakai bersama.
+        $this->assertSame(2, Pegawai::where('nip', $nipBersama)->count());
+        $this->assertSame(2, PenugasanPegawai::count());
+    }
+
+    public function test_admin_dengan_sekolah_lain_tetap_tidak_bisa_mengubah_penugasan(): void
+    {
+        $sekolahA = $this->sekolah('SMA A');
+        $sekolahB = $this->sekolah('SMA B');
+
+        $adminB = User::create([
+            'name' => 'Admin B',
+            'username' => 'admin.b.penugasan',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolahB->id,
+            'password_changed_at' => now(),
+        ]);
+        $adminB->assignRole('admin_kcd');
+
+        $this->actingAs($adminB)->post(route('master-data.penugasan.store'), $this->payload([
+            'nama' => 'Pegawai B',
+            'nip' => '197001011990011001',
+        ]))->assertSessionHas('success');
+
+        $penugasanB = PenugasanPegawai::firstOrFail();
+
+        $adminA = User::create([
+            'name' => 'Admin A',
+            'username' => 'admin.a.penugasan',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolahA->id,
+            'password_changed_at' => now(),
+        ]);
+        $adminA->assignRole('admin_kcd');
+
+        $this->actingAs($adminA)
+            ->put(route('master-data.penugasan.update', $penugasanB), $this->payload([
+                'nama' => 'Diretas',
+                'nip' => '197001011990011001',
+            ]))
+            ->assertNotFound();
+    }
+
     public function test_pengguna_tanpa_permission_ditolak(): void
     {
         $sekolah = $this->sekolah();
