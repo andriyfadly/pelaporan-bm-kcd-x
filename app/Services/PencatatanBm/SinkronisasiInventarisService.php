@@ -69,7 +69,8 @@ class SinkronisasiInventarisService
         }
 
         $log->update([
-            'status' => 'sukses',
+            // Gate status yang belum disetujui bukan sinkronisasi sukses.
+            'status' => $hasil->dilewati ? 'dilewati' : 'sukses',
             'dibuat' => $hasil->dibuat,
             'tetap' => $hasil->tetap,
             'surplus' => $hasil->surplus,
@@ -85,7 +86,7 @@ class SinkronisasiInventarisService
         $sekolahId = $realisasi->sekolah_id;
 
         if (! $sekolahId) {
-            return new SyncResult;
+            return new SyncResult(dilewati: true);
         }
 
         $bulan = (int) $realisasi->bulan_realisasi;
@@ -94,7 +95,7 @@ class SinkronisasiInventarisService
         // Gate status: hanya laporan yang sudah disetujui Admin KCD yang
         // menjadi sumber inventaris.
         if (! $this->periodeDisetujui($sekolahId, $bulan, $tahun)) {
-            return new SyncResult;
+            return new SyncResult(dilewati: true);
         }
 
         return DB::transaction(function () use ($realisasi, $sekolahId): SyncResult {

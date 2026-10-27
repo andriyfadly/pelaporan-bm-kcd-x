@@ -12,6 +12,7 @@ final readonly class SyncResult
         public int $tetap = 0,
         public int $surplus = 0,
         public int $perluReview = 0,
+        public bool $dilewati = false,
     ) {}
 
     public function adaPerubahan(): bool

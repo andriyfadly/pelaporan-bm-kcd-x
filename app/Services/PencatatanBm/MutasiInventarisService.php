@@ -30,10 +30,15 @@ class MutasiInventarisService
             $pertama = $unit->ruang_id === null && $unit->pegawai_id === null;
             $kondisiBaru = $data['kondisi'] ?? $unit->kondisi;
 
+            // Kunci yang tidak dikirim berarti "tidak berubah"; null eksplisit
+            // berarti "kosongkan penempatan".
+            $tujuanRuang = array_key_exists('ruang_id', $data) ? $data['ruang_id'] : $unit->ruang_id;
+            $tujuanPegawai = array_key_exists('pegawai_id', $data) ? $data['pegawai_id'] : $unit->pegawai_id;
+
             $mutasi = $this->catat($unit, [
                 'jenis' => $pertama ? 'penempatan' : 'mutasi',
-                'tujuan_ruang_id' => $data['ruang_id'] ?? $unit->ruang_id,
-                'tujuan_pegawai_id' => $data['pegawai_id'] ?? $unit->pegawai_id,
+                'tujuan_ruang_id' => $tujuanRuang,
+                'tujuan_pegawai_id' => $tujuanPegawai,
                 'tujuan_kondisi' => $kondisiBaru,
                 'tanggal' => $data['tanggal'],
                 'keterangan' => $data['keterangan'] ?? null,
