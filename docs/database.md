@@ -67,9 +67,11 @@ bhp_{bos,bopd}_penerimaan ──1──N bhp_{bos,bopd}_penerimaan_detail [FK ca
 bhp_{bos,bopd}_settings: satu baris per tabel (partial unique index pada
               is_singleton)
 
-pejabat_sekolah ──N──1 master_data_sekolah
-              (riwayat pejabat penandatangan; satu pejabat aktif per
-              (sekolah, jabatan) via partial unique index; tabel bersama, non-BHP)
+master_data_pegawai ──N──1 master_data_sekolah
+master_data_jabatan ──N──1 master_data_sekolah
+master_data_penugasan_pegawai ──N──1 master_data_sekolah
+        (riwayat penugasan pegawai pada jabatan; satu pemegang efektif per
+         (sekolah, jabatan) via partial unique index; tabel bersama, non-BHP)
 
 bhp_{bos,bopd}_nomor_sequence: counter atomic per (jenis, tahun, bulan),
               unique(jenis, tahun, bulan), tanpa FK
@@ -155,7 +157,7 @@ Domain BHP terpisah total dari `pelaporan_bm_*` (lihat
 | `2026_10_08_153505_create_bhp_divisi_table` | `bhp_divisi` + `users.divisi_id` |
 | `2026_10_08_160849_add_singleton_key_to_bhp_settings_table` | `bhp_settings.is_singleton` + partial unique index (anti-race singleton) |
 | `2026_10_08_161500_add_foreign_keys_to_bhp_tables` | Foreign key relasi BHP |
-| `2026_10_08_163932_create_pejabat_sekolah_table` | Master pejabat penandatangan + partial unique index satu-aktif |
+| `2026_10_08_163932_create_pejabat_sekolah_table` | Master pejabat penandatangan + partial unique index satu-aktif (**tabel dihapus** oleh `2026_10_27_000006_drop_pejabat_sekolah_table`) |
 | `2026_10_08_163940_drop_penyetuju_from_bhp_settings_table` | Hapus `nama_penyetuju`/`jabatan_penyetuju` global (diganti pejabat sekolah) |
 | `2026_10_08_170000_add_profil_kontak_to_master_data_sekolah_table` | `master_data_sekolah.alamat/telepon/website/email` (profil kontak, diisi operator) |
 | `2026_10_10_000001_add_saldo_awal_unique_key_to_bhp_penerimaan` | Kolom bantu `saldo_awal_key` + partial unique (jaring race saldo awal) |
@@ -195,8 +197,9 @@ selalu dihitung (`StokService`).
 | `bhp_{dana}_dokumen` | `bhp_pengajuan_id` FK cascade · `jenis` (nota_permintaan, surat_permintaan, surat_penyaluran, bast, bap, stok_opname, buku_pengeluaran, buku_penyaluran) · `nomor` · `tanggal_titimangsa` date · `payload` json (snapshot, **ter-scope sekolah pengajuan**) — unique `(bhp_pengajuan_id, jenis)` |
 | `bhp_{dana}_nomor_sequence` | `jenis` · `tahun` · `bulan` · `counter` — dikunci `lockForUpdate` saat generate; insert row pertama aman terhadap race (catch `UniqueConstraintViolationException` lalu lock row pemenang) |
 | `bhp_{dana}_batch_dokumen` | `jenis` · `bhp_pengajuan_id` FK set null · `status` (`pending`/`selesai`/`sebagian`/`gagal`) · `total`/`berhasil`/`gagal` · `files` json · `created_by` · `error_message` |
-| `bhp_{dana}_settings` | `format_nomor` · `is_singleton` (unique: maks satu baris per tabel dana). **`paper_size` & `orientation` dihapus** (2026-10-13) — ukuran/orientasi PDF hardcode per jenis dokumen di `DokumenController::PAPER`. Penandatangan TIDAK lagi di sini — lihat `pejabat_sekolah` |
-| `pejabat_sekolah` *(generic, non-BHP)* | `sekolah_id` FK · `jabatan` enum `kepala_sekolah`/`wakasek_sarpras`/`pembantu_pengurus_barang` · `jenis_jabatan` enum `definitif`/`plt`/`plh` · `nama` · `pangkat_golongan` · `nip` · `mulai_menjabat`/`selesai_menjabat` date · `created_by`/`updated_by` · soft deletes · unique `(sekolah_id, jabatan, mulai_menjabat)` + partial unique satu-aktif `(sekolah_id, jabatan) WHERE selesai_menjabat IS NULL AND deleted_at IS NULL` |
+| `bhp_{dana}_settings` | `format_nomor` · `is_singleton` (unique: maks satu baris per tabel dana). **`paper_size` & `orientation` dihapus** (2026-10-13) — ukuran/orientasi PDF hardcode per jenis dokumen di `DokumenController::PAPER`. Penandatangan TIDAK lagi di sini — lihat `master_data_penugasan_pegawai` |
+| `master_data_jabatan` *(generic, non-BHP)* | `sekolah_id` FK · `kode` · `nama` · `kategori` · `aktif` · soft deletes · unique `(sekolah_id, kode)`. Tiga kode wajib untuk penandatangan: `kepala_sekolah`, `wakasek_sarpras`, `pembantu_pengurus_barang` |
+| `master_data_penugasan_pegawai` *(generic, non-BHP)* | `sekolah_id` FK · `pegawai_id` FK · `jabatan_id` FK · `jenis_penugasan` (`definitif`/`plt`/`plh`) · `mulai_menjabat`/`selesai_menjabat` date · `created_by`/`updated_by` · unique `(sekolah_id, jabatan_id, mulai_menjabat)` + partial unique satu-pemegang `(sekolah_id, jabatan_id) WHERE selesai_menjabat IS NULL` |
 
 ## 6. Konvensi & Batasan
 
@@ -223,10 +226,12 @@ selalu dihitung (`StokService`).
 - **Penandatangan dokumen BHP**: approval mensyaratkan ketiga jabatan
   (`kepala_sekolah`, `wakasek_sarpras`, `pembantu_pengurus_barang`) terisi dan
   berlaku pada tanggal pengajuan
-  (`App\Services\PejabatSekolahService::snapshotPenandatangan`). Master
-  `pejabat_sekolah` generic (lintas domain, di `app/Models/Master`), snapshot
-  tersimpan di `payload.penandatangan` tiap dokumen; reprint tidak
-  berubah meski pejabat master berganti. Riwayat pejabat tidak dihapus permanen.
+  (`App\Services\Master\PenugasanPegawaiService::snapshotPenandatangan`).
+  Sumbernya `master_data_pegawai` + `master_data_jabatan` +
+  `master_data_penugasan_pegawai`; snapshot tersimpan di
+  `payload.penandatangan` tiap dokumen sehingga reprint tidak berubah meski
+  pejabat berganti. Riwayat penugasan tidak dihapus saat mutasi — periode lama
+  ditutup (`selesai_menjabat`), bukan ditimpa.
 - Hapus SPJ/SPK BM: cascade manual (`realisasi` by `spj_id` dulu) dalam transaksi.
 - Unique: `kode_barang`, `username`, `(sekolah_id, bulan)` di kunci,
   `bhp_penyedia.nama`, `bhp_{dana}_kode_rekening(kode)`,
@@ -234,7 +239,8 @@ selalu dihitung (`StokService`).
   `(jenis, tahun, bulan)` di nomor sequence,
   `bhp_{dana}_settings.is_singleton` (partial),
   partial unique saldo awal `(sekolah_id, periode_tahun) WHERE is_saldo_awal`,
-  `pejabat_sekolah` satu pejabat aktif per `(sekolah_id, jabatan)` (partial).
+  `master_data_penugasan_pegawai` satu pemegang efektif per
+  `(sekolah_id, jabatan_id)` (partial).
 - `bhp_{dana}_kode_rekening.kode_barang` diisi dari 5 opsi statis (mirror sistem
   manajemen aset): `1.1.7.01.01` (Bahan), `1.1.7.01.02` (Suku Cadang),
   `1.1.7.01.03` (Alat/Bahan Untuk Kegiatan Kantor), `1.1.7.01.04` (Obat-Obatan),
@@ -270,17 +276,25 @@ diulang (idempotent).
 ## 8. Tabel Pencatatan BM (inventaris aset)
 
 Migrasi: `2026_10_27_000001_create_inventaris_master_tables.php` (ruang,
-pegawai), `2026_10_27_000002_create_inventaris_tables.php` (unit, sequence,
-mutasi, dokumen, foto, sync log), `2026_10_27_000003_add_pembatalan_nomor_to_inventaris_dokumen.php`.
+pegawai — kemudian di-rename), `2026_10_27_000002_create_inventaris_tables.php`
+(unit, sequence, mutasi, dokumen, foto, sync log),
+`2026_10_27_000003_add_pembatalan_nomor_to_inventaris_dokumen.php`,
+`2026_10_27_000004_promote_inventaris_master_tables.php` (rename ke
+`master_data_ruang`/`master_data_pegawai` + kolom `aktif`),
+`2026_10_27_000005_create_master_data_jabatan_and_penugasan_tables.php`,
+`2026_10_27_000006_drop_pejabat_sekolah_table.php`,
+`2026_10_27_000007_drop_jabatan_ruang_from_master_data_pegawai.php`.
 
 ```text
-master_data_sekolah 1─┬─* inventaris_ruang   1─* inventaris_unit ─1─* inventaris_mutasi
-                      ├─* inventaris_pegawai 1─* inventaris_unit   ─1─* inventaris_foto
+master_data_sekolah 1─┬─* master_data_ruang  1─* inventaris_unit ─1─* inventaris_mutasi
+                      ├─* master_data_pegawai 1─* inventaris_unit  ─1─* inventaris_foto
+                      ├─* master_data_jabatan 1─* master_data_penugasan_pegawai
+                      │                              └─* master_data_pegawai
                       ├─* inventaris_register_sequences
                       ├─* inventaris_dokumen
                       └─* inventaris_sync_logs
 pelaporan_bm_realisasi 1─* inventaris_unit   (restrict; sumber pembentukan unit)
-inventaris_ruang / inventaris_pegawai ─* inventaris_mutasi (asal/tujuan, nullOnDelete)
+master_data_ruang / master_data_pegawai ─* inventaris_mutasi (asal/tujuan, nullOnDelete)
 ```
 
 ### `inventaris_unit`
@@ -313,12 +327,23 @@ Index: `(sekolah_id, kode_barang)`, `(sekolah_id, status)`,
 dalam transaksi dengan `lockForUpdate`; nomor yang sudah terbit **tidak pernah
 dipakai ulang**, termasuk setelah unit dipensiunkan atau volume dikoreksi.
 
-### `inventaris_ruang` / `inventaris_pegawai`
+### `master_data_ruang` / `master_data_pegawai`
 
-Master milik sekolah, soft delete. Nama ruang unik case-insensitive per sekolah
-(unique index `lower(nama_ruang)`). `inventaris_pegawai` menyimpan
-`nama_lengkap`, `nip`, `pangkat_golongan`, `jabatan`, `ruang` (teks bebas) —
-sengaja terpisah dari `pejabat_sekolah` (yang hanya 3 jabatan penandatangan).
+Master milik sekolah, soft delete, kolom `aktif`. Nama ruang unik
+case-insensitive per sekolah (unique index `lower(nama_ruang)`).
+`master_data_pegawai` hanya menyimpan identitas: `nama_lengkap`, `nip`,
+`pangkat_golongan`. **Tidak ada kolom jabatan maupun ruang** — jabatan berasal
+dari `master_data_penugasan_pegawai`, penempatan aset dari `inventaris_unit.ruang_id`.
+
+### `master_data_jabatan` / `master_data_penugasan_pegawai`
+
+`master_data_jabatan` mendefinisikan jabatan per sekolah (kode stabil, nama
+bebas diubah). `master_data_penugasan_pegawai` menyimpan satu periode per baris:
+`definitif`/`plt`/`plh`. Menambah penugasan aktif menutup periode sebelumnya
+(H-1), jadi satu jabatan hanya punya satu pemegang efektif dan tidak ada
+periode beririsan. Pemilihan pejabat untuk dokumen bertanggal `T` memakai
+`mulai_menjabat <= T AND (selesai_menjabat IS NULL OR selesai_menjabat >= T)`
+dengan prioritas `definitif` > `plt` > `plh` lalu `mulai_menjabat` terbaru.
 
 ### `inventaris_mutasi`
 

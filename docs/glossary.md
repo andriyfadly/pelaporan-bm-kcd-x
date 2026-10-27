@@ -66,7 +66,8 @@
 | Buku penyaluran | Dokumen/laporan penyaluran BHP |
 | Kartu barang | Profil barang + mutasi masuk/keluar (tanpa saldo berjalan) |
 | Kartu persediaan | Mutasi kronologis **dengan saldo berjalan** per barang |
-| Pejabat sekolah | Penandatangan dokumen (kepala sekolah, wakasek sarpras, pembantu pengurus barang), tabel `pejabat_sekolah` |
+| Pejabat sekolah | Penandatangan dokumen (kepala sekolah, wakasek sarpras, pembantu pengurus barang). Tidak lagi tabel sendiri: diambil dari `master_data_penugasan_pegawai` pada jabatan berkode terkait |
+| Penugasan pegawai | Periode seorang pegawai memegang satu jabatan (`definitif`/`plt`/`plh`), tabel `master_data_penugasan_pegawai` |
 | operator_divisi | Role khusus BHP: membuat & mensubmit pengajuan, tanpa master/approval |
 | Impor BHP | `DistribusiBhpImportSeeder` — impor master + penerimaan dari DB SQLite legacy |
 | source_id | ID asli entitas dari DB sumber (`bhp_{bos,bopd}_penerimaan.source_id`) untuk jejak audit/impor |

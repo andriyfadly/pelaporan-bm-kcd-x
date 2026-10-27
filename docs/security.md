@@ -51,6 +51,7 @@ reviewer adalah pembuat pengajuan (defense-in-depth selain RBAC). Terverifikasi
 | Lihat modul (`lihat-pencatatan-bm`) | ✅ | ✅ (lintas sekolah) | ✅ (sekolah sendiri) |
 | Kelola unit inventaris (`kelola-inventaris-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
 | Kelola ruang / pegawai (`kelola-ruang-bm`, `kelola-pegawai-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
+| Kelola jabatan / penugasan (`kelola-jabatan-bm`, `kelola-penugasan-pegawai-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
 | Mutasi (`mutasi-inventaris-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
 | Pengembalian (`proses-pengembalian-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
 | Cetak/ekspor (`cetak-inventaris-bm`) | ✅ | ✅ | ✅ |

@@ -188,10 +188,12 @@ Rute generic lintas domain (di luar `distribusi-bhp`). Dijaga permission
 
 | Method | Path | Controller::method |
 |---|---|---|
-| GET | `/master-data/pejabat` | `PejabatSekolahController::index` |
-| POST | `/master-data/pejabat` | `PejabatSekolahController::store` |
-| PUT | `/master-data/pejabat/{pejabat}` | `PejabatSekolahController::update` |
-| PUT | `/master-data/pejabat/{pejabat}/akhiri` | `PejabatSekolahController::akhiri` |
+| GET/POST | `/master-data/jabatan` | `JabatanController::index`/`store` | `kelola-jabatan-bm` |
+| PUT/DELETE | `/master-data/jabatan/{jabatan}` | `JabatanController::update`/`destroy` | `kelola-jabatan-bm` |
+| GET/POST | `/master-data/penugasan` | `PenugasanPegawaiController::index`/`store` | `kelola-penugasan-pegawai-bm` |
+| PUT | `/master-data/penugasan/{penugasan}` | `PenugasanPegawaiController::update` | `kelola-penugasan-pegawai-bm` |
+| PUT | `/master-data/penugasan/{penugasan}/akhiri` | `PenugasanPegawaiController::akhiri` | `kelola-penugasan-pegawai-bm` |
+| PUT | `/master-data/penugasan/{penugasan}/mutasi` | `PenugasanPegawaiController::mutasi` | `kelola-penugasan-pegawai-bm` |
 | GET | `/master-data/profil-sekolah` | `ProfilSekolahController::edit` |
 | PUT | `/master-data/profil-sekolah` | `ProfilSekolahController::update` |
 

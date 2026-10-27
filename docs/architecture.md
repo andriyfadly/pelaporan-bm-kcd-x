@@ -61,7 +61,7 @@ app/
                               # Dokumen, Laporan, Settings, Divisi
   Listeners/CatatLoginLogout.php   # log login/logout (Event::listen di provider)
   Models/
-    Master/{Sekolah,KodeBarang,PejabatSekolah}
+    Master/{Sekolah,KodeBarang,Pegawai,Ruang,Jabatan,PenugasanPegawai}
     PelaporanBm/{Spj,Realisasi,Acuan,KunciLaporan}
     DistribusiBhp/            # Barang, KodeRekening, HargaBarang, Penyedia,
                               # Penerimaan(+Detail), Pengajuan(+Detail),
@@ -224,12 +224,13 @@ aturan validasi `exists` yang menunjuk tabel fisik dana terkait (cegah
 kedua tabel (UUID unik) sambil menyetel dana aktif. `SumberDana::dengan()`
 (callback + restore) dipakai untuk operasi yang perlu konteks dana eksplisit.
 
-Service generic (lintas domain): `App\Services\PejabatSekolahService` +
-`App\Models\Master\PejabatSekolah` (tabel `pejabat_sekolah`) — master pejabat
-penandatangan: `snapshotPenandatangan` (gate approval — tiga jabatan wajib
-berlaku pada tanggal pengajuan), `simpan` (auto-close pejabat aktif lama H-1,
-guard overlap periode), `akhiriMasaJabatan`; snapshot pejabat tersimpan
-immutable di payload dokumen pemanggil.
+Service generic (lintas domain): `App\Services\Master\PenugasanPegawaiService` +
+`App\Models\Master\{Pegawai,Jabatan,PenugasanPegawai}` — riwayat penugasan
+pegawai pada jabatan. `snapshotPenandatangan` adalah gate approval (tiga jabatan
+wajib berlaku pada tanggal pengajuan), `simpan` auto-close penugasan lama H-1
+dan menolak periode beririsan, `mutasi` memindahkan pegawai tanpa menghapus
+periode lama, `pejabatPada` mengembalikan snapshot nullable untuk cetak.
+Snapshot tersimpan immutable di payload dokumen pemanggil.
 
 Aturan: semua mutasi stok lewat `StokService`; `applyApprove` tidak membuka
 transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve

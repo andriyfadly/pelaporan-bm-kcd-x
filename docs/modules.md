@@ -134,17 +134,22 @@ sumber potensial, bukan inventaris aktif.
 - **Sinkronisasi** (`/pencatatan-bm/sinkronisasi`, khusus `super_admin`): jalankan
   ulang per periode, lihat log, dan daftar unit yang perlu tinjau manual.
 
-Master pendukung ada di **Master Data** (sidebar): `Ruang` dan `Pegawai`,
-terpisah dari `Profil Sekolah` dan `Pejabat Sekolah`.
+Master pendukung ada di **Master Data** (sidebar): `Ruang`, `Pegawai`,
+`Jabatan`, dan `Penugasan Pegawai`, terpisah dari `Profil Sekolah`. Menu
+`Pejabat Sekolah` dihapus — jabatan dan pemegangnya dikelola lewat dua menu
+terakhir.
 
 Hak akses:
 
 | Aksi | Operator/Bendahara | Admin KCD | Super Admin |
 |---|---|---|---|
 | Lihat dashboard/inventaris/mutasi/pengembalian | ✔ (sekolahnya) | ✔ (lintas sekolah, baca) | ✔ |
-| Kelola unit, ruang, pegawai, mutasi, pengembalian | ✔ (sekolahnya) | – | ✔ |
+| Kelola unit, mutasi, pengembalian | ✔ (sekolahnya) | – | ✔ |
+| Kelola master ruang, pegawai, jabatan, penugasan | ✔ (sekolahnya) | – | ✔ |
 | Cetak dokumen/label/ekspor | ✔ | ✔ | ✔ |
 | Sinkronisasi ulang | – | – | ✔ |
 
-Dokumen memakai kop dan pejabat dari data target (`master_data_sekolah`,
-`pejabat_sekolah`), bukan kop legacy. Data historis legacy tidak dimigrasikan.
+Dokumen memakai kop dari `master_data_sekolah` dan penandatangan dari
+`master_data_penugasan_pegawai` yang berlaku pada tanggal dokumen, bukan kop
+legacy. Master `master_data_pegawai` hanya identitas; jabatan tidak lagi
+disimpan di sana. Data historis legacy tidak dimigrasikan.

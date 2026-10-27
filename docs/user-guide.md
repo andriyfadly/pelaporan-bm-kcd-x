@@ -130,7 +130,7 @@ Penyaluran, dan Laporan — mirror struktur asli aplikasi sistem-manajemen-aset.
    berbeda menambah varian harga, nama & harga sama persis ditolak (duplikat). Import bersifat
    **all-or-nothing** (satu baris invalid = batal semua; maksimal 1000 baris).
 3. **Penyedia** (`/distribusi-bhp/penyedia`) — data rekanan/supplier (berlaku lintas sumber dana).
-4. **Pejabat Sekolah** (`/master-data/pejabat`, menu Master Data sekolah — di luar menu BHP) — data penandatangan
+4. **Penugasan Pegawai** (`/master-data/penugasan`, menu Master Data sekolah — di luar menu BHP) — data penandatangan
    dokumen: **Kepala Sekolah**, **Wakasek Sarana Prasarana**, dan **Pembantu
    Pengurus Barang**. Isi nama, pangkat/golongan, NIP, jenis jabatan
    (definitif/Plt./Plh.), dan masa jabatan. **Wajib lengkap ketiga jabatan
