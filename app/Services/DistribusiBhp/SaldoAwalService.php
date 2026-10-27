@@ -148,6 +148,8 @@ class SaldoAwalService
                     ]);
                 }
 
+                Barang::whereKey($detail->barang_id)->lockForUpdate()->firstOrFail();
+
                 if ($this->dipakaiPadaPengajuanAktif([$detail->barang_id], $penerimaan->sekolah_id)) {
                     throw ValidationException::withMessages([
                         'penerimaan' => 'Barang saldo awal ini sudah dipakai pada pengajuan aktif dan tidak dapat dihapus.',
@@ -192,15 +194,18 @@ class SaldoAwalService
         }
 
         SumberDana::dengan($penerimaan->sumber_dana, function () use ($penerimaan, $actor) {
-            $barangIds = $penerimaan->details()->pluck('barang_id')->filter()->all();
-
-            if ($this->dipakaiPadaPengajuanAktif($barangIds, $penerimaan->sekolah_id)) {
-                throw ValidationException::withMessages([
-                    'penerimaan' => 'Saldo awal sudah dipakai pada pengajuan aktif dan tidak dapat dihapus.',
-                ]);
-            }
-
             DB::transaction(function () use ($penerimaan, $actor) {
+                $penerimaan = Penerimaan::whereKey($penerimaan->id)->lockForUpdate()->firstOrFail();
+                $details = $penerimaan->details()->lockForUpdate()->get();
+                $barangIds = $details->pluck('barang_id')->filter()->sort()->values()->all();
+                Barang::whereIn('id', $barangIds)->orderBy('id')->lockForUpdate()->get();
+
+                if ($this->dipakaiPadaPengajuanAktif($barangIds, $penerimaan->sekolah_id)) {
+                    throw ValidationException::withMessages([
+                        'penerimaan' => 'Saldo awal sudah dipakai pada pengajuan aktif dan tidak dapat dihapus.',
+                    ]);
+                }
+
                 $penerimaan->details()->delete();
                 $penerimaan->delete();
 

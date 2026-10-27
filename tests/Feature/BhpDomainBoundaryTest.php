@@ -201,4 +201,28 @@ class BhpDomainBoundaryTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('availablePeriods', [2026]));
     }
+
+    public function test_route_bos_tidak_menerima_uuid_barang_bopd(): void
+    {
+        $this->seed(PeranDanHakAksesSeeder::class);
+        $sekolah = Sekolah::create(['nama_sekolah' => 'SMKN Boundary', 'kota_kab' => 'Kota Bandung']);
+        $user = User::create([
+            'name' => 'Operator',
+            'username' => 'operator.boundary',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $sekolah->id,
+            'password_changed_at' => now(),
+        ]);
+        $user->assignRole('operator_sekolah');
+        $barang = Barang::create([
+            'kode_barang' => 'BOPD-BOUNDARY',
+            'nama_barang' => 'Barang BOPD',
+            'satuan' => 'Unit',
+            'sumber_dana' => 'BOPD',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('distribusi-bhp.bos.barang.harga.index', $barang))
+            ->assertNotFound();
+    }
 }

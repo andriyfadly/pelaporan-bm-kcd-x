@@ -106,6 +106,7 @@ class DokumenService
         }
 
         return SumberDana::dengan($pengajuan->sumber_dana, fn () => DB::transaction(function () use ($pengajuan, $jenis, $tanggal) {
+            $pengajuan = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
             $existing = $pengajuan->dokumen()->where('jenis', $jenis)->first();
             if ($existing) {
                 return $existing;

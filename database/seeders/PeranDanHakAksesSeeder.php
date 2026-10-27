@@ -26,6 +26,7 @@ class PeranDanHakAksesSeeder extends Seeder
             'lihat-log-aktivitas',
             'lihat-distribusi-bhp',
             'kelola-master-bhp',
+            'assign-kode-rekening-bhp',
             'kelola-penerimaan-bhp',
             'kelola-pengajuan-bhp',
             'review-pengajuan-bhp',
@@ -54,6 +55,7 @@ class PeranDanHakAksesSeeder extends Seeder
             'edit-spj-bm',
             'hapus-spj-bm',
             'cetak-laporan-bm',
+            'unduh-rekap-bm',
             'lihat-distribusi-bhp',
             'kelola-penerimaan-bhp',
             'kelola-pengajuan-bhp',
@@ -71,6 +73,7 @@ class PeranDanHakAksesSeeder extends Seeder
             'edit-spj-bm',
             'hapus-spj-bm',
             'cetak-laporan-bm',
+            'unduh-rekap-bm',
             'lihat-distribusi-bhp',
             'kelola-pengajuan-bhp',
         ]);

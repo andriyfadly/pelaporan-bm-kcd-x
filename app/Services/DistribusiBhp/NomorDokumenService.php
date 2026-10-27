@@ -4,8 +4,8 @@ namespace App\Services\DistribusiBhp;
 
 use App\Models\DistribusiBhp\NomorSequence;
 use App\Support\DistribusiBhp\SumberDana;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Generator nomor dokumen BHP.
@@ -44,26 +44,17 @@ class NomorDokumenService
                 ->where('tahun', $tahun)
                 ->where('bulan', $bulan);
 
-            $row = $cari()->lockForUpdate()->first();
+            NomorSequence::query()->insertOrIgnore([
+                'id' => (string) Str::uuid(),
+                'jenis' => $jenis,
+                'tahun' => $tahun,
+                'bulan' => $bulan,
+                'counter' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-            if (! $row) {
-                // Dua request bersamaan bisa sama-sama melihat "belum ada row".
-                // unique constraint (jenis, tahun, bulan) menolak duplikat;
-                // pemenang race adalah yang insert berhasil, yang kalah retry
-                // dan lock row milik pemenang.
-                try {
-                    $row = NomorSequence::create([
-                        'jenis' => $jenis,
-                        'tahun' => $tahun,
-                        'bulan' => $bulan,
-                        'counter' => 0,
-                    ]);
-                } catch (UniqueConstraintViolationException) {
-                    $row = $cari()->lockForUpdate()->firstOrFail();
-                }
-
-                $row = NomorSequence::whereKey($row->id)->lockForUpdate()->firstOrFail();
-            }
+            $row = $cari()->lockForUpdate()->firstOrFail();
 
             $row->increment('counter');
 

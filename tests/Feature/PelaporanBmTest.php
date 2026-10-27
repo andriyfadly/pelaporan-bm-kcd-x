@@ -8,6 +8,7 @@ use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PelaporanBm\Spj;
 use App\Models\User;
+use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
@@ -16,12 +17,19 @@ class PelaporanBmTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PeranDanHakAksesSeeder::class);
+    }
+
     public function test_user_can_login_with_username_and_redirect_to_dashboard(): void
     {
         $user = User::create([
             'name' => 'Admin Test',
             'username' => 'admintest',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
         ]);
 
         $this->post('/login', [
@@ -31,6 +39,16 @@ class PelaporanBmTest extends TestCase
             ->assertRedirect('/dashboard');
 
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_kunci_laporan_allows_the_same_month_in_different_years(): void
+    {
+        $sekolah = Sekolah::create(['nama_sekolah' => 'SMKN Periode', 'kota_kab' => 'Bandung']);
+
+        KunciLaporan::create(['sekolah_id' => $sekolah->id, 'bulan' => 1, 'tahun' => 2026]);
+        KunciLaporan::create(['sekolah_id' => $sekolah->id, 'bulan' => 1, 'tahun' => 2027]);
+
+        $this->assertDatabaseCount('pelaporan_bm_kunci_laporan', 2);
     }
 
     public function test_authenticated_user_can_access_pelaporan_bm_pages(): void
@@ -44,8 +62,10 @@ class PelaporanBmTest extends TestCase
             'name' => 'Operator Sekolah',
             'username' => 'operator1',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
             'sekolah_id' => $sekolah->id,
         ]);
+        $user->assignRole('operator_sekolah');
 
         $this->actingAs($user)
             ->get(route('dashboard'))
@@ -76,7 +96,9 @@ class PelaporanBmTest extends TestCase
             'name' => 'Admin KCD Cetak',
             'username' => 'admin_cetak',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
         ]);
+        $admin->assignRole('admin_kcd');
         $this->actingAs($admin)
             ->get(route('pelaporan-bm.cetak'))
             ->assertOk();
@@ -120,8 +142,10 @@ class PelaporanBmTest extends TestCase
             'name' => 'Operator Sekolah',
             'username' => 'operator2',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
             'sekolah_id' => $sekolah->id,
         ]);
+        $user->assignRole('operator_sekolah');
 
         $spj = Spj::create([
             'sekolah_id' => $sekolah->id,
@@ -220,8 +244,10 @@ class PelaporanBmTest extends TestCase
             'name' => 'Operator Sekolah',
             'username' => 'operator3',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
             'sekolah_id' => $sekolah->id,
         ]);
+        $user->assignRole('operator_sekolah');
 
         $spj1 = Spj::create([
             'sekolah_id' => $sekolah->id,
@@ -289,8 +315,10 @@ class PelaporanBmTest extends TestCase
             'name' => 'Operator Sekolah',
             'username' => 'operator4',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
             'sekolah_id' => $sekolah->id,
         ]);
+        $user->assignRole('operator_sekolah');
 
         // Store SPJ
         $this->actingAs($user)
@@ -310,11 +338,9 @@ class PelaporanBmTest extends TestCase
         $this->assertEquals(3500000, $spj->nilai_perolehan);
 
         // Lock month 6
-        KunciLaporan::create([
-            'sekolah_id' => $sekolah->id,
-            'bulan' => '6',
-            'status_kunci' => true,
-        ]);
+        KunciLaporan::where('sekolah_id', $sekolah->id)
+            ->where('bulan', 6)
+            ->update(['status_kunci' => true]);
 
         // Attempt store when locked
         $this->actingAs($user)
@@ -364,8 +390,10 @@ class PelaporanBmTest extends TestCase
             'name' => 'Operator Sekolah',
             'username' => 'operator5',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
             'sekolah_id' => $sekolah->id,
         ]);
+        $user->assignRole('operator_sekolah');
 
         // Store Acuan
         $this->actingAs($user)
@@ -400,8 +428,10 @@ class PelaporanBmTest extends TestCase
             'name' => 'Operator Sekolah',
             'username' => 'operator6',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
             'sekolah_id' => $sekolah->id,
         ]);
+        $user->assignRole('operator_sekolah');
 
         Realisasi::create([
             'sekolah_id' => $sekolah->id,
@@ -450,8 +480,10 @@ class PelaporanBmTest extends TestCase
             'name' => 'Operator 2',
             'username' => 'operator2',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
             'sekolah_id' => $sekolah->id,
         ]);
+        $user->assignRole('operator_sekolah');
 
         $acuan = Acuan::create([
             'sekolah_id' => $sekolah->id,
@@ -546,8 +578,10 @@ class PelaporanBmTest extends TestCase
             'name' => 'Operator 3',
             'username' => 'operator3',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
             'sekolah_id' => $sekolah->id,
         ]);
+        $user->assignRole('operator_sekolah');
 
         $acuan = Acuan::create([
             'sekolah_id' => $sekolah->id,

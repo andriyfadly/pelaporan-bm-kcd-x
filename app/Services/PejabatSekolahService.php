@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Master\PejabatSekolah;
+use App\Models\Master\Sekolah;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -55,6 +56,8 @@ class PejabatSekolahService
     public function simpan(string $sekolahId, string $userId, array $data, ?PejabatSekolah $pejabat = null): PejabatSekolah
     {
         return DB::transaction(function () use ($sekolahId, $userId, $data, $pejabat) {
+            Sekolah::whereKey($sekolahId)->lockForUpdate()->firstOrFail();
+
             $mulai = Carbon::parse($data['mulai_menjabat']);
             $selesai = ! empty($data['selesai_menjabat']) ? Carbon::parse($data['selesai_menjabat']) : null;
 

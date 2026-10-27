@@ -76,8 +76,9 @@ class LaporanController extends Controller
                 ->when($sekolahId !== null, fn ($q) => $q->whereHas('pengajuan', fn ($w) => $w->where('sekolah_id', $sekolahId)))
                 ->orderByDesc('tanggal_titimangsa')
                 ->orderByDesc('created_at')
-                ->get()
-                ->map(fn (Dokumen $d) => [
+                ->paginate(50)
+                ->withQueryString()
+                ->through(fn (Dokumen $d) => [
                     'id' => $d->id,
                     'nomor' => $d->nomor,
                     'tanggal' => $d->tanggal_titimangsa?->toDateString(),

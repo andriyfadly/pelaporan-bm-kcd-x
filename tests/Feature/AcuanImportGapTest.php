@@ -179,6 +179,24 @@ class AcuanImportGapTest extends TestCase
         ]);
     }
 
+    public function test_import_admin_menerima_beberapa_baris_dengan_npsn_yang_sama(): void
+    {
+        $admin = $this->adminTanpaSekolah();
+        $target = $this->sekolah('SMKN NPSN Sama', '87654321');
+
+        $file = $this->xlsx([
+            ['Satuan', 'NPSN', 'Tanggal', 'Kodering', 'BKU', 'Uraian', 'Nominal', 'Bulan'],
+            ['SMKN NPSN Sama', '87654321', '2026-05-10', '5.2.02.31', 'B1', 'Baris satu', '8000', '5'],
+            ['SMKN NPSN Sama', '87654321', '2026-05-11', '5.2.02.32', 'B2', 'Baris dua', '9000', '5'],
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('pelaporan-bm.acuan.import'), ['file' => $file, 'bulan' => 5])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(2, Acuan::where('sekolah_id', $target->id)->count());
+    }
+
     public function test_import_menolak_berkas_lebih_dari_batas_baris(): void
     {
         $sekolah = $this->sekolah('SMKN Besar');

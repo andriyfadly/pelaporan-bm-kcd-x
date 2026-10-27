@@ -9,7 +9,6 @@ use Database\Seeders\PeranDanHakAksesSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class PasswordExpiryTest extends TestCase
@@ -19,9 +18,7 @@ class PasswordExpiryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Role::firstOrCreate(['name' => 'operator_sekolah']);
-        Role::firstOrCreate(['name' => 'admin_kcd']);
-        Role::firstOrCreate(['name' => 'super_admin']);
+        $this->seed(PeranDanHakAksesSeeder::class);
     }
 
     public function test_operator_with_null_password_changed_at_is_redirected_to_change_password(): void
@@ -160,12 +157,12 @@ class PasswordExpiryTest extends TestCase
             ->get(route('dashboard'))
             ->assertRedirect(route('password.change'));
 
-        // Setelah ganti password, akses normal.
+        // Setelah ganti password, pembatasan domain tetap berlaku.
         $user->forceFill(['password_changed_at' => now()])->save();
 
         $this->actingAs($user)
             ->get(route('dashboard'))
-            ->assertOk();
+            ->assertForbidden();
     }
 
     public function test_change_password_page_renders(): void

@@ -77,6 +77,20 @@ class SecurityHardeningTest extends TestCase
         $this->actingAs($user)->get(route('admin.user.index'))->assertForbidden();
     }
 
+    public function test_user_tanpa_hak_laporan_tidak_bisa_akses_pelaporan_bm(): void
+    {
+        $user = User::create([
+            'name' => 'Operator Divisi',
+            'username' => 'operator_divisi_bm',
+            'password' => bcrypt('Password123!'),
+            'password_changed_at' => now(),
+        ]);
+        $user->assignRole('operator_divisi');
+
+        $this->actingAs($user)->get(route('dashboard'))->assertForbidden();
+        $this->actingAs($user)->get(route('pelaporan-bm.spj.index'))->assertForbidden();
+    }
+
     public function test_role_sekolah_tanpa_tenant_tidak_masuk_jalur_admin(): void
     {
         $user = User::create([

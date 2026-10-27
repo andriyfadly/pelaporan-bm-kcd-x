@@ -19,6 +19,7 @@ class RekapanController extends Controller
     public function index(Request $request): Response
     {
         $bulan = (int) ($request->input('bulan') ?: date('n'));
+        $tahun = (int) $request->input('tahun', date('Y'));
         $search = trim((string) $request->input('search', ''));
 
         // Tenant isolation: operator tanpa sekolah_id ditolak 403; operator sekolah
@@ -29,6 +30,7 @@ class RekapanController extends Controller
         // pada bulan terpilih (tanpa fallback ke semua sekolah).
         $allAcuan = Acuan::query()
             ->where('bulan', $bulan)
+            ->where('tahun', $tahun)
             ->whereNotNull('sekolah_id')
             ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
             ->get()
@@ -52,7 +54,7 @@ class RekapanController extends Controller
             ->whereIn('acuan_id', $acuanIds)
             ->get()
             ->groupBy('acuan_id');
-        $kunciMap = KunciLaporan::where('bulan', $bulan)->get()->keyBy('sekolah_id');
+        $kunciMap = KunciLaporan::where('bulan', $bulan)->where('tahun', $tahun)->get()->keyBy('sekolah_id');
 
         $counter = ['tuntas' => 0, 'belum' => 0];
 
@@ -184,6 +186,7 @@ class RekapanController extends Controller
         return Inertia::render('PelaporanBm/Rekapan/Index', [
             'items' => $sortedItems,
             'bulan' => $bulan,
+            'tahun' => $tahun,
             'namaBulan' => $namaBulanIndo[$bulan] ?? 'BULAN '.$bulan,
             'search' => $search,
             'counter' => $counter,

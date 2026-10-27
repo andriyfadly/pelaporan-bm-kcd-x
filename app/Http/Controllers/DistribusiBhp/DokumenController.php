@@ -14,7 +14,6 @@ use App\Support\DistribusiBhp\SumberDana;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use InvalidArgumentException;
@@ -98,57 +97,53 @@ class DokumenController extends Controller
                 'created_by' => $request->user()->id,
             ]);
 
-            $files = [];
-            $berhasil = 0;
-            $gagal = 0;
-            $pdfs = [];
+            try {
+                $pdf = Pdf::loadHtml(
+                    view('distribusi-bhp.dokumen-kompilasi', [
+                        'pengajuan' => $pengajuan->load('details.barang'),
+                        'dokumenList' => $dokumenList,
+                        'judulMap' => self::JUDUL,
+                        'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
+                        'alamat' => $pengajuan->sekolah?->alamat ?? '',
+                        'telepon' => $pengajuan->sekolah?->telepon ?? '',
+                        'website' => $pengajuan->sekolah?->website ?? '',
+                        'email' => $pengajuan->sekolah?->email ?? '',
+                        'kodePos' => $pengajuan->sekolah?->kode_pos ?? '',
+                        'pemohon' => $pengajuan->pemohon?->name ?? '-',
+                        'penandatangan' => $dokumenList->first()?->payload['penandatangan'] ?? [],
+                        'settings' => $this->settings->get($pengajuan->sumber_dana),
+                    ])->render()
+                )->setPaper('a4', 'portrait');
+                $response = $pdf->download("batch_dokumen_bhp_{$pengajuan->sumber_dana}.pdf");
+            } catch (Throwable $e) {
+                $batch->update([
+                    'status' => 'gagal',
+                    'gagal' => $dokumenList->count(),
+                    'error_message' => $e->getMessage(),
+                ]);
 
-            foreach ($dokumenList as $dokumen) {
-                try {
-                    $pdfs[] = $this->render($pengajuan->load('details.barang'), $dokumen);
-                    $files[] = ['nomor' => $dokumen->nomor, 'jenis' => $dokumen->jenis, 'status' => 'ok'];
-                    $berhasil++;
-                } catch (Throwable $e) {
-                    $files[] = ['nomor' => $dokumen->nomor, 'jenis' => $dokumen->jenis, 'status' => 'error', 'message' => $e->getMessage()];
-                    $gagal++;
-                }
+                throw $e;
             }
 
-            // Gabungkan semua PDF menggunakan dompdf
-            $pdf = Pdf::loadHtml(
-                view('distribusi-bhp.dokumen-kompilasi', [
-                    'pengajuan' => $pengajuan->load('details.barang'),
-                    'dokumenList' => $dokumenList,
-                    'judulMap' => self::JUDUL,
-                    'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
-                    'alamat' => $pengajuan->sekolah?->alamat ?? '',
-                    'telepon' => $pengajuan->sekolah?->telepon ?? '',
-                    'website' => $pengajuan->sekolah?->website ?? '',
-                    'email' => $pengajuan->sekolah?->email ?? '',
-                    'kodePos' => $pengajuan->sekolah?->kode_pos ?? '',
-                    'pemohon' => $pengajuan->pemohon?->name ?? '-',
-                    'penandatangan' => $dokumenList->first()?->payload['penandatangan'] ?? [],
-                    'settings' => $this->settings->get($pengajuan->sumber_dana),
-                ])->render()
-            )->setPaper('a4', 'portrait');
-
-            DB::transaction(function () use ($batch, $files, $berhasil, $gagal) {
-                $batch->update([
-                    'status' => $gagal === 0 ? 'selesai' : ($berhasil === 0 ? 'gagal' : 'sebagian'),
-                    'berhasil' => $berhasil,
-                    'gagal' => $gagal,
-                    'files' => $files,
-                    'error_message' => $gagal > 0 ? "{$gagal} dokumen gagal dibuat." : null,
-                ]);
-            });
+            $files = $dokumenList->map(fn (Dokumen $dokumen): array => [
+                'nomor' => $dokumen->nomor,
+                'jenis' => $dokumen->jenis,
+                'status' => 'ok',
+            ])->all();
+            $batch->update([
+                'status' => 'selesai',
+                'berhasil' => $dokumenList->count(),
+                'files' => $files,
+                'error_message' => null,
+            ]);
 
             activity('sistem')
                 ->event('batch-dokumen-bhp')
                 ->performedOn($pengajuan)
-                ->withProperties(['batch_id' => $batch->id, 'berhasil' => $berhasil, 'gagal' => $gagal])
+                ->withProperties(['batch_id' => $batch->id, 'berhasil' => $dokumenList->count(), 'gagal' => 0])
                 ->log('batch-dokumen-bhp');
 
-            return $pdf->download("batch_dokumen_bhp_{$pengajuan->sumber_dana}.pdf");
+            return $response;
         });
     }
 

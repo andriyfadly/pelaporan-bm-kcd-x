@@ -9,12 +9,19 @@ use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
 use App\Models\PelaporanBm\Spj;
 use App\Models\User;
+use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SekolahFlowFixTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PeranDanHakAksesSeeder::class);
+    }
 
     private function buatSekolahDanUser(): array
     {
@@ -28,7 +35,9 @@ class SekolahFlowFixTest extends TestCase
             'username' => 'operator_audit',
             'password' => bcrypt('password'),
             'sekolah_id' => $sekolah->id,
+            'password_changed_at' => now(),
         ]);
+        $user->assignRole('operator_sekolah');
 
         return [$sekolah, $user];
     }
@@ -296,7 +305,9 @@ class SekolahFlowFixTest extends TestCase
             'name' => 'Admin KCD',
             'username' => 'admin_rekapan',
             'password' => bcrypt('password'),
+            'password_changed_at' => now(),
         ]);
+        $admin->assignRole('admin_kcd');
 
         // Paritas legacy: baris rekapan bersumber dari acuan bulan terpilih.
         Acuan::create([

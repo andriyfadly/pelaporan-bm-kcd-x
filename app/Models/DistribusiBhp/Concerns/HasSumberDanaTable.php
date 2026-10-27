@@ -114,7 +114,14 @@ trait HasSumberDanaTable
     {
         $field ??= $this->getRouteKeyName();
 
-        foreach (SumberDana::SEMUA as $dana) {
+        $routeName = request()->route()?->getName();
+        $sumberDana = match (true) {
+            str_contains((string) $routeName, '.bos.') => [SumberDana::BOS],
+            str_contains((string) $routeName, '.bopd.') => [SumberDana::BOPD],
+            default => SumberDana::SEMUA,
+        };
+
+        foreach ($sumberDana as $dana) {
             $model = $this->newQuery()->from(static::tabelUntuk($dana))
                 ->where($field, $value)
                 ->first();

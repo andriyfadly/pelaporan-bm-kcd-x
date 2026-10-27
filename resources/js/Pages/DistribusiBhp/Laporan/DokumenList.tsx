@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { FileSpreadsheet } from 'lucide-react';
+import Pagination from '@/Components/Pagination';
 
 interface PengajuanRef {
     id: string;
@@ -16,6 +17,12 @@ interface DocItem {
     pengajuan: PengajuanRef | null;
 }
 
+interface PaginatedDocs {
+    data: DocItem[];
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+    total: number;
+}
+
 export default function DokumenList({
     jenis,
     jenisLabel,
@@ -25,7 +32,7 @@ export default function DokumenList({
     jenis: string;
     jenisLabel: string;
     sumberDana: string;
-    items: DocItem[];
+    items: PaginatedDocs;
 }) {
     return (
         <AppLayout title={`Laporan ${jenisLabel}`}>
@@ -49,21 +56,21 @@ export default function DokumenList({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {items.length === 0 ? (
+                            {items.data.length === 0 ? (
                                 <tr>
                                     <td colSpan={3} className="py-10 text-center text-slate-400 text-xs">
                                         Belum ada dokumen {jenisLabel.toLowerCase()}.
                                     </td>
                                 </tr>
                             ) : (
-                                items.map((doc) => (
+                                items.data.map((doc) => (
                                     <tr key={doc.id}>
                                         <td className="py-3 px-4 font-semibold">{doc.nomor ?? '-'}</td>
                                         <td className="py-3 px-4">{doc.tanggal ?? '-'}</td>
                                         <td className="py-3 px-4">
                                             {doc.pengajuan ? (
                                                 <a
-                                                    href={`/distribusi-bhp/pengajuan/${doc.pengajuan.id}/dokumen/${doc.id}/pdf`}
+                                                    href={`/distribusi-bhp/${sumberDana.toLowerCase()}/pengajuan/${doc.pengajuan.id}/dokumen/${doc.id}/pdf`}
                                                     className="text-blue-600 hover:underline font-semibold"
                                                 >
                                                     {doc.pengajuan.nomor ?? 'Pengajuan'} ({doc.pengajuan.tanggal ?? '-'})
@@ -77,6 +84,11 @@ export default function DokumenList({
                             )}
                         </tbody>
                     </table>
+                    {items.total > 0 && (
+                        <div className="border-t border-slate-100 p-4">
+                            <Pagination links={items.links} total={items.total} />
+                        </div>
+                    )}
                 </div>
             </div>
         </AppLayout>
