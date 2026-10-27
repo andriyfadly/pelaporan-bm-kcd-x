@@ -118,6 +118,18 @@ Status kini: **100% total, semua file 100%**.
    hanya status.
 5. Jalankan file barunya + full suite + `composer test-coverage` sebelum commit.
 
+### Matriks test master data & Pencatatan BM
+
+| File | Cakupan |
+|---|---|
+| `MasterDataRuangPegawaiTest` | Tabel `master_data_ruang`/`master_data_pegawai` ada dan tabel lama hilang, kolom `aktif`, relasi `unitAktif`, nama ruang unik case-insensitive |
+| `MasterDataPenugasanModelTest` | Skema jabatan/penugasan, kode jabatan unik per sekolah, satu pemegang terbuka per jabatan (partial unique), `scopeBerlakuPada` untuk tanggal lampau, `toSnapshot` + label Plt./Plh. |
+| `PenugasanPegawaiServiceTest` | `simpan` membuat/menemukan pegawai + jabatan, auto-close H-1, overlap & tanggal terbalik ditolak, `akhiri`, `mutasi` (periode lama tertutup, pegawai tetap), prioritas definitif > plt > plh, `snapshotPenandatangan` menyebut jabatan kurang, isolasi sekolah |
+| `MasterDataJabatanTest` | CRUD jabatan via HTTP, kode unik & format, jabatan terpakai dinonaktifkan bukan dihapus, isolasi sekolah 404, form pegawai tanpa field jabatan |
+| `MasterDataPenugasanHttpTest` | Simpan/akhiri/mutasi via HTTP, PLT menutup definitif, overlap jadi flash error, cross-tenant 404, permission granular |
+| `InventarisSnapshotPejabatTest` | Dokumen lampau memakai pejabat saat itu, dokumen baru memakai pejabat aktif, snapshot tidak berubah setelah master diedit, tanpa pejabat tetap bisa cetak, fakta integritas memakai jabatan per tanggal, kolom `jabatan`/`ruang` pegawai sudah hilang |
+| `Inventaris*Test` (12 file) | Alur inventaris: sinkronisasi, mutasi/pengembalian, dokumen/QR/label, ekspor, tenant isolation, permission |
+
 ## 5. Batasan Diketahui
 
 - Tanpa test browser/JS (Vite/Inertia diuji via HTTP + `tsc`).
