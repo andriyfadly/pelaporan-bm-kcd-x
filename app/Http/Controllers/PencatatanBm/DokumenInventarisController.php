@@ -11,6 +11,7 @@ use App\Models\Master\Sekolah;
 use App\Models\PencatatanBm\Dokumen;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\Mutasi;
+use App\Services\Master\PenugasanPegawaiService;
 use App\Services\PencatatanBm\DokumenInventarisService;
 use App\Services\PencatatanBm\QrLabelService;
 use Illuminate\Database\Eloquent\Builder;
@@ -78,7 +79,7 @@ class DokumenInventarisController extends Controller
             'nomor' => $validated['nomor'] ?? null,
             'tanggal' => $validated['tanggal'] ?? now()->toDateString(),
             'inventaris_unit_id' => $unit->id,
-            'payload' => $this->payloadDasar($unit->fresh(), $request),
+            'payload' => $this->payloadDasar($unit->fresh(), $request, $validated['tanggal'] ?? null),
             'user_id' => $request->user()->id,
         ]);
 
@@ -93,22 +94,18 @@ class DokumenInventarisController extends Controller
         $validated = $request->validate(['tanggal' => ['nullable', 'date']]);
 
         $units = $this->unitScope($pegawai->sekolah_id)->where('pegawai_id', $pegawai->id)->get();
+        $tanggal = $validated['tanggal'] ?? now()->toDateString();
 
         $dokumen = Dokumen::create([
             'sekolah_id' => $pegawai->sekolah_id,
             'jenis' => 'fakta_integritas',
-            'tanggal' => $validated['tanggal'] ?? now()->toDateString(),
+            'tanggal' => $tanggal,
             'inventaris_pegawai_id' => $pegawai->id,
             'payload' => [
                 'sekolah' => $this->snapshotSekolah($pegawai->sekolah),
-                'pegawai' => [
-                    'nama_lengkap' => $pegawai->nama_lengkap,
-                    'nip' => $pegawai->nip,
-                    'pangkat_golongan' => $pegawai->pangkat_golongan,
-                    'jabatan' => $pegawai->jabatan,
-                ],
+                'pegawai' => $this->snapshotPegawai($pegawai, $tanggal),
                 'units' => $units->map(fn (InventarisUnit $unit) => $this->qr->snapshotUnit($unit))->all(),
-                'pejabat' => $this->dokumen->pejabat($pegawai->sekolah_id),
+                'pejabat' => $this->dokumen->pejabat($pegawai->sekolah_id, $tanggal),
                 'dicetak_oleh' => $request->user()->name,
             ],
             'user_id' => $request->user()->id,
@@ -139,7 +136,7 @@ class DokumenInventarisController extends Controller
             'jenis' => 'surat_pengembalian',
             'tanggal' => $request->input('tanggal', now()->toDateString()),
             'inventaris_unit_id' => $unit->id,
-            'payload' => $this->payloadDasar($unit->fresh(), $request) + [
+            'payload' => $this->payloadDasar($unit->fresh(), $request, $request->input('tanggal')) + [
                 'mutasi' => $this->qr->snapshotMutasi($mutasi),
             ],
             'user_id' => $request->user()->id,
@@ -188,13 +185,39 @@ class DokumenInventarisController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function payloadDasar(InventarisUnit $unit, Request $request): array
+    private function payloadDasar(InventarisUnit $unit, Request $request, ?string $tanggal = null): array
     {
         return [
             'sekolah' => $this->snapshotSekolah($unit->sekolah),
             'unit' => $this->qr->snapshotUnit($unit),
-            'pejabat' => $this->dokumen->pejabat($unit->sekolah_id),
+            'pejabat' => $this->dokumen->pejabat($unit->sekolah_id, $tanggal),
             'dicetak_oleh' => $request->user()->name,
+        ];
+    }
+
+    /**
+     * Identitas pegawai + jabatan yang berlaku pada tanggal dokumen. Jabatan
+     * diambil dari riwayat penugasan, bukan kolom master, supaya dokumen
+     * bertanggal lampau tetap menyebut jabatan saat itu.
+     *
+     * @return array<string, mixed>
+     */
+    private function snapshotPegawai(Pegawai $pegawai, string $tanggal): array
+    {
+        $penugasan = app(PenugasanPegawaiService::class)->penugasanPegawaiPada(
+            (string) $pegawai->sekolah_id,
+            (string) $pegawai->id,
+            $tanggal,
+        );
+
+        return [
+            'pegawai_id' => $pegawai->id,
+            'nama_lengkap' => $pegawai->nama_lengkap,
+            'nip' => $pegawai->nip,
+            'pangkat_golongan' => $pegawai->pangkat_golongan,
+            'jabatan_id' => $penugasan?->jabatan_id,
+            'jabatan' => $penugasan?->labelJabatan(),
+            'jenis_penugasan' => $penugasan?->jenis_penugasan,
         ];
     }
 

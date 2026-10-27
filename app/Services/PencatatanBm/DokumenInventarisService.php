@@ -79,7 +79,7 @@ class DokumenInventarisService
             'dokumen' => $dokumen,
             'payload' => $dokumen->payload,
             'sekolah' => $dokumen->sekolah,
-            'pejabat' => $this->pejabat($dokumen->sekolah_id),
+            'pejabat' => $this->pejabatTersimpan($dokumen),
         ], $tambahan));
 
         $path = "inventaris/dokumen/{$dokumen->sekolah_id}/{$dokumen->jenis}-{$dokumen->id}.pdf";
@@ -98,7 +98,7 @@ class DokumenInventarisService
             'dokumen' => $dokumen,
             'payload' => $dokumen->payload,
             'sekolah' => $dokumen->sekolah,
-            'pejabat' => $this->pejabat($dokumen->sekolah_id),
+            'pejabat' => $this->pejabatTersimpan($dokumen),
         ]);
 
         return $pdf->download($this->namaFile($this->judul($dokumen->jenis), $dokumen->nomor ?? $dokumen->id));
@@ -128,6 +128,26 @@ class DokumenInventarisService
     public function pejabat(string $sekolahId, ?string $tanggal = null): array
     {
         return $this->penugasan->pejabatPada($sekolahId, $tanggal);
+    }
+
+    /**
+     * Penandatangan yang sudah dibekukan di payload dokumen. Reprint dokumen
+     * lama harus memakai ini, bukan lookup hidup, supaya tidak berubah ketika
+     * pejabat berganti.
+     *
+     * @return array<string, array<string, mixed>|null>
+     */
+    private function pejabatTersimpan(Dokumen $dokumen): array
+    {
+        $tersimpan = $dokumen->payload['pejabat'] ?? null;
+
+        if (is_array($tersimpan)) {
+            return $tersimpan;
+        }
+
+        // shortcut: dokumen lama tanpa snapshot pejabat jatuh ke data hidup;
+        // tidak ada dokumen seperti itu di database saat migrasi ini dibuat.
+        return $this->pejabat($dokumen->sekolah_id, $dokumen->tanggal?->toDateString());
     }
 
     private function pdf(string $view, array $data, string $orientation = 'portrait')

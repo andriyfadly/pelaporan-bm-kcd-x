@@ -185,6 +185,24 @@ class PenugasanPegawaiService
             ->first();
     }
 
+    /**
+     * Penugasan seorang pegawai yang berlaku pada tanggal dokumen. Dipakai
+     * snapshot fakta integritas: jabatan yang tercetak adalah jabatan saat itu.
+     */
+    public function penugasanPegawaiPada(string $sekolahId, string $pegawaiId, string $tanggal): ?PenugasanPegawai
+    {
+        return PenugasanPegawai::where('sekolah_id', $sekolahId)
+            ->where('pegawai_id', $pegawaiId)
+            ->whereDate('mulai_menjabat', '<=', $tanggal)
+            ->where(fn ($q) => $q
+                ->whereNull('selesai_menjabat')
+                ->orWhereDate('selesai_menjabat', '>=', $tanggal))
+            ->orderByRaw("CASE jenis_penugasan WHEN 'definitif' THEN 0 WHEN 'plt' THEN 1 ELSE 2 END")
+            ->orderByDesc('mulai_menjabat')
+            ->with('jabatan')
+            ->first();
+    }
+
     private function jabatan(string $sekolahId, string $kode): Jabatan
     {
         return Jabatan::firstOrCreate(

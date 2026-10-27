@@ -19,10 +19,7 @@ class Pegawai extends Model
 
     protected $table = 'master_data_pegawai';
 
-    protected $fillable = ['sekolah_id', 'nama_lengkap', 'nip', 'pangkat_golongan', 'aktif', 'jabatan', 'ruang'];
-
-    // shortcut: kolom jabatan/ruang masih ada sampai migrasi pembersihan di
-    // Task 6; keduanya sudah tidak dipakai sebagai sumber kebenaran.
+    protected $fillable = ['sekolah_id', 'nama_lengkap', 'nip', 'pangkat_golongan', 'aktif'];
 
     protected $attributes = ['aktif' => true];
 
