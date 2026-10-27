@@ -203,4 +203,20 @@ class MasterDataPenugasanHttpTest extends TestCase
             ->get(route('master-data.penugasan.index'))
             ->assertForbidden();
     }
+
+    public function test_admin_tanpa_konteks_sekolah_ditolak_di_halaman_master(): void
+    {
+        $admin = User::create([
+            'name' => 'Admin KCD',
+            'username' => 'admin.tanpa.sekolah',
+            'password' => bcrypt('password'),
+            'sekolah_id' => null,
+            'password_changed_at' => now(),
+        ]);
+        $admin->assignRole('admin_kcd');
+
+        foreach (['master-data.penugasan.index', 'master-data.jabatan.index'] as $rute) {
+            $this->actingAs($admin)->get(route($rute))->assertStatus(422);
+        }
+    }
 }

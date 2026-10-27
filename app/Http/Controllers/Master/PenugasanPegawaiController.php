@@ -22,11 +22,13 @@ class PenugasanPegawaiController extends Controller
 
     public function index(Request $request): Response
     {
-        $sekolahId = $this->resolveSekolahId($request);
+        // Sama seperti halaman Ruang/Pegawai: master milik sekolah butuh
+        // konteks sekolah, bukan daftar lintas sekolah yang tercampur.
+        $sekolahId = $this->resolveSekolahIdWajib($request);
 
         $penugasan = PenugasanPegawai::query()
             ->with(['pegawai:id,nama_lengkap,nip,pangkat_golongan', 'jabatan:id,kode,nama'])
-            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->where('sekolah_id', $sekolahId)
             ->orderBy('jabatan_id')
             ->orderByDesc('mulai_menjabat')
             ->get();
@@ -41,7 +43,7 @@ class PenugasanPegawaiController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $sekolahId = $this->resolveSekolahId($request);
+        $sekolahId = $this->resolveSekolahIdWajib($request);
 
         try {
             $this->service->simpan($sekolahId, (string) $request->user()->id, $this->validated($request, $sekolahId));

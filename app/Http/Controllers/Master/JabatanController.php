@@ -18,11 +18,11 @@ class JabatanController extends Controller
 
     public function index(Request $request): Response
     {
-        $sekolahId = $this->resolveSekolahId($request);
+        $sekolahId = $this->resolveSekolahIdWajib($request);
 
         return Inertia::render('MasterData/Jabatan/Index', [
             'jabatan' => Jabatan::query()
-                ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+                ->where('sekolah_id', $sekolahId)
                 ->withCount(['penugasan as penugasan_aktif_count' => fn ($q) => $q->whereNull('selesai_menjabat')])
                 ->orderBy('nama')
                 ->get(),
