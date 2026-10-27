@@ -11,6 +11,7 @@ use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Dokumen;
 use App\Services\DistribusiBhp\LaporanService;
 use App\Services\DistribusiBhp\SettingsService;
+use App\Support\DistribusiBhp\Periode;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,15 +34,25 @@ class LaporanController extends Controller
     public function index(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = $request->validate([
+        $validated = $request->validate([
             'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
-        ])['sumber_dana'] ?? SumberDana::BOS;
-        $sumberDana = SumberDana::normalisasi($sumberDana);
+            ...$this->aturanPeriode(),
+        ]);
+        $sumberDana = SumberDana::normalisasi($validated['sumber_dana'] ?? SumberDana::BOS);
+        $periode = Periode::dari(
+            isset($validated['tahun']) ? (int) $validated['tahun'] : null,
+            isset($validated['bulan']) ? (int) $validated['bulan'] : null,
+        );
 
         return Inertia::render('DistribusiBhp/Laporan/Index', [
             'sumberDana' => $sumberDana,
-            'stok' => $this->laporan->laporanStok($sumberDana, $sekolahId),
-            'pengeluaran' => $this->laporan->bukuPengeluaran($sumberDana, $sekolahId),
+            'periode' => [
+                'tahun' => $periode->tahun,
+                'bulan' => $periode->bulan,
+                'label' => $periode->label(),
+            ],
+            'stok' => $this->laporan->laporanStok($sumberDana, $sekolahId, $periode),
+            'pengeluaran' => $this->laporan->bukuPengeluaran($sumberDana, $sekolahId, $periode),
         ]);
     }
 
@@ -53,15 +64,34 @@ class LaporanController extends Controller
         $validated = $request->validate([
             'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
             'barang_id' => ['nullable', 'uuid', SumberDana::existsRule('barang', $sumberDana)],
+            ...$this->aturanPeriode(),
         ]);
         $barangId = (string) ($validated['barang_id'] ?? '');
+        $periode = Periode::dari(
+            isset($validated['tahun']) ? (int) $validated['tahun'] : null,
+            isset($validated['bulan']) ? (int) $validated['bulan'] : null,
+        );
 
         return SumberDana::dengan($sumberDana, fn (): Response => Inertia::render('DistribusiBhp/Laporan/KartuPersediaan', [
             'sumberDana' => $sumberDana,
             'barangId' => $barangId,
-            'kartu' => $barangId !== '' ? $this->laporan->kartuPersediaan($barangId, $sumberDana, $sekolahId) : null,
+            'periode' => [
+                'tahun' => $periode->tahun,
+                'bulan' => $periode->bulan,
+                'label' => $periode->label(),
+            ],
+            'kartu' => $barangId !== '' ? $this->laporan->kartuPersediaan($barangId, $sumberDana, $sekolahId, $periode) : null,
             'daftarBarang' => Barang::orderBy('nama_barang')->get(['id', 'kode_barang', 'nama_barang']),
         ]));
+    }
+
+    /** Aturan validasi periode yang dipakai semua halaman & export laporan. */
+    private function aturanPeriode(): array
+    {
+        return [
+            'tahun' => ['nullable', 'integer', 'between:2000,2100'],
+            'bulan' => ['nullable', 'integer', 'between:1,12'],
+        ];
     }
 
     private function daftarDokumen(Request $request, string $sumberDana, string $jenis): Response
@@ -71,7 +101,10 @@ class LaporanController extends Controller
 
         return SumberDana::dengan($sumberDana, function () use ($sekolahId, $jenis, $label, $sumberDana): Response {
             $items = Dokumen::query()
-                ->with('pengajuan:id,tanggal,nomor_pengajuan,divisi_id,sekolah_id')
+                ->with([
+                    'pengajuan:id,tanggal,nomor_pengajuan,divisi_id,sekolah_id',
+                    'pengajuan.dokumen:id,bhp_pengajuan_id,jenis,nomor',
+                ])
                 ->where('jenis', $jenis)
                 ->when($sekolahId !== null, fn ($q) => $q->whereHas('pengajuan', fn ($w) => $w->where('sekolah_id', $sekolahId)))
                 ->orderByDesc('tanggal_titimangsa')
@@ -84,7 +117,10 @@ class LaporanController extends Controller
                     'tanggal' => $d->tanggal_titimangsa?->toDateString(),
                     'pengajuan' => $d->pengajuan ? [
                         'id' => $d->pengajuan->id,
-                        'nomor' => $d->pengajuan->nomor_pengajuan,
+                        // Nomor pengajuan tidak pernah diisi; nomor Nota
+                        // Permintaan adalah identitas praktisnya.
+                        'nomor' => $d->pengajuan->nomor_pengajuan
+                            ?: $d->pengajuan->dokumen->firstWhere('jenis', 'nota_permintaan')?->nomor,
                         'tanggal' => $d->pengajuan->tanggal?->toDateString(),
                         'sekolah_id' => $d->pengajuan->sekolah_id,
                     ] : null,
@@ -122,11 +158,21 @@ class LaporanController extends Controller
     {
         $sekolahId = $this->resolveSekolahId($request);
         $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS));
+        $validated = $request->validate($this->aturanPeriode());
+        $periode = Periode::dari(
+            isset($validated['tahun']) ? (int) $validated['tahun'] : null,
+            isset($validated['bulan']) ? (int) $validated['bulan'] : null,
+        );
 
         return Inertia::render('DistribusiBhp/Laporan/BukuPengeluaran', [
             'jenisLabel' => 'Buku Pengeluaran Barang',
             'sumberDana' => $sumberDana,
-            'items' => $this->laporan->bukuPengeluaran($sumberDana, $sekolahId),
+            'periode' => [
+                'tahun' => $periode->tahun,
+                'bulan' => $periode->bulan,
+                'label' => $periode->label(),
+            ],
+            'items' => $this->laporan->bukuPengeluaran($sumberDana, $sekolahId, $periode),
         ]);
     }
 
@@ -161,6 +207,7 @@ class LaporanController extends Controller
             'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
             'jenis' => ['required', Rule::in(['stok', 'pengeluaran', 'kartu_persediaan'])],
             'barang_id' => ['required_if:jenis,kartu_persediaan', 'uuid'],
+            ...$this->aturanPeriode(),
         ]);
 
         $sekolahId = $this->resolveSekolahId($request);
@@ -170,6 +217,10 @@ class LaporanController extends Controller
                 ?? SumberDana::BOS,
         );
         $jenis = $validated['jenis'];
+        $periode = Periode::dari(
+            isset($validated['tahun']) ? (int) $validated['tahun'] : null,
+            isset($validated['bulan']) ? (int) $validated['bulan'] : null,
+        );
 
         if ($jenis === 'kartu_persediaan') {
             validator(
@@ -178,23 +229,25 @@ class LaporanController extends Controller
             )->validate();
         }
 
+        $suffixPeriode = $periode->kode();
+
         if ($jenis === 'stok') {
-            $rows = $this->laporan->laporanStok($sumberDana, $sekolahId);
+            $rows = $this->laporan->laporanStok($sumberDana, $sekolahId, $periode);
             $export = new BhpStokExport($rows);
-            $filename = "laporan_stok_bhp_{$sumberDana}.xlsx";
+            $filename = "laporan_stok_bhp_{$sumberDana}_{$suffixPeriode}.xlsx";
         } elseif ($jenis === 'kartu_persediaan') {
             try {
-                $kartu = $this->laporan->kartuPersediaan($validated['barang_id'], $sumberDana, $sekolahId);
+                $kartu = $this->laporan->kartuPersediaan($validated['barang_id'], $sumberDana, $sekolahId, $periode);
             } catch (RuntimeException $e) {
                 return back()->with('error', $e->getMessage());
             }
             $rows = $kartu['mutasi'];
             $export = new BhpKartuPersediaanExport($kartu['barang'], $rows);
-            $filename = "kartu_persediaan_bhp_{$sumberDana}.xlsx";
+            $filename = "kartu_persediaan_bhp_{$sumberDana}_{$suffixPeriode}.xlsx";
         } else {
-            $rows = $this->laporan->bukuPengeluaran($sumberDana, $sekolahId);
+            $rows = $this->laporan->bukuPengeluaran($sumberDana, $sekolahId, $periode);
             $export = new BhpPengeluaranExport($rows);
-            $filename = "buku_pengeluaran_bhp_{$sumberDana}.xlsx";
+            $filename = "buku_pengeluaran_bhp_{$sumberDana}_{$suffixPeriode}.xlsx";
         }
 
         activity('sistem')
@@ -203,6 +256,7 @@ class LaporanController extends Controller
                 'ringkasan' => "Unduh {$filename} (".count($rows).' baris)',
                 'sumber_dana' => $sumberDana,
                 'jenis' => $jenis,
+                'periode' => $suffixPeriode,
                 'jumlah' => count($rows),
             ])
             ->log('unduh-laporan-bhp');

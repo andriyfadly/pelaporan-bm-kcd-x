@@ -28,44 +28,56 @@ class StokService
      * null = tanpa filter (admin lintas sekolah, agregat seluruh sekolah);
      * selain itu scope TEPAT ke sekolah tersebut — penerimaan sekolah lain
      * tidak pernah ikut terhitung.
+     *
+     * $sampai = tanggal akhir efektif (Y-m-d) untuk laporan periode; null =
+     * posisi saat ini.
      */
-    public function fisik(Barang $barang, ?string $sekolahId = null): int
+    public function fisik(Barang $barang, ?string $sekolahId = null, ?string $sampai = null): int
     {
         return SumberDana::dengan($barang->sumber_dana, fn (): int => (int) PenerimaanDetail::where('barang_id', $barang->id)
-            ->when($sekolahId !== null, fn ($q) => $q->whereHas('penerimaan', fn ($p) => $p->where('sekolah_id', $sekolahId)))
+            ->whereHas('penerimaan', fn ($p) => $p
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId))
+                ->when($sampai !== null, fn ($w) => $w->efektifSampai($sampai)))
             ->sum('jumlah'));
     }
 
     /**
      * Stok terpakai: jumlah disetujui pada pengajuan berstatus approved.
      */
-    public function terpakai(Barang $barang, ?string $sekolahId = null): int
+    public function terpakai(Barang $barang, ?string $sekolahId = null, ?string $sampai = null): int
     {
         return SumberDana::dengan($barang->sumber_dana, fn (): int => (int) PengajuanDetail::where('barang_id', $barang->id)
             ->whereHas('pengajuan', fn ($q) => $q
                 ->where('status', 'approved')
-                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId))
+                ->when($sampai !== null, fn ($w) => $w->efektifSampai($sampai)))
             ->sum('jumlah_disetujui'));
     }
 
     /**
      * Stok tereservasi: jumlah reservasi aktif pada pengajuan submitted.
      */
-    public function reservasi(Barang $barang, ?string $sekolahId = null): int
+    public function reservasi(Barang $barang, ?string $sekolahId = null, ?string $sampai = null): int
     {
         return SumberDana::dengan($barang->sumber_dana, fn (): int => (int) PengajuanDetail::where('barang_id', $barang->id)
             ->whereHas('pengajuan', fn ($q) => $q
                 ->where('status', 'submitted')
-                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId))
+                ->when($sampai !== null, fn ($w) => $w->efektifSampai($sampai)))
             ->sum('jumlah_direservasi'));
     }
 
     /**
      * Stok tersedia, tidak pernah negatif.
      */
-    public function tersedia(Barang $barang, ?string $sekolahId = null): int
+    public function tersedia(Barang $barang, ?string $sekolahId = null, ?string $sampai = null): int
     {
-        return max(0, $this->fisik($barang, $sekolahId) - $this->terpakai($barang, $sekolahId) - $this->reservasi($barang, $sekolahId));
+        return max(
+            0,
+            $this->fisik($barang, $sekolahId, $sampai)
+                - $this->terpakai($barang, $sekolahId, $sampai)
+                - $this->reservasi($barang, $sekolahId, $sampai),
+        );
     }
 
     /**
@@ -76,7 +88,7 @@ class StokService
      * @param  list<Barang>  $barangs
      * @return array<string,array{fisik:int,terpakai:int,reservasi:int,tersedia:int}> keyed by barang id
      */
-    public function rekapPerBarang(iterable $barangs, ?string $sekolahId = null): array
+    public function rekapPerBarang(iterable $barangs, ?string $sekolahId = null, ?string $sampai = null): array
     {
         $barangIds = collect($barangs)->pluck('id')->all();
 
@@ -86,7 +98,36 @@ class StokService
 
         $dana = collect($barangs)->first()?->sumber_dana ?? SumberDana::aktif();
 
-        return SumberDana::dengan($dana, fn (): array => $this->rekapDalamDana($barangs, $barangIds, $sekolahId));
+        return SumberDana::dengan($dana, fn (): array => $this->snapshot(
+            fn (): array => $this->rekapDalamDana($barangs, $barangIds, $sekolahId, $sampai),
+        ));
+    }
+
+    /**
+     * Jalankan pembacaan multi-query dalam satu snapshot konsisten.
+     *
+     * Rekap stok memakai 3 agregat terpisah. Tanpa snapshot, approval yang
+     * commit di antara query membuat angka fisik/terpakai/reservasi berasal dari
+     * waktu berbeda (read skew) sehingga laporan tidak balance. Di PostgreSQL
+     * dibungkus transaction REPEATABLE READ.
+     *
+     * Lewati bila sudah di dalam transaction: `SET TRANSACTION ISOLATION LEVEL`
+     * hanya boleh jadi statement pertama (di dalam savepoint akan error), dan
+     * pemanggil yang sudah transaksional memang sudah konsisten.
+     */
+    private function snapshot(\Closure $callback): mixed
+    {
+        $connection = DB::connection();
+
+        if ($connection->getDriverName() !== 'pgsql' || $connection->transactionLevel() > 0) {
+            return $callback();
+        }
+
+        return $connection->transaction(function () use ($connection, $callback) {
+            $connection->statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+
+            return $callback();
+        });
     }
 
     /**
@@ -94,10 +135,12 @@ class StokService
      * @param  list<string>  $barangIds
      * @return array<string,array{fisik:int,terpakai:int,reservasi:int,tersedia:int}>
      */
-    private function rekapDalamDana(iterable $barangs, array $barangIds, ?string $sekolahId): array
+    private function rekapDalamDana(iterable $barangs, array $barangIds, ?string $sekolahId, ?string $sampai): array
     {
         $fisik = PenerimaanDetail::whereIn('barang_id', $barangIds)
-            ->when($sekolahId !== null, fn ($q) => $q->whereHas('penerimaan', fn ($p) => $p->where('sekolah_id', $sekolahId)))
+            ->whereHas('penerimaan', fn ($p) => $p
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId))
+                ->when($sampai !== null, fn ($w) => $w->efektifSampai($sampai)))
             ->groupBy('barang_id')
             ->selectRaw('barang_id, sum(jumlah) as total')
             ->pluck('total', 'barang_id');
@@ -105,7 +148,8 @@ class StokService
         $terpakai = PengajuanDetail::whereIn('barang_id', $barangIds)
             ->whereHas('pengajuan', fn ($q) => $q
                 ->where('status', 'approved')
-                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId))
+                ->when($sampai !== null, fn ($w) => $w->efektifSampai($sampai)))
             ->groupBy('barang_id')
             ->selectRaw('barang_id, sum(jumlah_disetujui) as total')
             ->pluck('total', 'barang_id');
@@ -113,7 +157,8 @@ class StokService
         $reservasi = PengajuanDetail::whereIn('barang_id', $barangIds)
             ->whereHas('pengajuan', fn ($q) => $q
                 ->where('status', 'submitted')
-                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+                ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId))
+                ->when($sampai !== null, fn ($w) => $w->efektifSampai($sampai)))
             ->groupBy('barang_id')
             ->selectRaw('barang_id, sum(jumlah_direservasi) as total')
             ->pluck('total', 'barang_id');
@@ -165,6 +210,13 @@ class StokService
                 ->lockForUpdate()
                 ->get();
 
+            // Satu barang bisa muncul di beberapa baris draft; reservasi wajib
+            // divalidasi terhadap TOTAL baris itu, bukan per baris — kalau tidak,
+            // stok 10 bisa direservasi 8 + 8 dua-duanya "lolos".
+            $dimintaPerBarang = $details->groupBy('barang_id')
+                ->filter(fn ($rows, $barangId): bool => $barangId !== null && $barangId !== '')
+                ->map(fn ($rows): int => (int) $rows->sum('jumlah_diminta'));
+
             foreach ($details as $detail) {
                 $barang = Barang::whereKey($detail->barang_id)->lockForUpdate()->first();
                 if (! $barang) {
@@ -175,26 +227,30 @@ class StokService
                     throw new RuntimeException('Sumber dana barang tidak sesuai dengan pengajuan.');
                 }
 
-                $diminta = (int) $detail->jumlah_diminta;
-                if ($diminta <= 0) {
+                if ((int) $detail->jumlah_diminta <= 0) {
                     throw new RuntimeException('Jumlah diminta harus lebih dari 0.');
                 }
+            }
 
+            foreach ($dimintaPerBarang as $barangId => $diminta) {
+                $barang = Barang::whereKey($barangId)->lockForUpdate()->first();
                 $tersedia = $this->tersedia($barang, $pengajuan->sekolah_id);
                 if ($diminta > $tersedia) {
                     throw new RuntimeException("Stok tersedia {$barang->nama_barang} tidak mencukupi (tersedia {$tersedia}, diminta {$diminta}).");
                 }
+            }
 
+            foreach ($details as $detail) {
                 $detail->update([
                     'status_reservasi' => 'direservasi',
-                    'jumlah_direservasi' => $diminta,
+                    'jumlah_direservasi' => (int) $detail->jumlah_diminta,
                 ]);
             }
 
             $pengajuan->update(['status' => 'submitted']);
 
             return $pengajuan;
-        }));
+        }, 3));
     }
 
     /**
@@ -226,7 +282,7 @@ class StokService
             ]);
 
             return $pengajuan;
-        }));
+        }, 3));
     }
 
     /**
@@ -236,7 +292,7 @@ class StokService
      */
     public function approve(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui = []): Pengajuan
     {
-        return DB::transaction(fn () => $this->applyApprove($pengajuan, $reviewer, $jumlahDisetujui));
+        return DB::transaction(fn () => $this->applyApprove($pengajuan, $reviewer, $jumlahDisetujui), 3);
     }
 
     /**
@@ -263,6 +319,10 @@ class StokService
 
         $details = $pengajuan->details()->lockForUpdate()->get();
 
+        if ($details->isEmpty()) {
+            throw new RuntimeException('Pengajuan tidak memiliki item.');
+        }
+
         // Kunci semua barang yang terlibat dengan urutan ID deterministik
         // untuk mencegah deadlock antar approval concurrent.
         Barang::whereIn('id', $details->pluck('barang_id')->filter()->all())
@@ -281,6 +341,9 @@ class StokService
             }
         }
 
+        /** @var array<string,array{disetujui:int,reserved:int,detail:array<string,int>}> $perBarang */
+        $perBarang = [];
+
         foreach ($details as $detail) {
             $barang = Barang::whereKey($detail->barang_id)->lockForUpdate()->first();
             if (! $barang) {
@@ -297,26 +360,36 @@ class StokService
                 ? (int) $jumlahDisetujui[$detail->id]
                 : (int) $detail->jumlah_direservasi;
 
-            if ($disetujui < 0) {
-                throw new RuntimeException('Jumlah disetujui tidak boleh negatif.');
-            }
-
             if ($disetujui > (int) $detail->jumlah_diminta) {
                 throw new RuntimeException('Jumlah disetujui tidak boleh melebihi jumlah diminta.');
             }
 
-            // Reservasi item ini dilepas, lalu divalidasi terhadap sisa tersedia
-            // setelah reservasi sendiri dilepas (scoped ke sekolah pengajuan).
-            $sisaTanpaReservasiIni = $this->fisik($barang, $pengajuan->sekolah_id)
-                - $this->terpakai($barang, $pengajuan->sekolah_id)
-                - ($this->reservasi($barang, $pengajuan->sekolah_id) - (int) $detail->jumlah_direservasi);
+            $id = (string) $detail->barang_id;
+            $perBarang[$id] ??= ['disetujui' => 0, 'reserved' => 0, 'detail' => []];
+            $perBarang[$id]['disetujui'] += $disetujui;
+            $perBarang[$id]['reserved'] += (int) $detail->jumlah_direservasi;
+            $perBarang[$id]['detail'][$detail->id] = $disetujui;
+        }
 
-            if ($disetujui > $sisaTanpaReservasiIni) {
+        // Validasi stok per BARANG, bukan per baris detail: satu barang bisa
+        // muncul di beberapa baris, dan `terpakai` belum menghitung baris yang
+        // sedang disetujui (status pengajuan masih submitted). Tanpa agregasi,
+        // 6 + 6 dari stok 10 dua-duanya lolos dan stok jadi minus.
+        foreach ($perBarang as $barangId => $agg) {
+            $barang = Barang::whereKey($barangId)->lockForUpdate()->firstOrFail();
+
+            $sisaTanpaReservasiSendiri = $this->fisik($barang, $pengajuan->sekolah_id)
+                - $this->terpakai($barang, $pengajuan->sekolah_id)
+                - ($this->reservasi($barang, $pengajuan->sekolah_id) - $agg['reserved']);
+
+            if ($agg['disetujui'] > $sisaTanpaReservasiSendiri) {
                 throw new RuntimeException("Jumlah disetujui melebihi stok tersedia {$barang->nama_barang}.");
             }
+        }
 
+        foreach ($details as $detail) {
             $detail->update([
-                'jumlah_disetujui' => $disetujui,
+                'jumlah_disetujui' => $perBarang[(string) $detail->barang_id]['detail'][$detail->id],
                 'status_reservasi' => 'tidak_direservasi',
                 'jumlah_direservasi' => 0,
             ]);

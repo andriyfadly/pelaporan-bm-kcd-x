@@ -1,4 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import { FileDown, Printer } from 'lucide-react';
 
@@ -37,6 +38,16 @@ const labelJenis: Record<string, string> = {
 };
 
 export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
+    // Tanggal titimangsa dokumen tambahan. Kosong = tanggal pengajuan. Tanggal
+    // lampau berarti snapshot isi mengikuti periode tanggal itu.
+    const [tanggal, setTanggal] = useState('');
+
+    const buat = (jenis: string) =>
+        router.post(`/distribusi-bhp/pengajuan/${pengajuan.id}/dokumen/tambahan`, {
+            jenis,
+            tanggal: tanggal || null,
+        });
+
     return (
         <AppLayout title="Dokumen BHP">
             <Head title="Dokumen Distribusi BHP" />
@@ -54,16 +65,31 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
                             ← Kembali
                         </Link>
                     </div>
-                    <div className="flex flex-wrap gap-2 mt-4">
+                    <div className="flex flex-wrap items-end gap-3 mt-4">
+                        <div>
+                            <label htmlFor="tanggal-dokumen" className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                                Tanggal Titimangsa
+                            </label>
+                            <input
+                                id="tanggal-dokumen"
+                                type="date"
+                                value={tanggal}
+                                onChange={(e) => setTanggal(e.target.value)}
+                                className="px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">Kosong = tanggal pengajuan.</p>
+                        </div>
                         {[
                             { jenis: 'bast', label: 'BAST' },
                             { jenis: 'bap', label: 'BAP' },
                             { jenis: 'stok_opname', label: 'Stok Opname' },
+                            { jenis: 'buku_pengeluaran', label: 'Buku Pengeluaran' },
+                            { jenis: 'buku_penyaluran', label: 'Buku Penyaluran' },
                         ].map((opt) => (
                             <button
                                 key={opt.jenis}
                                 type="button"
-                                onClick={() => router.post(`/distribusi-bhp/pengajuan/${pengajuan.id}/dokumen/tambahan`, { jenis: opt.jenis })}
+                                onClick={() => buat(opt.jenis)}
                                 className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"
                             >
                                 + {opt.label}

@@ -2,11 +2,9 @@
 
 namespace App\Models\DistribusiBhp;
 
-use App\Models\Master\Sekolah;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Divisi extends Model
@@ -19,11 +17,6 @@ class Divisi extends Model
         'sekolah_id',
         'nama',
     ];
-
-    public function sekolah(): BelongsTo
-    {
-        return $this->belongsTo(Sekolah::class, 'sekolah_id');
-    }
 
     public function users(): HasMany
     {

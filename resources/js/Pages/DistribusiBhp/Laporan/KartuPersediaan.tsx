@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import PeriodeFilter, { periodeQuery, type PeriodeValue } from '@/Components/PeriodeFilter';
 import { FileSpreadsheet, Search } from 'lucide-react';
 
 interface MutasiRow {
@@ -37,37 +38,55 @@ interface BarangOption {
 export default function KartuPersediaan({
     sumberDana,
     barangId,
+    periode,
     kartu,
     daftarBarang,
 }: {
     sumberDana: string;
     barangId: string;
+    periode: PeriodeValue;
     kartu: Kartu | null;
     daftarBarang: BarangOption[];
 }) {
     const [pilihBarang, setPilihBarang] = useState(barangId);
 
     const terapkan = (barang: string) => {
-        router.get('/distribusi-bhp/laporan/kartu-persediaan', { sumber_dana: sumberDana, barang_id: barang }, { preserveState: true });
+        router.get(
+            '/distribusi-bhp/laporan/kartu-persediaan',
+            { sumber_dana: sumberDana, barang_id: barang, tahun: periode.tahun, bulan: periode.bulan },
+            { preserveState: true },
+        );
     };
+
+    const exportUrl = kartu
+        ? `/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=kartu_persediaan&barang_id=${kartu.barang.id}&${periodeQuery(periode)}`
+        : null;
 
     return (
         <AppLayout title="Kartu Persediaan BHP">
             <Head title="Kartu Persediaan BHP" />
 
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 className="text-lg font-bold text-slate-900">Kartu Persediaan BHP — {sumberDana}</h1>
-                        <p className="text-sm text-slate-500">Mutasi masuk dan keluar beserta saldo berjalan per barang.</p>
+                        <p className="text-sm text-slate-500">
+                            Mutasi {periode.label} dengan saldo awal dan saldo akhir periode.
+                        </p>
                     </div>
-                    
+                    <PeriodeFilter
+                        path="/distribusi-bhp/laporan/kartu-persediaan"
+                        periode={periode}
+                        sumberDana={sumberDana}
+                        extra={{ barang_id: pilihBarang }}
+                    />
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-wrap gap-3 items-end">
                     <div className="flex-1 min-w-[240px]">
-                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Pilih Barang</label>
+                        <label htmlFor="pilih-barang" className="block text-xs font-bold uppercase text-slate-500 mb-1">Pilih Barang</label>
                         <select
+                            id="pilih-barang"
                             value={pilihBarang}
                             onChange={(e) => setPilihBarang(e.target.value)}
                             className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
@@ -88,9 +107,9 @@ export default function KartuPersediaan({
                     >
                         <Search className="w-4 h-4" /> Tampilkan
                     </button>
-                    {kartu && (
+                    {exportUrl && (
                         <a
-                            href={`/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=kartu_persediaan&barang_id=${kartu.barang.id}`}
+                            href={exportUrl}
                             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
                         >
                             <FileSpreadsheet className="w-4 h-4" /> Export Excel
@@ -103,8 +122,8 @@ export default function KartuPersediaan({
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                             {[
                                 { label: 'Saldo Awal', value: kartu.barang.saldo_awal },
-                                { label: 'Total Masuk', value: kartu.barang.total_masuk },
-                                { label: 'Total Keluar', value: kartu.barang.total_keluar },
+                                { label: 'Masuk Periode', value: kartu.barang.total_masuk },
+                                { label: 'Keluar Periode', value: kartu.barang.total_keluar },
                                 { label: 'Saldo Akhir', value: kartu.barang.saldo_akhir },
                             ].map((stat) => (
                                 <div key={stat.label} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
@@ -116,7 +135,7 @@ export default function KartuPersediaan({
 
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="px-6 py-4 border-b border-slate-200 font-bold text-sm text-slate-700">
-                                {kartu.barang.nama_barang} ({kartu.barang.kode_barang ?? '-'}) — {kartu.barang.sumber_dana}
+                                {kartu.barang.nama_barang} ({kartu.barang.kode_barang ?? '-'}) — {kartu.barang.sumber_dana} · {periode.label}
                             </div>
                             <table className="w-full text-sm">
                                 <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
@@ -132,7 +151,7 @@ export default function KartuPersediaan({
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {kartu.mutasi.length === 0 ? (
-                                        <tr><td colSpan={7} className="py-10 text-center text-slate-400 text-xs">Belum ada mutasi.</td></tr>
+                                        <tr><td colSpan={7} className="py-10 text-center text-slate-400 text-xs">Belum ada mutasi pada periode ini.</td></tr>
                                     ) : (
                                         kartu.mutasi.map((m, i) => (
                                             <tr key={i}>

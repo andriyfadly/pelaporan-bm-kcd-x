@@ -95,46 +95,11 @@ final class SumberDana
     }
 
     /**
-     * Daftar semua nama tabel fisik untuk suffix logis (satu per sumber dana).
-     *
-     * @return list<string>
-     */
-    public static function semuaTabel(string $suffix): array
-    {
-        if (self::bersamakah($suffix)) {
-            return ['bhp_'.$suffix];
-        }
-
-        return [
-            self::tabel($suffix, self::BOS),
-            self::tabel($suffix, self::BOPD),
-        ];
-    }
-
-    /**
      * Aturan validasi `exists` yang menunjuk tabel fisik sesuai sumber dana,
      * sehingga `barang_id`/`kode_rekening_id` asing dari dana lain ikut ditolak.
      */
     public static function existsRule(string $suffix, ?string $sumberDana = null): Exists
     {
         return Rule::exists(self::tabel($suffix, $sumberDana), 'id');
-    }
-
-    /** Suffix tabel yang dipisah per sumber dana (kecuali penyedia & divisi). */
-    public static function suffixDipisah(): array
-    {
-        return [
-            'kode_rekening',
-            'barang',
-            'harga_barang',
-            'penerimaan',
-            'penerimaan_detail',
-            'pengajuan',
-            'pengajuan_detail',
-            'nomor_sequence',
-            'dokumen',
-            'batch_dokumen',
-            'settings',
-        ];
     }
 }

@@ -6,6 +6,7 @@ use App\Models\DistribusiBhp\Dokumen;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Models\User;
 use App\Services\Master\PenugasanPegawaiService;
+use App\Support\DistribusiBhp\Periode;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -53,23 +54,28 @@ class DokumenService
     public function approveDanGenerate(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui = [], ?string $reviewNotes = null): Pengajuan
     {
         return SumberDana::dengan($pengajuan->sumber_dana, fn () => DB::transaction(function () use ($pengajuan, $reviewer, $jumlahDisetujui, $reviewNotes) {
+            // Kunci pengajuan DULU: gate pejabat dan generate nomor dokumen
+            // bergantung pada tanggal & status yang tidak boleh berubah di
+            // tengah transaksi (dua klik "Setujui" tidak boleh dua-duanya lolos).
+            $terkunci = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
+
+            if ($terkunci->dokumen()->exists()) {
+                throw new RuntimeException('Dokumen untuk pengajuan ini sudah pernah dibuat.');
+            }
+
             // Gate pejabat: tiga penandatangan wajib berlaku pada tanggal
             // pengajuan SEBELUM status/reservasi/dokumen berubah.
             $penandatangan = $this->pejabat->snapshotPenandatangan(
-                (string) $pengajuan->sekolah_id,
-                ($pengajuan->tanggal ?? now())->toDateString(),
+                (string) $terkunci->sekolah_id,
+                ($terkunci->tanggal ?? now())->toDateString(),
             );
 
             // applyApprove TIDAK membuka transaction sendiri, sehingga seluruh
             // langkah (approve + generate dokumen) berada di satu transaction.
-            $pengajuan = $this->stok->applyApprove($pengajuan, $reviewer, $jumlahDisetujui);
+            $pengajuan = $this->stok->applyApprove($terkunci, $reviewer, $jumlahDisetujui);
 
             if ($reviewNotes !== null && trim($reviewNotes) !== '') {
                 $pengajuan->update(['review_notes' => $reviewNotes]);
-            }
-
-            if ($pengajuan->dokumen()->exists()) {
-                throw new RuntimeException('Dokumen untuk pengajuan ini sudah pernah dibuat.');
             }
 
             $tanggal = $pengajuan->tanggal ?: now();
@@ -91,7 +97,7 @@ class DokumenService
             }
 
             return $pengajuan;
-        }));
+        }, 3));
     }
 
     /**
@@ -117,7 +123,7 @@ class DokumenService
                 throw new RuntimeException('Dokumen tambahan hanya dapat dibuat untuk pengajuan yang sudah disetujui.');
             }
 
-            $pengajuan->load('details.barang');
+            $pengajuan->load('details.barang', 'dokumen', 'divisi');
             $tanggalObj = $tanggal ? Carbon::parse($tanggal) : ($pengajuan->tanggal ?: now());
 
             return Dokumen::create([
@@ -132,7 +138,7 @@ class DokumenService
                 'tanggal_titimangsa' => $tanggalObj,
                 'payload' => $this->payloadFor($pengajuan, $jenis, $tanggalObj),
             ]);
-        }));
+        }, 3));
     }
 
     /**
@@ -152,9 +158,35 @@ class DokumenService
         ];
 
         if ($jenis === 'stok_opname') {
-            $payload['items'] = $this->laporan->laporanStok($pengajuan->sumber_dana, $pengajuan->sekolah_id);
+            $payload['items'] = $this->laporan->laporanStok(
+                $pengajuan->sumber_dana,
+                $pengajuan->sekolah_id,
+                Periode::bulan((int) $tanggalObj->format('Y'), (int) $tanggalObj->format('n')),
+            );
         } elseif (in_array($jenis, ['buku_pengeluaran', 'buku_penyaluran'], true)) {
-            $payload['items'] = $this->laporan->bukuPengeluaran($pengajuan->sumber_dana, $pengajuan->sekolah_id);
+            // Buku bulanan: hanya transaksi pada bulan tanggal dokumen, bukan
+            // seluruh histori sampai dokumen dibuat.
+            $items = $this->laporan->bukuPengeluaran(
+                $pengajuan->sumber_dana,
+                $pengajuan->sekolah_id,
+                Periode::bulan((int) $tanggalObj->format('Y'), (int) $tanggalObj->format('n')),
+            );
+
+            if ($jenis === 'buku_penyaluran') {
+                // Kolom BAST/SPPB merujuk dokumen penyaluran pengajuan ini.
+                $bast = $pengajuan->dokumen->firstWhere('jenis', 'bast');
+                $sppb = $pengajuan->dokumen->firstWhere('jenis', 'surat_penyaluran');
+
+                $items = array_map(fn (array $item): array => [
+                    ...$item,
+                    'bast_tanggal' => $bast?->tanggal_titimangsa?->format('d-m-Y'),
+                    'bast_nomor' => $bast?->nomor,
+                    'sppb_tanggal' => $sppb?->tanggal_titimangsa?->format('d-m-Y'),
+                    'sppb_nomor' => $sppb?->nomor,
+                ], $items);
+            }
+
+            $payload['items'] = $items;
         }
 
         return $payload;

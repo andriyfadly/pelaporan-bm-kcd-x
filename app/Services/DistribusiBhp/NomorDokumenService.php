@@ -59,7 +59,7 @@ class NomorDokumenService
             $row->increment('counter');
 
             return $row->fresh()->counter;
-        }));
+        }, 3));
 
         return $this->settings->formatNomor($jenis, $kode, $sumberDana, $tahun, $bulan, $sequence);
     }

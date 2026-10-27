@@ -223,17 +223,32 @@ Payload penting:
   aktif lama (H-1); periode overlap ditolak.
 - `POST dokumen/tambahan`: `jenis` ∈ {`bast`, `bap`, `stok_opname`,
   `buku_pengeluaran`, `buku_penyaluran`}, `tanggal` (opsional). Idempotent per
-  jenis.
+  jenis. Snapshot isi dokumen mengikuti **tanggal dokumen**: stok opname
+  memakai posisi stok per tanggal itu, buku bulanan hanya memuat transaksi pada
+  bulan tanggal itu, dan pejabat mengikuti penugasan yang berlaku pada tanggal
+  itu.
 - `GET laporan/export`: `sumber_dana`, `jenis` ∈ {`stok`, `pengeluaran`,
   `kartu_persediaan`}; `barang_id` **wajib** bila `jenis=kartu_persediaan`
   (divalidasi `uuid` + `exists` ke tabel barang **sesuai sumber dana** laporan,
   via `SumberDana::existsRule('barang', $sumberDana)` — barang dana lain
   ditolak sebagai validation error). Barang dengan sumber dana berbeda dari
-  `sumber_dana` laporan → redirect + flash `error` (bukan 500).
+  `sumber_dana` laporan → redirect + flash `error` (bukan 500). `tahun`
+  (`2000..2100`) dan `bulan` (`1..12`) opsional; default bulan berjalan.
+  Nama berkas memuat periode (`..._{BOS|BOPD}_{YYYY-MM}.xlsx`) agar unduhan
+  bulan berbeda tidak saling menimpa.
+- `GET laporan`: `sumber_dana`, `tahun`, `bulan` (opsional, default bulan
+  berjalan). `laporanStok` = posisi pada **akhir bulan** itu (penerimaan,
+  reserved, dan approved setelah tanggal tersebut tidak dihitung).
+  `bukuPengeluaran` = hanya transaksi yang tanggal pengajuannya di dalam bulan.
 - `GET laporan/kartu-persediaan`: `barang_id` (`uuid` + `exists` ke tabel barang
-  sesuai sumber dana, opsional), `sumber_dana` (opsional; default `BOS`).
-  Mengembalikan `kartu` berisi `barang` (saldo awal/masuk/keluar/akhir) +
-  `mutasi[]` dengan saldo berjalan.
+  sesuai sumber dana, opsional), `sumber_dana` (opsional; default `BOS`),
+  `tahun`, `bulan` (opsional; default bulan berjalan). Mengembalikan `kartu`
+  berisi `barang` (`saldo_awal`, `total_masuk`, `total_keluar`, `saldo_akhir`
+  **periode**) + `mutasi[]` bulan itu dengan saldo berjalan. Tanpa `tahun`/
+  `bulan` eksplisit, UI selalu mengirim periode berjalan sehingga angka layar =
+  angka export.
+- `GET laporan/buku-pengeluaran`: `sumber_dana`, `tahun`, `bulan` (opsional,
+  default bulan berjalan) — view pengajuan approved pada periode itu.
 
 ### J. Migrasi Data Legacy BHP (seeder)
 

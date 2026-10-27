@@ -3,6 +3,8 @@
 namespace App\Models\DistribusiBhp;
 
 use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +41,63 @@ class Penerimaan extends Model
             'is_saldo_awal' => 'boolean',
             'periode_tahun' => 'integer',
         ];
+    }
+
+    /**
+     * Tanggal efektif penerimaan: awal tahun periode untuk saldo awal, tanggal
+     * BAST untuk penerimaan biasa, tanggal titimangsa bila BAST kosong, dan
+     * tanggal input sebagai cadangan data lama. Urutan ini SAMA dengan
+     * {@see tanggalEfektif()} supaya laporan per periode dan kartu persediaan
+     * tidak pernah berbeda hitungan.
+     */
+    public function scopeEfektifSampai(Builder $query, string $tanggal): Builder
+    {
+        $tahun = (int) substr($tanggal, 0, 4);
+
+        return $query->where(function (Builder $q) use ($tanggal, $tahun) {
+            // Saldo awal adalah posisi AWAL tahun periodenya: jangan ikut
+            // tanggal input, dan jangan muncul di periode sebelum tahunnya.
+            $q->where(function (Builder $saldoAwal) use ($tahun) {
+                $saldoAwal->where('is_saldo_awal', true)
+                    ->whereNotNull('periode_tahun')
+                    ->where('periode_tahun', '<=', $tahun);
+            })->orWhere(function (Builder $biasa) use ($tanggal) {
+                $biasa->where(function (Builder $bukanSaldoAwalBerperiode) {
+                    // Saldo awal tanpa periode (data lama) mengikuti tanggalnya.
+                    $bukanSaldoAwalBerperiode->where('is_saldo_awal', false)
+                        ->orWhereNull('periode_tahun');
+                })->where(function (Builder $d) use ($tanggal) {
+                    $d->whereDate('tanggal_bast', '<=', $tanggal)
+                        ->orWhere(fn (Builder $tanpaBast) => $tanpaBast
+                            ->whereNull('tanggal_bast')
+                            ->whereDate('tanggal_titimangsa', '<=', $tanggal))
+                        ->orWhere(fn (Builder $tanpaTanggal) => $tanpaTanggal
+                            ->whereNull('tanggal_bast')
+                            ->whereNull('tanggal_titimangsa')
+                            ->whereDate('created_at', '<=', $tanggal));
+                });
+            });
+        });
+    }
+
+    /**
+     * Tanggal efektif penerimaan (lihat {@see scopeEfektifSampai()}): tanggal
+     * BAST, awal tahun periode untuk saldo awal, tanggal titimangsa, lalu
+     * tanggal input.
+     */
+    public function tanggalEfektif(): ?CarbonImmutable
+    {
+        if ($this->is_saldo_awal && $this->periode_tahun) {
+            return CarbonImmutable::create((int) $this->periode_tahun, 1, 1)->startOfDay();
+        }
+
+        foreach ([$this->tanggal_bast, $this->tanggal_titimangsa] as $tanggal) {
+            if ($tanggal) {
+                return CarbonImmutable::parse($tanggal)->startOfDay();
+            }
+        }
+
+        return $this->created_at ? CarbonImmutable::parse($this->created_at)->startOfDay() : null;
     }
 
     public function penyedia(): BelongsTo

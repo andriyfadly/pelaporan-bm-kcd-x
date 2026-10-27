@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import PeriodeFilter, { periodeQuery, type PeriodeValue } from '@/Components/PeriodeFilter';
 import { FileSpreadsheet } from 'lucide-react';
 
 interface PengeluaranRow {
@@ -14,10 +15,12 @@ interface PengeluaranRow {
 export default function BukuPengeluaran({
     jenisLabel,
     sumberDana,
+    periode,
     items,
 }: {
     jenisLabel: string;
     sumberDana: string;
+    periode: PeriodeValue;
     items: PengeluaranRow[];
 }) {
     return (
@@ -25,11 +28,15 @@ export default function BukuPengeluaran({
             <Head title={`${jenisLabel} | BHP`} />
 
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-lg font-bold text-slate-900">{jenisLabel} — {sumberDana}</h1>
-                    <div className="flex gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h1 className="text-lg font-bold text-slate-900">{jenisLabel} — {sumberDana}</h1>
+                        <p className="text-sm text-slate-500">Transaksi disetujui pada {periode.label}.</p>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-3">
+                        <PeriodeFilter path="/distribusi-bhp/laporan/buku-pengeluaran" periode={periode} sumberDana={sumberDana} />
                         <a
-                            href={`/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=pengeluaran`}
+                            href={`/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=pengeluaran&${periodeQuery(periode)}`}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
                         >
                             <FileSpreadsheet className="w-4 h-4" /> Export
@@ -52,7 +59,7 @@ export default function BukuPengeluaran({
                             {items.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="py-10 text-center text-slate-400 text-xs">
-                                        Belum ada pengeluaran.
+                                        Belum ada pengeluaran pada periode ini.
                                     </td>
                                 </tr>
                             ) : (

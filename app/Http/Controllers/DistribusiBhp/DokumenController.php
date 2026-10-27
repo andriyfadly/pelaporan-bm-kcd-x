@@ -225,5 +225,11 @@ class DokumenController extends Controller
         if ($dokumen->bhp_pengajuan_id !== $pengajuan->id) {
             abort(404, 'Dokumen tidak ditemukan pada pengajuan ini.');
         }
+
+        // Binding dokumen mencari di tabel BOS lalu BOPD; tanpa cek ini dokumen
+        // BOPD bisa dicetak lewat URL /bos/ dan tercampur sumber dana.
+        if ($dokumen->sumber_dana !== $pengajuan->sumber_dana) {
+            abort(404, 'Dokumen tidak ditemukan pada pengajuan ini.');
+        }
     }
 }

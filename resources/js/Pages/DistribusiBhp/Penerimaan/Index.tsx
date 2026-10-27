@@ -27,6 +27,10 @@ export default function Index({
     const form = useForm({
         sumber_dana: sumberDana,
         no_nota_invoice: '',
+        no_bast: '',
+        // Tanggal efektif stok masuk. Wajib untuk penerimaan biasa supaya
+        // laporan periode tidak bergantung pada tanggal input.
+        tanggal_bast: '',
         no_kwitansi: '',
         penyedia_id: '',
         tanggal_titimangsa: '',
@@ -58,9 +62,17 @@ export default function Index({
                 <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <input placeholder="No. Nota / Invoice" value={form.data.no_nota_invoice} onChange={(e) => form.setData('no_nota_invoice', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                        <input placeholder="No. BAST" value={form.data.no_bast} onChange={(e) => form.setData('no_bast', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                        <div>
+                            <label htmlFor="tanggal-bast" className="block text-xs font-bold uppercase text-slate-500 mb-1">Tanggal BAST (stok masuk)</label>
+                            <input id="tanggal-bast" type="date" value={form.data.tanggal_bast} onChange={(e) => form.setData('tanggal_bast', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                        </div>
                         <input placeholder="No. Kwitansi" value={form.data.no_kwitansi} onChange={(e) => form.setData('no_kwitansi', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm" />
-                        <input type="date" value={form.data.tanggal_titimangsa} onChange={(e) => form.setData('tanggal_titimangsa', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm" />
-                        <select value={form.data.penyedia_id} onChange={(e) => form.setData('penyedia_id', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm">
+                        <div>
+                            <label htmlFor="tanggal-titimangsa" className="block text-xs font-bold uppercase text-slate-500 mb-1">Tanggal Titimangsa</label>
+                            <input id="tanggal-titimangsa" type="date" value={form.data.tanggal_titimangsa} onChange={(e) => form.setData('tanggal_titimangsa', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                        </div>
+                        <select value={form.data.penyedia_id} onChange={(e) => form.setData('penyedia_id', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm self-end">
                             <option value="">Pilih penyedia...</option>
                             {penyedia.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
                         </select>

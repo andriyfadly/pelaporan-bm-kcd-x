@@ -87,7 +87,7 @@
                     <td class="center">{{ $i + 1 }}</td>
                     <td>{{ $item['kode_barang'] ?? '-' }}</td>
                     <td>{{ $item['nama_barang'] ?? '-' }}</td>
-                    <td class="center">{{ $item['fisik'] ?? $item['jumlah'] ?? 0 }} {{ $item['satuan'] ?? '' }}</td>
+                    <td class="center">{{ $item['fisik_nyata'] ?? $item['fisik'] ?? $item['jumlah'] ?? 0 }} {{ $item['satuan'] ?? '' }}</td>
                     <td class="right">{{ number_format($item['nilai_total'] ?? 0, 0, ',', '.') }}</td>
                     <td>{{ $item['keterangan'] ?? '' }}</td>
                 </tr>
