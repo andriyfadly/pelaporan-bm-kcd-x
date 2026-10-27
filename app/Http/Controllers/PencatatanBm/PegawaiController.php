@@ -67,8 +67,6 @@ class PegawaiController extends Controller
             'nama_lengkap' => ['required', 'string', 'max:150'],
             'nip' => ['nullable', 'string', 'max:30'],
             'pangkat_golongan' => ['nullable', 'string', 'max:50'],
-            'jabatan' => ['nullable', 'string', 'max:150'],
-            'ruang' => ['nullable', 'string', 'max:100'],
         ]);
     }
 }

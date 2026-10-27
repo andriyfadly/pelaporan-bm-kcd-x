@@ -11,8 +11,6 @@ interface Pegawai {
     nama_lengkap: string;
     nip: string | null;
     pangkat_golongan: string | null;
-    jabatan: string | null;
-    ruang: string | null;
     unit_aktif_count: number;
 }
 
@@ -24,8 +22,6 @@ const FORM_KOSONG = {
     nama_lengkap: '',
     nip: '',
     pangkat_golongan: '',
-    jabatan: '',
-    ruang: '',
 };
 
 export default function Index({ pegawai }: Props) {
@@ -43,8 +39,6 @@ export default function Index({ pegawai }: Props) {
                       nama_lengkap: item.nama_lengkap,
                       nip: item.nip ?? '',
                       pangkat_golongan: item.pangkat_golongan ?? '',
-                      jabatan: item.jabatan ?? '',
-                      ruang: item.ruang ?? '',
                   }
                 : { ...FORM_KOSONG },
         );
@@ -89,7 +83,10 @@ export default function Index({ pegawai }: Props) {
                 <header className="flex flex-wrap items-end justify-between gap-3">
                     <div>
                         <h1 className="text-xl font-bold text-slate-800">Master Pegawai</h1>
-                        <p className="text-sm text-slate-500">Pegawai sekolah yang dapat menjadi penanggung jawab unit inventaris.</p>
+                        <p className="text-sm text-slate-500">
+                            Identitas pegawai sekolah. Jabatan tidak diisi di sini karena berganti sepanjang waktu — kelola di
+                            menu Penugasan Pegawai.
+                        </p>
                     </div>
                     <button
                         type="button"
@@ -113,7 +110,6 @@ export default function Index({ pegawai }: Props) {
                                 <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
                                     <th className="px-4 py-3">Nama</th>
                                     <th className="px-4 py-3">NIP</th>
-                                    <th className="px-4 py-3">Jabatan</th>
                                     <th className="px-4 py-3 text-right">Unit Aktif</th>
                                     <th className="px-4 py-3 text-right">Aksi</th>
                                 </tr>
@@ -126,7 +122,6 @@ export default function Index({ pegawai }: Props) {
                                             <p className="text-xs text-slate-400">{item.pangkat_golongan ?? '-'}</p>
                                         </td>
                                         <td className="px-4 py-3 font-mono text-xs text-slate-500">{item.nip ?? '-'}</td>
-                                        <td className="px-4 py-3 text-slate-600">{item.jabatan ?? '-'}</td>
                                         <td className="px-4 py-3 text-right text-slate-600">{item.unit_aktif_count}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center justify-end gap-1">
@@ -170,8 +165,6 @@ export default function Index({ pegawai }: Props) {
                         value={form.data.pangkat_golongan}
                         onChange={(value) => form.setData('pangkat_golongan', value)}
                     />
-                    <Input label="Jabatan" value={form.data.jabatan} onChange={(value) => form.setData('jabatan', value)} />
-                    <Input label="Ruang" value={form.data.ruang} onChange={(value) => form.setData('ruang', value)} />
                     <div className="flex justify-end gap-2 pt-2">
                         <button
                             type="button"

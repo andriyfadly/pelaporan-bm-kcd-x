@@ -79,6 +79,7 @@ class PenugasanPegawaiController extends Controller
     public function akhiri(Request $request, PenugasanPegawai $penugasan): RedirectResponse
     {
         $sekolahId = $this->resolveSekolahId($request);
+        abort_unless($penugasan->sekolah_id === $sekolahId, 404);
 
         $validated = $request->validate([
             'selesai_menjabat' => ['required', 'date'],
@@ -96,6 +97,7 @@ class PenugasanPegawaiController extends Controller
     public function mutasi(Request $request, PenugasanPegawai $penugasan): RedirectResponse
     {
         $sekolahId = $this->resolveSekolahId($request);
+        abort_unless($penugasan->sekolah_id === $sekolahId, 404);
 
         $validated = $request->validate([
             'jabatan' => $this->kodeJabatanRule($sekolahId),
