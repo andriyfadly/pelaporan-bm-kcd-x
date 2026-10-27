@@ -2,8 +2,8 @@
 
 > Engine: **PostgreSQL**. Seluruh id entitas bisnis memakai UUID
 > (`HasUuids`); tabel bawaan Spatie memakai bigint. Sumber kebenaran:
-> `database/migrations/`. Di bawah ini ringkasan per 2026-10-13
-> (45 migrasi + `activity_log`; tabel BHP dipisah fisik per sumber dana).
+> `database/migrations/`. Di bawah ini ringkasan per 2026-10-27
+> (48 migrasi + `activity_log`; tabel BHP dipisah fisik per sumber dana).
 
 ## 1. Diagram Relasi (tekstual)
 
@@ -264,3 +264,91 @@ Import BHP dapat diarahkan ke file sumber lain:
 Default sumber: `../sistem-manajemen-aset/prisma/dev.db.backup.db`. Seeder
 melewati baris soft-deleted, detail `cart_status != 'saved'`, dan aman
 diulang (idempotent).
+
+---
+
+## 8. Tabel Pencatatan BM (inventaris aset)
+
+Migrasi: `2026_10_27_000001_create_inventaris_master_tables.php` (ruang,
+pegawai), `2026_10_27_000002_create_inventaris_tables.php` (unit, sequence,
+mutasi, dokumen, foto, sync log), `2026_10_27_000003_add_pembatalan_nomor_to_inventaris_dokumen.php`.
+
+```text
+master_data_sekolah 1─┬─* inventaris_ruang   1─* inventaris_unit ─1─* inventaris_mutasi
+                      ├─* inventaris_pegawai 1─* inventaris_unit   ─1─* inventaris_foto
+                      ├─* inventaris_register_sequences
+                      ├─* inventaris_dokumen
+                      └─* inventaris_sync_logs
+pelaporan_bm_realisasi 1─* inventaris_unit   (restrict; sumber pembentukan unit)
+inventaris_ruang / inventaris_pegawai ─* inventaris_mutasi (asal/tujuan, nullOnDelete)
+```
+
+### `inventaris_unit`
+
+Satu baris = satu unit fisik. `volume = N` pada realisasi menghasilkan N unit
+(`unit_index` 1..N).
+
+| Kolom | Tipe | Catatan |
+|---|---|---|
+| `id` | uuid PK | |
+| `sekolah_id` | uuid FK `master_data_sekolah` | restrict; **immutable** |
+| `realisasi_id` | uuid FK `pelaporan_bm_realisasi` | restrict; **immutable** |
+| `unit_index` | int | unique bersama `realisasi_id` |
+| `kode_barang`, `nama_barang`, `jenis_aset`, `merk_tipe`, `no_sertifikat`, `ukuran_bangunan`, `satuan` | | snapshot sumber |
+| `nomor_register` | varchar(10) | `001`, `002`, … unique per `(sekolah_id, kode_barang)` |
+| `tanggal_perolehan`, `bulan_perolehan`, `tahun_perolehan` | | dari BA/realisasi |
+| `harga_satuan`, `nilai_perolehan_unit` | numeric(15,2) | 1 unit = 1 harga satuan |
+| `kondisi` | varchar(2) | `B`, `RR`, `RB` |
+| `status` | varchar(20) | `aktif`, `dikembalikan`, `dihapus_koreksi` |
+| `ruang_id`, `pegawai_id` | uuid nullable | FK `nullOnDelete` |
+| `foto_path`, `keterangan` | | |
+| timestamps | | tanpa soft delete: unit surplus ditandai `dihapus_koreksi` |
+
+Index: `(sekolah_id, kode_barang)`, `(sekolah_id, status)`,
+`(sekolah_id, ruang_id)`, `(sekolah_id, pegawai_id)`.
+
+### `inventaris_register_sequences`
+
+`(sekolah_id, kode_barang)` unique, `next_number` int. Nomor dialokasikan di
+dalam transaksi dengan `lockForUpdate`; nomor yang sudah terbit **tidak pernah
+dipakai ulang**, termasuk setelah unit dipensiunkan atau volume dikoreksi.
+
+### `inventaris_ruang` / `inventaris_pegawai`
+
+Master milik sekolah, soft delete. Nama ruang unik case-insensitive per sekolah
+(unique index `lower(nama_ruang)`). `inventaris_pegawai` menyimpan
+`nama_lengkap`, `nip`, `pangkat_golongan`, `jabatan`, `ruang` (teks bebas) —
+sengaja terpisah dari `pejabat_sekolah` (yang hanya 3 jabatan penandatangan).
+
+### `inventaris_mutasi`
+
+Histori penempatan/mutasi/pengembalian/koreksi. Menyimpan asal & tujuan
+ruang/pegawai/kondisi, `tanggal`, `keterangan`, `user_id`. Tidak pernah dihapus;
+FK `inventaris_unit_id` restrict.
+
+### `inventaris_dokumen`
+
+Dokumen cetak (`bast`, `fakta_integritas`, `surat_pengembalian`). `payload` JSON
+berisi **snapshot** sekolah/unit/pegawai/pejabat/mutasi saat dokumen dibuat,
+sehingga cetak ulang tidak berubah setelah koreksi. `nomor_dibatalkan_pada`
+menandai nomor BA yang dibatalkan (dokumen tetap ada).
+
+### `inventaris_foto`
+
+`path`, `mime`, `size`, `checksum` (SHA-256), `uploaded_by`. Disk `public`,
+path relatif `inventaris/foto/{sekolah_id}/…`.
+
+### `inventaris_sync_logs`
+
+Observability saja: `status` (`berjalan`/`sukses`/`gagal`), `dibuat`, `tetap`,
+`surplus`, `perlu_review`, `error`, `actor_id`, `started_at`, `finished_at`.
+
+### Aturan koreksi sumber
+
+- Nama/merk/harga sumber yang berubah **menyegarkan** unit yang belum pernah
+  dimutasi; unit bermutasi mempertahankan snapshot lamanya.
+- Volume turun: unit surplus **tanpa** histori ditandai `dihapus_koreksi`
+  (tidak di-hard-delete); unit yang sudah bermutasi tetap `aktif` dan masuk
+  daftar "perlu tinjau manual".
+- `sekolah_id` dan `realisasi_id` unit tidak pernah berubah, termasuk saat
+  mutasi/pengembalian.

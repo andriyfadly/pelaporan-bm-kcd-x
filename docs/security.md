@@ -3,7 +3,7 @@
 > Cakupan: RBAC, isolasi tenant, auth, proteksi input, logging audit.
 > Operasional produksi: `docs/deployment.md`.
 
-## 1. Matriks RBAC (aktual, 19 permission + 5 role)
+## 1. Matriks RBAC (aktual, 27 permission + 5 role)
 
 ### Pelaporan BM (10 permission)
 
@@ -43,6 +43,23 @@ menyetujui/menolaknya. Sebagai jaring kedua, `ReviewPengajuanController`
 memasang guard `pastikanBukanPembuat()` yang menolak approve/reject bila
 reviewer adalah pembuat pengajuan (defense-in-depth selain RBAC). Terverifikasi
 `BhpHttpFlowTest::test_operator_tidak_dapat_approve_pengajuan_sendiri`.
+
+### Pencatatan BM (8 permission)
+
+| Kemampuan | super_admin | admin_kcd | operator/bendahara |
+|-----------|:-----------:|:---------:|:------------------:|
+| Lihat modul (`lihat-pencatatan-bm`) | ✅ | ✅ (lintas sekolah) | ✅ (sekolah sendiri) |
+| Kelola unit inventaris (`kelola-inventaris-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
+| Kelola ruang / pegawai (`kelola-ruang-bm`, `kelola-pegawai-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
+| Mutasi (`mutasi-inventaris-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
+| Pengembalian (`proses-pengembalian-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
+| Cetak/ekspor (`cetak-inventaris-bm`) | ✅ | ✅ | ✅ |
+| Sinkronisasi ulang (`sinkronisasi-inventaris-bm`) | ✅ | ❌ | ❌ |
+
+Unit inventaris hanya terbentuk dari realisasi yang periodenya `disetujui`;
+tidak ada jalur input manual. Data sekolah lain dijawab **404** (bukan 403) agar
+UUID sekolah lain tidak membocorkan keberadaan data. Terverifikasi
+`InventarisTenantIsolationTest` dan `InventarisPermissionTest`.
 
 \* Grup rute `/admin` memakai `role:super_admin|admin_kcd`; halaman user
 menyembunyikan super_admin dari daftar dan menolak hapus diri. `Gate::before`

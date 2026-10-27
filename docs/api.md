@@ -250,3 +250,84 @@ Payload penting:
     master). Terdaftar di `DatabaseSeeder`, jadi ikut `migrate --seed`; bila
     sumber tidak ada, seeder hanya memberi peringatan dan dilewati.
   - Terverifikasi `BhpImportSeederTest`.
+
+---
+
+## 3. Pencatatan BM — Inventaris Aset (`app/Http/Controllers/PencatatanBm/*`, prefix `/pencatatan-bm`)
+
+Sumber tunggal unit inventaris adalah `pelaporan_bm_realisasi` yang periodenya
+(`sekolah_id`, `bulan_realisasi`, `tahun`) berstatus `disetujui` di
+`pelaporan_bm_kunci_laporan`. Tidak ada jalur input unit manual.
+
+`sekolah_id` selalu dari `resolveSekolahId()` (operator dipaksa ke sekolahnya;
+admin tanpa sekolah melihat lintas sekolah). Data sekolah lain dijawab **404**,
+bukan 403, agar UUID sekolah lain tidak membocorkan keberadaan data.
+
+| Method | Path | Controller::method | Permission |
+|---|---|---|---|
+| GET | `/pencatatan-bm` | `DashboardController::index` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/inventaris` | `InventarisController::index` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/inventaris-export` | `InventarisController::export` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/inventaris/{unit}` | `InventarisController::show` | `lihat-pencatatan-bm` |
+| PUT | `/pencatatan-bm/inventaris/{unit}/kondisi` | `InventarisController::updateKondisi` | `kelola-inventaris-bm` |
+| POST | `/pencatatan-bm/inventaris/{unit}/foto` | `UnitInventarisController::storeFoto` | `kelola-inventaris-bm` |
+| GET | `/pencatatan-bm/foto/{foto}` | `UnitInventarisController::foto` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/mutasi` | `MutasiController::index` | `lihat-pencatatan-bm` |
+| POST | `/pencatatan-bm/mutasi/{unit}` | `MutasiController::store` | `mutasi-inventaris-bm` |
+| GET | `/pencatatan-bm/pengembalian` | `PengembalianController::index` | `lihat-pencatatan-bm` |
+| POST | `/pencatatan-bm/pengembalian/{unit}` | `PengembalianController::store` | `proses-pengembalian-bm` |
+| GET | `/pencatatan-bm/berita-acara` | `BeritaAcaraController::index` | `cetak-inventaris-bm` |
+| PUT | `/pencatatan-bm/berita-acara/{dokumen}` | `BeritaAcaraController::update` | `cetak-inventaris-bm` |
+| DELETE | `/pencatatan-bm/berita-acara/{dokumen}` | `BeritaAcaraController::destroy` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen` | `DokumenInventarisController::index` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/kir?ruang={id}` | `DokumenInventarisController::kir` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/buku-inventaris?tahun=` | `DokumenInventarisController::bukuInventaris` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/sensus?tahun=` | `DokumenInventarisController::sensus` | `cetak-inventaris-bm` |
+| POST | `/pencatatan-bm/dokumen/bast/{unit}` | `DokumenInventarisController::bast` | `cetak-inventaris-bm` |
+| POST | `/pencatatan-bm/dokumen/fakta-integritas/{pegawai}` | `DokumenInventarisController::faktaIntegritas` | `cetak-inventaris-bm` |
+| POST | `/pencatatan-bm/dokumen/surat-pengembalian/{unit}` | `DokumenInventarisController::suratPengembalian` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/{dokumen}/pdf` | `DokumenInventarisController::pdf` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/label/{unit}/qr` | `UnitInventarisController::qr` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/label/{unit}/pdf` | `UnitInventarisController::label` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/sinkronisasi` | `SyncController::index` | `sinkronisasi-inventaris-bm` |
+| POST | `/pencatatan-bm/sinkronisasi` | `SyncController::store` | `sinkronisasi-inventaris-bm` |
+
+Master ruang & pegawai sekolah berada di grup `/master-data` (bukan
+`/pencatatan-bm`) karena dipakai juga oleh modul lain:
+
+| Method | Path | Controller::method | Permission |
+|---|---|---|---|
+| GET/POST | `/master-data/ruang` | `RuangController::index`/`store` | `kelola-ruang-bm` |
+| PUT/DELETE | `/master-data/ruang/{ruang}` | `RuangController::update`/`destroy` | `kelola-ruang-bm` |
+| GET/POST | `/master-data/pegawai` | `PegawaiController::index`/`store` | `kelola-pegawai-bm` |
+| PUT/DELETE | `/master-data/pegawai/{pegawai}` | `PegawaiController::update`/`destroy` | `kelola-pegawai-bm` |
+
+Payload penting:
+
+- `PUT inventaris/{unit}/kondisi`: `kondisi` ∈ {`B`, `RR`, `RB`} (wajib),
+  `keterangan`, `ruang_id`, `pegawai_id` (opsional). Ruang/pegawai **wajib**
+  milik sekolah unit (validasi `exists ... where sekolah_id`).
+- `POST mutasi/{unit}`: `tanggal` (wajib), `ruang_id`, `pegawai_id`,
+  `kondisi`, `keterangan`. Minimal satu dari ruang/pegawai/kondisi harus
+  berubah. Unit `dihapus_koreksi` ditolak.
+- `POST pengembalian/{unit}`: `kondisi` (wajib), `tanggal` (wajib),
+  `keterangan`. Ditolak bila unit tidak sedang ditempatkan.
+- `POST inventaris/{unit}/foto`: multipart `foto` — `image`,
+  `mimes:jpg,jpeg,png,webp`, maks 5120 KB. Nama file dibuat server-side;
+  path, MIME, ukuran, dan SHA-256 dicatat di `inventaris_foto`.
+- `DELETE berita-acara/{dokumen}`: `alasan` (wajib, maks 500). Nomor
+  dikosongkan dan alasan disimpan di `payload.pembatalan`; dokumen tidak dihapus.
+- `POST sinkronisasi`: `sekolah_id` (uuid), `bulan` (1–12), `tahun`. Aman
+  diulang; hanya periode `disetujui` yang menghasilkan unit. Kegagalan
+  dicatat di `inventaris_sync_logs`, status persetujuan tidak dibatalkan.
+
+QR unit berisi **signed URL** ke detail unit (`temporarySignedRoute`, 1 tahun),
+tanpa `sekolah_id` di payload. Scan tetap melewati otorisasi tenant.
+
+Command re-sync (admin/ops):
+
+```bash
+php artisan pencatatan-bm:resync --bulan=3 --tahun=2026            # semua sekolah
+php artisan pencatatan-bm:resync --bulan=3 --tahun=2026 --sekolah=<uuid>
+php artisan pencatatan-bm:resync --bulan=3 --tahun=2026 --dry-run  # rencana saja
+```
