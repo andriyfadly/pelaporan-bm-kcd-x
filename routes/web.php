@@ -26,6 +26,11 @@ use App\Http\Controllers\PelaporanBm\KunciLaporanController;
 use App\Http\Controllers\PelaporanBm\RealisasiController;
 use App\Http\Controllers\PelaporanBm\RekapanController;
 use App\Http\Controllers\PelaporanBm\SpjController;
+use App\Http\Controllers\PencatatanBm\DashboardController as PencatatanDashboardController;
+use App\Http\Controllers\PencatatanBm\InventarisController as PencatatanInventarisController;
+use App\Http\Controllers\PencatatanBm\PegawaiController as PencatatanPegawaiController;
+use App\Http\Controllers\PencatatanBm\RuangController as PencatatanRuangController;
+use App\Http\Controllers\PencatatanBm\SyncController as PencatatanSyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -237,6 +242,25 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/profil-sekolah', [MasterProfilSekolahController::class, 'update'])->name('profil-sekolah.update');
     });
 
+    // Master aset milik sekolah — dipakai sebagai penempatan/penanggung jawab
+    // unit inventaris. Gate-nya kelola-ruang-bm / kelola-pegawai-bm (operator
+    // dan bendahara sekolah), bukan kelola-master-data-sekolah.
+    Route::prefix('master-data')->name('master-data.')->group(function () {
+        Route::prefix('ruang')->name('ruang.')->middleware('permission:kelola-ruang-bm')->group(function () {
+            Route::get('/', [PencatatanRuangController::class, 'index'])->name('index');
+            Route::post('/', [PencatatanRuangController::class, 'store'])->name('store');
+            Route::put('/{ruang}', [PencatatanRuangController::class, 'update'])->name('update');
+            Route::delete('/{ruang}', [PencatatanRuangController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::prefix('pegawai')->name('pegawai.')->middleware('permission:kelola-pegawai-bm')->group(function () {
+            Route::get('/', [PencatatanPegawaiController::class, 'index'])->name('index');
+            Route::post('/', [PencatatanPegawaiController::class, 'store'])->name('store');
+            Route::put('/{pegawai}', [PencatatanPegawaiController::class, 'update'])->name('update');
+            Route::delete('/{pegawai}', [PencatatanPegawaiController::class, 'destroy'])->name('destroy');
+        });
+    });
+
     Route::prefix('admin')->name('admin.')->middleware('role:super_admin|admin_kcd')->group(function () {
         Route::get('/user', [UserController::class, 'index'])->middleware('permission:kelola-user')->name('user.index');
         Route::post('/user', [UserController::class, 'store'])->middleware('permission:kelola-user')->name('user.store');
@@ -251,5 +275,24 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/kode-barang', [KodeBarangController::class, 'store'])->name('kode-barang.store');
         Route::post('/kode-barang/import', [KodeBarangController::class, 'import'])->middleware('throttle:10,1')->name('kode-barang.import');
         Route::delete('/kode-barang/{kodeBarang}', [KodeBarangController::class, 'destroy'])->name('kode-barang.destroy');
+    });
+
+    // Domain Pencatatan BM — inventaris aset dari realisasi yang disetujui.
+    Route::prefix('pencatatan-bm')->name('pencatatan-bm.')->group(function () {
+        Route::get('/', [PencatatanDashboardController::class, 'index'])
+            ->middleware('permission:lihat-pencatatan-bm')->name('dashboard');
+
+        Route::middleware('permission:lihat-pencatatan-bm')->group(function () {
+            Route::get('/inventaris', [PencatatanInventarisController::class, 'index'])->name('inventaris.index');
+            Route::get('/inventaris/{unit}', [PencatatanInventarisController::class, 'show'])->name('inventaris.show');
+            Route::put('/inventaris/{unit}/kondisi', [PencatatanInventarisController::class, 'updateKondisi'])
+                ->middleware('permission:kelola-inventaris-bm')->name('inventaris.kondisi');
+        });
+
+        Route::middleware('permission:sinkronisasi-inventaris-bm')->group(function () {
+            Route::get('/sinkronisasi', [PencatatanSyncController::class, 'index'])->name('sinkronisasi.index');
+            Route::post('/sinkronisasi', [PencatatanSyncController::class, 'store'])
+                ->middleware('throttle:10,1')->name('sinkronisasi.store');
+        });
     });
 });
