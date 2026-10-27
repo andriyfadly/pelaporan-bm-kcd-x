@@ -224,6 +224,74 @@ class PenugasanPegawaiServiceTest extends TestCase
         $this->assertSame('Pejabat 0', $snapshot['kepala_sekolah']['nama']);
     }
 
+    public function test_akhiri_menolak_tanggal_sebelum_mulai(): void
+    {
+        $penugasan = $this->service->simpan($this->sekolah->id, $this->admin->id, $this->data([
+            'mulai_menjabat' => '2026-06-01',
+        ]));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('sebelum tanggal mulai');
+
+        $this->service->akhiri($this->sekolah->id, $this->admin->id, $penugasan, '2026-01-01');
+    }
+
+    public function test_snapshot_menolak_pejabat_dengan_nama_kosong(): void
+    {
+        $jabatan = Jabatan::create([
+            'sekolah_id' => $this->sekolah->id,
+            'kode' => 'kepala_sekolah',
+            'nama' => 'Kepala Sekolah',
+        ]);
+        $pegawai = Pegawai::create(['sekolah_id' => $this->sekolah->id, 'nama_lengkap' => '   ']);
+
+        PenugasanPegawai::create([
+            'sekolah_id' => $this->sekolah->id,
+            'pegawai_id' => $pegawai->id,
+            'jabatan_id' => $jabatan->id,
+            'mulai_menjabat' => '2026-01-01',
+        ]);
+
+        try {
+            $this->service->snapshotPenandatangan($this->sekolah->id, '2026-06-01');
+            $this->fail('Snapshot seharusnya gagal.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('Kepala Sekolah (nama kosong)', $e->getMessage());
+        }
+    }
+
+    public function test_pegawai_terhapus_dipulihkan_saat_disimpan_ulang_lewat_nip(): void
+    {
+        $penugasan = $this->service->simpan($this->sekolah->id, $this->admin->id, $this->data([
+            'jabatan' => 'wakasek_sarpras',
+        ]));
+        $penugasan->pegawai->delete();
+
+        $this->service->simpan($this->sekolah->id, $this->admin->id, $this->data([
+            'jabatan' => 'wakasek_kurikulum',
+        ]));
+
+        $this->assertSame(1, Pegawai::count());
+        $this->assertNotNull(Pegawai::first());
+    }
+
+    public function test_pegawai_terhapus_dipulihkan_saat_disimpan_ulang_lewat_nama(): void
+    {
+        $this->service->simpan($this->sekolah->id, $this->admin->id, $this->data([
+            'nip' => null,
+            'jabatan' => 'wakasek_sarpras',
+        ]));
+        Pegawai::firstOrFail()->delete();
+
+        $this->service->simpan($this->sekolah->id, $this->admin->id, $this->data([
+            'nip' => null,
+            'jabatan' => 'wakasek_kurikulum',
+        ]));
+
+        $this->assertSame(1, Pegawai::count());
+        $this->assertNotNull(Pegawai::first());
+    }
+
     public function test_sekolah_lain_tidak_bisa_diakhiri_lewat_service(): void
     {
         $penugasan = $this->service->simpan($this->sekolah->id, $this->admin->id, $this->data());

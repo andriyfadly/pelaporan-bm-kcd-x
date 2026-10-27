@@ -121,6 +121,26 @@ class MasterDataJabatanTest extends TestCase
         $this->assertSame(1, PenugasanPegawai::count());
     }
 
+    public function test_operator_dapat_mengubah_jabatan_sekolah_sendiri(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $jabatan = Jabatan::create(['sekolah_id' => $sekolah->id, 'kode' => 'bendahara', 'nama' => 'Bendahara']);
+
+        $this->actingAs($operator)
+            ->put(route('master-data.jabatan.update', $jabatan), [
+                'kode' => 'bendahara',
+                'nama' => 'Bendahara Sekolah',
+                'kategori' => 'pengelola',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('Bendahara Sekolah', $jabatan->fresh()->nama);
+        $this->assertSame('pengelola', $jabatan->fresh()->kategori);
+        $this->assertTrue($jabatan->fresh()->sekolah->is($sekolah));
+    }
+
     public function test_jabatan_tanpa_riwayat_dihapus_biasa(): void
     {
         $sekolah = $this->sekolah();

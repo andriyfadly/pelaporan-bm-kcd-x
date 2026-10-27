@@ -154,6 +154,30 @@ class MasterDataPenugasanModelTest extends TestCase
         $this->assertNull(PenugasanPegawai::berlakuPada($sekolah->id, $jabatan->id, '2023-12-31')->first());
     }
 
+    public function test_jabatan_tersedia_memfilter_aktif_dan_sekolah(): void
+    {
+        $sekolah = $this->sekolah();
+        $lain = $this->sekolah('SMA Lain');
+
+        $aktif = $this->jabatan($sekolah, 'kepala_sekolah', 'Kepala Sekolah');
+        $nonaktif = $this->jabatan($sekolah, 'operator', 'Operator');
+        $nonaktif->update(['aktif' => false]);
+        $this->jabatan($lain, 'kepala_sekolah', 'Kepala Lain');
+
+        $hasil = Jabatan::tersedia($sekolah->id)->get();
+
+        $this->assertCount(1, $hasil);
+        $this->assertTrue($hasil->first()->is($aktif));
+    }
+
+    public function test_prioritas_jenis_mengurutkan_definitif_plt_plh(): void
+    {
+        $this->assertSame(0, PenugasanPegawai::prioritasJenis('definitif'));
+        $this->assertSame(1, PenugasanPegawai::prioritasJenis('plt'));
+        $this->assertSame(2, PenugasanPegawai::prioritasJenis('plh'));
+        $this->assertSame(99, PenugasanPegawai::prioritasJenis('lain'));
+    }
+
     public function test_snapshot_menyimpan_nama_dan_label_jabatan(): void
     {
         $sekolah = $this->sekolah();

@@ -187,6 +187,106 @@ class MasterDataPenugasanHttpTest extends TestCase
         $this->assertNull($penugasanB->fresh()->selesai_menjabat);
     }
 
+    public function test_update_penugasan_mengubah_periode_dan_nama_pegawai(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+
+        $this->actingAs($operator)->post(route('master-data.penugasan.store'), $this->payload([
+            'selesai_menjabat' => '2026-06-30',
+        ]))->assertSessionHas('success');
+
+        $penugasan = PenugasanPegawai::firstOrFail();
+
+        $this->actingAs($operator)
+            ->put(route('master-data.penugasan.update', $penugasan), $this->payload([
+                'nama' => 'Budi Santoso, S.Pd',
+                'selesai_menjabat' => '2026-08-31',
+            ]))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('Budi Santoso, S.Pd', $penugasan->fresh()->pegawai->nama_lengkap);
+        $this->assertSame('2026-08-31', $penugasan->fresh()->selesai_menjabat->format('Y-m-d'));
+        $this->assertSame(1, PenugasanPegawai::count());
+    }
+
+    public function test_update_yang_menyebabkan_overlap_kembali_sebagai_error_flash(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+
+        $this->actingAs($operator)->post(route('master-data.penugasan.store'), $this->payload([
+            'selesai_menjabat' => '2026-06-30',
+        ]))->assertSessionHas('success');
+        $this->actingAs($operator)->post(route('master-data.penugasan.store'), $this->payload([
+            'nama' => 'Citra Dewi',
+            'nip' => '199002022010012002',
+            'mulai_menjabat' => '2026-07-01',
+        ]))->assertSessionHas('success');
+
+        $pertama = PenugasanPegawai::whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'Budi Santoso'))->firstOrFail();
+
+        $this->actingAs($operator)
+            ->put(route('master-data.penugasan.update', $pertama), $this->payload([
+                'selesai_menjabat' => '2026-12-31',
+            ]))
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertSame('2026-06-30', $pertama->fresh()->selesai_menjabat->format('Y-m-d'));
+    }
+
+    public function test_mutasi_ke_periode_yang_beririsan_kembali_sebagai_error_flash(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+
+        $this->actingAs($operator)->post(route('master-data.penugasan.store'), $this->payload([
+            'jabatan' => 'wakasek_sarpras',
+            'mulai_menjabat' => '2026-01-01',
+        ]))->assertSessionHas('success');
+
+        $penugasan = PenugasanPegawai::firstOrFail();
+
+        // Jabatan tujuan sudah dipegang orang lain pada periode yang sama.
+        $this->actingAs($operator)->post(route('master-data.penugasan.store'), $this->payload([
+            'nama' => 'Citra Dewi',
+            'nip' => '199002022010012002',
+            'mulai_menjabat' => '2026-01-01',
+            'selesai_menjabat' => '2026-12-31',
+        ]))->assertSessionHas('success');
+
+        $this->actingAs($operator)
+            ->put(route('master-data.penugasan.mutasi', $penugasan), [
+                'jabatan' => 'kepala_sekolah',
+                'mulai_menjabat' => '2026-07-01',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertNull($penugasan->fresh()->selesai_menjabat);
+    }
+
+    public function test_akhiri_dengan_tanggal_sebelum_mulai_kembali_sebagai_error_flash(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+
+        $this->actingAs($operator)->post(route('master-data.penugasan.store'), $this->payload([
+            'mulai_menjabat' => '2026-06-01',
+        ]))->assertSessionHas('success');
+
+        $penugasan = PenugasanPegawai::firstOrFail();
+
+        $this->actingAs($operator)
+            ->put(route('master-data.penugasan.akhiri', $penugasan), ['selesai_menjabat' => '2026-01-01'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertNull($penugasan->fresh()->selesai_menjabat);
+    }
+
     public function test_pengguna_tanpa_permission_ditolak(): void
     {
         $sekolah = $this->sekolah();
