@@ -28,7 +28,9 @@ use App\Http\Controllers\PelaporanBm\RekapanController;
 use App\Http\Controllers\PelaporanBm\SpjController;
 use App\Http\Controllers\PencatatanBm\DashboardController as PencatatanDashboardController;
 use App\Http\Controllers\PencatatanBm\InventarisController as PencatatanInventarisController;
+use App\Http\Controllers\PencatatanBm\MutasiController as PencatatanMutasiController;
 use App\Http\Controllers\PencatatanBm\PegawaiController as PencatatanPegawaiController;
+use App\Http\Controllers\PencatatanBm\PengembalianController as PencatatanPengembalianController;
 use App\Http\Controllers\PencatatanBm\RuangController as PencatatanRuangController;
 use App\Http\Controllers\PencatatanBm\SyncController as PencatatanSyncController;
 use Illuminate\Support\Facades\Route;
@@ -287,7 +289,15 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/inventaris/{unit}', [PencatatanInventarisController::class, 'show'])->name('inventaris.show');
             Route::put('/inventaris/{unit}/kondisi', [PencatatanInventarisController::class, 'updateKondisi'])
                 ->middleware('permission:kelola-inventaris-bm')->name('inventaris.kondisi');
+
+            Route::get('/mutasi', [PencatatanMutasiController::class, 'index'])->name('mutasi.index');
+            Route::get('/pengembalian', [PencatatanPengembalianController::class, 'index'])->name('pengembalian.index');
         });
+
+        Route::post('/mutasi/{unit}', [PencatatanMutasiController::class, 'store'])
+            ->middleware('permission:mutasi-inventaris-bm')->name('mutasi.store');
+        Route::post('/pengembalian/{unit}', [PencatatanPengembalianController::class, 'store'])
+            ->middleware('permission:proses-pengembalian-bm')->name('pengembalian.store');
 
         Route::middleware('permission:sinkronisasi-inventaris-bm')->group(function () {
             Route::get('/sinkronisasi', [PencatatanSyncController::class, 'index'])->name('sinkronisasi.index');
