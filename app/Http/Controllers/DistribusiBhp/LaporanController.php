@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\DistribusiBhp;
 
 use App\Exports\DistribusiBhp\BhpKartuPersediaanExport;
+use App\Exports\DistribusiBhp\BhpPenerimaanExport;
 use App\Exports\DistribusiBhp\BhpPengeluaranExport;
 use App\Exports\DistribusiBhp\BhpStokExport;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Dokumen;
+use App\Models\Master\Sekolah;
 use App\Services\DistribusiBhp\LaporanService;
 use App\Services\DistribusiBhp\SettingsService;
 use App\Support\DistribusiBhp\Periode;
 use App\Support\DistribusiBhp\SumberDana;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,6 +25,7 @@ use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class LaporanController extends Controller
 {
@@ -41,7 +45,7 @@ class LaporanController extends Controller
             'bulan_awal' => ['nullable', 'integer', 'between:1,12'],
             'bulan_akhir' => ['nullable', 'integer', 'between:1,12'],
         ]);
-        $sumberDana = SumberDana::normalisasi($validated['sumber_dana'] ?? SumberDana::BOS);
+        $sumberDana = SumberDana::pilih($validated['sumber_dana'] ?? null);
         $periode = Periode::dari(
             isset($validated['tahun']) ? (int) $validated['tahun'] : null,
             isset($validated['bulan']) ? (int) $validated['bulan'] : null,
@@ -74,7 +78,7 @@ class LaporanController extends Controller
     public function kartuPersediaan(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = SumberDana::normalisasi($request->input('sumber_dana', SumberDana::BOS));
+        $sumberDana = SumberDana::pilih($request->input('sumber_dana'));
 
         $validated = $request->validate([
             'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
@@ -161,18 +165,18 @@ class LaporanController extends Controller
 
     public function bastInternal(Request $request): Response
     {
-        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'bast');
+        return $this->daftarDokumen($request, SumberDana::pilih($request->input('sumber_dana')), 'bast');
     }
 
     public function bap(Request $request): Response
     {
-        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'bap');
+        return $this->daftarDokumen($request, SumberDana::pilih($request->input('sumber_dana')), 'bap');
     }
 
     public function bukuPengeluaranPage(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS));
+        $sumberDana = SumberDana::pilih($request->input('sumber_dana'));
         $validated = $request->validate($this->aturanPeriode());
         $periode = Periode::dari(
             isset($validated['tahun']) ? (int) $validated['tahun'] : null,
@@ -191,36 +195,86 @@ class LaporanController extends Controller
         ]);
     }
 
+    public function bukuPenerimaanPage(Request $request): Response
+    {
+        $sekolahId = $this->resolveSekolahId($request);
+        $sumberDana = SumberDana::pilih($request->input('sumber_dana'));
+        $validated = $request->validate($this->aturanPeriode());
+        $periode = Periode::dari(
+            isset($validated['tahun']) ? (int) $validated['tahun'] : null,
+            isset($validated['bulan']) ? (int) $validated['bulan'] : null,
+        );
+
+        return Inertia::render('DistribusiBhp/Laporan/BukuPenerimaan', [
+            'jenisLabel' => 'Buku Penerimaan Barang',
+            'sumberDana' => $sumberDana,
+            'periode' => [
+                'tahun' => $periode->tahun,
+                'bulan' => $periode->bulan,
+                'label' => $periode->label(),
+            ],
+            'items' => $this->laporan->bukuPenerimaan($sumberDana, $sekolahId, $periode),
+        ]);
+    }
+
+    /** Cetak Buku Penerimaan (PDF) dengan isi yang sama seperti halaman & Excel. */
+    public function cetakBukuPenerimaan(Request $request): HttpResponse
+    {
+        $sekolahId = $this->resolveSekolahId($request);
+        $sumberDana = SumberDana::pilih($request->input('sumber_dana'));
+        $validated = $request->validate($this->aturanPeriode());
+        $periode = Periode::dari(
+            isset($validated['tahun']) ? (int) $validated['tahun'] : null,
+            isset($validated['bulan']) ? (int) $validated['bulan'] : null,
+        );
+
+        $sekolah = $sekolahId ? Sekolah::find($sekolahId) : null;
+
+        $pdf = Pdf::loadView('distribusi-bhp.buku-penerimaan', [
+            'sumberDana' => $sumberDana,
+            'periode' => $periode,
+            'items' => $this->laporan->bukuPenerimaan($sumberDana, $sekolahId, $periode),
+            'sekolah' => $sekolah?->nama_sekolah ?? 'Semua Sekolah',
+            'alamat' => $sekolah?->alamat ?? '',
+            'telepon' => $sekolah?->telepon ?? '',
+            'website' => $sekolah?->website ?? '',
+            'email' => $sekolah?->email ?? '',
+            'kodePos' => $sekolah?->kode_pos ?? '',
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download("buku_penerimaan_bhp_{$sumberDana}_{$periode->kode()}.pdf");
+    }
+
     public function bukuPenyaluran(Request $request): Response
     {
-        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'buku_penyaluran');
+        return $this->daftarDokumen($request, SumberDana::pilih($request->input('sumber_dana')), 'buku_penyaluran');
     }
 
     public function stokOpname(Request $request): Response
     {
-        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'stok_opname');
+        return $this->daftarDokumen($request, SumberDana::pilih($request->input('sumber_dana')), 'stok_opname');
     }
 
     public function suratPermintaan(Request $request): Response
     {
-        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'surat_permintaan');
+        return $this->daftarDokumen($request, SumberDana::pilih($request->input('sumber_dana')), 'surat_permintaan');
     }
 
     public function suratPenyaluran(Request $request): Response
     {
-        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'surat_penyaluran');
+        return $this->daftarDokumen($request, SumberDana::pilih($request->input('sumber_dana')), 'surat_penyaluran');
     }
 
     public function bastSerahTerima(Request $request): Response
     {
-        return $this->daftarDokumen($request, SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS)), 'bast');
+        return $this->daftarDokumen($request, SumberDana::pilih($request->input('sumber_dana')), 'bast');
     }
 
     public function export(Request $request): BinaryFileResponse|RedirectResponse
     {
         $validated = $request->validate([
             'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
-            'jenis' => ['required', Rule::in(['stok', 'pengeluaran', 'kartu_persediaan'])],
+            'jenis' => ['required', Rule::in(['stok', 'penerimaan', 'pengeluaran', 'kartu_persediaan'])],
             'barang_id' => ['required_if:jenis,kartu_persediaan', 'uuid'],
             ...$this->aturanPeriode(),
         ]);
@@ -259,6 +313,10 @@ class LaporanController extends Controller
             $rows = $kartu['mutasi'];
             $export = new BhpKartuPersediaanExport($kartu['barang'], $rows);
             $filename = "kartu_persediaan_bhp_{$sumberDana}_{$suffixPeriode}.xlsx";
+        } elseif ($jenis === 'penerimaan') {
+            $rows = $this->laporan->bukuPenerimaan($sumberDana, $sekolahId, $periode);
+            $export = new BhpPenerimaanExport($rows);
+            $filename = "buku_penerimaan_bhp_{$sumberDana}_{$suffixPeriode}.xlsx";
         } else {
             $rows = $this->laporan->bukuPengeluaran($sumberDana, $sekolahId, $periode);
             $export = new BhpPengeluaranExport($rows);

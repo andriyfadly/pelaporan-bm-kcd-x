@@ -184,6 +184,9 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/laporan/bast-internal', [BhpLaporanController::class, 'bastInternal'])->name('laporan.bast-internal');
             Route::get('/laporan/berita-acara-pemeriksaan', [BhpLaporanController::class, 'bap'])->name('laporan.bap');
             Route::get('/laporan/buku-pengeluaran', [BhpLaporanController::class, 'bukuPengeluaranPage'])->name('laporan.buku-pengeluaran');
+            Route::get('/laporan/buku-penerimaan', [BhpLaporanController::class, 'bukuPenerimaanPage'])->name('laporan.buku-penerimaan');
+            Route::get('/laporan/buku-penerimaan/cetak', [BhpLaporanController::class, 'cetakBukuPenerimaan'])
+                ->middleware('permission:cetak-dokumen-bhp')->name('laporan.buku-penerimaan.cetak');
             Route::get('/laporan/buku-penyaluran', [BhpLaporanController::class, 'bukuPenyaluran'])->name('laporan.buku-penyaluran');
             Route::get('/laporan/stok-opname', [BhpLaporanController::class, 'stokOpname'])->name('laporan.stok-opname');
             Route::get('/laporan/surat-permintaan-barang', [BhpLaporanController::class, 'suratPermintaan'])->name('laporan.surat-permintaan');

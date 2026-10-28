@@ -50,6 +50,19 @@ final class SumberDana
         return in_array(strtoupper(trim((string) $sumberDana)), self::SEMUA, true);
     }
 
+    /**
+     * Sumber dana efektif untuk request: input eksplisit menang, lalu sumber
+     * dana yang ditetapkan middleware dari prefix URL (`/bos/` atau `/bopd/`),
+     * baru terakhir default BOS.
+     *
+     * Tanpa urutan ini, halaman `distribusi-bhp/bopd/*` yang tidak mengirim
+     * `sumber_dana` akan jatuh ke BOS dan menampilkan data dana yang salah.
+     */
+    public static function pilih(?string $input = null): string
+    {
+        return self::normalisasi($input ?? self::aktif() ?? self::BOS);
+    }
+
     public static function aktif(): ?string
     {
         return self::$aktif;

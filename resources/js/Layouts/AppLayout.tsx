@@ -111,7 +111,7 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                     )}
                     {canTerima && (
                         <Link href={`${prefix}/penerimaan`} className={subNavClass(currentPath === `${prefix}/penerimaan` || currentPath.startsWith(`${prefix}/penerimaan?`))}>
-                            Buku Penerimaan
+                            Penerimaan Barang
                         </Link>
                     )}
                     {canPengajuan && (
@@ -151,6 +151,11 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                     {canCetak && (
                         <Link href={`${prefix}/laporan/buku-pengeluaran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-pengeluaran`))}>
                             Buku Pengeluaran
+                        </Link>
+                    )}
+                    {canCetak && (
+                        <Link href={`${prefix}/laporan/buku-penerimaan`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-penerimaan`))}>
+                            Buku Penerimaan
                         </Link>
                     )}
                     {canCetak && (

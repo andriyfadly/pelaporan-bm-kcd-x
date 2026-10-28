@@ -108,6 +108,66 @@ class LaporanService
     }
 
     /**
+     * Buku penerimaan: daftar barang masuk per bulan, termasuk saldo awal.
+     *
+     * Baris periode diambil dari selisih dua snapshot `efektifSampai` —
+     * reuse aturan tanggal yang sama dengan laporan stok supaya angka buku
+     * dan angka kartu persediaan tidak pernah berbeda.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function bukuPenerimaan(string $sumberDana, ?string $sekolahId = null, ?Periode $periode = null): array
+    {
+        return SumberDana::dengan($sumberDana, function () use ($sekolahId, $periode): array {
+            $ambil = fn (string $sampai) => PenerimaanDetail::query()
+                ->with([
+                    'penerimaan:id,tanggal_bast,tanggal_titimangsa,no_bast,no_nota_invoice,penyedia_id,is_saldo_awal,periode_tahun,sekolah_id',
+                    'penerimaan.penyedia:id,nama',
+                    'barang:id,kode_barang,nama_barang,satuan',
+                ])
+                ->whereHas('penerimaan', fn ($q) => $q
+                    ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId))
+                    ->efektifSampai($sampai))
+                ->get();
+
+            $sampai = $periode?->sampai();
+            $semua = $ambil($sampai ?? now()->toDateString());
+
+            if ($periode === null) {
+                $dalamPeriode = $semua;
+            } else {
+                $sebelum = $ambil($periode->mulai->copy()->subDay()->toDateString())->pluck('id')->all();
+                $dalamPeriode = $semua->whereNotIn('id', $sebelum);
+            }
+
+            return $dalamPeriode
+                ->map(function (PenerimaanDetail $detail): array {
+                    $penerimaan = $detail->penerimaan;
+                    $barang = $detail->barang;
+                    $jumlah = (int) $detail->jumlah;
+                    $harga = (int) ($detail->harga_satuan ?? 0);
+
+                    return [
+                        'tanggal' => $penerimaan?->tanggalEfektif()?->toDateString(),
+                        'no_bast' => $penerimaan?->no_bast ?? ($penerimaan?->is_saldo_awal ? 'Saldo Awal '.$penerimaan?->periode_tahun : null),
+                        'no_nota_invoice' => $penerimaan?->no_nota_invoice,
+                        'penyedia' => $penerimaan?->penyedia?->nama,
+                        'kode_barang' => $barang?->kode_barang,
+                        'nama_barang' => $barang?->nama_barang,
+                        'satuan' => $barang?->satuan,
+                        'jumlah' => $jumlah,
+                        'harga_satuan' => $harga,
+                        'nilai_total' => (int) ($detail->nilai_total ?? $jumlah * $harga),
+                        'is_saldo_awal' => (bool) $penerimaan?->is_saldo_awal,
+                    ];
+                })
+                ->sortBy([['tanggal', 'asc'], ['nama_barang', 'asc']])
+                ->values()
+                ->all();
+        });
+    }
+
+    /**
      * Buku pengeluaran: barang yang sudah disetujui (approved) per sumber dana,
      * scoped sekolah. $sekolahId null = tanpa filter (admin lintas sekolah).
      *

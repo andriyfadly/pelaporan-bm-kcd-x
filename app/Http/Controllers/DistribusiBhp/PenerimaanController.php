@@ -30,10 +30,11 @@ class PenerimaanController extends Controller
     public function index(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = $request->validate([
-            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
-        ])['sumber_dana'] ?? SumberDana::BOS;
-        $sumberDana = SumberDana::normalisasi($sumberDana);
+        $sumberDana = SumberDana::pilih(
+            $request->validate([
+                'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
+            ])['sumber_dana'] ?? null,
+        );
 
         return SumberDana::dengan($sumberDana, function () use ($sekolahId, $sumberDana): Response {
             $items = Penerimaan::with(['penyedia', 'details.barang'])
@@ -54,7 +55,7 @@ class PenerimaanController extends Controller
     public function lunasBayar(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana', SumberDana::BOS));
+        $sumberDana = SumberDana::pilih($request->input('sumber_dana'));
 
         return SumberDana::dengan($sumberDana, function () use ($sekolahId, $sumberDana): Response {
             $items = Penerimaan::with(['penyedia', 'details.barang'])
