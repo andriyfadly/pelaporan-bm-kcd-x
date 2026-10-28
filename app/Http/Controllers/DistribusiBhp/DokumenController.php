@@ -174,10 +174,28 @@ class DokumenController extends Controller
     {
         $pengajuan->loadMissing('details.barang', 'divisi', 'pemohon', 'dokumen');
 
+        // Sisa stok per barang dipakai SPB ("Informasi Sisa Barang Persediaan").
+        // Dihitung pada tanggal dokumen agar reprint dokumen lama tetap benar,
+        // lalu jumlah pengajuan ini ditambahkan kembali: SPB adalah surat
+        // permintaan, jadi yang dicetak adalah sisa SEBELUM barang ini keluar.
+        $stokPerBarang = $this->stok->rekapPerBarang(
+            $pengajuan->details->pluck('barang')->filter()->unique('id'),
+            (string) $pengajuan->sekolah_id,
+            $dokumen->tanggal_titimangsa?->toDateString(),
+        );
+
+        foreach ($pengajuan->details as $detail) {
+            $id = (string) $detail->barang_id;
+            if (isset($stokPerBarang[$id])) {
+                $stokPerBarang[$id]['tersedia'] += (int) $detail->jumlah_disetujui;
+            }
+        }
+
         return $this->loadPdf($dokumen->jenis, $pengajuan->sumber_dana, self::VIEW[$dokumen->jenis] ?? 'distribusi-bhp.dokumen', [
             'judul' => self::JUDUL[$dokumen->jenis] ?? ucwords(str_replace('_', ' ', $dokumen->jenis)),
             'dokumen' => $dokumen,
             'pengajuan' => $pengajuan,
+            'stokPerBarang' => $stokPerBarang,
             'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
             'alamat' => $pengajuan->sekolah?->alamat ?? '',
             'telepon' => $pengajuan->sekolah?->telepon ?? '',
