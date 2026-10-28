@@ -8,6 +8,7 @@ use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Models\Master\Sekolah;
 use App\Models\User;
+use App\Services\DistribusiBhp\StokService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -166,6 +167,33 @@ class BhpSaldoAwalTest extends TestCase
         $this->actingAs($operator)->post(route('distribusi-bhp.bos.saldo-awal.store'), $payload)->assertSessionHasErrors();
 
         $this->assertSame(1, Penerimaan::count());
+    }
+
+    public function test_store_saldo_awal_periode_lain_untuk_barang_sama_diizinkan(): void
+    {
+        $operator = $this->operator($this->sekolah());
+        $barang = $this->barang();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2025,
+                'details' => [['barang_id' => $barang->id, 'jumlah' => 5, 'harga_satuan' => 1000]],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2026,
+                'details' => [['barang_id' => $barang->id, 'jumlah' => 7, 'harga_satuan' => 1000]],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        // Saldo awal tiap tahun adalah penambahan stok tersendiri.
+        $this->assertSame(2, Penerimaan::count());
+        $this->assertSame(12, app(StokService::class)->fisik($barang));
     }
 
     public function test_halaman_hanya_menampilkan_saldo_awal_sekolah_sendiri(): void
@@ -416,17 +444,24 @@ class BhpSaldoAwalTest extends TestCase
     public function test_periode_menentukan_baris_yang_tampil(): void
     {
         $operator = $this->operator($this->sekolah());
-        $barang = $this->barang();
+        $barang2025 = $this->barang('BOS', 'Kertas 2025');
+        $barang2026 = $this->barang('BOS', 'Kertas 2026');
 
-        foreach ([2025, 2026] as $tahun) {
-            $this->actingAs($operator)
-                ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
-                    'sumber_dana' => 'BOS',
-                    'periode_tahun' => $tahun,
-                    'details' => [['barang_id' => $barang->id, 'jumlah' => 1, 'harga_satuan' => 1000]],
-                ])
-                ->assertRedirect();
-        }
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2025,
+                'details' => [['barang_id' => $barang2025->id, 'jumlah' => 1, 'harga_satuan' => 1000]],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.saldo-awal.store'), [
+                'sumber_dana' => 'BOS',
+                'periode_tahun' => 2026,
+                'details' => [['barang_id' => $barang2026->id, 'jumlah' => 1, 'harga_satuan' => 1000]],
+            ])
+            ->assertRedirect();
 
         $this->actingAs($operator)
             ->get(route('distribusi-bhp.bos.saldo-awal.index', ['periode' => 2025]))

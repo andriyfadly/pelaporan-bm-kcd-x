@@ -71,11 +71,13 @@ class SaldoAwalController extends Controller
                     'nilai_total' => $d->nilai_total,
                 ])->values(),
                 'stats' => [
-                    'total_barang' => Penerimaan::query()
-                        ->where('is_saldo_awal', true)
-                        ->where('periode_tahun', $periode)
-                        ->where('sekolah_id', $sekolahId)
-                        ->count(),
+                    'total_barang' => PenerimaanDetail::query()
+                        ->whereHas('penerimaan', fn ($q) => $q
+                            ->where('is_saldo_awal', true)
+                            ->where('periode_tahun', $periode)
+                            ->where('sekolah_id', $sekolahId))
+                        ->distinct()
+                        ->count('barang_id'),
                     'total_unit' => (int) PenerimaanDetail::query()
                         ->whereHas('penerimaan', fn ($q) => $q
                             ->where('is_saldo_awal', true)

@@ -74,6 +74,8 @@ class SaldoAwalService
                         ]);
                     }
 
+                    // Saldo awal boleh ditambah tiap periode (tiap tahun beda-beda);
+                    // yang dilarang hanya duplikat barang pada periode yang sama.
                     if ($this->sudahAda($barang->id, $sekolahId, $periode)) {
                         throw ValidationException::withMessages([
                             "details.{$index}.barang_id" => 'Saldo awal untuk '.$barang->nama_barang.' periode '.$periode.' ('.$sumberDana.') sudah ada.',
@@ -239,11 +241,6 @@ class SaldoAwalService
             ->exists();
     }
 
-    public function sudahAdaUntuk(string $barangId, string $sekolahId, string $sumberDana, int $periode): bool
-    {
-        return SumberDana::dengan($sumberDana, fn () => $this->sudahAda($barangId, $sekolahId, $periode));
-    }
-
     /**
      * Apakah saldo awal untuk periode ini sudah ada (level header)? Dipakai
      * untuk cek cepat sebelum membangun set barang existing saat import.
@@ -279,6 +276,10 @@ class SaldoAwalService
             ->all());
     }
 
+    /**
+     * Periode saldo awal yang sudah ada untuk barang ini (periode apa pun),
+     * atau null bila belum ada.
+     */
     private function sudahAda(string $barangId, string $sekolahId, int $periode): bool
     {
         return PenerimaanDetail::query()
