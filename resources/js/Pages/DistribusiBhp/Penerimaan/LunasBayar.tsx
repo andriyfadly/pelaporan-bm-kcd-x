@@ -42,7 +42,7 @@ export default function LunasBayar({
                         <tbody className="divide-y divide-slate-100">
                             {items.data.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="py-10 text-center text-slate-400 text-xs">
+                                    <td colSpan={4} className="py-10 text-center text-slate-400 text-xs">
                                         Belum ada penerimaan.
                                     </td>
                                 </tr>

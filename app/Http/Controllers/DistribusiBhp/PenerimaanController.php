@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\Penyedia;
+use App\Services\DistribusiBhp\PenerimaanService;
 use App\Services\DistribusiBhp\SaldoAwalService;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +22,10 @@ class PenerimaanController extends Controller
 {
     use ResolvesSekolah;
 
-    public function __construct(private readonly SaldoAwalService $saldoAwal) {}
+    public function __construct(
+        private readonly SaldoAwalService $saldoAwal,
+        private readonly PenerimaanService $penerimaan,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -73,22 +77,26 @@ class PenerimaanController extends Controller
 
         $sumberDana = SumberDana::normalisasi((string) $request->input('sumber_dana'));
 
+        $isSaldoAwal = (bool) ($request->input('is_saldo_awal') ?? false);
+
         $validated = $request->validate([
             'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
             'no_nota_invoice' => ['nullable', 'string', 'max:150'],
             'no_bast' => ['nullable', 'string', 'max:150'],
             'tanggal_bast' => ['nullable', 'date'],
             'no_kwitansi' => ['nullable', 'string', 'max:150'],
-            'penyedia_id' => ['nullable', 'uuid', 'exists:bhp_penyedia,id'],
+            'penyedia_id' => [$isSaldoAwal ? 'nullable' : 'required', 'uuid', 'exists:bhp_penyedia,id'],
             'tanggal_titimangsa' => ['nullable', 'date'],
             'is_saldo_awal' => ['boolean'],
             'periode_tahun' => ['nullable', 'integer', 'between:2000,2100'],
             'details' => 'required|array|min:1',
-            'details.*.barang_id' => ['required', 'uuid', SumberDana::existsRule('barang', $sumberDana)],
+            'details.*.barang_id' => ['required', 'uuid', 'distinct', SumberDana::existsRule('barang', $sumberDana)],
             'details.*.jumlah' => 'required|integer|min:1',
             'details.*.harga_satuan' => 'required|integer|min:0',
             'details.*.merek_type' => ['nullable', 'string', 'max:255'],
             'details.*.keterangan' => ['nullable', 'string', 'max:255'],
+        ], [
+            'details.*.barang_id.distinct' => 'Satu barang tidak boleh muncul lebih dari sekali dalam satu penerimaan.',
         ]);
 
         // Kombinasi is_saldo_awal × periode_tahun harus konsisten:
@@ -97,6 +105,26 @@ class PenerimaanController extends Controller
             throw ValidationException::withMessages([
                 'periode_tahun' => 'Periode tahun wajib diisi untuk saldo awal dan tidak boleh diisi untuk penerimaan biasa.',
             ]);
+        }
+
+        // Penerimaan biasa wajib punya dokumen sumber & tanggal BAST, karena
+        // tanggal BAST menentukan bulan mutasi stok pada laporan.
+        if (! ($validated['is_saldo_awal'] ?? false)) {
+            $wajib = [
+                'no_bast' => 'Nomor BAST wajib diisi untuk penerimaan barang.',
+                'tanggal_bast' => 'Tanggal BAST wajib diisi dan menentukan bulan mutasi stok.',
+            ];
+
+            $errors = [];
+            foreach ($wajib as $field => $pesan) {
+                if (trim((string) ($validated[$field] ?? '')) === '') {
+                    $errors[$field] = $pesan;
+                }
+            }
+
+            if ($errors !== []) {
+                throw ValidationException::withMessages($errors);
+            }
         }
 
         return SumberDana::dengan($sumberDana, function () use ($validated, $sekolahId, $request, $sumberDana): RedirectResponse {
@@ -139,12 +167,18 @@ class PenerimaanController extends Controller
         $this->authorizeSekolah($request, $penerimaan);
 
         try {
-            $this->saldoAwal->delete($penerimaan, $request->user());
+            if ($penerimaan->is_saldo_awal) {
+                $this->saldoAwal->delete($penerimaan, $request->user());
+                $pesan = 'Saldo awal berhasil dihapus.';
+            } else {
+                $this->penerimaan->hapus($penerimaan, $request->user());
+                $pesan = 'Penerimaan berhasil dihapus.';
+            }
         } catch (ValidationException $e) {
             return back()->with('error', collect($e->errors())->flatten()->first());
         }
 
-        return back()->with('success', 'Saldo awal berhasil dihapus.');
+        return back()->with('success', $pesan);
     }
 
     /**

@@ -54,6 +54,29 @@ class BhpPenerimaanTest extends TestCase
         ]);
     }
 
+    private function penyedia(): Penyedia
+    {
+        return Penyedia::create(['nama' => 'CV Maju']);
+    }
+
+    /**
+     * Payload minimum penerimaan biasa: dokumen sumber wajib (BAST + tanggal +
+     * penyedia) karena tanggal BAST menentukan bulan mutasi stok.
+     *
+     * @param  array<int, array<string,mixed>>  $details
+     * @return array<string,mixed>
+     */
+    private function payloadBiasa(array $details, string $sumberDana = 'BOS'): array
+    {
+        return [
+            'sumber_dana' => $sumberDana,
+            'no_bast' => 'BAST-001',
+            'tanggal_bast' => '2026-06-17',
+            'penyedia_id' => $this->penyedia()->id,
+            'details' => $details,
+        ];
+    }
+
     public function test_operator_dapat_membuat_penerimaan_dengan_detail(): void
     {
         $sekolah = $this->sekolah();
@@ -64,6 +87,8 @@ class BhpPenerimaanTest extends TestCase
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
+                'no_bast' => 'BAST-001',
+                'tanggal_bast' => '2026-06-17',
                 'no_nota_invoice' => 'INV-001',
                 'no_kwitansi' => 'KW-001',
                 'penyedia_id' => $penyedia->id,
@@ -92,13 +117,9 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolah);
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
-                'sumber_dana' => 'BOS',
-                'tanggal_titimangsa' => '2026-06-17',
-                'details' => [
-                    ['barang_id' => $barang->id, 'jumlah' => 80, 'harga_satuan' => 45000],
-                ],
-            ])
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 80, 'harga_satuan' => 45000],
+            ]))
             ->assertRedirect();
 
         $this->assertSame(80, app(StokService::class)->fisik($barang));
@@ -112,16 +133,147 @@ class BhpPenerimaanTest extends TestCase
         $barangBopd = $this->barang($sekolah, 'BOPD');
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
-                'sumber_dana' => 'BOS',
-                'tanggal_titimangsa' => '2026-06-17',
-                'details' => [
-                    ['barang_id' => $barangBopd->id, 'jumlah' => 10, 'harga_satuan' => 45000],
-                ],
-            ])
-            ->assertSessionHasErrors();
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barangBopd->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+            ]))
+            ->assertSessionHasErrors('details.0.barang_id');
 
         $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_penerimaan_biasa_wajib_no_bast_dan_tanggal_bast(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'penyedia_id' => $this->penyedia()->id,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors(['no_bast', 'tanggal_bast']);
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_penerimaan_biasa_wajib_penyedia(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'no_bast' => 'BAST-002',
+                'tanggal_bast' => '2026-06-17',
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertSessionHasErrors('penyedia_id');
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_penerimaan_menolak_barang_duplikat_dalam_satu_transaksi(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ['barang_id' => $barang->id, 'jumlah' => 5, 'harga_satuan' => 45000],
+            ]))
+            ->assertSessionHasErrors('details.1.barang_id');
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_penerimaan_biasa_bisa_dihapus_dan_stok_berkurang(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 40, 'harga_satuan' => 45000],
+            ]))
+            ->assertRedirect();
+
+        $penerimaan = Penerimaan::firstOrFail();
+
+        $this->actingAs($operator)
+            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $penerimaan))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(0, Penerimaan::count());
+        $this->assertSame(0, PenerimaanDetail::count());
+        $this->assertSame(0, app(StokService::class)->fisik($barang));
+    }
+
+    public function test_penerimaan_biasa_tidak_bisa_dihapus_bila_stok_terpakai(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+            ]))
+            ->assertRedirect();
+
+        $pengajuan = Pengajuan::create([
+            'sekolah_id' => $sekolah->id,
+            'user_id' => $operator->id,
+            'sumber_dana' => 'BOS',
+            'status' => 'approved',
+            'tanggal' => '2026-06-20',
+        ]);
+        PengajuanDetail::create([
+            'bhp_pengajuan_id' => $pengajuan->id,
+            'barang_id' => $barang->id,
+            'jumlah_diminta' => 4,
+            'jumlah_disetujui' => 4,
+        ]);
+
+        $penerimaan = Penerimaan::firstOrFail();
+
+        $this->actingAs($operator)
+            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $penerimaan))
+            ->assertSessionHas('error');
+
+        $this->assertSame(1, Penerimaan::count());
+    }
+
+    public function test_penerimaan_dicatat_pada_bulan_tanggal_bast(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
+                'sumber_dana' => 'BOS',
+                'no_bast' => 'BAST-MARET',
+                'tanggal_bast' => '2026-03-28',
+                'penyedia_id' => $this->penyedia()->id,
+                'details' => [
+                    ['barang_id' => $barang->id, 'jumlah' => 15, 'harga_satuan' => 45000],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('2026-03-28', Penerimaan::firstOrFail()->tanggal_bast?->toDateString());
     }
 
     public function test_saldo_awal_menandai_is_saldo_awal_dan_periode_tahun(): void
@@ -187,6 +339,9 @@ class BhpPenerimaanTest extends TestCase
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
+                'no_bast' => 'BAST-001',
+                'tanggal_bast' => '2026-06-17',
+                'penyedia_id' => $this->penyedia()->id,
                 'periode_tahun' => 2026,
                 'details' => [
                     ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
@@ -304,12 +459,9 @@ class BhpPenerimaanTest extends TestCase
         $barang = $this->barang($sekolahA);
 
         $this->actingAs($operatorA)
-            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
-                'sumber_dana' => 'BOS',
-                'details' => [
-                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
-                ],
-            ])
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+            ]))
             ->assertRedirect();
 
         $operatorB = User::create([
@@ -433,28 +585,39 @@ class BhpPenerimaanTest extends TestCase
         $this->assertSame(1, Penerimaan::count());
     }
 
-    public function test_penerimaan_biasa_tidak_bisa_dihapus_via_flow_saldo_awal(): void
+    public function test_penerimaan_biasa_dihapus_tanpa_mengganggu_saldo_awal(): void
     {
         $sekolah = $this->sekolah();
         $operator = $this->operator($sekolah);
         $barang = $this->barang($sekolah);
 
+        // Saldo awal tetap dihitung, penerimaan biasa dihapus.
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
+                'is_saldo_awal' => true,
+                'periode_tahun' => 2026,
                 'details' => [
-                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                    ['barang_id' => $barang->id, 'jumlah' => 30, 'harga_satuan' => 45000],
                 ],
             ])
             ->assertRedirect();
 
-        $penerimaan = Penerimaan::firstOrFail();
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+            ]))
+            ->assertRedirect();
+
+        $biasa = Penerimaan::where('is_saldo_awal', false)->firstOrFail();
 
         $this->actingAs($operator)
-            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $penerimaan))
-            ->assertSessionHas('error');
+            ->delete(route('distribusi-bhp.bos.penerimaan.destroy', $biasa))
+            ->assertRedirect()
+            ->assertSessionHas('success');
 
         $this->assertSame(1, Penerimaan::count());
+        $this->assertSame(30, app(StokService::class)->fisik($barang));
     }
 
     public function test_hapus_via_penerimaan_menghapus_semua_barang_saldo_awal(): void
@@ -520,6 +683,9 @@ class BhpPenerimaanTest extends TestCase
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'APBN',
+                'no_bast' => 'BAST-001',
+                'tanggal_bast' => '2026-06-17',
+                'penyedia_id' => $this->penyedia()->id,
                 'details' => [
                     ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
                 ],
@@ -536,6 +702,8 @@ class BhpPenerimaanTest extends TestCase
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
+                'no_bast' => 'BAST-001',
+                'tanggal_bast' => '2026-06-17',
                 'penyedia_id' => '00000000-0000-0000-0000-000000000000',
                 'details' => [
                     ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
@@ -552,6 +720,9 @@ class BhpPenerimaanTest extends TestCase
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.bos.penerimaan.store'), [
                 'sumber_dana' => 'BOS',
+                'no_bast' => 'BAST-001',
+                'tanggal_bast' => '2026-06-17',
+                'penyedia_id' => $this->penyedia()->id,
                 'details' => [
                     ['barang_id' => '00000000-0000-0000-0000-000000000000', 'jumlah' => 10, 'harga_satuan' => 45000],
                 ],
