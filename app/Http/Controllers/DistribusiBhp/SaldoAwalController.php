@@ -333,15 +333,13 @@ class SaldoAwalController extends Controller
 
     public function template(Request $request): BinaryFileResponse
     {
-        // Whitelist konsisten dengan index/store/import — nilai asing ditolak,
-        // bukan diam-diam menghasilkan template kosong.
-        // Whitelist konsisten dengan index/store/import — nilai asing ditolak,
-        // bukan diam-diam menghasilkan template kosong.
-        $diminta = (string) $request->query('sumber_dana', SumberDana::BOS);
-        if (! SumberDana::valid($diminta)) {
+        // Nilai asing tetap ditolak (422); kosong = ikuti prefix URL supaya
+        // halaman /bopd/ tidak diam-diam mengunduh template BOS.
+        $diminta = $request->query('sumber_dana');
+        if ($diminta !== null && ! SumberDana::valid($diminta)) {
             abort(422, 'Sumber dana tidak valid.');
         }
-        $sumberDana = SumberDana::normalisasi($diminta);
+        $sumberDana = SumberDana::normalisasi($diminta ?? SumberDana::pilih());
 
         $contoh = SumberDana::dengan($sumberDana, fn () => Barang::orderBy('nama_barang')
             ->limit(3)

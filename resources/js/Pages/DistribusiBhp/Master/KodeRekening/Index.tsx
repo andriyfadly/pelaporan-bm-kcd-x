@@ -24,7 +24,12 @@ interface Paginated<T> {
 export default function Index({ items, sumberDana, kodeBarangOptions }: { items: Paginated<KodeRekeningItem>; sumberDana: string; kodeBarangOptions: KodeBarangOption[] }) {
     const { auth } = usePage<any>().props;
     const roles: string[] = auth?.user?.roles || [];
+    const permissions: string[] = auth?.user?.permissions || [];
     const isAdmin = roles.includes('admin_kcd') || roles.includes('super_admin');
+    // Kolom Assign mengikuti izin endpoint batch-assign, bukan `!isAdmin`:
+    // operator melihat kolomnya tetapi selalu 403, sementara admin yang
+    // berizin tidak pernah melihatnya — sehingga kode barang tak pernah terisi.
+    const canAssign = permissions.includes('assign-kode-rekening-bhp');
 
     const form = useForm({ kode: '', nama: '', sumber_dana: sumberDana, kode_barang: '', uraian_kode_barang: '' });
 
@@ -93,7 +98,7 @@ export default function Index({ items, sumberDana, kodeBarangOptions }: { items:
                     </form>
                 )}
 
-                {recordsWithoutKodeBarang.length > 0 && hasLocalAssignments && (
+                {canAssign && recordsWithoutKodeBarang.length > 0 && hasLocalAssignments && (
                     <div className="flex justify-end">
                         <button onClick={saveAssign} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
                             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -111,7 +116,7 @@ export default function Index({ items, sumberDana, kodeBarangOptions }: { items:
                                 <th className="text-left py-3 px-4">Kode Barang</th>
                                 <th className="text-left py-3 px-4">Uraian Barang</th>
                                 <th className="text-left py-3 px-4">Sumber Dana</th>
-                                {!isAdmin && <th className="text-left py-3 px-4">Assign</th>}
+                                {canAssign && <th className="text-left py-3 px-4">Assign</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -125,7 +130,7 @@ export default function Index({ items, sumberDana, kodeBarangOptions }: { items:
                                         <td className="py-3 px-4 font-mono text-xs text-slate-500">{item.kode_barang ?? '—'}</td>
                                         <td className="py-3 px-4 text-xs text-slate-500">{item.uraian_kode_barang ?? '—'}</td>
                                         <td className="py-3 px-4">{item.sumber_dana}</td>
-                                        {!isAdmin && (
+                                        {canAssign && (
                                             <td className="py-3 px-4">
                                                 {item.kode_barang ? (
                                                     <span className="text-xs text-green-600 font-medium">✓ Sudah</span>

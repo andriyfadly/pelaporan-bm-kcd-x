@@ -127,4 +127,34 @@ class BhpSumberDanaPrefixTest extends TestCase
                 ->has('stok', 1)
                 ->where('stok.0.nama_barang', 'Barang BOPD'));
     }
+
+    /**
+     * Template unduhan juga harus mengikuti prefix: `/bopd/` tanpa
+     * `sumber_dana` dulu diam-diam mengunduh template BOS.
+     */
+    public function test_template_mengikuti_prefix_sumber_dana(): void
+    {
+        foreach (['bos', 'bopd'] as $dana) {
+            $harapan = strtoupper($dana);
+
+            foreach (['master/barang/template', 'saldo-awal/template'] as $path) {
+                $response = $this->actingAs($this->operator)
+                    ->get("/distribusi-bhp/{$dana}/{$path}");
+
+                $response->assertOk();
+                $this->assertStringContainsString(
+                    "-{$harapan}.xlsx",
+                    (string) $response->headers->get('content-disposition'),
+                    "Template {$path} di prefix {$dana} harus memakai sumber dana {$harapan}.",
+                );
+            }
+        }
+    }
+
+    public function test_template_menolak_sumber_dana_asing(): void
+    {
+        $this->actingAs($this->operator)
+            ->get('/distribusi-bhp/bos/master/barang/template?sumber_dana=BOHONG')
+            ->assertStatus(422);
+    }
 }

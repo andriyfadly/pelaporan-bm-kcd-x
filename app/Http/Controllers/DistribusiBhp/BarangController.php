@@ -368,11 +368,13 @@ class BarangController extends Controller
 
     public function template(Request $request): BinaryFileResponse
     {
-        $diminta = (string) $request->query('sumber_dana', SumberDana::BOS);
-        if (! SumberDana::valid($diminta)) {
+        // Nilai asing tetap ditolak (422); kosong = ikuti prefix URL supaya
+        // halaman /bopd/ tidak diam-diam mengunduh template BOS.
+        $diminta = $request->query('sumber_dana');
+        if ($diminta !== null && ! SumberDana::valid($diminta)) {
             abort(422, 'Sumber dana tidak valid.');
         }
-        $sumberDana = SumberDana::normalisasi($diminta);
+        $sumberDana = SumberDana::normalisasi($diminta ?? SumberDana::pilih());
 
         $contoh = SumberDana::dengan($sumberDana, fn () => KodeRekening::orderBy('kode')
             ->limit(3)
