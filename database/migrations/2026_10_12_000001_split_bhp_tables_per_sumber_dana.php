@@ -33,19 +33,24 @@ return new class extends Migration
         'settings',
     ];
 
-    /** Tabel lama yang dipecah (di-drop setelah tabel baru dibuat). */
+    /**
+     * Tabel lama yang dipecah, dalam urutan aman untuk DROP: detail dulu
+     * (memegang FK ke master), master terakhir.
+     *
+     * @var list<string>
+     */
     private array $tabelLama = [
-        'bhp_kode_rekening',
-        'bhp_barang',
-        'bhp_harga_barang',
-        'bhp_penerimaan_detail',
-        'bhp_penerimaan',
         'bhp_pengajuan_detail',
+        'bhp_penerimaan_detail',
+        'bhp_harga_barang',
         'bhp_pengajuan',
-        'bhp_nomor_sequence',
+        'bhp_penerimaan',
         'bhp_dokumen',
         'bhp_batch_dokumen',
+        'bhp_nomor_sequence',
         'bhp_settings',
+        'bhp_barang',
+        'bhp_kode_rekening',
     ];
 
     public function up(): void
@@ -65,10 +70,18 @@ return new class extends Migration
 
         $this->buatSettings();
 
-        // Bersihkan tabel lama yang kini dipecah (CASCADE untuk tangani FK lintas tabel).
+        // Bersihkan tabel lama yang kini dipecah. Urutan penting di PostgreSQL:
+        // FK dari tabel detail (barang_id) menahan DROP TABLE, jadi detail dulu
+        // baru master. `CASCADE` sebagai jaring untuk FK lain yang belum
+        // terdaftar — SQLite tidak menegakkan ini sehingga test tidak menangkap
+        // kegagalan migrate:fresh di PostgreSQL.
+        // `CASCADE` hanya dikenal PostgreSQL; SQLite menolaknya, jadi driver
+        // dipilih eksplisit alih-alih menebak.
+        $cascade = DB::connection()->getDriverName() === 'pgsql' ? ' CASCADE' : '';
+
         foreach ($this->tabelLama as $tabel) {
             if (Schema::hasTable($tabel)) {
-                Schema::dropIfExists($tabel);
+                DB::statement("DROP TABLE IF EXISTS \"{$tabel}\"{$cascade}");
             }
         }
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\DistribusiBhp;
 
 use App\Http\Controllers\Controller;
 use App\Models\DistribusiBhp\KodeRekening;
+use App\Support\DistribusiBhp\KodeBarang;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,14 +14,6 @@ use Inertia\Response;
 
 class KodeRekeningController extends Controller
 {
-    private const KODE_BARANG_OPTIONS = [
-        ['kode' => '1.1.7.01.01', 'uraian' => 'Bahan'],
-        ['kode' => '1.1.7.01.02', 'uraian' => 'Suku Cadang'],
-        ['kode' => '1.1.7.01.03', 'uraian' => 'Alat/Bahan Untuk Kegiatan Kantor'],
-        ['kode' => '1.1.7.01.04', 'uraian' => 'Obat-Obatan'],
-        ['kode' => '1.1.7.01.07', 'uraian' => 'Naturan dan Pakan'],
-    ];
-
     public function index(Request $request): Response
     {
         $sumberDana = SumberDana::pilih(
@@ -38,7 +31,7 @@ class KodeRekeningController extends Controller
             return Inertia::render('DistribusiBhp/Master/KodeRekening/Index', [
                 'items' => $items,
                 'sumberDana' => $sumberDana,
-                'kodeBarangOptions' => static::KODE_BARANG_OPTIONS,
+                'kodeBarangOptions' => KodeBarang::OPSI,
             ]);
         });
     }
@@ -48,7 +41,7 @@ class KodeRekeningController extends Controller
         $validated = $request->validate([
             'kode' => ['required', 'string', 'max:100'],
             'nama' => ['required', 'string', 'max:255'],
-            'kode_barang' => ['nullable', 'string', Rule::in(array_column(static::KODE_BARANG_OPTIONS, 'kode'))],
+            'kode_barang' => ['nullable', 'string', Rule::in(KodeBarang::kode())],
             'uraian_kode_barang' => ['nullable', 'string', 'max:255'],
             'sumber_dana' => ['required', Rule::in(SumberDana::SEMUA)],
         ]);
@@ -78,7 +71,7 @@ class KodeRekeningController extends Controller
         $validated = $request->validate([
             'assignments' => ['required', 'array', 'min:1'],
             'assignments.*.id' => ['required', 'uuid', 'exists:'.KodeRekening::class.',id'],
-            'assignments.*.kode_barang' => ['nullable', 'string', Rule::in(array_column(static::KODE_BARANG_OPTIONS, 'kode'))],
+            'assignments.*.kode_barang' => ['nullable', 'string', Rule::in(KodeBarang::kode())],
             'assignments.*.uraian_kode_barang' => ['nullable', 'string', 'max:255'],
         ]);
 

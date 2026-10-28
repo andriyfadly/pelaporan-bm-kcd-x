@@ -172,7 +172,7 @@ tabel.
 
 | Tabel | Kolom penting |
 |---|---|---|
-| `bhp_{dana}_kode_rekening` | `kode` (100) · `nama` · `kode_barang` (100, nullable) · `uraian_kode_barang` (255, nullable) · unique `kode` per tabel. `kode_barang` diisi dari 5 opsi statis (`1.1.7.01.01`–`1.1.7.01.07`, lihat `KodeRekeningController::KODE_BARANG_OPTIONS`) — bukan FK, diisi via batch-assign oleh role sekolah atau manual admin saat tambah. |
+| `bhp_{dana}_kode_rekening` | `kode` (100) · `nama` · `kode_barang` (100, nullable) · `uraian_kode_barang` (255, nullable) · unique `kode` per tabel. `kode_barang` diisi dari 5 opsi statis (`1.1.7.01.01`–`1.1.7.01.07`, lihat `App\Support\DistribusiBhp\KodeBarang::OPSI`) — bukan FK. `KodeRekeningBhpSeeder` mengisinya otomatis dari nama rekening, sehingga database baru di-seed langsung bisa dipakai Tambah Barang; pemegang `assign-kode-rekening-bhp` dapat mengoreksi lewat dropdown per baris. |
 | `bhp_{dana}_barang` | `kode_barang` · `nama_barang` · `spesifikasi_barang_nusp` · `satuan` · `kode_rekening_id` (FK nullable) |
 | `bhp_{dana}_harga_barang` | `barang_id` FK · `harga_satuan` bigint · `created_by` (uuid nullable) |
 | `bhp_penyedia` *(bersama)* | `nama` (unique) · `alamat` · `telepon` · `email` |

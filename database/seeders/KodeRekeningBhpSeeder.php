@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\DistribusiBhp\KodeRekening;
+use App\Support\DistribusiBhp\KodeBarang;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Database\Seeder;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -43,9 +44,18 @@ class KodeRekeningBhpSeeder extends Seeder
                         continue;
                     }
 
+                    // kode_barang wajib terisi: NuspService menolaknya bila
+                    // kosong, sehingga Tambah Barang mustahil dilakukan dari UI
+                    // pada database yang baru di-seed.
+                    $klasifikasi = KodeBarang::untukNamaRekening($nama);
+
                     KodeRekening::updateOrCreate(
                         ['kode' => $kode],
-                        ['nama' => $nama, 'kode_barang' => null, 'uraian_kode_barang' => null],
+                        [
+                            'nama' => $nama,
+                            'kode_barang' => $klasifikasi['kode'],
+                            'uraian_kode_barang' => $klasifikasi['uraian'],
+                        ],
                     );
                     $total++;
                 }

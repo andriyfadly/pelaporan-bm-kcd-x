@@ -10,6 +10,7 @@ use App\Models\DistribusiBhp\KodeRekening;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\PengajuanDetail;
 use App\Services\DistribusiBhp\NuspService;
+use App\Support\DistribusiBhp\KodeBarang;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -26,14 +27,6 @@ use Throwable;
 
 class BarangController extends Controller
 {
-    private const KODE_BARANG_OPTIONS = [
-        ['kode' => '1.1.7.01.01', 'uraian' => 'Bahan'],
-        ['kode' => '1.1.7.01.02', 'uraian' => 'Suku Cadang'],
-        ['kode' => '1.1.7.01.03', 'uraian' => 'Alat/Bahan Untuk Kegiatan Kantor'],
-        ['kode' => '1.1.7.01.04', 'uraian' => 'Obat-Obatan'],
-        ['kode' => '1.1.7.01.07', 'uraian' => 'Naturan dan Pakan'],
-    ];
-
     public function __construct(private readonly NuspService $nusp) {}
 
     public function index(Request $request): Response
@@ -59,7 +52,7 @@ class BarangController extends Controller
                 'items' => $items,
                 'sumberDana' => $sumberDana,
                 'stats' => $stats,
-                'kodeBarangOptions' => static::KODE_BARANG_OPTIONS,
+                'kodeBarangOptions' => KodeBarang::OPSI,
                 'kodeRekening' => KodeRekening::orderBy('kode')->get(['id', 'kode', 'nama', 'kode_barang', 'uraian_kode_barang']),
             ]);
         });
