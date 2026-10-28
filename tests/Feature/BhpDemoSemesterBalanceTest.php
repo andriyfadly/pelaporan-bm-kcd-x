@@ -218,13 +218,17 @@ class BhpDemoSemesterBalanceTest extends TestCase
     }
 
     /**
-     * Pengajuan Juni yang memuat dokumen tambahan (BAST/stok opname dst).
-     * Itu juga pengajuan yang disetujui sebagian.
+     * Pengajuan Juni terakhir: satu-satunya yang approve-nya dipotong sebagian.
+     * Stok Opname dibuat per bulan, jadi filter bulan wajib eksplisit.
      */
     private function pengajuanJuni(string $dana): Pengajuan
     {
         $pengajuan = SumberDana::dengan($dana, fn (): Pengajuan => Pengajuan::where('sekolah_id', $this->sekolah->id)
-            ->whereHas('dokumen', fn ($q) => $q->where('jenis', 'stok_opname'))
+            ->where('nomor_pengajuan', 'like', '%06-%')
+            ->whereHas('dokumen', fn ($q) => $q
+                ->where('jenis', 'stok_opname')
+                ->whereYear('tanggal_titimangsa', 2026)
+                ->whereMonth('tanggal_titimangsa', 6))
             ->firstOrFail());
 
         return $pengajuan->untukSumberDana($dana)->load('details.barang');

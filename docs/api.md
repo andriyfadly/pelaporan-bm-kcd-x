@@ -226,7 +226,8 @@ Payload penting:
   jenis. Snapshot isi dokumen mengikuti **tanggal dokumen**: stok opname
   memakai posisi stok per tanggal itu, buku bulanan hanya memuat transaksi pada
   bulan tanggal itu, dan pejabat mengikuti penugasan yang berlaku pada tanggal
-  itu.
+  itu. Stok opname hanya boleh **satu per sekolah per bulan**; permintaan kedua
+  ditolak `422`/error dengan pesan `Stok Opname MM/YYYY sudah dibuat`.
 - `GET laporan/export`: `sumber_dana`, `jenis` ∈ {`stok`, `pengeluaran`,
   `kartu_persediaan`}; `barang_id` **wajib** bila `jenis=kartu_persediaan`
   (divalidasi `uuid` + `exists` ke tabel barang **sesuai sumber dana** laporan,

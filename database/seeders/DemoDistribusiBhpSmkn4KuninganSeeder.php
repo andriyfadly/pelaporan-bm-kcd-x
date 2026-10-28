@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Divisi;
+use App\Models\DistribusiBhp\Dokumen;
 use App\Models\DistribusiBhp\HargaBarang;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\Pengajuan;
@@ -18,6 +19,7 @@ use App\Services\DistribusiBhp\SaldoAwalService;
 use App\Services\DistribusiBhp\StokService;
 use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -450,28 +452,60 @@ class DemoDistribusiBhpSmkn4KuninganSeeder extends Seeder
     }
 
     /**
-     * Dokumen tambahan bulan terakhir, dibuat pada pengajuan terakhir yang
-     * sudah disetujui. generateTambahan() idempotent per jenis.
+     * Dokumen tambahan: BAST/BAP/buku pada pengajuan terakhir bulan Juni, dan
+     * SATU Stok Opname per bulan (Januari–Juni) pada pengajuan terakhir bulan
+     * itu — tabel dokumen unik per (pengajuan, jenis), jadi tiap bulan perlu
+     * pengajuan sendiri sebagai induknya. generateTambahan() idempotent.
      */
     private function seedDokumenTambahan(Sekolah $sekolah, string $dana): void
     {
-        $pengajuan = Pengajuan::where('sekolah_id', $sekolah->id)
+        $service = app(DokumenService::class);
+        $pengajuanBulan = fn (int $bulan): ?Pengajuan => Pengajuan::where('sekolah_id', $sekolah->id)
             ->where('status', 'approved')
-            ->where('tanggal', '<=', self::TAHUN.'-06-30')
-            ->latest('tanggal')
+            ->whereYear('tanggal', self::TAHUN)
+            ->whereMonth('tanggal', $bulan)
+            // Tanggal pengajuan sama di satu bulan; urutkan nomor sebagai
+            // tiebreak agar pilihan induk dokumen stabil antar-run.
+            ->orderByDesc('tanggal')
+            ->orderByDesc('nomor_pengajuan')
             ->first();
 
-        if (! $pengajuan) {
-            return;
+        $juni = $pengajuanBulan(6);
+
+        if ($juni) {
+            foreach (['bast', 'bap', 'buku_pengeluaran', 'buku_penyaluran'] as $jenis) {
+                $service->generateTambahan($juni, $jenis, self::TAHUN.'-06-30');
+            }
         }
 
-        $service = app(DokumenService::class);
+        for ($bulan = 1; $bulan <= 6; $bulan++) {
+            // Sudah ada opname bulan ini (mis. data lama) → jangan buat lagi;
+            // service memang menolak opname kedua di bulan yang sama.
+            $sudahAda = Dokumen::where('jenis', 'stok_opname')
+                ->whereYear('tanggal_titimangsa', self::TAHUN)
+                ->whereMonth('tanggal_titimangsa', $bulan)
+                ->whereHas('pengajuan', fn ($q) => $q->where('sekolah_id', $sekolah->id))
+                ->exists();
 
-        foreach (['bast', 'bap', 'buku_pengeluaran', 'buku_penyaluran'] as $jenis) {
-            $service->generateTambahan($pengajuan, $jenis, self::TAHUN.'-06-30');
+            if ($sudahAda) {
+                continue;
+            }
+
+            $pengajuan = $pengajuanBulan($bulan);
+
+            if (! $pengajuan) {
+                continue;
+            }
+
+            // Tanggal akhir bulan: 31 Jan, 28 Feb 2026 (bukan tahun kabisat), dst.
+            $akhirBulan = Carbon::create(self::TAHUN, $bulan, 1)->daysInMonth;
+
+            $service->generateTambahan(
+                $pengajuan,
+                'stok_opname',
+                sprintf('%d-%02d-%02d', self::TAHUN, $bulan, $akhirBulan),
+            );
         }
-
-        $service->generateTambahan($pengajuan, 'stok_opname', self::TAHUN.'-06-30');
     }
 
     /** BOPD memakai 40% volume BOS agar proporsional dengan saldo awalnya. */

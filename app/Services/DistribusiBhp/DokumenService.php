@@ -126,6 +126,28 @@ class DokumenService
             $pengajuan->load('details.barang', 'dokumen', 'divisi');
             $tanggalObj = $tanggal ? Carbon::parse($tanggal) : ($pengajuan->tanggal ?: now());
 
+            // Stok Opname adalah snapshot fisik: satu per sekolah per bulan.
+            // Tanpa batas ini, dua pengajuan di bulan yang sama menghasilkan dua
+            // snapshot berbeda untuk posisi stok yang sama.
+            if ($jenis === 'stok_opname') {
+                $bulanIni = Dokumen::query()
+                    ->where('jenis', 'stok_opname')
+                    ->whereYear('tanggal_titimangsa', $tanggalObj->year)
+                    ->whereMonth('tanggal_titimangsa', $tanggalObj->month)
+                    ->whereHas('pengajuan', fn ($q) => $q
+                        ->where('sekolah_id', $pengajuan->sekolah_id)
+                        ->whereKeyNot($pengajuan->id))
+                    ->exists();
+
+                if ($bulanIni) {
+                    throw new InvalidArgumentException(sprintf(
+                        'Stok Opname %02d/%d sudah dibuat untuk sekolah ini.',
+                        $tanggalObj->month,
+                        $tanggalObj->year,
+                    ));
+                }
+            }
+
             return Dokumen::create([
                 'bhp_pengajuan_id' => $pengajuan->id,
                 'jenis' => $jenis,

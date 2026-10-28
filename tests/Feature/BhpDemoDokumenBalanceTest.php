@@ -6,6 +6,7 @@ use App\Models\DistribusiBhp\Dokumen;
 use App\Models\DistribusiBhp\Pengajuan;
 use App\Models\Master\Sekolah;
 use App\Models\User;
+use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\LaporanService;
 use App\Services\DistribusiBhp\SettingsService;
 use App\Services\DistribusiBhp\StokService;
@@ -53,7 +54,10 @@ class BhpDemoDokumenBalanceTest extends TestCase
     {
         $pengajuan = SumberDana::dengan($dana, fn (): Pengajuan => Pengajuan::where('sekolah_id', $this->sekolah->id)
             ->where('nomor_pengajuan', 'like', '%06-%')
-            ->whereHas('dokumen', fn ($q) => $q->where('jenis', 'stok_opname'))
+            ->whereHas('dokumen', fn ($q) => $q
+                ->where('jenis', 'stok_opname')
+                ->whereYear('tanggal_titimangsa', 2026)
+                ->whereMonth('tanggal_titimangsa', 6))
             ->firstOrFail());
 
         return $pengajuan->untukSumberDana($dana)->load('details.barang', 'divisi', 'pemohon', 'dokumen');
@@ -171,44 +175,76 @@ class BhpDemoDokumenBalanceTest extends TestCase
         }
     }
 
-    public function test_stok_opname_30_juni_sama_dengan_saldo_akhir_semester(): void
+    public function test_stok_opname_satu_per_bulan_dan_cocok_saldo_akhir_bulan_itu(): void
     {
         $laporan = app(LaporanService::class);
 
         foreach (SumberDana::SEMUA as $dana) {
-            $dokumen = SumberDana::dengan($dana, fn () => Dokumen::where('jenis', 'stok_opname')
+            $daftar = SumberDana::dengan($dana, fn () => Dokumen::where('jenis', 'stok_opname')
                 ->whereHas('pengajuan', fn ($q) => $q->where('sekolah_id', $this->sekolah->id))
-                ->latest('id')
-                ->firstOrFail());
+                ->orderBy('tanggal_titimangsa')
+                ->get());
 
-            $this->assertSame('2026-06-30', $dokumen->tanggal_titimangsa->toDateString());
+            $this->assertCount(6, $daftar, "Stok opname {$dana} harus tepat satu per bulan Januari–Juni.");
+            $this->assertSame(
+                [1, 2, 3, 4, 5, 6],
+                $daftar->map(fn (Dokumen $d): int => (int) $d->tanggal_titimangsa->format('n'))->all(),
+                "Bulan stok opname {$dana} harus lengkap tanpa duplikat.",
+            );
 
-            $items = collect($dokumen->payload['items']);
-            $akhir = collect($laporan->rekonsiliasiBulanan($dana, 2026, $this->sekolah->id, 1, 6)['barang']);
+            foreach ($daftar as $dokumen) {
+                $bulan = (int) $dokumen->tanggal_titimangsa->format('n');
 
-            $this->assertCount(10, $items, "Stok opname {$dana} harus memuat seluruh 10 barang.");
-
-            foreach ($items as $item) {
-                $baris = $akhir->firstWhere('barang_id', $item['barang_id']);
-
-                $this->assertNotNull($baris, "Barang {$item['nama_barang']} harus ada di rekonsiliasi {$dana}.");
                 $this->assertSame(
-                    $baris['saldo_akhir'],
-                    $item['fisik_nyata'],
-                    "Stok opname {$dana} {$item['nama_barang']} harus sama dengan saldo akhir Juni.",
+                    $dokumen->tanggal_titimangsa->daysInMonth,
+                    (int) $dokumen->tanggal_titimangsa->format('j'),
+                    "Stok opname {$dana} bulan {$bulan} harus bertanggal akhir bulan.",
                 );
-                $this->assertSame(
-                    $item['fisik_nyata'] * $item['harga_satuan'],
-                    $item['nilai_total'],
-                    "Nilai stok opname {$dana} {$item['nama_barang']} harus kuantitas x harga.",
-                );
-            }
 
-            $penandatangan = $dokumen->payload['penandatangan'] ?? [];
-            foreach (['kepala_sekolah', 'wakasek_sarpras', 'pembantu_pengurus_barang'] as $kode) {
-                $this->assertNotEmpty($penandatangan[$kode]['nama'] ?? null, "Penandatangan {$kode} pada stok opname {$dana} kosong.");
+                $items = collect($dokumen->payload['items']);
+                $akhir = collect($laporan->rekonsiliasiBulanan($dana, 2026, $this->sekolah->id, 1, $bulan)['barang']);
+
+                $this->assertCount(10, $items, "Stok opname {$dana} bulan {$bulan} harus memuat 10 barang.");
+
+                foreach ($items as $item) {
+                    $baris = $akhir->firstWhere('barang_id', $item['barang_id']);
+
+                    $this->assertNotNull($baris, "Barang {$item['nama_barang']} harus ada di rekonsiliasi {$dana}.");
+                    $this->assertSame(
+                        $baris['saldo_akhir'],
+                        $item['fisik_nyata'],
+                        "Stok opname {$dana} bulan {$bulan} {$item['nama_barang']} harus sama dengan saldo akhir bulan itu.",
+                    );
+                    $this->assertSame(
+                        $item['fisik_nyata'] * $item['harga_satuan'],
+                        $item['nilai_total'],
+                        "Nilai stok opname {$dana} {$item['nama_barang']} harus kuantitas x harga.",
+                    );
+                }
+
+                $penandatangan = $dokumen->payload['penandatangan'] ?? [];
+                foreach (['kepala_sekolah', 'wakasek_sarpras', 'pembantu_pengurus_barang'] as $kode) {
+                    $this->assertNotEmpty($penandatangan[$kode]['nama'] ?? null, "Penandatangan {$kode} pada stok opname {$dana} kosong.");
+                }
             }
         }
+    }
+
+    public function test_stok_opname_kedua_pada_bulan_yang_sama_ditolak(): void
+    {
+        [$dana] = SumberDana::SEMUA;
+
+        $pengajuan = SumberDana::dengan($dana, fn (): Pengajuan => Pengajuan::where('sekolah_id', $this->sekolah->id)
+            ->where('status', 'approved')
+            ->where('nomor_pengajuan', 'like', '%06-%')
+            ->whereDoesntHave('dokumen', fn ($q) => $q->where('jenis', 'stok_opname'))
+            ->firstOrFail());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Stok Opname 06/2026 sudah dibuat');
+
+        SumberDana::dengan($dana, fn () => app(DokumenService::class)
+            ->generateTambahan($pengajuan, 'stok_opname', '2026-06-30'));
     }
 
     public function test_buku_pengeluaran_dokumen_sama_dengan_laporan_bulan_juni(): void

@@ -68,8 +68,8 @@ class BhpDemoSmkn4KuninganSeederTest extends TestCase
             $this->assertSame(24, $hasil['approved'], "Approved {$dana}");
             $this->assertSame(1, $hasil['rejected'], "Rejected {$dana}");
             $this->assertSame(1, $hasil['submitted'], "Submitted {$dana}");
-            // 3 dokumen wajib x 24 approval + 4 tambahan + 1 stok opname.
-            $this->assertSame(77, $hasil['dokumen'], "Dokumen {$dana}");
+            // 3 dokumen wajib x 24 approval + 4 tambahan + 6 stok opname bulanan.
+            $this->assertSame(82, $hasil['dokumen'], "Dokumen {$dana}");
         }
     }
 
