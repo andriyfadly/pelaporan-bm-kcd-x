@@ -64,7 +64,9 @@ class PengajuanController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $sekolahId = $this->resolveSekolahId($request);
+        // Stok pengajuan selalu milik satu sekolah; tanpa konteks sekolah
+        // insert akan gagal NOT NULL, jadi tolak lebih awal dengan 422.
+        $sekolahId = $this->resolveSekolahIdWajib($request);
         $validated = $this->validatePayload($request);
         $sumberDana = SumberDana::normalisasi($validated['sumber_dana']);
 

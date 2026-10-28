@@ -412,4 +412,31 @@ class BhpHttpFlowTest extends TestCase
             ->get(route('distribusi-bhp.dashboard'))
             ->assertForbidden();
     }
+
+    public function test_admin_tanpa_sekolah_ditolak_422_saat_membuat_pengajuan(): void
+    {
+        // Admin KCD punya izin kelola-pengajuan-bhp tetapi sekolah_id null.
+        // Sebelumnya baris insert gagal NOT NULL dan berakhir 500.
+        $sekolah = $this->sekolah();
+        $barang = $this->barang($sekolah);
+
+        $admin = User::create([
+            'name' => 'Admin Tanpa Sekolah',
+            'username' => 'admin.nosekolah',
+            'password' => bcrypt('password'),
+            'sekolah_id' => null,
+            'password_changed_at' => now(),
+        ]);
+        $admin->assignRole('admin_kcd');
+
+        $this->actingAs($admin)
+            ->post(route('distribusi-bhp.bos.pengajuan.store'), [
+                'sumber_dana' => 'BOS',
+                'tanggal' => '2026-06-17',
+                'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 5]],
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame(0, Pengajuan::count());
+    }
 }
