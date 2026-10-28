@@ -28,7 +28,7 @@ class ReviewPengajuanController extends Controller
     public function index(Request $request): Response
     {
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = SumberDana::normalisasi((string) $request->query('sumber_dana', SumberDana::BOS));
+        $sumberDana = SumberDana::pilih($request->query('sumber_dana'));
 
         return SumberDana::dengan($sumberDana, fn (): Response => $this->daftarReview($sekolahId, $sumberDana));
     }

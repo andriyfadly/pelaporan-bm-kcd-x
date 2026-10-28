@@ -280,11 +280,7 @@ class LaporanController extends Controller
         ]);
 
         $sekolahId = $this->resolveSekolahId($request);
-        $sumberDana = SumberDana::normalisasi(
-            $validated['sumber_dana']
-                ?? SumberDana::aktif()
-                ?? SumberDana::BOS,
-        );
+        $sumberDana = SumberDana::pilih($validated['sumber_dana'] ?? null);
         $jenis = $validated['jenis'];
         $periode = Periode::dari(
             isset($validated['tahun']) ? (int) $validated['tahun'] : null,

@@ -23,10 +23,11 @@ class KodeRekeningController extends Controller
 
     public function index(Request $request): Response
     {
-        $sumberDana = $request->validate([
-            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
-        ])['sumber_dana'] ?? SumberDana::BOS;
-        $sumberDana = SumberDana::normalisasi($sumberDana);
+        $sumberDana = SumberDana::pilih(
+            $request->validate([
+                'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
+            ])['sumber_dana'] ?? null,
+        );
 
         return SumberDana::dengan($sumberDana, function () use ($sumberDana): Response {
             $items = KodeRekening::query()

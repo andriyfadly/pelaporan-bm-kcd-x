@@ -32,10 +32,11 @@ class SettingsController extends Controller
 
     public function edit(Request $request): Response
     {
-        $sumberDana = $request->validate([
-            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
-        ])['sumber_dana'] ?? SumberDana::BOS;
-        $sumberDana = SumberDana::normalisasi($sumberDana);
+        $sumberDana = SumberDana::pilih(
+            $request->validate([
+                'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
+            ])['sumber_dana'] ?? null,
+        );
 
         return SumberDana::dengan($sumberDana, function () use ($sumberDana): Response {
             return Inertia::render('DistribusiBhp/Settings/Edit', [
