@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import { FileDown, Printer } from 'lucide-react';
+import { formatTanggal } from '@/Utils/format';
 
 interface DokumenItem {
     id: string;
@@ -42,8 +43,12 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
     // lampau berarti snapshot isi mengikuti periode tanggal itu.
     const [tanggal, setTanggal] = useState('');
 
+    // Selalu lewat prefix sumber dana pengajuan: route tanpa prefix jatuh ke
+    // sumber dana aktif request, bukan sumber dana dokumen ini.
+    const prefix = `/distribusi-bhp/${pengajuan.sumber_dana.toLowerCase()}`;
+
     const buat = (jenis: string) =>
-        router.post(`/distribusi-bhp/pengajuan/${pengajuan.id}/dokumen/tambahan`, {
+        router.post(`${prefix}/pengajuan/${pengajuan.id}/dokumen/tambahan`, {
             jenis,
             tanggal: tanggal || null,
         });
@@ -58,10 +63,10 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
                         <div>
                             <h1 className="text-lg font-bold text-slate-900">Dokumen Distribusi BHP</h1>
                             <p className="text-sm text-slate-500">
-                                Sumber Dana {pengajuan.sumber_dana} · Status {pengajuan.status} · Tanggal {pengajuan.tanggal ?? '-'}
+                                Sumber Dana {pengajuan.sumber_dana} · Status {pengajuan.status} · Tanggal {formatTanggal(pengajuan.tanggal)}
                             </p>
                         </div>
-                        <Link href="/distribusi-bhp/review-pengajuan" className="text-sm font-semibold text-blue-600">
+                        <Link href={`${prefix}/pengajuan`} className="text-sm font-semibold text-blue-600">
                             ← Kembali
                         </Link>
                     </div>
@@ -99,7 +104,7 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
                     {pengajuan.dokumen.length > 0 && (
                         <button
                             type="button"
-                            onClick={() => router.post(`/distribusi-bhp/pengajuan/${pengajuan.id}/dokumen/batch`)}
+                            onClick={() => router.post(`${prefix}/pengajuan/${pengajuan.id}/dokumen/batch`)}
                             className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
                         >
                             <Printer className="w-4 h-4" /> Unduh Batch PDF
@@ -126,10 +131,10 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
                                     <tr key={doc.id}>
                                         <td className="py-3 px-4">{labelJenis[doc.jenis] ?? doc.jenis}</td>
                                         <td className="py-3 px-4 font-mono text-slate-700">{doc.nomor}</td>
-                                        <td className="py-3 px-4">{doc.tanggal_titimangsa ?? '-'}</td>
+                                        <td className="py-3 px-4">{formatTanggal(doc.tanggal_titimangsa)}</td>
                                         <td className="py-3 px-4 text-center">
                                             <a
-                                                href={`/distribusi-bhp/pengajuan/${pengajuan.id}/dokumen/${doc.id}/pdf`}
+                                                href={`${prefix}/pengajuan/${pengajuan.id}/dokumen/${doc.id}/pdf`}
                                                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
                                             >
                                                 <FileDown className="w-3.5 h-3.5" /> PDF

@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { FileSpreadsheet } from 'lucide-react';
 import Pagination from '@/Components/Pagination';
+import { formatTanggal } from '@/Utils/format';
 
 interface PengajuanRef {
     id: string;
@@ -66,14 +67,14 @@ export default function DokumenList({
                                 items.data.map((doc) => (
                                     <tr key={doc.id}>
                                         <td className="py-3 px-4 font-semibold">{doc.nomor ?? '-'}</td>
-                                        <td className="py-3 px-4">{doc.tanggal ?? '-'}</td>
+                                        <td className="py-3 px-4">{formatTanggal(doc.tanggal)}</td>
                                         <td className="py-3 px-4">
                                             {doc.pengajuan ? (
                                                 <a
                                                     href={`/distribusi-bhp/${sumberDana.toLowerCase()}/pengajuan/${doc.pengajuan.id}/dokumen/${doc.id}/pdf`}
                                                     className="text-blue-600 hover:underline font-semibold"
                                                 >
-                                                    {doc.pengajuan.nomor ?? 'Pengajuan'} ({doc.pengajuan.tanggal ?? '-'})
+                                                    {doc.pengajuan.nomor ?? 'Pengajuan'} ({formatTanggal(doc.pengajuan.tanggal)})
                                                 </a>
                                             ) : (
                                                 <span className="text-slate-400">-</span>

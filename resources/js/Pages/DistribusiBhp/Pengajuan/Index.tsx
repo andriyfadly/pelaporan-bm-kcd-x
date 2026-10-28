@@ -1,6 +1,7 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { useState } from 'react';
+import { formatTanggal } from '@/Utils/format';
 
 interface Detail {
     id: string;
@@ -59,6 +60,10 @@ export default function Index({
     const [editRows, setEditRows] = useState<Row[]>([emptyRow()]);
     const [editTanggal, setEditTanggal] = useState('');
 
+    // Halaman dokumen hidup di bawah prefix sumber dana: route tanpa prefix
+    // memakai sumber dana aktif request, bukan sumber dana pengajuannya.
+    const prefix = `/distribusi-bhp/${sumberDana.toLowerCase()}`;
+
     const form = useForm({
         sumber_dana: sumberDana,
         tanggal: new Date().toISOString().slice(0, 10),
@@ -84,7 +89,7 @@ export default function Index({
     const startEdit = (item: PengajuanItem) => {
         setDetail(null);
         setEditing(item);
-        setEditTanggal(item.tanggal ?? new Date().toISOString().slice(0, 10));
+        setEditTanggal(formatTanggal(item.tanggal, new Date().toISOString().slice(0, 10)));
         setEditRows(
             item.details.length
                 ? item.details.map((d) => ({
@@ -215,7 +220,7 @@ export default function Index({
                             ) : (
                                 items.data.map((item) => (
                                     <tr key={item.id}>
-                                        <td className="py-3 px-4 font-medium text-slate-700">{item.tanggal ?? '-'}</td>
+                                        <td className="py-3 px-4 font-medium text-slate-700">{formatTanggal(item.tanggal)}</td>
                                         <td className="py-3 px-4">{item.sumber_dana}</td>
                                         <td className="py-3 px-4">{item.details.length}</td>
                                         <td className="py-3 px-4">
@@ -228,6 +233,14 @@ export default function Index({
                                                 <button onClick={() => setDetail(item)} className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold">
                                                     Detail
                                                 </button>
+                                                {item.status !== 'draft' && (
+                                                    <Link
+                                                        href={`${prefix}/pengajuan/${item.id}/dokumen`}
+                                                        className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold"
+                                                    >
+                                                        Dokumen
+                                                    </Link>
+                                                )}
                                                 {item.status === 'draft' && (
                                                     <>
                                                         <button onClick={() => startEdit(item)} className="px-3 py-1.5 border border-blue-300 text-blue-700 rounded-lg text-xs font-bold">
@@ -258,7 +271,7 @@ export default function Index({
                             </span>
                         </div>
                         <div className="p-6 space-y-3">
-                            <div className="text-sm text-slate-500">Tanggal: {detail.tanggal ?? '-'}</div>
+                            <div className="text-sm text-slate-500">Tanggal: {formatTanggal(detail.tanggal)}</div>
                             {detail.rejection_reason && (
                                 <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-3 py-2 text-sm">
                                     Ditolak: {detail.rejection_reason}
@@ -289,6 +302,14 @@ export default function Index({
                                 <button onClick={() => doSubmit(detail)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold">
                                     Submit
                                 </button>
+                            )}
+                            {detail.status !== 'draft' && (
+                                <Link
+                                    href={`${prefix}/pengajuan/${detail.id}/dokumen`}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold"
+                                >
+                                    Lihat Dokumen
+                                </Link>
                             )}
                             <button onClick={() => setDetail(null)} className="px-4 py-2 border border-slate-300 rounded-xl text-sm font-semibold">
                                 Tutup

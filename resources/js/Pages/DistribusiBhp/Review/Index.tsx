@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { useState } from 'react';
+import { formatTanggal } from '@/Utils/format';
 
 interface Detail {
     id: string;
@@ -81,7 +82,7 @@ export default function Index({ items, pejabatWarning }: Props) {
                             ) : (
                                 items.data.map((item) => (
                                     <tr key={item.id}>
-                                        <td className="py-3 px-4">{item.tanggal ?? '-'}</td>
+                                        <td className="py-3 px-4">{formatTanggal(item.tanggal)}</td>
                                         <td className="py-3 px-4">{item.pemohon?.name ?? '-'}</td>
                                         <td className="py-3 px-4">{item.sumber_dana}</td>
                                         <td className="py-3 px-4">{item.details.length}</td>

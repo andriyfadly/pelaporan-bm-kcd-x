@@ -119,6 +119,11 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                             Nota Permintaan
                         </Link>
                     )}
+                    {canReview && (
+                        <Link href={`${prefix}/review-pengajuan`} className={subNavClass(currentPath.startsWith(`${prefix}/review-pengajuan`))}>
+                            Review Pengajuan
+                        </Link>
+                    )}
                     {/* Penyaluran group */}
                     <PageGroupTitle title="Penyaluran" />
                     {canCetak && (

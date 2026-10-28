@@ -136,6 +136,9 @@ class BhpPdfDokumenTest extends TestCase
         $this->assertSame($pengajuan->dokumen()->count(), $batch->total);
         $this->assertSame($batch->total, $batch->berhasil);
         $this->assertSame(0, $batch->gagal);
+        // Regresi: created_by dulu bigint padahal id user UUID, sehingga insert
+        // batch gagal dan tombol "Unduh Batch PDF" selalu 500.
+        $this->assertSame($operator->id, $batch->created_by);
     }
 
     public function test_batch_pdf_mencatat_histori(): void

@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 
 interface BhpSettings {
@@ -43,7 +43,27 @@ export default function Edit({ settings, sumberDana }: { settings: BhpSettings; 
             <Head title={`Settings BHP ${sumberDana}`} />
 
             <div className="space-y-6">
-                <h1 className="text-lg font-bold text-slate-900">Settings BHP {sumberDana}</h1>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h1 className="text-lg font-bold text-slate-900">Settings BHP {sumberDana}</h1>
+                    {/* Settings disimpan per sumber dana, sedangkan menu sidebar
+                        hanya punya satu tautan: tanpa pemilih ini format BOPD
+                        tidak bisa dijangkau dari UI. */}
+                    <div className="flex gap-2">
+                        {['BOS', 'BOPD'].map((dana) => (
+                            <Link
+                                key={dana}
+                                href={`/distribusi-bhp/settings?sumber_dana=${dana}`}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
+                                    dana === sumberDana
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                                }`}
+                            >
+                                {dana}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
 
                 <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 max-w-4xl">
                     <input type="hidden" name="sumber_dana" value={sumberDana} />

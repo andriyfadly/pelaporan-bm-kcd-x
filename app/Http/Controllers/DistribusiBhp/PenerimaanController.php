@@ -58,8 +58,13 @@ class PenerimaanController extends Controller
         $sumberDana = SumberDana::pilih($request->input('sumber_dana'));
 
         return SumberDana::dengan($sumberDana, function () use ($sekolahId, $sumberDana): Response {
+            // "Lunas bayar" = penerimaan yang sudah punya bukti bayar
+            // (no_kwitansi). Saldo awal tidak pernah punya kwitansi, jadi
+            // otomatis tidak ikut — itu memang bukan pembelian tunai.
             $items = Penerimaan::with(['penyedia', 'details.barang'])
                 ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+                ->whereNotNull('no_kwitansi')
+                ->where('no_kwitansi', '!=', '')
                 ->latest('id')
                 ->paginate(25)
                 ->withQueryString();
