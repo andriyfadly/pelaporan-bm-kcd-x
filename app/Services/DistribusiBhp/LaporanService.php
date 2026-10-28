@@ -8,6 +8,7 @@ use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\PengajuanDetail;
 use App\Support\DistribusiBhp\Periode;
 use App\Support\DistribusiBhp\SumberDana;
+use Illuminate\Support\Carbon;
 use RuntimeException;
 
 /**
@@ -281,6 +282,193 @@ class LaporanService
                     'saldo_akhir' => $saldoAwal + $saldo,
                 ],
                 'mutasi' => $rows,
+            ];
+        });
+    }
+
+    /**
+     * Rekonsiliasi bulanan per barang: buka saldo, masuk, keluar, tutup saldo,
+     * sehingga `tutup bulan N = buka bulan N+1` dapat diperiksa langsung.
+     *
+     * Saldo awal tahun = seluruh mutasi sebelum 1 Januari DITAMBAH saldo awal
+     * tiap periode (<= tahun laporan). Saldo awal memang penambahan stok per
+     * tahun, bukan snapshot pengganti — konsisten dengan StokService::fisik().
+     *
+     * Anomali dicatat bila saldo berjalan negatif atau ada mutasi tanpa tanggal.
+     *
+     * Filter bulan hanya memotong kolom yang ditampilkan; rantai saldo tetap
+     * dihitung sejak Januari sehingga `saldo_awal` = buka bulan pertama rentang.
+     *
+     * @return array{tahun:int,bulan_awal:int,bulan_akhir:int,sumber_dana:string,barang:array<int,array<string,mixed>>,anomali:array<int,string>}
+     */
+    public function rekonsiliasiBulanan(string $sumberDana, int $tahun, ?string $sekolahId = null, int $bulanAwal = 1, int $bulanAkhir = 12): array
+    {
+        $bulanAwal = max(1, min(12, $bulanAwal));
+        $bulanAkhir = max($bulanAwal, min(12, $bulanAkhir));
+
+        return SumberDana::dengan($sumberDana, function () use ($sumberDana, $tahun, $sekolahId, $bulanAwal, $bulanAkhir): array {
+            $awalTahun = Carbon::create($tahun, 1, 1)->startOfDay();
+            $mutasi = [];
+
+            PenerimaanDetail::query()
+                ->with(['penerimaan:id,tanggal_bast,created_at,is_saldo_awal,periode_tahun,sekolah_id'])
+                ->when($sekolahId !== null, fn ($q) => $q->whereHas('penerimaan', fn ($w) => $w->where('sekolah_id', $sekolahId)))
+                ->get()
+                ->each(function (PenerimaanDetail $detail) use (&$mutasi): void {
+                    $penerimaan = $detail->penerimaan;
+                    // Saldo awal tidak punya tanggal bast; periodenya yang menentukan.
+                    $tanggal = $penerimaan?->is_saldo_awal && $penerimaan?->periode_tahun
+                        ? Carbon::create($penerimaan->periode_tahun, 1, 1)
+                        : ($penerimaan?->tanggal_bast ?? $penerimaan?->created_at);
+
+                    $mutasi[] = [
+                        'barang_id' => $detail->barang_id,
+                        'tanggal' => $tanggal,
+                        'masuk' => (int) $detail->jumlah,
+                        'keluar' => 0,
+                        'referensi' => $penerimaan?->no_bast ?: 'Penerimaan',
+                        'saldo_awal' => (bool) $penerimaan?->is_saldo_awal,
+                        'periode' => (int) ($penerimaan?->periode_tahun ?? 0),
+                    ];
+                });
+
+            PengajuanDetail::query()
+                ->with('pengajuan:id,tanggal,nomor_pengajuan,status,sekolah_id')
+                ->whereHas('pengajuan', fn ($q) => $q
+                    ->where('status', 'approved')
+                    ->when($sekolahId !== null, fn ($w) => $w->where('sekolah_id', $sekolahId)))
+                ->whereNotNull('jumlah_disetujui')
+                ->get()
+                ->each(function (PengajuanDetail $detail) use (&$mutasi): void {
+                    $pengajuan = $detail->pengajuan;
+
+                    $mutasi[] = [
+                        'barang_id' => $detail->barang_id,
+                        'tanggal' => $pengajuan?->tanggal,
+                        'masuk' => 0,
+                        'keluar' => (int) $detail->jumlah_disetujui,
+                        'referensi' => $pengajuan?->nomor_pengajuan ?: (string) $pengajuan?->id,
+                        'saldo_awal' => false,
+                        'periode' => 0,
+                    ];
+                });
+
+            $anomali = [];
+            $perBarang = [];
+
+            foreach ($mutasi as $row) {
+                if ($row['tanggal'] === null) {
+                    $anomali[] = "Mutasi {$row['referensi']} tidak memiliki tanggal, tidak dapat ditempatkan pada bulan mana pun.";
+
+                    continue;
+                }
+
+                $barangId = $row['barang_id'];
+                $perBarang[$barangId] ??= [
+                    'saldo_awal' => 0,
+                    'masuk' => array_fill(1, 12, 0),
+                    'keluar' => array_fill(1, 12, 0),
+                ];
+
+                // Saldo awal tiap periode adalah penambahan stok tersendiri
+                // (jumlah tiap tahun berbeda), jadi semuanya dijumlahkan — sama
+                // seperti StokService::fisik().
+                if ($row['saldo_awal']) {
+                    if ($row['periode'] <= $tahun) {
+                        $perBarang[$barangId]['saldo_awal'] += $row['masuk'] - $row['keluar'];
+                    }
+
+                    continue;
+                }
+
+                if ($row['tanggal']->lt($awalTahun)) {
+                    $perBarang[$barangId]['saldo_awal'] += $row['masuk'] - $row['keluar'];
+
+                    continue;
+                }
+
+                if ($row['tanggal']->year !== $tahun) {
+                    continue;
+                }
+
+                $bulan = (int) $row['tanggal']->month;
+                $perBarang[$barangId]['masuk'][$bulan] += $row['masuk'];
+                $perBarang[$barangId]['keluar'][$bulan] += $row['keluar'];
+            }
+
+            $barangs = Barang::whereIn('id', array_keys($perBarang))->get()->keyBy('id');
+            $hasil = [];
+
+            foreach ($perBarang as $barangId => $data) {
+                $barang = $barangs->get($barangId);
+                $saldo = $data['saldo_awal'];
+                $bulanan = [];
+                $sudahAnomali = false;
+
+                for ($bulan = 1; $bulan <= 12; $bulan++) {
+                    $buka = $saldo;
+                    $masuk = $data['masuk'][$bulan];
+                    $keluar = $data['keluar'][$bulan];
+                    $tutup = $buka + $masuk - $keluar;
+
+                    // Saldo buka bulan pertama rentang bisa sudah negatif karena
+                    // mutasi di bulan sebelumnya (di luar rentang) — tetap
+                    // dilaporkan supaya tidak tampil sebagai angka polos.
+                    if ($bulan === $bulanAwal && $buka < 0) {
+                        $anomali[] = sprintf(
+                            '%s: saldo buka %s sudah negatif (%d) akibat mutasi bulan sebelumnya.',
+                            $barang?->nama_barang ?? $barangId,
+                            str_pad((string) $bulan, 2, '0', STR_PAD_LEFT),
+                            $buka,
+                        );
+                        $sudahAnomali = true;
+                    }
+
+                    // Laporkan hanya titik awal saldo negatif; bulan sesudahnya
+                    // ikut negatif karena akumulasi, bukan anomali baru.
+                    if ($tutup < 0 && ! $sudahAnomali && $bulan >= $bulanAwal && $bulan <= $bulanAkhir) {
+                        $anomali[] = sprintf(
+                            '%s bulan %d: keluar %d melebihi stok (saldo menjadi %d).',
+                            $barang?->nama_barang ?? $barangId,
+                            $bulan,
+                            $keluar,
+                            $tutup,
+                        );
+                        $sudahAnomali = true;
+                    }
+
+                    if ($bulan >= $bulanAwal && $bulan <= $bulanAkhir) {
+                        $bulanan[$bulan] = [
+                            'buka' => $buka,
+                            'masuk' => $masuk,
+                            'keluar' => $keluar,
+                            'tutup' => $tutup,
+                        ];
+                    }
+
+                    $saldo = $tutup;
+                }
+
+                $hasil[] = [
+                    'barang_id' => $barangId,
+                    'kode_barang' => $barang?->kode_barang,
+                    'nama_barang' => $barang?->nama_barang,
+                    'satuan' => $barang?->satuan,
+                    'saldo_awal' => $bulanan[$bulanAwal]['buka'],
+                    'bulan' => $bulanan,
+                    'saldo_akhir' => $bulanan[$bulanAkhir]['tutup'],
+                ];
+            }
+
+            usort($hasil, fn (array $a, array $b): int => strcmp((string) $a['nama_barang'], (string) $b['nama_barang']));
+
+            return [
+                'tahun' => $tahun,
+                'bulan_awal' => $bulanAwal,
+                'bulan_akhir' => $bulanAkhir,
+                'sumber_dana' => $sumberDana,
+                'barang' => $hasil,
+                'anomali' => $anomali,
             ];
         });
     }

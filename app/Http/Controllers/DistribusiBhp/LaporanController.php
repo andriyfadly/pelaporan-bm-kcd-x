@@ -16,6 +16,7 @@ use App\Support\DistribusiBhp\SumberDana;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -37,12 +38,23 @@ class LaporanController extends Controller
         $validated = $request->validate([
             'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
             ...$this->aturanPeriode(),
+            'bulan_awal' => ['nullable', 'integer', 'between:1,12'],
+            'bulan_akhir' => ['nullable', 'integer', 'between:1,12'],
         ]);
         $sumberDana = SumberDana::normalisasi($validated['sumber_dana'] ?? SumberDana::BOS);
         $periode = Periode::dari(
             isset($validated['tahun']) ? (int) $validated['tahun'] : null,
             isset($validated['bulan']) ? (int) $validated['bulan'] : null,
         );
+
+        $bulanAwal = (int) ($validated['bulan_awal'] ?? 1);
+        $bulanAkhir = (int) ($validated['bulan_akhir'] ?? 12);
+
+        if ($bulanAwal > $bulanAkhir) {
+            throw ValidationException::withMessages([
+                'bulan_awal' => 'Bulan awal tidak boleh melebihi bulan akhir.',
+            ]);
+        }
 
         return Inertia::render('DistribusiBhp/Laporan/Index', [
             'sumberDana' => $sumberDana,
@@ -51,8 +63,11 @@ class LaporanController extends Controller
                 'bulan' => $periode->bulan,
                 'label' => $periode->label(),
             ],
+            'bulanAwal' => $bulanAwal,
+            'bulanAkhir' => $bulanAkhir,
             'stok' => $this->laporan->laporanStok($sumberDana, $sekolahId, $periode),
             'pengeluaran' => $this->laporan->bukuPengeluaran($sumberDana, $sekolahId, $periode),
+            'rekonsiliasi' => $this->laporan->rekonsiliasiBulanan($sumberDana, $periode->tahun, $sekolahId, $bulanAwal, $bulanAkhir),
         ]);
     }
 
