@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Master\PenugasanPegawaiService;
 use App\Support\DistribusiBhp\Periode;
 use App\Support\DistribusiBhp\SumberDana;
+use App\Support\HariKerja;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -130,6 +131,18 @@ class DokumenService
             // Tanpa batas ini, dua pengajuan di bulan yang sama menghasilkan dua
             // snapshot berbeda untuk posisi stok yang sama.
             if ($jenis === 'stok_opname') {
+                if (HariKerja::libur($tanggalObj)) {
+                    $saran = HariKerja::kerjaTerakhir($tanggalObj->year, $tanggalObj->month);
+                    $alasan = HariKerja::namaLibur($tanggalObj);
+
+                    throw new InvalidArgumentException(sprintf(
+                        'Stok Opname tidak boleh bertanggal %s (%s). Hari kerja terakhir: %s.',
+                        $tanggalObj->format('d/m/Y'),
+                        $alasan ?: 'hari libur',
+                        $saran->format('d/m/Y'),
+                    ));
+                }
+
                 $bulanIni = Dokumen::query()
                     ->where('jenis', 'stok_opname')
                     ->whereYear('tanggal_titimangsa', $tanggalObj->year)

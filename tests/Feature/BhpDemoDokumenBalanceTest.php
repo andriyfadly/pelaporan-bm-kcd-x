@@ -13,6 +13,7 @@ use App\Services\DistribusiBhp\StokService;
 use App\Services\Master\PenugasanPegawaiService;
 use App\Support\DistribusiBhp\Periode;
 use App\Support\DistribusiBhp\SumberDana;
+use App\Support\HariKerja;
 use Database\Seeders\DemoDistribusiBhpSmkn4KuninganSeeder;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -195,10 +196,14 @@ class BhpDemoDokumenBalanceTest extends TestCase
             foreach ($daftar as $dokumen) {
                 $bulan = (int) $dokumen->tanggal_titimangsa->format('n');
 
+                $this->assertTrue(
+                    HariKerja::kerja($dokumen->tanggal_titimangsa),
+                    "Stok opname {$dana} bulan {$bulan} harus bertanggal hari kerja ({$dokumen->nomor}).",
+                );
                 $this->assertSame(
-                    $dokumen->tanggal_titimangsa->daysInMonth,
-                    (int) $dokumen->tanggal_titimangsa->format('j'),
-                    "Stok opname {$dana} bulan {$bulan} harus bertanggal akhir bulan.",
+                    HariKerja::kerjaTerakhir(2026, $bulan)->toDateString(),
+                    $dokumen->tanggal_titimangsa->toDateString(),
+                    "Stok opname {$dana} bulan {$bulan} harus memakai hari kerja terakhir bulan itu.",
                 );
 
                 $items = collect($dokumen->payload['items']);
@@ -241,10 +246,28 @@ class BhpDemoDokumenBalanceTest extends TestCase
             ->firstOrFail());
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Stok Opname 06/2026 sudah dibuat');
+        $this->expectExceptionMessage('sudah dibuat untuk sekolah ini');
 
         SumberDana::dengan($dana, fn () => app(DokumenService::class)
-            ->generateTambahan($pengajuan, 'stok_opname', '2026-06-30'));
+            ->generateTambahan($pengajuan, 'stok_opname', '2026-06-29'));
+    }
+
+    public function test_stok_opname_pada_hari_libur_ditolak_dengan_saran_hari_kerja(): void
+    {
+        [$dana] = SumberDana::SEMUA;
+
+        $pengajuan = SumberDana::dengan($dana, fn (): Pengajuan => Pengajuan::where('sekolah_id', $this->sekolah->id)
+            ->where('status', 'approved')
+            ->where('nomor_pengajuan', 'like', '%06-%')
+            ->whereDoesntHave('dokumen', fn ($q) => $q->where('jenis', 'stok_opname'))
+            ->firstOrFail());
+
+        // 5 Juli 2026 = Minggu, di luar dataset demo.
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Hari kerja terakhir: 31/07/2026');
+
+        SumberDana::dengan($dana, fn () => app(DokumenService::class)
+            ->generateTambahan($pengajuan, 'stok_opname', '2026-07-05'));
     }
 
     public function test_buku_pengeluaran_dokumen_sama_dengan_laporan_bulan_juni(): void

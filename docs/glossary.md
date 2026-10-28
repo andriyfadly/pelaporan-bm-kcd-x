@@ -60,7 +60,8 @@
 | Jenis dokumen | `nota_permintaan`, `surat_permintaan`, `surat_penyaluran`, `bast`, `bap`, `stok_opname`, `buku_pengeluaran`, `buku_penyaluran` |
 | Dokumen wajib | 3 dokumen yang otomatis dibuat saat approve: nota, surat permintaan, surat penyaluran |
 | Dokumen tambahan | Dokumen yang dibuat manual setelah approve (BAST/BAP/stok opname/buku), idempotent per jenis |
-| Stok Opname bulanan | Snapshot stok fisik satu per bulan per sekolah; opname kedua di bulan yang sama ditolak |
+| Stok Opname bulanan | Snapshot stok fisik satu per bulan per sekolah, bertanggal hari kerja terakhir bulan itu; opname kedua di bulan yang sama ditolak |
+| Hari kerja | Bukan Sabtu/Minggu dan bukan libur nasional. Cuti bersama tetap hari kerja. Sumber libur: API [tanggalmerah.upset.dev](https://upset.dev/tanggalmerah) (di-cache 1 hari), dengan jaring `config/hari_libur.php` bila API mati |
 | Nomor dokumen | Format `{urut:3}/BHP/{kode}/{sumber_dana}/{bulan_romawi}/{tahun}`, counter atomic |
 | Batch PDF | Gabungan semua dokumen pengajuan dalam satu PDF; histori di `bhp_{bos,bopd}_batch_dokumen` |
 | Buku pengeluaran | Laporan item yang sudah approved beserta keperluan |

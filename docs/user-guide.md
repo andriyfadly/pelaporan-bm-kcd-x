@@ -199,8 +199,10 @@ dipakai pengajuan aktif tidak dapat dihapus.
 3. Tombol **+ BAST / BAP / Stok Opname** membuat dokumen tambahan (sekali saja
    per jenis; nomornya tetap bila diklik ulang). Snapshot pada dokumen stok
    opname/buku hanya berisi data sekolah pengajuan.
-   Stok Opname dibatasi **satu per bulan per sekolah**: membuat yang kedua pada
-   bulan yang sama ditolak dengan pesan `Stok Opname MM/YYYY sudah dibuat`.
+   Stok Opname dibatasi **satu per bulan per sekolah** dan wajib bertanggal
+   **hari kerja**: Sabtu, Minggu, dan libur nasional ditolak dengan pesan yang
+   menyebutkan hari kerja terakhir bulan itu. Cuti bersama tetap dianggap hari
+   kerja.
 4. Operator divisi hanya dapat membuka dokumen pengajuan divisinya sendiri;
    dokumen divisi lain ditolak (403).
 

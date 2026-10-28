@@ -18,8 +18,8 @@ use App\Services\DistribusiBhp\DokumenService;
 use App\Services\DistribusiBhp\SaldoAwalService;
 use App\Services\DistribusiBhp\StokService;
 use App\Support\DistribusiBhp\SumberDana;
+use App\Support\HariKerja;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -113,6 +113,12 @@ class DemoDistribusiBhpSmkn4KuninganSeeder extends Seeder
             throw new RuntimeException(
                 'Sekolah NPSN '.self::NPSN.' tidak ditemukan. Jalankan KodeSekolahSeeder terlebih dahulu.'
             );
+        }
+
+        // Panaskan cache hari libur di luar transaksi DB: satu request HTTP per
+        // tahun, bukan di dalam transaksi yang menahan lock.
+        foreach ([self::TAHUN] as $tahun) {
+            HariKerja::liburNasional($tahun);
         }
 
         DB::transaction(function () use ($sekolah): void {
@@ -479,16 +485,26 @@ class DemoDistribusiBhpSmkn4KuninganSeeder extends Seeder
         }
 
         for ($bulan = 1; $bulan <= 6; $bulan++) {
-            // Sudah ada opname bulan ini (mis. data lama) → jangan buat lagi;
-            // service memang menolak opname kedua di bulan yang sama.
+            // Tanggal SO = hari kerja terakhir bulan itu: bukan Sabtu/Minggu,
+            // bukan libur nasional, cuti bersama tetap dihitung hari kerja.
+            $tanggalSo = HariKerja::kerjaTerakhir(self::TAHUN, $bulan);
+
             $sudahAda = Dokumen::where('jenis', 'stok_opname')
                 ->whereYear('tanggal_titimangsa', self::TAHUN)
                 ->whereMonth('tanggal_titimangsa', $bulan)
-                ->whereHas('pengajuan', fn ($q) => $q->where('sekolah_id', $sekolah->id))
-                ->exists();
+                ->whereHas('pengajuan', fn ($q) => $q
+                    ->where('sekolah_id', $sekolah->id)
+                    ->where('nomor_pengajuan', 'like', self::PENANDA.'%'))
+                ->first();
 
+            // Snapshot lama yang bertanggal akhir pekan/libur dibuat sebelum
+            // aturan hari kerja ada; buang supaya dibuat ulang pada tanggal benar.
             if ($sudahAda) {
-                continue;
+                if ($sudahAda->tanggal_titimangsa->toDateString() === $tanggalSo->toDateString()) {
+                    continue;
+                }
+
+                $sudahAda->delete();
             }
 
             $pengajuan = $pengajuanBulan($bulan);
@@ -497,14 +513,7 @@ class DemoDistribusiBhpSmkn4KuninganSeeder extends Seeder
                 continue;
             }
 
-            // Tanggal akhir bulan: 31 Jan, 28 Feb 2026 (bukan tahun kabisat), dst.
-            $akhirBulan = Carbon::create(self::TAHUN, $bulan, 1)->daysInMonth;
-
-            $service->generateTambahan(
-                $pengajuan,
-                'stok_opname',
-                sprintf('%d-%02d-%02d', self::TAHUN, $bulan, $akhirBulan),
-            );
+            $service->generateTambahan($pengajuan, 'stok_opname', $tanggalSo->toDateString());
         }
     }
 

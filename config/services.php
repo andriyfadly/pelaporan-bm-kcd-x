@@ -41,4 +41,12 @@ return [
         'enabled' => env('TURNSTILE_ENABLED', false),
     ],
 
+    // API hari libur nasional Indonesia (gratis, tanpa API key).
+    // Dokumentasi: https://upset.dev/tanggalmerah
+    'tanggal_merah' => [
+        'url' => env('TANGGAL_MERAH_URL', 'https://tanggalmerah.upset.dev'),
+        'timeout' => env('TANGGAL_MERAH_TIMEOUT', 3),
+        'enabled' => env('TANGGAL_MERAH_ENABLED', true),
+    ],
+
 ];
