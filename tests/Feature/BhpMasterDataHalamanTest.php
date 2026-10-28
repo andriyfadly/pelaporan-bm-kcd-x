@@ -189,4 +189,31 @@ class BhpMasterDataHalamanTest extends TestCase
             ])
             ->assertSessionHasErrors('assignments.0.id');
     }
+
+    /**
+     * Kolom Assign dirender dari izin `assign-kode-rekening-bhp`, bukan dari
+     * `!isAdmin`. Halaman wajib membagikan daftar izin itu, kalau tidak
+     * kolomnya kembali tak terlihat oleh satu-satunya peran yang berhak.
+     */
+    public function test_halaman_membagikan_izin_assign_untuk_admin(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('distribusi-bhp.kode-rekening.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('auth.user.permissions', fn ($izin) => collect($izin)->contains('assign-kode-rekening-bhp')));
+    }
+
+    public function test_operator_tidak_berhak_batch_assign(): void
+    {
+        $a = KodeRekening::create(['kode' => '5.1.02.01.01.0006', 'nama' => 'Map']);
+
+        $this->actingAs($this->user)
+            ->post(route('distribusi-bhp.kode-rekening.batch-assign'), [
+                'assignments' => [['id' => $a->id, 'kode_barang' => '1.1.7.01.01']],
+            ])
+            ->assertForbidden();
+
+        $this->assertNull($a->fresh()->kode_barang);
+    }
 }

@@ -73,6 +73,30 @@ class BhpDemoSmkn4KuninganSeederTest extends TestCase
         }
     }
 
+    /**
+     * Dataset demo harus memuat tiga skenario pembayaran sekaligus supaya
+     * kolom Keterangan "Lunas Bayar" dan halaman Lunas Bayar teruji apa adanya.
+     */
+    public function test_seeder_membagi_tiga_skenario_pembayaran(): void
+    {
+        $this->seedDemo();
+
+        foreach (SumberDana::SEMUA as $dana) {
+            $hasil = SumberDana::dengan($dana, fn (): array => [
+                'belum' => Penerimaan::where('sekolah_id', $this->sekolah->id)
+                    ->where('is_saldo_awal', false)->whereNull('no_kwitansi')->count(),
+                'bulan_sama' => Penerimaan::where('sekolah_id', $this->sekolah->id)
+                    ->whereNotNull('no_kwitansi')->whereColumn('tanggal_pembayaran', 'tanggal_bast')->count(),
+                'bulan_depan' => Penerimaan::where('sekolah_id', $this->sekolah->id)
+                    ->whereNotNull('no_kwitansi')->whereColumn('tanggal_pembayaran', '>', 'tanggal_bast')->count(),
+            ]);
+
+            $this->assertSame(6, $hasil['belum'], "Belum dibayar {$dana}");
+            $this->assertSame(6, $hasil['bulan_sama'], "Dibayar bulan sama {$dana}");
+            $this->assertSame(6, $hasil['bulan_depan'], "Dibayar bulan depan {$dana}");
+        }
+    }
+
     public function test_seeder_idempotent_dijalankan_dua_kali(): void
     {
         $this->seedDemo();
