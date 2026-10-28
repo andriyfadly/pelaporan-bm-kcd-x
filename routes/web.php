@@ -153,6 +153,7 @@ Route::middleware(['auth'])->group(function () {
         Route::middleware('permission:kelola-penerimaan-bhp')->group(function () {
             Route::get('/penerimaan', [BhpPenerimaanController::class, 'index'])->name('penerimaan.index');
             Route::post('/penerimaan', [BhpPenerimaanController::class, 'store'])->name('penerimaan.store');
+            Route::patch('/penerimaan/{penerimaan}/pembayaran', [BhpPenerimaanController::class, 'tandaiBayar'])->name('penerimaan.bayar');
             Route::delete('/penerimaan/{penerimaan}', [BhpPenerimaanController::class, 'destroy'])->name('penerimaan.destroy');
 
             Route::get('/saldo-awal', [BhpSaldoAwalController::class, 'index'])->name('saldo-awal.index');

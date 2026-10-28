@@ -146,12 +146,20 @@ Penyaluran, dan Laporan — mirror struktur asli aplikasi sistem-manajemen-aset.
 ### 6.3 Mencatat Penerimaan Barang
 
 1. Buka **Buku Penerimaan** (`/distribusi-bhp/{bos|bopd}/penerimaan`), pilih sumber dana (lewat navigasi ke grup BOS/BOPD).
-2. Isi dokumen (nota/invoice, BAST, kwitansi, penyedia, tanggal) lalu tambahkan
-   detail barang dan jumlahnya. Barang masuk akan menambah **stok fisik**.
+2. Isi dokumen (nota/invoice, BAST, penyedia, tanggal) lalu tambahkan detail
+   barang dan jumlahnya. Barang masuk akan menambah **stok fisik**.
+   **Kosongkan No. Kwitansi bila belum dibayar** — penerimaan itu masuk daftar
+   **Lunas Bayar** dan diberi keterangan “Lunas Bayar” pada PDF/Excel Buku
+   Penerimaan bulan berjalan. Bila No. Kwitansi diisi, **Tanggal Pembayaran
+   wajib ikut diisi**.
 3. Untuk saldo awal tahun, buka **Saldo Awal** (`/distribusi-bhp/{bos|bopd}/saldo-awal`),
    tandai sebagai **saldo awal** dan isi periode tahun.
 4. **Lunas Bayar** (`/distribusi-bhp/{bos|bopd}/penerimaan/lunas-bayar`) menampilkan
-   daftar penerimaan yang sudah dilunasi — read-only view.
+   penerimaan yang **barangnya sudah datang tetapi transaksi keuangannya belum
+   terjadi** (kwitansi masih kosong). Tombol **Tandai Bayar** mengisi No. Kwitansi
+   dan Tanggal Pembayaran; setelah itu baris keluar dari daftar.
+   Pembayaran yang jatuh setelah bulan penerimaan tetap membuat bulan
+   penerimaannya bertanda “Lunas Bayar”, dan barisnya tidak berpindah bulan.
 
 > **Stok selalu milik satu sekolah.** Tidak ada stok bersama antar sekolah —
 > penerimaan yang Anda catat hanya mengurangi stok sekolah Anda sendiri.

@@ -36,6 +36,7 @@ class BhpPenerimaanExport implements Export, FromCollection, WithHeadings, WithT
             'Jumlah',
             'Harga Satuan',
             'Nilai Total',
+            'Keterangan',
         ];
     }
 
@@ -52,6 +53,7 @@ class BhpPenerimaanExport implements Export, FromCollection, WithHeadings, WithT
             $row['jumlah'],
             $row['harga_satuan'],
             $row['nilai_total'],
+            ($row['lunas_bayar'] ?? false) ? 'Lunas Bayar' : '',
         ]);
     }
 }

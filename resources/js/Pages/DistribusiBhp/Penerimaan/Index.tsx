@@ -46,6 +46,9 @@ export default function Index({
         // laporan periode tidak bergantung pada tanggal input.
         tanggal_bast: '',
         no_kwitansi: '',
+        // Kosong = barang sudah datang, transaksi keuangan belum terjadi
+        // ("Lunas Bayar"). Kalau diisi, tanggal pembayaran wajib ikut.
+        tanggal_pembayaran: '',
         penyedia_id: '',
         tanggal_titimangsa: '',
         details: rows,
@@ -105,9 +108,24 @@ export default function Index({
                             {fieldError('penyedia_id')}
                         </div>
                         <input placeholder="No. Nota / Invoice" value={form.data.no_nota_invoice} onChange={(e) => form.setData('no_nota_invoice', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm" />
-                        <input placeholder="No. Kwitansi" value={form.data.no_kwitansi} onChange={(e) => form.setData('no_kwitansi', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm" />
-                        <input type="date" aria-label="Tanggal titimangsa" value={form.data.tanggal_titimangsa} onChange={(e) => form.setData('tanggal_titimangsa', e.target.value)} className="px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                        <div>
+                            <input placeholder="No. Kwitansi" value={form.data.no_kwitansi} onChange={(e) => form.setData('no_kwitansi', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            {fieldError('no_kwitansi')}
+                        </div>
+                        <div>
+                            <label htmlFor="tanggal-pembayaran" className="block text-[11px] font-semibold text-slate-500 mb-1">Tanggal Pembayaran</label>
+                            <input id="tanggal-pembayaran" type="date" value={form.data.tanggal_pembayaran} onChange={(e) => form.setData('tanggal_pembayaran', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            {fieldError('tanggal_pembayaran')}
+                        </div>
+                        <div>
+                            <label htmlFor="tanggal-titimangsa" className="block text-[11px] font-semibold text-slate-500 mb-1">Tanggal Titimangsa</label>
+                            <input id="tanggal-titimangsa" type="date" value={form.data.tanggal_titimangsa} onChange={(e) => form.setData('tanggal_titimangsa', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                        </div>
                     </div>
+                    <p className="text-[11px] text-slate-500">
+                        Kosongkan No. Kwitansi bila belum dibayar — data akan masuk daftar <strong>Lunas Bayar</strong> dan
+                        diberi keterangan “Lunas Bayar” pada Buku Penerimaan bulan berjalan.
+                    </p>
 
                     <div className="space-y-2">
                         {rows.map((row, index) => (

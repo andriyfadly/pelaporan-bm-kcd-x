@@ -215,7 +215,7 @@ class BhpRouteSweepTest extends TestCase
         }
     }
 
-    public function test_lunas_bayar_hanya_memuat_penerimaan_berkwitansi(): void
+    public function test_lunas_bayar_hanya_memuat_penerimaan_belum_dibayar(): void
     {
         foreach (SumberDana::SEMUA as $dana) {
             $response = $this->actingAs($this->operator)
@@ -227,10 +227,10 @@ class BhpRouteSweepTest extends TestCase
             $this->assertNotEmpty($items, "Lunas bayar {$dana} tidak boleh kosong pada dataset demo.");
 
             foreach ($items as $item) {
-                $this->assertNotEmpty($item['no_kwitansi'], 'Setiap baris lunas bayar wajib punya nomor kwitansi.');
+                $this->assertEmpty($item['no_kwitansi'], 'Baris yang sudah berkwitansi tidak boleh muncul di Lunas Bayar.');
             }
 
-            // Saldo awal tidak punya kwitansi, jadi tidak boleh muncul di sini.
+            // Saldo awal bukan pembelian, jadi tidak boleh muncul di sini.
             $idSaldoAwal = SumberDana::dengan($dana, fn (): array => Penerimaan::where('is_saldo_awal', true)->pluck('id')->all());
 
             foreach ($items as $item) {

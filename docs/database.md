@@ -185,7 +185,7 @@ selalu dihitung (`StokService`).
 
 | Tabel | Kolom penting |
 |---|---|
-| `bhp_{dana}_penerimaan` | `source_id` (unique, nullable) · `sekolah_id` FK **NOT NULL** (tanpa pool pusat) · `no_nota_invoice`/`no_bast`/`no_kwitansi` · `tanggal_bast`/`tanggal_titimangsa` date · `penyedia_id` FK nullable · `is_saldo_awal` bool · `periode_tahun` int · partial unique `bhp_{dana}_penerimaan_saldo_awal_unique` `(sekolah_id, periode_tahun) WHERE is_saldo_awal` |
+| `bhp_{dana}_penerimaan` | `source_id` (unique, nullable) · `sekolah_id` FK **NOT NULL** (tanpa pool pusat) · `no_nota_invoice`/`no_bast`/`no_kwitansi` · `tanggal_bast`/`tanggal_titimangsa`/`tanggal_pembayaran` date · `penyedia_id` FK nullable · `is_saldo_awal` bool · `periode_tahun` int · partial unique `bhp_{dana}_penerimaan_saldo_awal_unique` `(sekolah_id, periode_tahun) WHERE is_saldo_awal` |
 | `bhp_{dana}_penerimaan_detail` | `bhp_penerimaan_id` FK · `barang_id` FK nullable · `harga_barang_id` nullable · `jumlah` int · `harga_satuan`/`nilai_total` bigint nullable · `merek_type` · `keterangan` |
 | `bhp_{dana}_pengajuan` | `sekolah_id` FK nullable · `divisi_id`/`user_id` uuid nullable · `nomor_pengajuan` · `tanggal` date · `status` enum `draft`/`submitted`/`approved`/`rejected` · `review_notes`/`rejection_reason` · `reviewed_by`/`reviewed_at` |
 | `bhp_{dana}_pengajuan_detail` | `bhp_pengajuan_id` FK · `barang_id` FK nullable · `jumlah_diminta` int · `jumlah_disetujui` int nullable · `harga_satuan` nullable · `keperluan`/`keterangan` · `status_reservasi` (30) · `jumlah_direservasi` int |

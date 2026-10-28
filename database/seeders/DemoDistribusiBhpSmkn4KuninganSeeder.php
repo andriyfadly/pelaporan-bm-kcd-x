@@ -304,19 +304,36 @@ class DemoDistribusiBhpSmkn4KuninganSeeder extends Seeder
         foreach (self::PENERIMAAN as $urutan => [$hari, $items]) {
             $tanggal = sprintf('%d-%02d-%02d', self::TAHUN, $bulan, $hari);
 
-            $penerimaan = Penerimaan::firstOrCreate([
+            // Tiga skenario pembayaran supaya dataset menguji semuanya:
+            // 0 = belum dibayar (tampil di Lunas Bayar), 1 = dibayar pada bulan
+            // penerimaan, 2 = dibayar bulan berikutnya (masih "Lunas Bayar"
+            // pada Buku Penerimaan bulan penerimaan).
+            $skenario = ($bulan + $urutan) % 3;
+            $kwitansi = $skenario === 0
+                ? null
+                : 'KW-'.$dana.'-'.sprintf('%02d%02d', $bulan, $urutan + 1);
+            $tanggalBayar = match ($skenario) {
+                1 => $tanggal,
+                2 => sprintf('%d-%02d-%02d', self::TAHUN, $bulan + 1, $hari),
+                default => null,
+            };
+
+            $penerimaan = Penerimaan::firstOrNew([
                 'source_id' => self::PENANDA.'-'.$dana.'-TERIMA-'.str_pad((string) $bulan, 2, '0', STR_PAD_LEFT).'-'.($urutan + 1),
-            ], [
+            ]);
+
+            $penerimaan->fill([
                 'sekolah_id' => $sekolah->id,
                 'no_bast' => 'BAST/'.self::PENANDA.'/'.$dana.'/'.str_pad((string) $bulan, 2, '0', STR_PAD_LEFT).'/'.($urutan + 1),
                 'no_nota_invoice' => 'INV-'.$dana.'-'.sprintf('%02d%02d', $bulan, $urutan + 1),
-                'no_kwitansi' => 'KW-'.$dana.'-'.sprintf('%02d%02d', $bulan, $urutan + 1),
+                'no_kwitansi' => $kwitansi,
+                'tanggal_pembayaran' => $tanggalBayar,
                 'tanggal_bast' => $tanggal,
                 'tanggal_titimangsa' => $tanggal,
                 'penyedia_id' => Penyedia::where('nama', self::PENYEDIA[($bulan + $urutan) % count(self::PENYEDIA)][0])->value('id'),
                 'is_saldo_awal' => false,
                 'periode_tahun' => null,
-            ]);
+            ])->save();
 
             foreach ($items as [$index, $jumlah]) {
                 $jumlah = $this->skala($dana, $jumlah);

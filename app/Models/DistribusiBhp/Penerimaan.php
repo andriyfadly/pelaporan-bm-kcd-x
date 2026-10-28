@@ -22,6 +22,7 @@ class Penerimaan extends Model
         'no_bast',
         'tanggal_bast',
         'no_kwitansi',
+        'tanggal_pembayaran',
         'penyedia_id',
         'tanggal_titimangsa',
         'is_saldo_awal',
@@ -38,6 +39,7 @@ class Penerimaan extends Model
         return [
             'tanggal_bast' => 'date',
             'tanggal_titimangsa' => 'date',
+            'tanggal_pembayaran' => 'date',
             'is_saldo_awal' => 'boolean',
             'periode_tahun' => 'integer',
         ];

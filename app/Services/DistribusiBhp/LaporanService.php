@@ -121,7 +121,7 @@ class LaporanService
         return SumberDana::dengan($sumberDana, function () use ($sekolahId, $periode): array {
             $ambil = fn (string $sampai) => PenerimaanDetail::query()
                 ->with([
-                    'penerimaan:id,tanggal_bast,tanggal_titimangsa,no_bast,no_nota_invoice,penyedia_id,is_saldo_awal,periode_tahun,sekolah_id',
+                    'penerimaan:id,tanggal_bast,tanggal_titimangsa,no_bast,no_nota_invoice,no_kwitansi,tanggal_pembayaran,penyedia_id,is_saldo_awal,periode_tahun,sekolah_id',
                     'penerimaan.penyedia:id,nama',
                     'barang:id,kode_barang,nama_barang,satuan',
                 ])
@@ -141,11 +141,16 @@ class LaporanService
             }
 
             return $dalamPeriode
-                ->map(function (PenerimaanDetail $detail): array {
+                ->map(function (PenerimaanDetail $detail) use ($periode): array {
                     $penerimaan = $detail->penerimaan;
                     $barang = $detail->barang;
                     $jumlah = (int) $detail->jumlah;
                     $harga = (int) ($detail->harga_satuan ?? 0);
+
+                    // "Lunas Bayar" = sampai akhir bulan laporan barang sudah
+                    // datang tetapi transaksi keuangannya belum terjadi.
+                    $batasBayar = $periode?->sampai() ?? now()->toDateString();
+                    $tanggalBayar = $penerimaan?->tanggal_pembayaran?->toDateString();
 
                     return [
                         'tanggal' => $penerimaan?->tanggalEfektif()?->toDateString(),
@@ -159,6 +164,8 @@ class LaporanService
                         'harga_satuan' => $harga,
                         'nilai_total' => (int) ($detail->nilai_total ?? $jumlah * $harga),
                         'is_saldo_awal' => (bool) $penerimaan?->is_saldo_awal,
+                        'lunas_bayar' => ! $penerimaan?->is_saldo_awal
+                            && ($tanggalBayar === null || $tanggalBayar > $batasBayar),
                     ];
                 })
                 ->sortBy([['tanggal', 'asc'], ['nama_barang', 'asc']])

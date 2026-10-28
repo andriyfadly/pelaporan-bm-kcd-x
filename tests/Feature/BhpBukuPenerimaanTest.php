@@ -55,13 +55,15 @@ class BhpBukuPenerimaanTest extends TestCase
         return $barang;
     }
 
-    private function terima(string $tanggal, array $items, bool $saldoAwal = false): Penerimaan
+    private function terima(string $tanggal, array $items, bool $saldoAwal = false, ?string $tanggalPembayaran = null): Penerimaan
     {
         $penerimaan = Penerimaan::create([
             'sekolah_id' => $this->sekolah->id,
             'no_bast' => $saldoAwal ? null : 'BAST/'.$tanggal,
             'tanggal_bast' => $saldoAwal ? null : $tanggal,
             'no_nota_invoice' => 'INV/'.$tanggal,
+            'no_kwitansi' => $tanggalPembayaran === null ? null : 'KW/'.$tanggal,
+            'tanggal_pembayaran' => $tanggalPembayaran,
             'is_saldo_awal' => $saldoAwal,
             'periode_tahun' => $saldoAwal ? 2026 : null,
         ]);
@@ -138,6 +140,37 @@ class BhpBukuPenerimaanTest extends TestCase
         $this->assertNotContains(999, collect($juni)->pluck('jumlah')->all());
     }
 
+    /**
+     * "Lunas Bayar" = barang sudah diterima tetapi transaksi keuangan belum
+     * terjadi sampai akhir bulan laporan. Dibayar pada bulan yang sama berarti
+     * keterangan kosong; dibayar bulan berikutnya tetap bertanda pada bulan
+     * penerimaan, dan pembayarannya tidak memindahkan baris ke bulan itu.
+     */
+    public function test_keterangan_lunas_bayar_mengikuti_bulan_pembayaran(): void
+    {
+        $kertas = $this->barang('Kertas', 50000);
+
+        // Januari: dibayar di bulan yang sama.
+        $this->terima('2026-01-10', [[$kertas, 5, 50000]], false, '2026-01-20');
+        // Februari: baru dibayar Maret.
+        $this->terima('2026-02-10', [[$kertas, 7, 50000]], false, '2026-03-05');
+        // Maret: belum dibayar.
+        $this->terima('2026-03-10', [[$kertas, 9, 50000]]);
+
+        $laporan = app(LaporanService::class);
+
+        $januari = $laporan->bukuPenerimaan('BOS', $this->sekolah->id, Periode::bulan(2026, 1));
+        $this->assertFalse($januari[0]['lunas_bayar'], 'Dibayar pada Januari: keterangan harus kosong.');
+
+        $februari = $laporan->bukuPenerimaan('BOS', $this->sekolah->id, Periode::bulan(2026, 2));
+        $this->assertTrue($februari[0]['lunas_bayar'], 'Dibayar Maret: Februari masih Lunas Bayar.');
+
+        $maret = $laporan->bukuPenerimaan('BOS', $this->sekolah->id, Periode::bulan(2026, 3));
+        $this->assertCount(1, $maret, 'Transaksi Februari tidak boleh berpindah ke Maret.');
+        $this->assertSame('2026-03-10', $maret[0]['tanggal']);
+        $this->assertTrue($maret[0]['lunas_bayar'], 'Belum dibayar: Maret bertanda Lunas Bayar.');
+    }
+
     public function test_operator_dapat_membuka_halaman_buku_penerimaan(): void
     {
         $this->data();
@@ -169,7 +202,7 @@ class BhpBukuPenerimaanTest extends TestCase
 
         // Heading + 2 baris Juni; saldo awal Mei tidak boleh ikut.
         $this->assertCount(3, $rows);
-        $this->assertSame(['Tanggal', 'No. BAST', 'No. Nota/Invoice', 'Penyedia', 'Kode Barang', 'Nama Barang', 'Satuan', 'Jumlah', 'Harga Satuan', 'Nilai Total'], $rows[0]);
+        $this->assertSame(['Tanggal', 'No. BAST', 'No. Nota/Invoice', 'Penyedia', 'Kode Barang', 'Nama Barang', 'Satuan', 'Jumlah', 'Harga Satuan', 'Nilai Total', 'Keterangan'], $rows[0]);
         $this->assertSame('2026-06-05', $rows[1][0]);
         $this->assertSame(10, (int) $rows[1][7]);
         $this->assertSame(550000, (int) $rows[1][9]);

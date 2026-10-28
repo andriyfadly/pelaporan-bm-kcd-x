@@ -46,6 +46,7 @@
                 <th style="width:40px;">Satuan</th>
                 <th style="width:62px;">Harga Satuan</th>
                 <th style="width:72px;">Nilai Total</th>
+                <th style="width:58px;">Keterangan</th>
             </tr>
         </thead>
         <tbody>
@@ -64,15 +65,17 @@
                     <td class="center">{{ $item['satuan'] ?? '-' }}</td>
                     <td class="right">{{ number_format((int) $item['harga_satuan'], 0, ',', '.') }}</td>
                     <td class="right">{{ number_format((int) $item['nilai_total'], 0, ',', '.') }}</td>
+                    <td class="center">{{ ($item['lunas_bayar'] ?? false) ? 'Lunas Bayar' : '' }}</td>
                 </tr>
             @empty
-                <tr><td colspan="11" class="center" style="color:#64748b;">Tidak ada penerimaan pada periode ini.</td></tr>
+                <tr><td colspan="12" class="center" style="color:#64748b;">Tidak ada penerimaan pada periode ini.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
             <tr>
                 <td colspan="10" class="right">Jumlah</td>
                 <td class="right">{{ number_format($totalNilai, 0, ',', '.') }}</td>
+                <td></td>
             </tr>
         </tfoot>
     </table>

@@ -91,6 +91,7 @@ class BhpPenerimaanTest extends TestCase
                 'tanggal_bast' => '2026-06-17',
                 'no_nota_invoice' => 'INV-001',
                 'no_kwitansi' => 'KW-001',
+                'tanggal_pembayaran' => '2026-06-17',
                 'penyedia_id' => $penyedia->id,
                 'tanggal_titimangsa' => '2026-06-17',
                 'details' => [
@@ -710,6 +711,102 @@ class BhpPenerimaanTest extends TestCase
                 ],
             ])
             ->assertSessionHasErrors('penyedia_id');
+    }
+
+    public function test_kwitansi_tanpa_tanggal_pembayaran_ditolak(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), [
+                ...$this->payloadBiasa([
+                    ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+                ]),
+                'no_kwitansi' => 'KW-001',
+            ])
+            ->assertSessionHasErrors('tanggal_pembayaran');
+
+        $this->assertSame(0, Penerimaan::count());
+    }
+
+    public function test_penerimaan_tanpa_kwitansi_masuk_daftar_lunas_bayar(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+            ]))
+            ->assertRedirect();
+
+        $response = $this->actingAs($operator)->get('/distribusi-bhp/bos/penerimaan/lunas-bayar');
+
+        $this->assertCount(1, $response->viewData('page')['props']['items']['data']);
+    }
+
+    public function test_tandai_bayar_mengeluarkan_baris_dari_lunas_bayar(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+            ]));
+
+        $penerimaan = Penerimaan::firstOrFail();
+
+        $this->actingAs($operator)
+            ->patch(route('distribusi-bhp.bos.penerimaan.bayar', $penerimaan), [
+                'no_kwitansi' => 'KW-002',
+                'tanggal_pembayaran' => '2026-07-03',
+            ])
+            ->assertRedirect();
+
+        $penerimaan->refresh();
+        $this->assertSame('KW-002', $penerimaan->no_kwitansi);
+        $this->assertSame('2026-07-03', $penerimaan->tanggal_pembayaran->toDateString());
+
+        $response = $this->actingAs($operator)->get('/distribusi-bhp/bos/penerimaan/lunas-bayar');
+        $this->assertCount(0, $response->viewData('page')['props']['items']['data']);
+    }
+
+    public function test_tandai_bayar_menolak_penerimaan_sekolah_lain(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->operator($sekolah);
+        $barang = $this->barang($sekolah);
+
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.penerimaan.store'), $this->payloadBiasa([
+                ['barang_id' => $barang->id, 'jumlah' => 10, 'harga_satuan' => 45000],
+            ]));
+
+        $penerimaan = Penerimaan::firstOrFail();
+
+        $lain = Sekolah::create(['nama_sekolah' => 'SMKN LAIN BAYAR', 'kota_kab' => 'Kota Bandung']);
+        $operatorLain = User::create([
+            'name' => 'Operator Lain',
+            'username' => 'op.terima.lain',
+            'password' => bcrypt('password'),
+            'sekolah_id' => $lain->id,
+            'password_changed_at' => now(),
+        ]);
+        $operatorLain->assignRole('operator_sekolah');
+
+        $this->actingAs($operatorLain)
+            ->patch(route('distribusi-bhp.bos.penerimaan.bayar', $penerimaan), [
+                'no_kwitansi' => 'KW-LAIN',
+                'tanggal_pembayaran' => '2026-07-03',
+            ])
+            ->assertForbidden();
+
+        $this->assertNull($penerimaan->fresh()->no_kwitansi);
     }
 
     public function test_barang_invalid_ditolak(): void

@@ -58,13 +58,15 @@ class PenerimaanController extends Controller
         $sumberDana = SumberDana::pilih($request->input('sumber_dana'));
 
         return SumberDana::dengan($sumberDana, function () use ($sekolahId, $sumberDana): Response {
-            // "Lunas bayar" = penerimaan yang sudah punya bukti bayar
-            // (no_kwitansi). Saldo awal tidak pernah punya kwitansi, jadi
-            // otomatis tidak ikut — itu memang bukan pembelian tunai.
+            // "Lunas Bayar" = barang sudah diterima tetapi transaksi keuangannya
+            // belum terjadi. Penandanya kwitansi/tanggal pembayaran yang kosong.
+            // Saldo awal tidak pernah punya kwitansi, jadi dikecualikan — itu
+            // memang bukan pembelian.
             $items = Penerimaan::with(['penyedia', 'details.barang'])
                 ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
-                ->whereNotNull('no_kwitansi')
-                ->where('no_kwitansi', '!=', '')
+                ->where('is_saldo_awal', false)
+                ->where(fn ($q) => $q->whereNull('no_kwitansi')->orWhere('no_kwitansi', ''))
+                ->whereNull('tanggal_pembayaran')
                 ->latest('id')
                 ->paginate(25)
                 ->withQueryString();
@@ -90,7 +92,8 @@ class PenerimaanController extends Controller
             'no_nota_invoice' => ['nullable', 'string', 'max:150'],
             'no_bast' => ['nullable', 'string', 'max:150'],
             'tanggal_bast' => ['nullable', 'date'],
-            'no_kwitansi' => ['nullable', 'string', 'max:150'],
+            'no_kwitansi' => ['nullable', 'string', 'max:150', 'required_with:tanggal_pembayaran'],
+            'tanggal_pembayaran' => ['nullable', 'date', 'required_with:no_kwitansi'],
             'penyedia_id' => [$isSaldoAwal ? 'nullable' : 'required', 'uuid', 'exists:bhp_penyedia,id'],
             'tanggal_titimangsa' => ['nullable', 'date'],
             'is_saldo_awal' => ['boolean'],
@@ -103,6 +106,8 @@ class PenerimaanController extends Controller
             'details.*.keterangan' => ['nullable', 'string', 'max:255'],
         ], [
             'details.*.barang_id.distinct' => 'Satu barang tidak boleh muncul lebih dari sekali dalam satu penerimaan.',
+            'tanggal_pembayaran.required_with' => 'Tanggal pembayaran wajib diisi bila No. Kwitansi diisi.',
+            'no_kwitansi.required_with' => 'No. Kwitansi wajib diisi bila tanggal pembayaran diisi.',
         ]);
 
         // Kombinasi is_saldo_awal × periode_tahun harus konsisten:
@@ -168,6 +173,31 @@ class PenerimaanController extends Controller
         });
     }
 
+    /**
+     * Catat pembayaran belakangan untuk penerimaan yang masih bertanda
+     * "Lunas Bayar" (barang sudah datang, transaksi keuangan belum terjadi).
+     */
+    public function tandaiBayar(Request $request, Penerimaan $penerimaan): RedirectResponse
+    {
+        $this->authorizeSekolah($request, $penerimaan);
+
+        if ($penerimaan->is_saldo_awal) {
+            return back()->with('error', 'Saldo awal bukan pembelian, jadi tidak perlu ditandai bayar.');
+        }
+
+        $validated = $request->validate([
+            'no_kwitansi' => ['required', 'string', 'max:150'],
+            'tanggal_pembayaran' => ['required', 'date'],
+        ], [
+            'no_kwitansi.required' => 'Nomor kwitansi wajib diisi saat menandai pembayaran.',
+            'tanggal_pembayaran.required' => 'Tanggal pembayaran wajib diisi saat menandai pembayaran.',
+        ]);
+
+        $penerimaan->update($validated);
+
+        return back()->with('success', 'Pembayaran penerimaan '.$penerimaan->no_bast.' berhasil dicatat.');
+    }
+
     public function destroy(Request $request, Penerimaan $penerimaan): RedirectResponse
     {
         $this->authorizeSekolah($request, $penerimaan);
@@ -202,6 +232,7 @@ class PenerimaanController extends Controller
                 'no_bast' => $validated['no_bast'] ?? null,
                 'tanggal_bast' => $validated['tanggal_bast'] ?? null,
                 'no_kwitansi' => $validated['no_kwitansi'] ?? null,
+                'tanggal_pembayaran' => $validated['tanggal_pembayaran'] ?? null,
                 'penyedia_id' => $validated['penyedia_id'] ?? null,
                 'tanggal_titimangsa' => $validated['tanggal_titimangsa'] ?? null,
                 'is_saldo_awal' => false,

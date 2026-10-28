@@ -290,6 +290,12 @@ class DistribusiBhpImportSeeder extends Seeder
                                 'no_nota_invoice' => $row->no_nota_invoice,
                                 'tanggal_bast' => $this->toDate($row->tanggal_bast),
                                 'no_kwitansi' => $row->no_kwitansi,
+                                // Sumber lama tidak punya tanggal pembayaran:
+                                // baris berkwitansi dianggap dibayar pada tanggal
+                                // titimangsa supaya tidak bertanda "Lunas Bayar".
+                                'tanggal_pembayaran' => $row->no_kwitansi
+                                    ? $this->toDate($row->tanggal_titimangsa ?? $row->tanggal_bast)
+                                    : null,
                                 'penyedia_id' => $penyediaId,
                                 'tanggal_titimangsa' => $this->toDate($row->tanggal_titimangsa),
                                 'is_saldo_awal' => (bool) $row->is_saldo_awal,
