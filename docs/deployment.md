@@ -125,6 +125,23 @@ Konfigurasi di `config/backup.php`; nilai per-environment lewat `.env`:
 Retensi default: 7 hari simpan semua, 16 hari harian, 8 minggu mingguan,
 4 bulan bulanan, 2 tahun tahunan, dan total maksimum 5000 MB.
 
+> **Paket wajib benar-benar terpasang.** `spatie/laravel-backup` beserta
+> `spatie/db-dumper`, `spatie/laravel-signal-aware-command`, dan
+> `spatie/temporary-directory` harus ada di `vendor/`. Bila `vendor/` menyimpang
+> dari `composer.lock`, `backup:run` gagal dengan
+> `Class "Spatie\Backup\Config\Config" not found` dan test
+> `BackupNotificationConfigTest` ikut merah. Verifikasi cepat:
+>
+> ```bash
+> composer install                 # pasang sesuai lock (direkomendasikan di server)
+> php -r '$l=json_decode(file_get_contents("composer.lock"),true);
+>   $i=json_decode(file_get_contents("vendor/composer/installed.json"),true);
+>   $a=array_column($l["packages"],"version","name");
+>   $b=array_column($i["packages"],"version","name");
+>   echo "hilang: ", implode(", ", array_diff(array_keys($a), array_keys($b))), "\n";
+>   echo "beda versi: ", count(array_filter($a, fn($v,$k)=>isset($b[$k]) && $b[$k]!==$v, ARRAY_FILTER_USE_BOTH)), "\n";'
+> ```
+
 Restore (v10 tidak menyediakan `backup:restore`, jadi lakukan manual):
 
 ```bash

@@ -129,6 +129,9 @@ Detail kontrak: `docs/requirements/distribusi-bhp-prd.md` dan
 ### B2 — Penerimaan
 - Catat dokumen (nota/invoice, BAST, kwitansi, penyedia, titimangsa) + detail barang.
 - Barang masuk menambah stok fisik; mendukung penandaan **saldo awal** + periode tahun.
+- **Lunas Bayar** = barang sudah datang tetapi transaksi keuangannya belum terjadi
+  (kwitansi kosong). Bukan tanda sudah dibayar. Halaman khusus menyediakan aksi
+  **Tandai Bayar** (No. Kwitansi + Tanggal Pembayaran).
 
 ### B3 — Pengajuan (pemohon)
 - Draft pengajuan (sumber dana, tanggal, item + jumlah diminta).
@@ -144,11 +147,17 @@ Detail kontrak: `docs/requirements/distribusi-bhp-prd.md` dan
   atomic per (jenis, sumber dana, tahun, bulan).
 - Dokumen wajib dibuat saat approve; dokumen tambahan (BAST, BAP, stok opname, buku)
   dibuat manual dan idempotent per jenis.
-- PDF per dokumen + Batch PDF dengan histori status (`bhp_{bos,bopd}_batch_dokumen`).
+- PDF per dokumen + Batch PDF (ZIP berisi satu PDF per dokumen) dengan histori status (`bhp_{bos,bopd}_batch_dokumen`).
 
 ### B6 — Laporan & Export
-- Laporan Stok (4-tier), Buku Pengeluaran, Kartu Barang, Kartu Persediaan (saldo berjalan).
-- Export Excel untuk stok, buku pengeluaran, dan kartu persediaan.
+- Laporan Stok (4-tier), Buku Pengeluaran, Buku Penerimaan (rekap barang masuk per
+  bulan), Kartu Barang, Kartu Persediaan (saldo berjalan), Rekonsiliasi Bulanan.
+- Export Excel untuk stok, buku pengeluaran, buku penerimaan, dan kartu persediaan.
+- Halaman read-only per jenis dokumen + cetak Buku Penerimaan (PDF A4 landscape).
+- Format cetak mengikuti template baku `sistem-manajemen-aset` dan **tidak
+  diseragamkan**: berkop untuk Nota Permintaan, Surat Penyaluran, BAST, BAP, dan
+  Stok Opname; tanpa kop untuk Surat Permintaan dan tiga buku besar; stok opname
+  memakai kertas F4 (210 × 330 mm).
 
 ### B7 — Impor Data Legacy
 - `DistribusiBhpImportSeeder`: impor master + penerimaan dari DB SQLite sumber;

@@ -3,9 +3,9 @@
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
 > sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
 > **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
-> Status terakhir: 418 passed / 1948 assertions (50 file Feature+Unit, 16
-> di antaranya domain Distribusi BHP). Coverage gate tetap wajib
-> dijalankan sebelum merge.
+> Status terakhir: 877 passed / 6007 assertions (96 file Feature+Unit, 37
+> di antaranya domain Distribusi BHP — termasuk hari kerja, profil sekolah, dan
+> penandatangan PDF). Coverage gate tetap wajib dijalankan sebelum merge.
 
 ## 1. Perintah
 
@@ -51,7 +51,7 @@ Status kini: **100% total, semua file 100%**.
   (`AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`)
   agar deterministik tanpa mengunci jam sistem.
 
-## 3. Matriks Cakupan (46 Feature + 4 Unit, termasuk 16 file BHP)
+## 3. Matriks Cakupan (92 Feature + 4 Unit, termasuk 37 file BHP)
 
 | File | Menjamin |
 |------|----------|
@@ -82,7 +82,7 @@ Status kini: **100% total, semua file 100%**.
 | `SekolahFlowFixTest` | Regresi alur sekolah |
 | Unit: `FortifyActionsTest`, `ModelRelationsTest`, `ProvidersTest` | Action reset/update, relasi & accessor `is_realisasi`, gate super_admin |
 
-### Distribusi BHP (16 file, 114 kasus)
+### Distribusi BHP (37 file, 402 kasus)
 
 | File | Menjamin |
 |------|----------|
@@ -100,9 +100,20 @@ Status kini: **100% total, semua file 100%**.
 | `BhpDokumenTambahanTest` | `generateTambahan` BAST/BAP/stok opname/buku, idempotent, tolak jenis tak dikenal, snapshot payload **ter-scope sekolah pengajuan** (payload sekolah A tidak memuat stok/pengeluaran sekolah B), guard permission |
 | `BhpDemoSmkn4KuninganSeederTest` | Dataset demo SMKN 4 Kuningan: jumlah barang/penerimaan/pengajuan/dokumen per sumber dana (82 dokumen termasuk 6 stok opname bulanan), idempotent saat dijalankan dua kali, tiga pejabat berlaku sepanjang semester, tidak menyentuh sekolah lain |
 | `BhpDemoSemesterBalanceTest` | Balance semester diturunkan langsung dari baris transaksi: rekonsiliasi bulanan = mutasi mentah, rantai saldo tidak putus, tidak ada stok negatif, buku penerimaan − buku pengeluaran = saldo akhir, approval sebagian memakai `jumlah_disetujui` |
-| `BhpDemoDokumenBalanceTest` | Cetak sama dengan sumbernya: Nota Permintaan, SPB (sisa stok bukan 0), SPPB, buku pengeluaran/penyaluran, **stok opname satu per bulan, bertanggal hari kerja terakhir, dan cocok saldo akhir bulan itu**, opname pada hari libur ditolak, PDF semua jenis |
+| `BhpDemoDokumenBalanceTest` | Cetak sama dengan sumbernya: Nota Permintaan, SPB (sisa stok bukan 0), SPPB, buku pengeluaran/penyaluran, **stok opname satu per bulan, bertanggal hari kerja terakhir, dan cocok saldo akhir bulan itu**, opname pada hari libur ditolak, PDF semua jenis, **tanggal dokumen berbahasa Indonesia (bukan `30 January 2026`) dan kolom tabel buku bukan tanggal ISO mentah** |
 | `HariKerjaTest` | Kalender hari kerja: Sabtu/Minggu libur tanpa memanggil API, libur nasional dari `tanggalmerah.upset.dev` dihitung libur, cuti bersama tetap hari kerja, hanya `type=holiday` yang diminta, hasil di-cache sehari, `config/hari_libur.php` tetap berlaku saat API mati, hari kerja terakhir mundur melewati libur |
-| `BhpPdfDokumenTest` | Rendering PDF per dokumen + batch kompilasi, `safeFilename`, histori `bhp_{bos,bopd}_batch_dokumen` |
+| `BhpPdfDokumenTest` | Rendering PDF per dokumen + batch ZIP (satu PDF per dokumen), `safeFilename`, histori `bhp_{bos,bopd}_batch_dokumen` |
+| `BhpPdfFormatTest` | **Format cetak baku**: ukuran & orientasi tiap jenis diperiksa dari `MediaBox` PDF jadi (A4 portrait/landscape, stok opname F4 210×330 mm), pemakaian kop per jenis (berkop vs tanpa kop), kop selalu membawa logo provinsi, batch ZIP mempertahankan format asli tiap dokumen |
+| `BhpBukuPenerimaanTest` | Buku Penerimaan: hanya periode terpilih, tanpa filter memuat saldo awal, isolasi per sekolah, keterangan `Lunas Bayar` mengikuti bulan pembayaran, halaman + export XLSX + cetak PDF, penolakan tanpa permission, tenant lain, heading tetap ada saat kosong |
+| `BhpRekonsiliasiBulananTest` | Rekonsiliasi bulanan menyambung saldo antar bulan, anomali saldo negatif ditandai, terpisah per sumber dana & sekolah, filter rentang memotong kolom tanpa memutus saldo berkesinambungan, tolak `bulan_awal > bulan_akhir`, saldo buka negatif dilaporkan, saldo awal tiap tahun dijumlah, rentang tak wajar di-clamp |
+| `BhpBarangImportTest` | Import barang: buat barang + harga, nama sama menambah varian harga, duplikat nama+harga ditolak, NUSP berurutan per kode rekening, all-or-nothing, rekening tanpa `kode_barang` ditolak, harga nol/negatif ditolak, berkas tanpa baris data ditolak, harga berformat ribuan diterima, mengikuti sumber dana BOPD, unduh template, permission |
+| `BhpMasterDataHalamanTest` | Halaman master data BHP (bukan hanya jalur `store`): daftar & CRUD penyedia, daftar & assign kode rekening |
+| `BhpLaporanDokumenListTest` | Halaman daftar dokumen per jenis: semua jenis terbuka, nomor dokumen tampil, identitas memakai nomor Nota Permintaan (bukan UUID) |
+| `BhpReviewPengajuanHttpTest` | Jalur sukses Review Pengajuan lewat HTTP: halaman review, approval dengan koreksi jumlah, penolakan |
+| `BhpRouteSweepTest` | Sapu seluruh halaman GET BHP untuk setiap peran di tiga bentuk route (`/bos/`, `/bopd/`, legacy tanpa prefix): menangkap halaman 500, sumber dana salah, dan tautan 403 |
+| `BhpSumberDanaPrefixTest` | Halaman berprefix `{bos\|bopd}` wajib memakai sumber dana dari URL, bukan default BOS (termasuk parameter export/cetak) |
+| `KodeRekeningBhpSeederTest` | `kode_barang` pada kode rekening wajib terisi di seeder — tanpanya `NuspService` melempar `RuntimeException` dan Tambah Barang mustahil dari UI |
+| `PdfPenandatanganSourceTest` | Sumber tunggal penandatangan PDF (`master_data_pegawai` + `master_data_jabatan` + `master_data_penugasan_pegawai`): label dibaca dari DB, tidak ada jabatan hard-coded di template, terisolasi per sekolah |
 | `BhpLaporanTest` | `laporanStok` 4-tier (agregasi `rekapPerBarang` tanpa N+1), isolasi per sumber dana, `bukuPengeluaran`, `kartuBarang`, export XLSX stok/pengeluaran |
 | `BhpLaporanPeriodeTest` | **Regresi laporan bulanan**: transaksi setelah akhir periode tidak bocor ke laporan stok, reservasi hanya dihitung sampai akhir periode, saldo awal mulai awal tahun periode, buku pengeluaran hanya bulan terpilih, kartu persediaan = saldo awal + mutasi periode + saldo akhir (sama dengan laporan stok), default bulan berjalan, nama berkas export berperiode, `bulan` di luar rentang ditolak |
 | `BhpDokumenSnapshotPeriodeTest` | **Snapshot dokumen mengikuti tanggal dokumen**: stok opname bertanggal lampau memakai posisi stok tanggal itu dan tidak berubah setelah approval baru, buku pengeluaran/penyaluran bertanggal lampau hanya memuat bulan itu, kolom nilai memakai harga terakhir, referensi memakai nomor Nota Permintaan (bukan UUID), pejabat mengikuti tanggal pengajuan |
@@ -137,7 +148,15 @@ Status kini: **100% total, semua file 100%**.
 | `MasterDataJabatanTest` | CRUD jabatan via HTTP, kode unik & format, jabatan terpakai dinonaktifkan bukan dihapus, isolasi sekolah 404, form pegawai tanpa field jabatan |
 | `MasterDataPenugasanHttpTest` | Simpan/akhiri/mutasi via HTTP, PLT menutup definitif, overlap jadi flash error, cross-tenant 404, permission granular |
 | `InventarisSnapshotPejabatTest` | Dokumen lampau memakai pejabat saat itu, dokumen baru memakai pejabat aktif, snapshot tidak berubah setelah master diedit, tanpa pejabat tetap bisa cetak, fakta integritas memakai jabatan per tanggal, kolom `jabatan`/`ruang` pegawai sudah hilang |
-| `Inventaris*Test` (12 file) | Alur inventaris: sinkronisasi, mutasi/pengembalian, dokumen/QR/label, ekspor, tenant isolation, permission |
+| `Inventaris*Test` (14 file) | Alur inventaris: sinkronisasi, mutasi/pengembalian, dokumen/QR/label/BA, ekspor, koreksi, registrasi bersamaan, tenant isolation, permission |
+| `PencatatanBmHttpFlowTest` | Alur HTTP Pencatatan BM: halaman inventaris, tambah/ubah unit, validasi ruang & kondisi, mutasi |
+| `MasterDataUiIntegrationTest` | Kontrak props controller ↔ halaman Inertia (controller berhenti mengirim prop yang dibaca TSX = halaman blank tanpa error PHP) |
+| `NonaktifUserTest` | User dinonaktifkan tidak dapat login / memakai sesi lama |
+| `CaseInsensitiveSearchTest` | Kompilasi `ILIKE` di PostgreSQL (SQLite test tidak peka huruf besar/kecil) dan larangan `LIKE` mentah di controller |
+| `QueryLockSafetyTest` | Larangan `FOR UPDATE` pada query agregat (PostgreSQL menolak SQLSTATE 0A000, SQLite membuang klausa sehingga lolos suite lokal) |
+| `LocaleIndonesiaTest` | Terjemahan `lang/id` untuk pesan validasi/auth/pagination yang dipakai, validator berbahasa Indonesia, kunci hilang jatuh ke fallback (bukan kunci mentah), zona waktu app mengikuti `APP_TIMEZONE` |
+| `BackupNotificationConfigTest` | Kunci notifikasi `backup.notifications.notifications.*` lengkap & dibisukan lewat channel kosong, `BackupConfig::fromArray(config('backup'))` valid (kegagalan di sini = `NotificationCouldNotBeSent` pada backup yang sebenarnya sudah sukses), exclude `vendor`/`node_modules`/`.git`/`.env` |
+| `BackupScheduleTest` | Jadwal backup akhir bulan (`dailyAt` + `isLastOfMonth()`): `lastDayOfMonth()` statis dan filter `when()` tidak dievaluasi `isDue()` |
 
 ## 5. Batasan Diketahui
 
@@ -151,3 +170,10 @@ Status kini: **100% total, semua file 100%**.
   dashboard) diuji lewat helper kecil ber-argumen opsional
   (`AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`)
   agar deterministik tanpa mengunci jam sistem.
+- `APP_LOCALE` dikunci `en` di `phpunit.xml` agar suite hermetis, sedangkan
+  produksi memakai terjemahan `lang/id`. Konsekuensinya: pesan Indonesia dan
+  nama bulan/hari Indonesia **tidak** otomatis teruji — keduanya dikunci
+  eksplisit di `LocaleIndonesiaTest` dan
+  `BhpDemoDokumenBalanceTest::test_tanggal_dokumen_berbahasa_indonesia`.
+- Tidak ada test yang membuka file PDF/Excel hasil unduhan secara visual;
+  format diperiksa struktural (`MediaBox`, isi sel, teks HTML sumber).

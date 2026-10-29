@@ -47,8 +47,13 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
   - Payload: `file` (xlsx/xls, max 10MB, template `/templates/template_import_spj.xlsx`), `bulan` (1-12).
   - Kolom template (urutan tetap): No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\*.
   - Result: **All-or-nothing** — pre-validasi seluruh baris (kolom wajib, BA TGL valid/serial Excel, `kode_barang` harus ada di master katalog → `nama_barang`+`jenis_aset` di-lookup, volume &gt; 0, harga ≥ 0); satu baris invalid = batal semua + flash error per baris. Baris `no_spk` sama = 1 dokumen SPK multi-item (sama seperti UI). Limit 5.000 baris. Diblokir saat laporan terkunci. Tercatat di log `sistem` (event `import-spj`) **dengan flag `sembunyi_dari_admin_kcd`** — log hanya terlihat oleh super_admin.
-- **`DELETE /pelaporan-bm/spj/{id}`**: Hapus item barang SPJ (beserta realisasi terkait, transaksi DB).
+- **`DELETE /pelaporan-bm/spj/{spj}`**: Hapus item barang SPJ (beserta realisasi terkait, transaksi DB).
+- **`PUT /pelaporan-bm/spj/{spj}`**: Ubah satu item SPJ.
 - **`DELETE /pelaporan-bm/spj/spk/{no_spk}`**: Hapus seluruh item satu dokumen SPK + realisasi terkait (`no_spk` wildcard).
+- **`GET /pelaporan-bm/unduh`**
+  - Parameter: `bulan` (default bulan berjalan).
+  - Return: rekap SPJ bulan itu sebagai `.xlsx`; `204` + cookie
+    `download_status=empty` bila tidak ada data.
 - **`GET /pelaporan-bm/cari-barang`**
   - Parameter: `q` (keyword), `kategori`.
   - Return JSON: daftar kode barang leaf (bukan prefix parent) dari `master_data_kode_barang` — matching lowercase + escape wildcard LIKE, limit 100 (replika `legacy/ajax_cari_barang.php`); fallback pencarian riwayat SPJ sekolah (limit 10) bila katalog kosong.
@@ -94,14 +99,32 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
 - **`POST /pelaporan-bm/cetak/check`**
   - Payload: `bulan`, `sekolah_id` (opsional jika role user)
   - Return JSON: `{ status: 'ok'|'empty', count: number, message: string }`.
-- **`GET /pelaporan-bm/cetak/export`**
-  - Parameter: `bulan`, `sekolah_id`
-  - Return: Unduhan `.xlsx` via `maatwebsite/excel` (26 Kolom format KCD Wilayah X).
+- **`GET /pelaporan-bm/cetak/unduh`** (throttle 30/menit)
+  - Parameter: `bulan`, `tahun`, `sekolah_id`
+  - Return: Unduhan `.xlsx` (26 Kolom format KCD Wilayah X). Bila tidak ada
+    data → `204 No Content` + cookie `download_status=empty` (dibaca modal
+    progres di frontend), bukan berkas kosong.
 
 ### E. Administrasi & Kunci Laporan (`app/Http/Controllers/PelaporanBm/KunciLaporanController.php`)
 - **`POST /pelaporan-bm/kunci-laporan/toggle`** (Admin only)
   - Payload: `sekolah_id`, `bulan`, `tahun`
   - Return JSON: `{ status: 'disetujui'|'draft' }`.
+- **`POST /pelaporan-bm/kunci-laporan/status`** (Admin only)
+  - Payload: `sekolah_id`, `bulan`, `tahun`, `status`.
+  - Return JSON: status terbaru; dipakai tombol verifikasi di dashboard admin.
+
+### E2. Target Acuan & Rekapan (`AcuanController`, `RekapanController`)
+- **`GET /pelaporan-bm/acuan`** — Inertia `PelaporanBm/Acuan/Index`; filter
+  `bulan`, `tahun`, `sekolah_id`, `search_satuan`. Default bulan = bulan berjalan
+  − 1 (Januari dibulatkan mundur ke Desember).
+- **`POST /pelaporan-bm/acuan`** — tambah satu baris acuan manual.
+- **`POST /pelaporan-bm/acuan/import`** — import XLSX (all-or-nothing, batas
+  5.000 baris, `bulan` dari request, target sekolah via NPSN).
+- **`DELETE /pelaporan-bm/acuan/{acuan}`** dan
+  **`POST /pelaporan-bm/acuan/destroy-all`** — hapus satu / semua acuan pada
+  periode terpilih (throttle 10/menit).
+- **`GET /pelaporan-bm/rekapan`** — Inertia `PelaporanBm/Rekapan/Index`; progres
+  realisasi per kodering, urut laporan TUNTAS dulu lalu alfabetis.
 
 ### F. Otentikasi & Rotasi Password (`app/Http/Controllers/Auth/PasswordExpiredController.php`)
 - **`GET /ubah-password`**
@@ -109,6 +132,26 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
 - **`POST /ubah-password`**
   - Payload: `current_password` (string), `password` (string, min. 8 karakter, huruf besar/kecil, angka, simbol, beda dari password lama), `password_confirmation` (string).
   - Result: Mengubah password akun dan memperbarui `password_changed_at = now()`.
+
+### F2. Administrasi Pengguna, Kode Barang & Log (`app/Http/Controllers/Admin/*`, `PelaporanBm/*`)
+
+Semua rute `admin/*` dijaga `role:super_admin|admin_kcd`; sub-rute menambah
+permission granular.
+
+| Method | Path | Permission | Ket |
+|---|---|---|---|
+| GET/POST | `/admin/user` | `kelola-user` | `UserController::index`/`store` |
+| PUT/DELETE | `/admin/user/{user}` | `kelola-user` | dilindungi dari hapus diri & hapus `super_admin` |
+| GET | `/admin/log-aktivitas` | `lihat-log-aktivitas` | `ActivityLogController::index` (filter event/subject/dari-sampai/q/sekolah) |
+| GET/POST | `/admin/kode-barang` | — | `KodeBarangController` (katalog pagu) |
+| POST | `/admin/kode-barang/import` | — | throttle 10/menit, maks 20.000 baris |
+| DELETE | `/admin/kode-barang/{kodeBarang}` | — | hapus satu kode |
+| GET | `/admin/log-error` | `viewLogViewer` | viewer `opcodesio/log-viewer` (super_admin + admin_kcd) |
+
+Fortify menyediakan `POST /logout`, `GET|POST /user/confirm-password`,
+`PUT /user/password`, `PUT /user/profile-information`,
+`GET /user/confirmed-password-status`, dan Sanctum `GET /sanctum/csrf-cookie`
+sebagai rute vendor — tidak didokumentasikan ulang di sini.
 
 ### G. Migrasi Data Legacy (console command)
 - **`php artisan app:migrasi-data-lama`** (`app/Console/Commands/MigrasiDataLamaCommand.php`)
@@ -131,8 +174,13 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 `HasSumberDanaTable::resolveRouteBinding`.
 
 | Method | Path | Permission | Controller::method |
-|---|---|---|---|---|
+|---|---|---|---|
 | GET | `/distribusi-bhp/dashboard` | `lihat-distribusi-bhp` | `DashboardController::index` |
+| GET/PUT | `/distribusi-bhp/settings` | `kelola-master-bhp` | `SettingsController::edit` / `update` — hanya `format_nomor` (paper & orientasi hardcode) |
+| GET/POST | `/distribusi-bhp/divisi` | `kelola-divisi-bhp` | `DivisiController::index` / `store` |
+| PUT/DELETE | `/distribusi-bhp/divisi/{divisi}` | `kelola-divisi-bhp` | `DivisiController::update` / `destroy` — hapus ikut menghapus akun operator; ditolak bila masih ada pengajuan |
+| PUT | `/distribusi-bhp/divisi/operator/{operator}/password` | `kelola-divisi-bhp` | `DivisiController::resetPassword` |
+| PUT | `/distribusi-bhp/divisi/operator/{operator}/toggle` | `kelola-divisi-bhp` | `DivisiController::toggleActive` |
 | GET | `/distribusi-bhp/pengajuan` | `lihat-distribusi-bhp` | `PengajuanController::index` |
 | POST | `/distribusi-bhp/pengajuan` | `kelola-pengajuan-bhp` | `PengajuanController::store` |
 | PUT | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::update` — hanya draft |
@@ -150,8 +198,11 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 | POST | `/distribusi-bhp/master/barang/import` | `kelola-barang-bhp` | `BarangController::import` — import Excel (all-or-nothing, max 1000 baris, throttle 10/menit). Kolom: Kode Rekening, Nama Barang, Satuan, Harga Satuan. Kode Barang/NUSP di-generate otomatis |
 | POST | `/distribusi-bhp/master/barang/{barang}/harga` | `kelola-barang-bhp` | `BarangController::storeHarga` — `sumber_dana` wajib |
 | PUT/DELETE | `/distribusi-bhp/master/harga-barang/{harga}` | `kelola-barang-bhp` | `BarangController::updateHarga` / `destroyHarga` |
-| GET/POST/PUT/DELETE | `/distribusi-bhp/penyedia` | `lihat-distribusi-bhp` (read) / `kelola-penyedia-bhp` (write) | `PenyediaController` |
+| GET/POST/PUT/DELETE | `/distribusi-bhp/penyedia` | `lihat-distribusi-bhp` (read) / `kelola-penyedia-bhp` (write) | `PenyediaController::index`/`store`/`update`/`destroy` |
+| PUT/DELETE | `/distribusi-bhp/penyedia/{penyedia}` | `kelola-penyedia-bhp` | `PenyediaController::update` / `destroy` |
 | GET/POST | `/distribusi-bhp/penerimaan` | `kelola-penerimaan-bhp` | `PenerimaanController` |
+| PATCH | `/distribusi-bhp/penerimaan/{penerimaan}/pembayaran` | `kelola-penerimaan-bhp` | `PenerimaanController::tandaiBayar` — isi No. Kwitansi + Tanggal Pembayaran; baris keluar dari daftar Lunas Bayar |
+| GET | `/distribusi-bhp/penerimaan/lunas-bayar` | `kelola-penerimaan-bhp` | `PenerimaanController::lunasBayar` — penerimaan yang barangnya sudah datang tetapi kwitansinya masih kosong |
 | DELETE | `/distribusi-bhp/penerimaan/{penerimaan}` | `kelola-penerimaan-bhp` | `PenerimaanController` — hapus **seluruh** saldo awal (header + semua detail) milik sekolah sendiri yang belum dipakai |
 | GET/POST | `/distribusi-bhp/saldo-awal` | `kelola-penerimaan-bhp` | `SaldoAwalController` — halaman saldo awal (filter `sumber_dana`, `periode`) |
 | DELETE | `/distribusi-bhp/saldo-awal/{detail}` | `kelola-penerimaan-bhp` | `SaldoAwalController` — hapus **satu barang** saldo awal (barang lain tetap; header ikut terhapus bila detail habis). Ditolak bila barang dipakai pengajuan aktif (submitted/approved) |
@@ -163,39 +214,51 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 | POST | `/distribusi-bhp/pengajuan/{pengajuan}/dokumen/tambahan` | `cetak-dokumen-bhp` | `DokumenController::tambahan` |
 | GET | `/distribusi-bhp/laporan` | `lihat-distribusi-bhp` | `LaporanController::index` |
 | GET | `/distribusi-bhp/laporan/kartu-persediaan` | `lihat-distribusi-bhp` | `LaporanController::kartuPersediaan` |
-| GET | `/distribusi-bhp/laporan/export` | `cetak-dokumen-bhp` | `LaporanController::export` |
-| GET | `/distribusi-bhp/{bos,bopd}/laporan/bast-internal` | `lihat-distribusi-bhp` | `LaporanController::bastInternal` — view dokumen BAST |
-| GET | `/distribusi-bhp/{bos,bopd}/laporan/berita-acara-pemeriksaan` | `lihat-distribusi-bhp` | `LaporanController::bap` — view dokumen BAP |
-| GET | `/distribusi-bhp/{bos,bopd}/laporan/buku-pengeluaran` | `lihat-distribusi-bhp` | `LaporanController::bukuPengeluaranPage` — view pengajuan approved |
-| GET | `/distribusi-bhp/{bos,bopd}/laporan/buku-penyaluran` | `lihat-distribusi-bhp` | `LaporanController::bukuPenyaluran` — view dokumen penyaluran |
-| GET | `/distribusi-bhp/{bos,bopd}/laporan/stok-opname` | `lihat-distribusi-bhp` | `LaporanController::stokOpname` — view dokumen stok opname |
-| GET | `/distribusi-bhp/{bos,bopd}/laporan/surat-permintaan-barang` | `lihat-distribusi-bhp` | `LaporanController::suratPermintaan` — view surat permintaan |
-| GET | `/distribusi-bhp/{bos,bopd}/laporan/surat-perintah-penyaluran` | `lihat-distribusi-bhp` | `LaporanController::suratPenyaluran` — view surat penyaluran |
-| GET | `/distribusi-bhp/{bos,bopd}/laporan/berita-acara-serah-terima` | `lihat-distribusi-bhp` | `LaporanController::bastSerahTerima` — view BAST serah terima |
-| GET | `/distribusi-bhp/{bos,bopd}/penerimaan/lunas-bayar` | `kelola-penerimaan-bhp` | `PenerimaanController::lunasBayar` — view penerimaan lunas |
-Total: **25 rute** (prefix distribusi-bhp), plus **25 rute × 2** (prefix
-`distribusi-bhp/bos/` dan `distribusi-bhp/bopd/`) dan **8 halaman read-only**
-(daftar dokumen per jenis). Sidebar menu mengarah ke rute per-sumber-dana
-(`/distribusi-bhp/{bos,bopd}/...`); flat routes tetap didukung untuk
-backward compatibility. Rute bos/bopd adalah duplikat dari tabel di atas
-dengan prefix tambahan, permission sama.
+| GET | `/distribusi-bhp/laporan/export` | `cetak-dokumen-bhp` | `LaporanController::export` — XLSX stok/pengeluaran/penerimaan/kartu persediaan per periode |
+| GET | `/distribusi-bhp/laporan/bast-internal` | `lihat-distribusi-bhp` | `LaporanController::bastInternal` — view dokumen BAST |
+| GET | `/distribusi-bhp/laporan/berita-acara-pemeriksaan` | `lihat-distribusi-bhp` | `LaporanController::bap` — view dokumen BAP |
+| GET | `/distribusi-bhp/laporan/buku-pengeluaran` | `lihat-distribusi-bhp` | `LaporanController::bukuPengeluaranPage` — view pengajuan approved |
+| GET | `/distribusi-bhp/laporan/buku-penerimaan` | `lihat-distribusi-bhp` | `LaporanController::bukuPenerimaanPage` — rekap barang masuk per bulan |
+| GET | `/distribusi-bhp/laporan/buku-penerimaan/cetak` | `cetak-dokumen-bhp` | `LaporanController::cetakBukuPenerimaan` — PDF A4 landscape tanpa kop, tanggal `dd-mm-yyyy` |
+| GET | `/distribusi-bhp/laporan/buku-penyaluran` | `lihat-distribusi-bhp` | `LaporanController::bukuPenyaluran` — view dokumen penyaluran |
+| GET | `/distribusi-bhp/laporan/stok-opname` | `lihat-distribusi-bhp` | `LaporanController::stokOpname` — view dokumen stok opname |
+| GET | `/distribusi-bhp/laporan/surat-permintaan-barang` | `lihat-distribusi-bhp` | `LaporanController::suratPermintaan` — view surat permintaan |
+| GET | `/distribusi-bhp/laporan/surat-perintah-penyaluran` | `lihat-distribusi-bhp` | `LaporanController::suratPenyaluran` — view surat penyaluran |
+| GET | `/distribusi-bhp/laporan/berita-acara-serah-terima` | `lihat-distribusi-bhp` | `LaporanController::bastSerahTerima` — view BAST serah terima |
+
+Total: **61 rute flat** (prefix `/distribusi-bhp`), ditambah **48 rute × 2**
+untuk prefix `/distribusi-bhp/bos/` dan `/distribusi-bhp/bopd/` — total **157
+rute** terdaftar (`php artisan route:list --path=distribusi-bhp`). Sidebar
+mengarah ke rute per-sumber-dana (`/distribusi-bhp/{bos,bopd}/...`); flat route
+tetap didukung untuk backward compatibility dan default ke `BOS`. Rute
+bos/bopd adalah duplikat dari tabel di atas dengan prefix tambahan, permission
+sama. Rute flat non-per-dana (dashboard, settings, divisi, penyedia, master
+kode rekening/barang) hanya didaftarkan sekali.
 
 ### I. Master Data Sekolah (`app/Http/Controllers/Master/*`, prefix `/master-data`)
 
-Rute generic lintas domain (di luar `distribusi-bhp`). Dijaga permission
-`kelola-master-data-sekolah` (admin KCD, super admin, operator sekolah).
+Rute generic lintas domain (di luar `distribusi-bhp`). Dua kelompok:
+
+- **Profil sekolah** — dijaga `kelola-master-data-sekolah`.
+- **Master aset sekolah** (ruang, pegawai, jabatan, penugasan) — dijaga
+  permission granular per sub-prefix, bukan `kelola-master-data-sekolah`.
+
 `sekolah_id` selalu dari user login — operator hanya menyentuh sekolahnya.
 
-| Method | Path | Controller::method |
-|---|---|---|
+| Method | Path | Controller::method | Permission |
+|---|---|---|---|
 | GET/POST | `/master-data/jabatan` | `JabatanController::index`/`store` | `kelola-jabatan-bm` |
 | PUT/DELETE | `/master-data/jabatan/{jabatan}` | `JabatanController::update`/`destroy` | `kelola-jabatan-bm` |
 | GET/POST | `/master-data/penugasan` | `PenugasanPegawaiController::index`/`store` | `kelola-penugasan-pegawai-bm` |
 | PUT | `/master-data/penugasan/{penugasan}` | `PenugasanPegawaiController::update` | `kelola-penugasan-pegawai-bm` |
 | PUT | `/master-data/penugasan/{penugasan}/akhiri` | `PenugasanPegawaiController::akhiri` | `kelola-penugasan-pegawai-bm` |
 | PUT | `/master-data/penugasan/{penugasan}/mutasi` | `PenugasanPegawaiController::mutasi` | `kelola-penugasan-pegawai-bm` |
-| GET | `/master-data/profil-sekolah` | `ProfilSekolahController::edit` |
-| PUT | `/master-data/profil-sekolah` | `ProfilSekolahController::update` |
+| GET/POST | `/master-data/ruang` | `RuangController::index`/`store` | `kelola-ruang-bm` |
+| PUT/DELETE | `/master-data/ruang/{ruang}` | `RuangController::update`/`destroy` | `kelola-ruang-bm` |
+| GET/POST | `/master-data/pegawai` | `PegawaiController::index`/`store` | `kelola-pegawai-bm` |
+| PUT/DELETE | `/master-data/pegawai/{pegawai}` | `PegawaiController::update`/`destroy` | `kelola-pegawai-bm` |
+| GET | `/master-data/profil-sekolah` | `ProfilSekolahController::edit` | `kelola-master-data-sekolah` |
+| PUT | `/master-data/profil-sekolah` | `ProfilSekolahController::update` | `kelola-master-data-sekolah` |
 
 Payload penting:
 

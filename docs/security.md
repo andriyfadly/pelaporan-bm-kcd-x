@@ -3,7 +3,7 @@
 > Cakupan: RBAC, isolasi tenant, auth, proteksi input, logging audit.
 > Operasional produksi: `docs/deployment.md`.
 
-## 1. Matriks RBAC (aktual, 27 permission + 5 role)
+## 1. Matriks RBAC (aktual, 32 permission + 5 role)
 
 ### Pelaporan BM (10 permission)
 
@@ -24,6 +24,7 @@
 |-----------|:-----------:|:---------:|:----------------:|:----------------:|:---------------:|
 | Lihat modul BHP (`lihat-distribusi-bhp`) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Kelola master (`kelola-master-bhp`) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Assign kode rekening (`assign-kode-rekening-bhp`) | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Kelola penerimaan (`kelola-penerimaan-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Buat/submit pengajuan (`kelola-pengajuan-bhp`) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Review (`review-pengajuan-bhp`) | ✅ | ✅ | ❌ | ❌ | ❌ |
@@ -32,6 +33,10 @@
 | Kelola divisi (`kelola-divisi-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Kelola penyedia (`kelola-penyedia-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Kelola barang (`kelola-barang-bhp`) | ✅ | ✅ | ✅ | ❌ | ❌ |
+
+Kolom "assign" pada Master Kode Rekening hanya dirender untuk pemegang
+`assign-kode-rekening-bhp` (admin KCD), karena endpoint
+`POST /master/kode-rekening/batch-assign` dijaga izin itu.
 
 Role `operator_divisi` adalah role baru khusus BHP (pemohon lintas sekolah,
 tanpa akses master/approval). Wewenang dihitung server-side via middleware
@@ -229,5 +234,5 @@ Rute log error (`/admin/log-error` via opcodesio/log-viewer): `role:super_admin`
 - [ ] `TURNSTILE_ENABLED=true` + key valid; HTTPS + cookie secure
 - [ ] `composer audit` bersih; `npm audit` ditinjau
 - [ ] Backup DB terjadwal & pernah diuji restore
-- [x] Test regresi: `php artisan test --compact` (418 test, 1948 assertion), `npx tsc --noEmit`, Pint
+- [x] Test regresi: `php artisan test --compact` (877 test, 6007 assertion), `npx tsc --noEmit`, Pint
 - [ ] `composer test-coverage` tetap wajib dijalankan sebagai gate coverage sebelum merge

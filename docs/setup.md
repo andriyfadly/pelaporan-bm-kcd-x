@@ -46,7 +46,7 @@ php artisan migrate --seed
 # - Akun Developer:  username `developer`  (password: `#SidiptaBeuKCD10`, role: `super_admin`)
 # - Akun Admin KCD:  username `admin_kcd`  (password: `#SidiptaBeuKCD10`, role: `admin_kcd`)
 # - Akun Operator:   username `{npsn}-admin`  (password: `#SidiptaKCD10`, role: `operator_sekolah`, wajib ubah password perdana)
-# - Permission & role BHP (19 permission, 5 role termasuk `operator_divisi`)
+# - Permission & role (32 permission, 5 role termasuk `operator_divisi`)
 #
 # Catatan: KodeSekolahSeeder mengisi NPSN secara otomatis dari tabel
 # `data_barang_acuan` di file bm-kcd-x.sql. Tanpa file tersebut NPSN tetap
@@ -90,6 +90,12 @@ composer test
 # atau ada satu file < 80% (lihat tests/coverage-per-file.php)
 composer test-coverage
 ```
+
+> **Jangan jalankan `composer update` untuk sekadar memperbaiki test yang merah.**
+> `vendor/` harus cocok dengan `composer.lock`. Bila `vendor/` menyimpang (mis.
+> paket ada di lock tetapi tidak terpasang), test seperti
+> `BackupNotificationConfigTest` gagal dengan pesan "Class not found" padahal
+> kodenya benar. Pulihkan dengan `composer install`.
 
 ---
 

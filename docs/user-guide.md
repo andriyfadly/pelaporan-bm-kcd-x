@@ -203,7 +203,13 @@ dipakai pengajuan aktif tidak dapat dihapus.
 
 1. Dari halaman pengajuan, buka **Dokumen**.
 2. **PDF** untuk mengunduh satu dokumen, atau **Unduh Batch PDF** untuk semua
-   dokumen sekaligus.
+   dokumen sekaligus. Batch menghasilkan **berkas ZIP** berisi satu PDF per
+   dokumen — bukan satu PDF gabungan — supaya tiap dokumen tetap pada kertas dan
+   orientasinya sendiri (Surat Permintaan landscape, Stok Opname F4).
+   Kop surat hanya ada pada dokumen yang memang berkop: Nota Permintaan,
+   Surat Penyaluran, BAST, BAP, dan Stok Opname. Surat Permintaan dan tiga buku
+   besar (Pengeluaran, Penerimaan, Penyaluran) sengaja tanpa kop, mengikuti
+   template baku.
 3. Tombol **+ BAST / BAP / Stok Opname** membuat dokumen tambahan (sekali saja
    per jenis; nomornya tetap bila diklik ulang). Snapshot pada dokumen stok
    opname/buku hanya berisi data sekolah pengajuan.
@@ -214,18 +220,23 @@ dipakai pengajuan aktif tidak dapat dihapus.
 4. Operator divisi hanya dapat membuka dokumen pengajuan divisinya sendiri;
    dokumen divisi lain ditolak (403).
 
+> **Format tanggal.** Seluruh tanggal pada dokumen cetak memakai bahasa
+> Indonesia (`30 Juni 2026`, `Selasa`), sedangkan kolom tanggal pada tabel buku
+> memakai `dd-mm-yyyy` (`30-06-2026`) mengikuti template baku.
+
 ### 6.7 Melihat Laporan
 
-1. Buka **Laporan Stok** (`/distribusi-bhp/{bos|bopd}/laporan`), pilih sumber dana BOS/BOPD (lewat grup sidebar).
-2. Sub-grup **Laporan** di sidebar menyediakan halaman read-only per jenis:
+1. Buka **Laporan Stok** (`/distribusi-bhp/{bos|bopd}/laporan`), pilih sumber dana BOS/BOPD (lewat grup sidebar).2. Sub-grup **Laporan** di sidebar menyediakan halaman read-only per jenis:
    - **BAST Internal**: dokumen BAST (`jenis=bast`)
    - **Berita Acara Pemeriksaan**: dokumen BAP
    - **Buku Pengeluaran**: item yang sudah disetujui
+   - **Buku Penerimaan**: rekap barang masuk per bulan (tanggal, BAST,
+     nota/invoice, penyedia, barang, jumlah, harga, nilai) + tombol cetak PDF
    - **Buku Penyaluran**: dokumen penyaluran
    - **Kartu Persediaan**: mutasi masuk/keluar dengan saldo berjalan
    - **Stok Opname**: dokumen stok opname
-3. **Export Excel** tersedia untuk stok, buku pengeluaran, dan kartu
-   persediaan. Kartu persediaan wajib memilih barang yang sealiran sumber
+3. **Export Excel** tersedia untuk stok, buku pengeluaran, buku penerimaan, dan
+   kartu persediaan. Kartu persediaan wajib memilih barang yang sealiran sumber
    dana laporan; jika tidak cocok, sistem menampilkan pesan error (bukan
    halaman rusak).
 

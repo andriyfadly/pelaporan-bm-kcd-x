@@ -7,19 +7,22 @@
 
 | Lapisan | Teknologi | Versi |
 |---------|-----------|-------|
-| Backend | Laravel | 13.37 (PHP 8.4) |
-| Frontend | Inertia.js React + TypeScript | Inertia 3, React 19, TS 7 |
+| Backend | Laravel | 13.39 (PHP 8.4) |
+| Frontend | Inertia.js React + TypeScript | Inertia 3.5, React 19, TS 7 |
 | Styling / build | Tailwind CSS 4, Vite 8 | Node >= 22.12 |
 | Database | **PostgreSQL** (dev & prod) | PDO pgsql |
 | Auth | Fortify 1.41 (session) + 2FA TOTP + passkeys (webauthn) | — |
 | RBAC | spatie/laravel-permission | 8.3.2 |
 | Activity log | spatie/laravel-activitylog | 5.1.3 (log `sistem`) |
-| Export Excel | maatwebsite/excel 4 + PhpSpreadsheet 5 | `.xlsx` langsung |
+| Export Excel | maatwebsite/excel 4.0.6 + PhpSpreadsheet 5.10 | `.xlsx` langsung |
+| Backup | spatie/laravel-backup | 10.3.3 (bulanan + monitor) |
 | Captcha login | Cloudflare Turnstile (`TurnstileService`) | opsional via env |
-| Test | PHPUnit 13, Pint, `tsc --noEmit` | coverage gate 80% |
+| Test | PHPUnit 13.4, Pint 1.32, `tsc --noEmit` | coverage gate 80% |
 
 Roles: `super_admin`, `admin_kcd`, `operator_sekolah`, `bendahara_sekolah`,
-`operator_divisi`. 19 permission (10 BM + 8 BHP + 1 master-data-sekolah);
+`operator_divisi`. 32 permission: **11 Distribusi BHP**, **18 BM**
+(8 Pelaporan BM + 10 Pencatatan BM), dan **3 lintas domain**
+(`kelola-user`, `lihat-log-aktivitas`, `kelola-master-data-sekolah`);
 `lihat-log-aktivitas` dimiliki super_admin & admin_kcd (aktivitas super_admin
 disembunyikan dari admin_kcd).
 
@@ -32,8 +35,9 @@ Browser (React SPA via Inertia)
   → Inertia page (props) | redirect flash | file .xlsx | 204 empty
 ```
 
-- Inertia: 1 layout `AppLayout.tsx` (sidebar role-based), 17 halaman di
-  `resources/js/Pages/` (Auth 2, Admin 3, PelaporanBm 11 + Dashboard).
+- Inertia: 1 layout `AppLayout.tsx` (sidebar role-based), 48 halaman di
+  `resources/js/Pages/` (Auth 2, Admin 3, PelaporanBm 12, PencatatanBm 8,
+  DistribusiBhp 18, MasterData 5, Error 1).
 - Shared props (`HandleInertiaRequests`): `auth.user` (id, name, username,
   roles, permissions, sekolah), `flash`, `turnstileSiteKey`.
 - Flash `success`/`error` ditampilkan sebagai toast Sonner oleh listener
@@ -88,17 +92,17 @@ public/
 resources/views/app.blade.php # <head> global: favicon, manifest, @inertia
 resources/views/distribusi-bhp/
   partials/kop-surat.blade.php           # kop surat reusable (logo, PEMDA JABAR, sekolah, kontak)
-  nota-permintaan.blade.php              # PDF — portrait, 6 kolom (nama, jumlah, satuan, keperluan, ket)
-  surat-permintaan.blade.php             # PDF — landscape, 13 kolom (kode, nama, NUSP, spesifikasi, diminta, sisa, disetujui, keperluan, ket)
-  surat-penyaluran.blade.php             # PDF — portrait, 7 kolom (kode, nama, spesifikasi, jumlah, satuan, ket)
-  bast.blade.php                         # PDF — portrait, 7 kolom, 2 pihak signature (Pihak I=Wakasek, Pihak II=PPB)
-  bap.blade.php                          # PDF — portrait, 5 kolom (nama, jumlah, satuan, ket)
-  stok-opname.blade.php                  # PDF — portrait, 6 kolom + total nilai, 3 kolom signature (Wakasek, PPB, Kepsek)
-  buku-pengeluaran.blade.php             # PDF — landscape, 13 kolom (dokumen, kode, nama, spesifikasi, satuan, harga, total, ket)
-  buku-penyaluran.blade.php              # PDF — landscape, 14 kolom (BAST, kode, nama, spesifikasi, jumlah, harga, total, SPPB, penerima, ket)
-  dokumen-kompilasi.blade.php            # PDF — batch, render per jenis di page terpisah
+  nota-permintaan.blade.php              # PDF — portrait + kop, 6 kolom (nama, jumlah, satuan, keperluan, ket)
+  surat-permintaan.blade.php             # PDF — landscape TANPA kop, 13 kolom (kode, nama, NUSP, spesifikasi, diminta, sisa, disetujui, keperluan, ket)
+  surat-penyaluran.blade.php             # PDF — portrait + kop, 7 kolom (kode, nama, spesifikasi, jumlah, satuan, ket)
+  bast.blade.php                         # PDF — portrait + kop, 7 kolom, 2 pihak signature (Pihak I=Wakasek, Pihak II=PPB)
+  bap.blade.php                          # PDF — portrait + kop, 5 kolom (nama, jumlah, satuan, ket)
+  stok-opname.blade.php                  # PDF — F4 portrait + kop, 6 kolom + total nilai, 3 kolom signature (Wakasek, PPB, Kepsek)
+  buku-pengeluaran.blade.php             # PDF — landscape TANPA kop, 13 kolom (dokumen, kode, nama, spesifikasi, satuan, harga, total, ket)
+  buku-penyaluran.blade.php              # PDF — landscape TANPA kop, 14 kolom (BAST, kode, nama, spesifikasi, jumlah, harga, total, SPPB, penerima, ket)
+  buku-penerimaan.blade.php              # PDF — landscape TANPA kop, 12 kolom (dokumen, kode, nama, NUSP, spesifikasi, jumlah, satuan, harga, total, ket) — dicetak dari laporan, bukan DokumenController
 database/seeders/
-  PeranDanHakAksesSeeder.php  # 19 permission, 5 role (termasuk operator_divisi)
+  PeranDanHakAksesSeeder.php  # 32 permission, 5 role (termasuk operator_divisi)
   DistribusiBhpImportSeeder.php  # impor legacy BHP (idempotent)
 ```
 
@@ -249,14 +253,11 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 - Form SPK: accordion item, live search katalog, draft autosave
   (`draft_spj_barang_{sekolah}_{bulan}`), datalist history merk/sertifikat/satuan.
 - Halaman BHP: `resources/js/Pages/DistribusiBhp/` — `Dashboard`,
-  `{BOS,BOPD}/Pengajuan/Index`, `{BOS,BOPD}/Review/Index`, `Dokumen/Show`,
-  `{BOS,BOPD}/SaldoAwal/Index`, `{BOS,BOPD}/Settings/Edit`,
-  `{BOS,BOPD}/Laporan/Index`, `{BOS,BOPD}/Laporan/KartuPersediaan`,
-  `{BOS,BOPD}/Laporan/DokumenList` (view dokumen per jenis),
-  `{BOS,BOPD}/Laporan/BukuPengeluaran`,
-  `{BOS,BOPD}/Penerimaan/Index`, `{BOS,BOPD}/Penerimaan/LunasBayar`,
-  `{BOS,BOPD}/Divisi/Index`,
-  `{BOS,BOPD}/Master/{KodeRekening,Barang,Penyedia}/Index`.
+  `Pengajuan/Index`, `Review/Index`, `Dokumen/Show`,
+  `SaldoAwal/Index`, `Settings/Edit`,
+  `Laporan/{Index,KartuPersediaan,DokumenList,BukuPengeluaran,BukuPenerimaan}`,
+  `Penerimaan/{Index,LunasBayar}`, `Divisi/Index`,
+  `Master/{KodeRekening,Barang,Penyedia}/Index`, `Master/Barang/KelolaHarga`.
 - Settings BHP hanya kolom `format_nomor` (paper_size & orientation **dihapus** — hardcode per jenis dokumen di `DokumenController::PAPER`).
 - Import SPJ: tombol "Import Excel" + modal unggah di `Spj/Index.tsx`
   (kondisional `canImportSpj`), link template `template_import_spj.xlsx`.
@@ -265,7 +266,7 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 
 ## 7. Testing & Kualitas
 
-- 418 test / 1948 assertions (50 file Feature+Unit, 16 di antaranya BHP):
+- 877 test / 6007 assertions (96 file Feature+Unit, 37 di antaranya BHP):
   Feature per modul + Unit (Fortify, relasi, gate, rate limit). DB SQLite
   in-memory (`phpunit.xml`), seed `PeranDanHakAksesSeeder` per test.
 - Gate: `composer test` (cepat), `composer test-coverage` (Xdebug; total ≥ 80%
@@ -290,7 +291,7 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 | BHP sebagai domain terpisah (bukan modul BM) | Stok, status, dan laporan berbeda; dicegah bercampur lewat test batas domain |
 | Tabel BHP dipisah fisik per sumber dana (`bhp_bos_*`/`bhp_bopd_*`) | Integritas BOS/BOPD dijamin skema; sumber dana implisit dari nama tabel, `SumberDana` sebagai pemetaan tunggal |
 | Middleware `SetSumberDanaBhp` fail-closed + restore state | `sumber_dana` invalid ditolak 422 (bukan fallback BOS); state tidak bocor antar-request (aman Octane/queue) |
-| Dokumen BHP satu tabel per dana + kolom `jenis` | Lifecycle, penomoran, dan batch PDF identik untuk semua jenis dokumen |
+| Dokumen BHP satu tabel per dana + kolom `jenis` | Lifecycle, penomoran, dan batch dokumen identik untuk semua jenis dokumen |
 | Stok 4-tier dihitung, bukan kolom | Hindari stok basi; satu sumber kebenaran `StokService` |
 | `applyApprove` tanpa transaction sendiri | Agar approve + generate dokumen bisa atomic dalam satu transaction |
 | `source_id` pada penerimaan | `no_bast` tidak unik di data legacy; jadikan kunci idempotensi impor |
@@ -298,4 +299,7 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 | Snapshot payload dokumen ter-scope sekolah pengajuan | Payload stok opname/buku tidak pernah memuat data sekolah lain (audit 2026-10-08) |
 | Singleton settings per sumber dana via partial unique index | `get`/`create` bersamaan tidak menghasilkan dua baris settings; BOS & BOPD terpisah |
 | Dokumen PDF per jenis template (8 Blade terpisah) + `DokumenController::VIEW`/`PAPER` map | Struktur kolom, kop surat, signature berbeda per jenis; paper/orientasi hardcode — bukan konfigurasi user |
+| Format cetak mengikuti template baku `sistem-manajemen-aset`, **tidak diseragamkan** | Surat Permintaan & tiga buku besar memang tanpa kop; stok opname F4; dikunci `BhpPdfFormatTest` lewat `MediaBox` PDF jadi |
+| Batch dokumen = ZIP berisi satu PDF per dokumen | Dompdf tidak mendukung `@page` bernama, jadi satu halaman gabungan memaksa satu ukuran/orientasi dan memotong dokumen landscape / F4 |
+| `Carbon::setLocale('id')` global di `AppServiceProvider::boot()` | `APP_LOCALE` dikunci `en` (phpunit + `.env`) demi suite hermetis, tetapi dokumen resmi wajib berbahasa Indonesia; `format('d F Y')` selalu Inggris dan tidak bisa diselamatkan locale |
 | Agregasi laporan stok grouped (`rekapPerBarang`) | Laporan stok dari ~7N query menjadi 3 query grouped — aman untuk katalog besar |

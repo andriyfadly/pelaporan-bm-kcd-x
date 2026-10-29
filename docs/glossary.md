@@ -63,7 +63,9 @@
 | Stok Opname bulanan | Snapshot stok fisik satu per bulan per sekolah, bertanggal hari kerja terakhir bulan itu; opname kedua di bulan yang sama ditolak |
 | Hari kerja | Bukan Sabtu/Minggu dan bukan libur nasional. Cuti bersama tetap hari kerja. Sumber libur: API [tanggalmerah.upset.dev](https://upset.dev/tanggalmerah) (di-cache 1 hari), dengan jaring `config/hari_libur.php` bila API mati |
 | Nomor dokumen | Format `{urut:3}/BHP/{kode}/{sumber_dana}/{bulan_romawi}/{tahun}`, counter atomic |
-| Batch PDF | Gabungan semua dokumen pengajuan dalam satu PDF; histori di `bhp_{bos,bopd}_batch_dokumen` |
+| Batch PDF | **ZIP berisi satu PDF per dokumen** (bukan satu PDF gabungan: Dompdf tidak mendukung `@page` bernama sehingga ukuran/orientasi tiap jenis akan hilang); histori di `bhp_{bos,bopd}_batch_dokumen` |
+| Lunas Bayar | Barang sudah datang tetapi transaksi keuangannya belum terjadi (kwitansi kosong / `tanggal_pembayaran` null atau setelah akhir bulan laporan). Bukan tanda sudah dibayar |
+| Buku Penerimaan | Rekap barang masuk per bulan (tanggal, BAST, nota/invoice, penyedia, barang, jumlah, harga, nilai, keterangan). Tersedia sebagai halaman, Excel, dan PDF |
 | Buku pengeluaran | Laporan item yang sudah approved beserta keperluan |
 | Buku penyaluran | Dokumen/laporan penyaluran BHP |
 | Kartu barang | Profil barang + mutasi masuk/keluar (tanpa saldo berjalan) |

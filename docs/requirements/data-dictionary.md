@@ -71,7 +71,7 @@ Perubahan pemetaan dari rencana awal (keputusan implementasi):
 - Dokumen turunan (surat permintaan, surat penyaluran, BAST, BAP, stok opname,
   buku pengeluaran/penyaluran) **tidak** dibuat sebagai tabel terpisah, tetapi
   satu tabel dokumen per sumber dana (`bhp_{bos,bopd}_dokumen`) dengan kolom
-  `jenis`. Alasan: lifecycle, penomoran, dan batch PDF identik untuk semua jenis.
+  `jenis`. Alasan: lifecycle, penomoran, dan batch dokumen identik untuk semua jenis.
 - Semua tabel transaksi & master barang BHP **dipisah fisik per sumber dana**
   (`bhp_bos_*`/`bhp_bopd_*`, migrasi 2026-10-12) agar BOS dan BOPD tidak bisa
   tercampur di level skema. Hanya `bhp_penyedia` dan `bhp_divisi` yang bersama.
