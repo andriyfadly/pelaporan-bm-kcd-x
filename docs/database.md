@@ -299,18 +299,20 @@ master_data_ruang / master_data_pegawai ─* inventaris_mutasi (asal/tujuan, nul
 
 ### `inventaris_unit`
 
-Satu baris = satu unit fisik. `volume = N` pada realisasi menghasilkan N unit
-(`unit_index` 1..N).
+Satu baris = satu unit fisik. Dua jalur masuk: realisasi (`volume = N`
+menghasilkan N unit, `unit_index` 1..N) atau pendaftaran manual/impor
+(`realisasi_id` dan `unit_index` NULL).
 
 | Kolom | Tipe | Catatan |
 |---|---|---|
 | `id` | uuid PK | |
 | `sekolah_id` | uuid FK `master_data_sekolah` | restrict; **immutable** |
-| `realisasi_id` | uuid FK `pelaporan_bm_realisasi` | restrict; **immutable** |
-| `unit_index` | int | unique bersama `realisasi_id` |
+| `realisasi_id` | uuid FK `pelaporan_bm_realisasi` nullable | restrict; NULL = input manual/impor |
+| `unit_index` | int nullable | unique bersama `realisasi_id` |
 | `kode_barang`, `nama_barang`, `jenis_aset`, `merk_tipe`, `no_sertifikat`, `ukuran_bangunan`, `satuan` | | snapshot sumber |
-| `nomor_register` | varchar(10) | `001`, `002`, … unique per `(sekolah_id, kode_barang)` |
-| `tanggal_perolehan`, `bulan_perolehan`, `tahun_perolehan` | | dari BA/realisasi |
+| `nomor_register` | varchar(10) | `001`, `002`, … unique per `(sekolah_id, kode_barang, tahun_perolehan)` |
+| `tanggal_perolehan`, `bulan_perolehan`, `tahun_perolehan` | | dari BA/realisasi atau input manual |
+| `asal_perolehan` | varchar(150) nullable | BOS/APBN/Hibah; diisi pada input manual |
 | `harga_satuan`, `nilai_perolehan_unit` | numeric(15,2) | 1 unit = 1 harga satuan |
 | `kondisi` | varchar(2) | `B`, `RR`, `RB` |
 | `status` | varchar(20) | `aktif`, `dikembalikan`, `dihapus_koreksi` |
@@ -318,14 +320,21 @@ Satu baris = satu unit fisik. `volume = N` pada realisasi menghasilkan N unit
 | `foto_path`, `keterangan` | | |
 | timestamps | | tanpa soft delete: unit surplus ditandai `dihapus_koreksi` |
 
-Index: `(sekolah_id, kode_barang)`, `(sekolah_id, status)`,
-`(sekolah_id, ruang_id)`, `(sekolah_id, pegawai_id)`.
+`tahun_perolehan` **NOT NULL** dan diisi otomatis dari `tanggal_perolehan`
+(default tahun berjalan) oleh model. Kolom ini ikut menentukan keunikan register,
+jadi NULL akan melubangi unique index.
+
+Index: unique `(sekolah_id, kode_barang, tahun_perolehan, nomor_register)`,
+`(sekolah_id, kode_barang)`, `(sekolah_id, status)`, `(sekolah_id, ruang_id)`,
+`(sekolah_id, pegawai_id)`.
 
 ### `inventaris_register_sequences`
 
-`(sekolah_id, kode_barang)` unique, `next_number` int. Nomor dialokasikan di
-dalam transaksi dengan `lockForUpdate`; nomor yang sudah terbit **tidak pernah
-dipakai ulang**, termasuk setelah unit dipensiunkan atau volume dikoreksi.
+`(sekolah_id, kode_barang, tahun)` unique, `next_number` int. Nomor dialokasikan
+di dalam transaksi dengan `lockForUpdate`; nomor yang sudah terbit **tidak
+pernah dipakai ulang**, termasuk setelah unit dipensiunkan atau volume
+dikoreksi. Counter **diulang dari 001 pada tahun perolehan berbeda**. Unit lama
+tanpa tahun diisi `0` saat migrasi per-tahun.
 
 ### `master_data_ruang` / `master_data_pegawai`
 
@@ -348,9 +357,19 @@ dengan prioritas `definitif` > `plt` > `plh` lalu `mulai_menjabat` terbaru.
 
 ### `inventaris_mutasi`
 
-Histori penempatan/mutasi/pengembalian/koreksi. Menyimpan asal & tujuan
-ruang/pegawai/kondisi, `tanggal`, `keterangan`, `user_id`. Tidak pernah dihapus;
-FK `inventaris_unit_id` restrict.
+Histori perubahan lokasi/state unit. Menyimpan `jenis`, asal & tujuan
+ruang/pegawai/kondisi, `tanggal`, `keterangan`, `user_id`.
+
+| `jenis` | Arti |
+|---|---|
+| `penyaluran` | penempatan pertama ke ruang/penerima |
+| `mutasi` | perpindahan dari satu lokasi ke lokasi lain |
+| `pengembalian` | barang kembali ke gudang (ruang & pegawai dikosongkan) |
+| `koreksi` | perubahan kondisi/keterangan tanpa perpindahan |
+
+Baris histori tidak pernah dihapus dan tidak pernah ditimpa; FK
+`inventaris_unit_id` restrict. Data lama berjenis `penempatan` dimigrasikan
+menjadi `penyaluran`.
 
 ### `inventaris_dokumen`
 

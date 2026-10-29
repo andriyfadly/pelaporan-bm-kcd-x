@@ -148,8 +148,9 @@ Status kini: **100% total, semua file 100%**.
 | `MasterDataJabatanTest` | CRUD jabatan via HTTP, kode unik & format, jabatan terpakai dinonaktifkan bukan dihapus, isolasi sekolah 404, form pegawai tanpa field jabatan |
 | `MasterDataPenugasanHttpTest` | Simpan/akhiri/mutasi via HTTP, PLT menutup definitif, overlap jadi flash error, cross-tenant 404, permission granular |
 | `InventarisSnapshotPejabatTest` | Dokumen lampau memakai pejabat saat itu, dokumen baru memakai pejabat aktif, snapshot tidak berubah setelah master diedit, tanpa pejabat tetap bisa cetak, fakta integritas memakai jabatan per tanggal, kolom `jabatan`/`ruang` pegawai sudah hilang |
-| `Inventaris*Test` (14 file) | Alur inventaris: sinkronisasi, mutasi/pengembalian, dokumen/QR/label/BA, ekspor, koreksi, registrasi bersamaan, tenant isolation, permission |
-| `PencatatanBmHttpFlowTest` | Alur HTTP Pencatatan BM: halaman inventaris, tambah/ubah unit, validasi ruang & kondisi, mutasi |
+| `Inventaris*Test` (15 file) | Alur inventaris: sinkronisasi, penyaluran/mutasi/pengembalian, pendaftaran manual & impor, dokumen/QR/label/BA, ekspor, koreksi, registrasi bersamaan, tenant isolation, permission |
+| `InventarisPendaftaranTest` | Tambah barang manual (volume → N unit), impor CSV all-or-nothing, template, register per tahun, isolasi sekolah, permission |
+| `PencatatanBmHttpFlowTest` | Alur HTTP Pencatatan BM: halaman inventaris, tambah/ubah unit, validasi ruang & kondisi, penyaluran |
 | `MasterDataUiIntegrationTest` | Kontrak props controller ↔ halaman Inertia (controller berhenti mengirim prop yang dibaca TSX = halaman blank tanpa error PHP) |
 | `NonaktifUserTest` | User dinonaktifkan tidak dapat login / memakai sesi lama |
 | `CaseInsensitiveSearchTest` | Kompilasi `ILIKE` di PostgreSQL (SQLite test tidak peka huruf besar/kecil) dan larangan `LIKE` mentah di controller |

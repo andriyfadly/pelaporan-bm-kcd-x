@@ -182,9 +182,9 @@ Route model binding lintas tabel (BOS/BOPD) ditangani trait
 | PUT | `/distribusi-bhp/divisi/operator/{operator}/password` | `kelola-divisi-bhp` | `DivisiController::resetPassword` |
 | PUT | `/distribusi-bhp/divisi/operator/{operator}/toggle` | `kelola-divisi-bhp` | `DivisiController::toggleActive` |
 | GET | `/distribusi-bhp/pengajuan` | `lihat-distribusi-bhp` | `PengajuanController::index` |
-| POST | `/distribusi-bhp/pengajuan` | `kelola-pengajuan-bhp` | `PengajuanController::store` |
-| PUT | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::update` — hanya draft |
-| DELETE | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::destroy` — hanya draft |
+| POST | `/distribusi-bhp/pengajuan` | `kelola-pengajuan-bhp` | `PengajuanController::store` — buat + reservasi stok sekaligus |
+| PUT | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::update` — sisa alur draft lama |
+| DELETE | `/distribusi-bhp/pengajuan/{pengajuan}` | `kelola-pengajuan-bhp` | `PengajuanController::destroy` — sisa alur draft lama |
 | POST | `/distribusi-bhp/pengajuan/{pengajuan}/submit` | `kelola-pengajuan-bhp` | `PengajuanController::submit` |
 | GET | `/distribusi-bhp/review-pengajuan` | `review-pengajuan-bhp` | `ReviewPengajuanController::index` |
 | POST | `/distribusi-bhp/review-pengajuan/{pengajuan}/approve` | `approve-pengajuan-bhp` | `ReviewPengajuanController::approve` |
@@ -350,11 +350,16 @@ bukan 403, agar UUID sekolah lain tidak membocorkan keberadaan data.
 |---|---|---|---|
 | GET | `/pencatatan-bm` | `DashboardController::index` | `lihat-pencatatan-bm` |
 | GET | `/pencatatan-bm/inventaris` | `InventarisController::index` | `lihat-pencatatan-bm` |
+| POST | `/pencatatan-bm/inventaris` | `PendaftaranInventarisController::store` | `kelola-inventaris-bm` |
+| POST | `/pencatatan-bm/inventaris-import` | `PendaftaranInventarisController::import` | `kelola-inventaris-bm` |
+| GET | `/pencatatan-bm/inventaris-template` | `PendaftaranInventarisController::template` | `kelola-inventaris-bm` |
 | GET | `/pencatatan-bm/inventaris-export` | `InventarisController::export` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/inventaris/{unit}` | `InventarisController::show` | `lihat-pencatatan-bm` |
 | PUT | `/pencatatan-bm/inventaris/{unit}/kondisi` | `InventarisController::updateKondisi` | `kelola-inventaris-bm` |
 | POST | `/pencatatan-bm/inventaris/{unit}/foto` | `UnitInventarisController::storeFoto` | `kelola-inventaris-bm` |
 | GET | `/pencatatan-bm/foto/{foto}` | `UnitInventarisController::foto` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/penyaluran` | `PenyaluranController::index` | `lihat-pencatatan-bm` |
+| POST | `/pencatatan-bm/penyaluran/{unit}` | `PenyaluranController::store` | `mutasi-inventaris-bm` |
 | GET | `/pencatatan-bm/mutasi` | `MutasiController::index` | `lihat-pencatatan-bm` |
 | POST | `/pencatatan-bm/mutasi/{unit}` | `MutasiController::store` | `mutasi-inventaris-bm` |
 | GET | `/pencatatan-bm/pengembalian` | `PengembalianController::index` | `lihat-pencatatan-bm` |

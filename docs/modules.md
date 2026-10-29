@@ -118,20 +118,61 @@ sumber potensial, bukan inventaris aktif.
   kondisi (B/RR/RB), jumlah jenis barang, ruang & pegawai, 10 kode barang
   terbanyak, dan status sinkronisasi terakhir.
 - **Inventaris** (`/pencatatan-bm/inventaris`): daftar unit per register,
-  filter kondisi, pencarian nama/kode/register/merek, ekspor Excel, dan
-  halaman detail (ubah kondisi/penempatan, unggah foto, label PDF, QR, BAST,
-  riwayat mutasi).
-- **Mutasi** (`/pencatatan-bm/mutasi`): penempatan pertama (`penempatan`) dan
-  perpindahan berikutnya (`mutasi`). Setiap perubahan state meninggalkan satu
-  baris histori; `sekolah_id` tidak berubah.
-- **Pengembalian** (`/pencatatan-bm/pengembalian`): menutup penempatan aktif,
-  kondisi akhir wajib diisi, histori tetap tersimpan.
+  filter kondisi, pencarian nama/kode/register/merek, ekspor Excel, tambah
+  barang manual, impor Excel/CSV, unduh template, dan halaman detail (ubah
+  kondisi, unggah foto, label PDF, QR, BAST, riwayat mutasi).
+- **Penyaluran** (`/pencatatan-bm/penyaluran`): penempatan **pertama** barang ke
+  ruang/penerima. Hanya unit yang belum punya lokasi yang muncul; ruang wajib,
+  penanggung jawab opsional. Barang yang sudah dikembalikan masuk lagi daftar
+  ini karena sudah kembali ke gudang.
+- **Mutasi** (`/pencatatan-bm/mutasi`): perpindahan **setelah** barang berada di
+  lokasi. Tujuan wajib (minimal ruang atau pegawai); mengosongkan lokasi bukan
+  mutasi, melainkan pengembalian. Setiap perubahan state meninggalkan satu baris
+  histori; `sekolah_id` tidak berubah.
+- **Pengembalian** (`/pencatatan-bm/pengembalian`): menutup penyaluran aktif,
+  kondisi akhir wajib diisi, histori tetap tersimpan. Unit tanpa BAST bernomor
+  tidak bisa dikembalikan (tombol terkunci, backend menolak).
 - **Berita Acara** (`/pencatatan-bm/berita-acara`): rekap BAST; nomor bisa
-  dikoreksi atau dibatalkan (dengan alasan) tanpa menghapus dokumen.
+  dikoreksi atau dibatalkan (dengan alasan) tanpa menghapus dokumen. Nomor yang
+  masih aktif tidak boleh duplikat; nomor yang sudah dibatalkan boleh dipakai
+  ulang.
 - **Dokumen** (`/pencatatan-bm/dokumen`): daftar dokumen tersimpan + unduh PDF.
   Cetak langsung: KIR per ruang, buku inventaris dan sensus per tahun.
 - **Sinkronisasi** (`/pencatatan-bm/sinkronisasi`, khusus `super_admin`): jalankan
   ulang per periode, lihat log, dan daftar unit yang perlu tinjau manual.
+
+### Sumber unit inventaris
+
+Ada dua jalur masuk yang bermuara ke tabel `inventaris_unit`:
+
+1. **Sinkronisasi realisasi** — satu baris realisasi dengan volume N melahirkan N
+   unit. Hanya periode yang sudah `disetujui` Admin KCD yang diproses.
+2. **Pendaftaran manual/impor** — operator mengisi barang langsung (atau impor
+   Excel/CSV). Kolom mengikuti `template_import_inventaris.xlsx` aplikasi acuan:
+   Kode Barang, Nama, Merek/Tipe, Tanggal, Bulan, Tahun, Satuan, Volume, Harga
+   Satuan, Asal Perolehan. Impor bersifat all-or-nothing.
+
+### Nomor register
+
+- Format 3 digit: `001`, `002`, …
+- **Diulang dari `001` setiap tahun perolehan** — tahun berbeda = urutan baru.
+- Unik per `(sekolah_id, kode_barang, tahun_perolehan)`.
+- Dialokasikan atomik lewat tabel `inventaris_register_sequences` (dikunci saat
+  transaksi), jadi dua proses bersamaan tidak mendapat nomor yang sama.
+- Nomor yang sudah terbit tidak pernah dipakai ulang.
+
+### Riwayat perubahan unit
+
+`inventaris_mutasi` menyimpan semua perubahan state dengan `jenis`:
+
+| Jenis | Arti |
+|---|---|
+| `penyaluran` | penempatan pertama ke ruang/penerima |
+| `mutasi` | perpindahan dari satu lokasi ke lokasi lain |
+| `pengembalian` | barang kembali ke gudang (lokasi dikosongkan) |
+| `koreksi` | perubahan kondisi/keterangan tanpa perpindahan |
+
+Baris histori tidak pernah dihapus dan tidak pernah ditimpa.
 
 Master pendukung ada di **Master Data** (sidebar): `Ruang`, `Pegawai`,
 `Jabatan`, dan `Penugasan Pegawai`, terpisah dari `Profil Sekolah`. Menu
@@ -175,8 +216,10 @@ review/approve → dokumen + buku → laporan**.
   mengisi No. Kwitansi + Tanggal Pembayaran.
 - **Saldo Awal** (`/saldo-awal`): halaman terpisah untuk stok awal tahun;
   tambah manual atau import Excel; hapus per barang (bukan seluruh header).
-- **Pengajuan** (`/pengajuan`): draft + item, submit memvalidasi stok dan
-  membuat reservasi. Tidak ada stok bersama antar sekolah.
+- **Pengajuan** (`/pengajuan`): form isian dengan autosave di perangkat
+  (`localStorage`, per sumber dana). Tombol **Ajukan Pengajuan** membuat record
+  dan mereservasi stok dalam satu transaksi; tidak ada tombol/langkah draft
+  terpisah dan draft lama tidak ditampilkan di riwayat.
 - **Review Pengajuan** (`/review-pengajuan`): approve dengan koreksi
   `jumlah_disetujui`, atau reject dengan alasan. Approve + generate dokumen
   berjalan dalam satu transaksi.
