@@ -111,8 +111,9 @@ Sumber data tabel `pelaporan_bm_realisasi` (identik `legacy/data_realisasi.php` 
 ## 7. Modul Pencatatan BM (`/pencatatan-bm`)
 
 Alur pembentukan: **SPJ → realisasi → kirim laporan → Admin KCD setujui →
-sinkronisasi → unit inventaris**. SPJ/realisasi yang belum disetujui hanya
-sumber potensial, bukan inventaris aktif.
+sinkronisasi → unit inventaris**, atau langsung **tambah manual/impor** oleh
+operator sekolah. SPJ/realisasi yang belum disetujui hanya sumber potensial,
+bukan inventaris aktif.
 
 - **Dashboard** (`/pencatatan-bm`): total unit, nilai perolehan, sebaran
   kondisi (B/RR/RB), jumlah jenis barang, ruang & pegawai, 10 kode barang
