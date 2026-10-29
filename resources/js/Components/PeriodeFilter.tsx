@@ -37,27 +37,27 @@ export default function PeriodeFilter({
     };
 
     return (
-        <div className={`flex flex-wrap items-end gap-3 ${className}`}>
-            <div>
+        <div className={`flex w-full flex-wrap items-end gap-3 sm:w-auto ${className}`}>
+            <div className="flex-1 sm:flex-none">
                 <label htmlFor="filter-bulan" className="block text-xs font-bold uppercase text-slate-500 mb-1">Bulan</label>
                 <select
                     id="filter-bulan"
                     value={periode.bulan}
                     onChange={(e) => pindah({ bulan: Number(e.target.value) })}
-                    className="px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="min-h-10 w-full px-3 border border-slate-300 rounded-xl text-sm"
                 >
                     {BULAN_LIST.map((nama, i) => (
                         <option key={nama} value={i + 1}>{nama}</option>
                     ))}
                 </select>
             </div>
-            <div>
+            <div className="flex-1 sm:flex-none">
                 <label htmlFor="filter-tahun" className="block text-xs font-bold uppercase text-slate-500 mb-1">Tahun</label>
                 <select
                     id="filter-tahun"
                     value={periode.tahun}
                     onChange={(e) => pindah({ tahun: Number(e.target.value) })}
-                    className="px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="min-h-10 w-full px-3 border border-slate-300 rounded-xl text-sm"
                 >
                     {daftarTahun.map((t) => (
                         <option key={t} value={t}>{t}</option>

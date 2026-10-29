@@ -1,8 +1,10 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
+import EmptyState from '@/Components/EmptyState';
 import PeriodeFilter, { periodeQuery, type PeriodeValue } from '@/Components/PeriodeFilter';
 import { FileSpreadsheet, Search } from 'lucide-react';
+import { formatTanggalTabel } from '@/Utils/format';
 
 interface MutasiRow {
     tanggal: string | null;
@@ -49,17 +51,18 @@ export default function KartuPersediaan({
     daftarBarang: BarangOption[];
 }) {
     const [pilihBarang, setPilihBarang] = useState(barangId);
+    const prefix = `/distribusi-bhp/${sumberDana.toLowerCase()}`;
 
     const terapkan = (barang: string) => {
         router.get(
-            '/distribusi-bhp/laporan/kartu-persediaan',
-            { sumber_dana: sumberDana, barang_id: barang, tahun: periode.tahun, bulan: periode.bulan },
+            `${prefix}/laporan/kartu-persediaan`,
+            { barang_id: barang, tahun: periode.tahun, bulan: periode.bulan },
             { preserveState: true },
         );
     };
 
     const exportUrl = kartu
-        ? `/distribusi-bhp/laporan/export?sumber_dana=${sumberDana}&jenis=kartu_persediaan&barang_id=${kartu.barang.id}&${periodeQuery(periode)}`
+        ? `${prefix}/laporan/export?jenis=kartu_persediaan&barang_id=${kartu.barang.id}&${periodeQuery(periode)}`
         : null;
 
     return (
@@ -75,15 +78,15 @@ export default function KartuPersediaan({
                         </p>
                     </div>
                     <PeriodeFilter
-                        path="/distribusi-bhp/laporan/kartu-persediaan"
+                        path={`${prefix}/laporan/kartu-persediaan`}
                         periode={periode}
                         sumberDana={sumberDana}
                         extra={{ barang_id: pilihBarang }}
                     />
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-wrap gap-3 items-end">
-                    <div className="flex-1 min-w-[240px]">
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-wrap gap-3 items-end sm:p-6">
+                    <div className="w-full sm:flex-1 sm:min-w-[240px]">
                         <label htmlFor="pilih-barang" className="block text-xs font-bold uppercase text-slate-500 mb-1">Pilih Barang</label>
                         <select
                             id="pilih-barang"
@@ -103,14 +106,14 @@ export default function KartuPersediaan({
                         type="button"
                         disabled={!pilihBarang}
                         onClick={() => terapkan(pilihBarang)}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50"
+                        className="inline-flex min-h-10 w-full items-center justify-center gap-2 px-4 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 sm:w-auto"
                     >
                         <Search className="w-4 h-4" /> Tampilkan
                     </button>
                     {exportUrl && (
                         <a
                             href={exportUrl}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
+                            className="inline-flex min-h-10 w-full items-center justify-center gap-2 px-4 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
                         >
                             <FileSpreadsheet className="w-4 h-4" /> Export Excel
                         </a>
@@ -119,7 +122,7 @@ export default function KartuPersediaan({
 
                 {kartu && (
                     <>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                             {[
                                 { label: 'Saldo Awal', value: kartu.barang.saldo_awal },
                                 { label: 'Masuk Periode', value: kartu.barang.total_masuk },
@@ -127,50 +130,77 @@ export default function KartuPersediaan({
                                 { label: 'Saldo Akhir', value: kartu.barang.saldo_akhir },
                             ].map((stat) => (
                                 <div key={stat.label} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-                                    <div className="text-xs font-bold uppercase text-slate-500">{stat.label}</div>
-                                    <div className="text-xl font-bold text-slate-900">{stat.value} <span className="text-sm font-normal text-slate-400">{kartu.barang.satuan}</span></div>
+                                    <div className="text-xs font-bold uppercase tracking-wide text-slate-500">{stat.label}</div>
+                                    <div className="mt-1 text-xl font-bold text-slate-900">{stat.value} <span className="text-sm font-normal text-slate-500">{kartu.barang.satuan}</span></div>
                                 </div>
                             ))}
                         </div>
 
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-6 py-4 border-b border-slate-200 font-bold text-sm text-slate-700">
+                            <div className="px-4 py-4 border-b border-slate-200 font-bold text-sm text-slate-700 sm:px-6">
                                 {kartu.barang.nama_barang} ({kartu.barang.kode_barang ?? '-'}) — {kartu.barang.sumber_dana} · {periode.label}
                             </div>
-                            <table className="w-full text-sm">
-                                <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
-                                    <tr>
-                                        <th className="text-left py-3 px-4">Tanggal</th>
-                                        <th className="text-left py-3 px-4">Jenis</th>
-                                        <th className="text-left py-3 px-4">Referensi</th>
-                                        <th className="text-right py-3 px-4">Masuk</th>
-                                        <th className="text-right py-3 px-4">Keluar</th>
-                                        <th className="text-right py-3 px-4">Saldo</th>
-                                        <th className="text-left py-3 px-4">Keterangan</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {kartu.mutasi.length === 0 ? (
-                                        <tr><td colSpan={7} className="py-10 text-center text-slate-400 text-xs">Belum ada mutasi pada periode ini.</td></tr>
-                                    ) : (
-                                        kartu.mutasi.map((m, i) => (
-                                            <tr key={i}>
-                                                <td className="py-3 px-4">{m.tanggal ?? '-'}</td>
-                                                <td className="py-3 px-4">
-                                                    <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${m.jenis === 'masuk' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                            {kartu.mutasi.length === 0 ? (
+                                <EmptyState
+                                    title="Belum Ada Mutasi"
+                                    description="Belum ada pergerakan stok untuk barang ini pada periode terpilih."
+                                />
+                            ) : (
+                                <>
+                                    <ul className="md:hidden divide-y divide-slate-100">
+                                        {kartu.mutasi.map((m, i) => (
+                                            <li key={i} className="p-4 space-y-1">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-sm font-semibold text-slate-800">{formatTanggalTabel(m.tanggal)}</span>
+                                                    <span className={`px-2 py-1 rounded-lg text-xs font-bold ${m.jenis === 'masuk' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
                                                         {m.jenis}
                                                     </span>
-                                                </td>
-                                                <td className="py-3 px-4 font-mono text-xs text-slate-600">{m.referensi ?? '-'}</td>
-                                                <td className="py-3 px-4 text-right">{m.masuk || '-'}</td>
-                                                <td className="py-3 px-4 text-right">{m.keluar || '-'}</td>
-                                                <td className="py-3 px-4 text-right font-bold">{m.saldo}</td>
-                                                <td className="py-3 px-4 text-slate-500">{m.keterangan ?? '-'}</td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                                                </div>
+                                                <div className="text-xs text-slate-500 font-mono">{m.referensi ?? '-'}</div>
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                                                    <span>Masuk: <strong>{m.masuk || '-'}</strong></span>
+                                                    <span>Keluar: <strong>{m.keluar || '-'}</strong></span>
+                                                    <span>Saldo: <strong className="text-slate-900">{m.saldo}</strong></span>
+                                                </div>
+                                                {m.keterangan && <div className="text-xs text-slate-500">{m.keterangan}</div>}
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                                                <tr>
+                                                    <th className="text-left py-3 px-4">Tanggal</th>
+                                                    <th className="text-left py-3 px-4">Jenis</th>
+                                                    <th className="text-left py-3 px-4">Referensi</th>
+                                                    <th className="text-right py-3 px-4">Masuk</th>
+                                                    <th className="text-right py-3 px-4">Keluar</th>
+                                                    <th className="text-right py-3 px-4">Saldo</th>
+                                                    <th className="text-left py-3 px-4">Keterangan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {kartu.mutasi.map((m, i) => (
+                                                    <tr key={i}>
+                                                        <td className="py-3 px-4">{formatTanggalTabel(m.tanggal)}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 rounded-lg text-xs font-bold ${m.jenis === 'masuk' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                                                                {m.jenis}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4 font-mono text-xs text-slate-600">{m.referensi ?? '-'}</td>
+                                                        <td className="py-3 px-4 text-right">{m.masuk || '-'}</td>
+                                                        <td className="py-3 px-4 text-right">{m.keluar || '-'}</td>
+                                                        <td className="py-3 px-4 text-right font-bold">{m.saldo}</td>
+                                                        <td className="py-3 px-4 text-slate-500">{m.keterangan ?? '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </>
                 )}

@@ -53,7 +53,7 @@ export default function Edit({ settings, sumberDana }: { settings: BhpSettings; 
                             <Link
                                 key={dana}
                                 href={`/distribusi-bhp/settings?sumber_dana=${dana}`}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
+                                className={`inline-flex min-h-10 items-center px-3 rounded-xl text-sm font-bold border ${
                                     dana === sumberDana
                                         ? 'bg-blue-600 text-white border-blue-600'
                                         : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
@@ -65,14 +65,15 @@ export default function Edit({ settings, sumberDana }: { settings: BhpSettings; 
                     </div>
                 </div>
 
-                <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 max-w-4xl">
+                <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-4 max-w-4xl sm:p-6">
                     <input type="hidden" name="sumber_dana" value={sumberDana} />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {JENIS_DOKUMEN.map(({ key, label }) => (
                             <div key={key}>
-                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">{label}</label>
+                                <label htmlFor={`format-${key}`} className="block text-xs font-bold uppercase text-slate-500 mb-1">{label}</label>
                                 <input
+                                    id={`format-${key}`}
                                     value={form.data[key]}
                                     onChange={(e) => form.setData(key as any, e.target.value)}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-mono"
@@ -83,16 +84,16 @@ export default function Edit({ settings, sumberDana }: { settings: BhpSettings; 
                         ))}
                     </div>
 
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                         Placeholder: <code>{'{urut:3}'}</code>, <code>{'{kode}'}</code>, <code>{'{sumber_dana}'}</code>, <code>{'{bulan_romawi}'}</code>, <code>{'{bulan}'}</code>, <code>{'{tahun}'}</code>
                         &nbsp;— isi per jenis untuk override format default.
                     </p>
 
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                         Data penandatangan dokumen dikelola di menu <strong>Master Data → Penugasan Pegawai</strong>.
                     </p>
 
-                    <button type="submit" disabled={form.processing} className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                    <button type="submit" disabled={form.processing} className="min-h-11 w-full px-4 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 sm:w-auto">
                         Simpan Settings {sumberDana}
                     </button>
                 </form>

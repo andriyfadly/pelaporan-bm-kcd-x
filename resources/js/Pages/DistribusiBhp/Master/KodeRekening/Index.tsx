@@ -1,5 +1,7 @@
 import { Head, useForm, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import EmptyState from '@/Components/EmptyState';
+import Pagination from '@/Components/Pagination';
 import { useState } from 'react';
 import { Save, Loader2 } from 'lucide-react';
 
@@ -19,6 +21,8 @@ interface KodeBarangOption {
 
 interface Paginated<T> {
     data: T[];
+    links: { url: string | null; label: string; active: boolean }[];
+    total: number;
 }
 
 export default function Index({ items, sumberDana, kodeBarangOptions }: { items: Paginated<KodeRekeningItem>; sumberDana: string; kodeBarangOptions: KodeBarangOption[] }) {
@@ -50,7 +54,9 @@ export default function Index({ items, sumberDana, kodeBarangOptions }: { items:
         const vals = Object.entries(assign).map(([id, v]) => ({ id, ...v }));
         if (!vals.length) return;
         setSaving(true);
-        router.post('/distribusi-bhp/master/kode-rekening/batch-assign', { assignments: vals }, {
+        // `sumber_dana` wajib ikut: tabel kode rekening dipisah per sumber
+        // dana, dan URL flat default ke BOS sehingga id BOPD akan ditolak.
+        router.post('/distribusi-bhp/master/kode-rekening/batch-assign', { sumber_dana: sumberDana, assignments: vals }, {
             onSuccess: () => { setAssign({}); setSaving(false); },
             onError: () => setSaving(false),
         });
@@ -69,38 +75,43 @@ export default function Index({ items, sumberDana, kodeBarangOptions }: { items:
                 </div>
 
                 {isAdmin && (
-                    <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                    <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm grid grid-cols-1 sm:grid-cols-4 gap-4 items-end sm:p-6">
                         <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode</label>
-                            <input value={form.data.kode} onChange={(e) => form.setData('kode', e.target.value)} placeholder="Contoh: 5.1.02.01.01.0001" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <label htmlFor="kode-rekening-kode" className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode</label>
+                            <input id="kode-rekening-kode" value={form.data.kode} onChange={(e) => form.setData('kode', e.target.value)} placeholder="Contoh: 5.1.02.01.01.0001" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {form.errors.kode && <p className="text-xs text-rose-600 mt-1">{form.errors.kode}</p>}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama</label>
-                            <input value={form.data.nama} onChange={(e) => form.setData('nama', e.target.value)} placeholder="Masukkan nama rekening" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
+                            <label htmlFor="kode-rekening-nama" className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama</label>
+                            <input id="kode-rekening-nama" value={form.data.nama} onChange={(e) => form.setData('nama', e.target.value)} placeholder="Masukkan nama rekening" className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm" />
                             {form.errors.nama && <p className="text-xs text-rose-600 mt-1">{form.errors.nama}</p>}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Barang</label>
-                            <select value={form.data.kode_barang} onChange={(e) => {
-                                const selected = kodeBarangOptions.find(o => o.kode === e.target.value);
-                                form.setData({ kode_barang: e.target.value, uraian_kode_barang: selected?.uraian ?? '' });
-                            }} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white">
+                            <label htmlFor="kode-rekening-barang" className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Barang</label>
+                            <select
+                                id="kode-rekening-barang"
+                                value={form.data.kode_barang}
+                                onChange={(e) => {
+                                    const selected = kodeBarangOptions.find(o => o.kode === e.target.value);
+                                    form.setData({ kode_barang: e.target.value, uraian_kode_barang: selected?.uraian ?? '' });
+                                }}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
+                            >
                                 <option value="">— Pilih —</option>
                                 {kodeBarangOptions.map((o) => (
                                     <option key={o.kode} value={o.kode}>{o.kode} — {o.uraian}</option>
                                 ))}
                             </select>
                         </div>
-                        <button type="submit" disabled={form.processing} className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                        <button type="submit" disabled={form.processing} className="min-h-10 px-4 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
                             Tambah Kode Rekening
                         </button>
                     </form>
                 )}
 
                 {canAssign && recordsWithoutKodeBarang.length > 0 && hasLocalAssignments && (
-                    <div className="flex justify-end">
-                        <button onClick={saveAssign} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                    <div className="sticky bottom-3 z-10 flex justify-end">
+                        <button onClick={saveAssign} disabled={saving} className="inline-flex min-h-10 items-center gap-2 px-4 bg-orange-600 text-white rounded-xl text-sm font-bold shadow-lg disabled:opacity-50">
                             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             {saving ? 'Menyimpan...' : `Simpan ${Object.keys(assign).length} Assignment`}
                         </button>
@@ -108,51 +119,97 @@ export default function Index({ items, sumberDana, kodeBarangOptions }: { items:
                 )}
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
-                            <tr>
-                                <th className="text-left py-3 px-4">Kode</th>
-                                <th className="text-left py-3 px-4">Nama</th>
-                                <th className="text-left py-3 px-4">Kode Barang</th>
-                                <th className="text-left py-3 px-4">Uraian Barang</th>
-                                <th className="text-left py-3 px-4">Sumber Dana</th>
-                                {canAssign && <th className="text-left py-3 px-4">Assign</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {items.data.length === 0 ? (
-                                <tr><td colSpan={6} className="py-10 text-center text-slate-400 text-xs">Belum ada kode rekening.</td></tr>
-                            ) : (
-                                items.data.map((item) => (
-                                    <tr key={item.id}>
-                                        <td className="py-3 px-4 font-mono text-slate-700">{item.kode}</td>
-                                        <td className="py-3 px-4">{item.nama}</td>
-                                        <td className="py-3 px-4 font-mono text-xs text-slate-500">{item.kode_barang ?? '—'}</td>
-                                        <td className="py-3 px-4 text-xs text-slate-500">{item.uraian_kode_barang ?? '—'}</td>
-                                        <td className="py-3 px-4">{item.sumber_dana}</td>
-                                        {canAssign && (
-                                            <td className="py-3 px-4">
-                                                {item.kode_barang ? (
-                                                    <span className="text-xs text-green-600 font-medium">✓ Sudah</span>
-                                                ) : (
-                                                    <select
-                                                        value={assign[item.id]?.kode_barang ?? ''}
-                                                        onChange={(e) => handleAssign(item.id, e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"
-                                                    >
-                                                        <option value="">— Pilih —</option>
-                                                        {kodeBarangOptions.map((o) => (
-                                                            <option key={o.kode} value={o.kode}>{o.kode} — {o.uraian}</option>
-                                                        ))}
-                                                    </select>
-                                                )}
-                                            </td>
+                    {items.data.length === 0 ? (
+                        <EmptyState
+                            title="Belum Ada Kode Rekening"
+                            description={`Belum ada kode rekening untuk sumber dana ${sumberDana}.`}
+                        />
+                    ) : (
+                        <>
+                            <ul className="md:hidden divide-y divide-slate-100">
+                                {items.data.map((item) => (
+                                    <li key={item.id} className="p-4 space-y-2">
+                                        <div>
+                                            <div className="font-mono text-sm font-semibold text-slate-800">{item.kode}</div>
+                                            <div className="text-sm text-slate-600 break-words">{item.nama}</div>
+                                        </div>
+                                        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                            <dt className="text-slate-500">Kode Barang</dt>
+                                            <dd className="text-right font-mono text-slate-700">{item.kode_barang ?? '—'}</dd>
+                                            <dt className="text-slate-500">Sumber Dana</dt>
+                                            <dd className="text-right text-slate-700">{item.sumber_dana}</dd>
+                                        </dl>
+                                        {canAssign && !item.kode_barang && (
+                                            <div>
+                                                <label htmlFor={`assign-mobile-${item.id}`} className="block text-xs font-semibold text-slate-500 mb-1">
+                                                    Assign Kode Barang
+                                                </label>
+                                                <select
+                                                    id={`assign-mobile-${item.id}`}
+                                                    value={assign[item.id]?.kode_barang ?? ''}
+                                                    onChange={(e) => handleAssign(item.id, e.target.value)}
+                                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
+                                                >
+                                                    <option value="">— Pilih —</option>
+                                                    {kodeBarangOptions.map((o) => (
+                                                        <option key={o.kode} value={o.kode}>{o.kode} — {o.uraian}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         )}
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                                        <tr>
+                                            <th className="text-left py-3 px-4">Kode</th>
+                                            <th className="text-left py-3 px-4">Nama</th>
+                                            <th className="text-left py-3 px-4">Kode Barang</th>
+                                            <th className="text-left py-3 px-4">Uraian Barang</th>
+                                            <th className="text-left py-3 px-4">Sumber Dana</th>
+                                            {canAssign && <th className="text-left py-3 px-4">Assign</th>}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {items.data.map((item) => (
+                                            <tr key={item.id}>
+                                                <td className="py-3 px-4 font-mono text-slate-700">{item.kode}</td>
+                                                <td className="py-3 px-4">{item.nama}</td>
+                                                <td className="py-3 px-4 font-mono text-xs text-slate-500">{item.kode_barang ?? '—'}</td>
+                                                <td className="py-3 px-4 text-xs text-slate-500">{item.uraian_kode_barang ?? '—'}</td>
+                                                <td className="py-3 px-4">{item.sumber_dana}</td>
+                                                {canAssign && (
+                                                    <td className="py-3 px-4">
+                                                        {item.kode_barang ? (
+                                                            <span className="text-xs text-emerald-700 font-medium">✓ Sudah</span>
+                                                        ) : (
+                                                            <select
+                                                                aria-label={`Assign kode barang untuk ${item.kode}`}
+                                                                value={assign[item.id]?.kode_barang ?? ''}
+                                                                onChange={(e) => handleAssign(item.id, e.target.value)}
+                                                                className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"
+                                                            >
+                                                                <option value="">— Pilih —</option>
+                                                                {kodeBarangOptions.map((o) => (
+                                                                    <option key={o.kode} value={o.kode}>{o.kode} — {o.uraian}</option>
+                                                                ))}
+                                                            </select>
+                                                        )}
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
+                    <div className="border-t border-slate-100 px-4">
+                        <Pagination links={items.links} total={items.total} />
+                    </div>
                 </div>
             </div>
         </AppLayout>

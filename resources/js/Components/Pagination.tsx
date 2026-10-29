@@ -24,13 +24,13 @@ export default function Pagination({ links, total, className = '' }: PaginationP
                     Total: <strong>{total.toLocaleString('id-ID')}</strong> baris data
                 </span>
             )}
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
                 {links.map((link, i) => (
                     link.url ? (
                         <Link
                             key={i}
                             href={link.url}
-                            className={`px-2.5 py-1 text-xs font-semibold rounded border transition ${
+                            className={`inline-flex min-h-9 min-w-9 items-center justify-center px-2.5 text-xs font-semibold rounded border transition ${
                                 link.active
                                     ? 'bg-blue-600 text-white border-blue-600'
                                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
@@ -40,7 +40,7 @@ export default function Pagination({ links, total, className = '' }: PaginationP
                     ) : (
                         <span
                             key={i}
-                            className="px-2.5 py-1 text-xs text-slate-400 bg-slate-50 rounded border border-slate-100"
+                            className="inline-flex min-h-9 min-w-9 items-center justify-center px-2.5 text-xs text-slate-400 bg-slate-50 rounded border border-slate-100"
                             dangerouslySetInnerHTML={{ __html: link.label }}
                         />
                     )

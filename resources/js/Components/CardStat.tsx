@@ -27,8 +27,8 @@ export default function CardStat({
 }: CardStatProps) {
     const c = COLOR_MAP[color] || COLOR_MAP.blue;
     return (
-        <div className={`bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between ${className}`}>
-            <div className="flex items-center justify-between mb-3">
+        <div className={`bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between sm:p-5 ${className}`}>
+            <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
                 <div className={`p-2 rounded-xl ${c.bg} ${c.text} ${c.border} border`}>{icon}</div>
             </div>

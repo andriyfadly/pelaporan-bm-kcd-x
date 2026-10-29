@@ -1,8 +1,9 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
-import Modal from '@/Components/Modal';
 import ConfirmDialog from '@/Components/ConfirmDialog';
+import EmptyState from '@/Components/EmptyState';
+import Modal from '@/Components/Modal';
 import { formatRupiah } from '@/Utils/format';
 import { DollarSign, ArrowLeft, Plus, Pencil, Trash2, Save, Package } from 'lucide-react';
 
@@ -91,17 +92,17 @@ export default function KelolaHarga({
                         </h1>
                         <p className="text-sm text-slate-500 mt-1">Kelola semua harga untuk {barang.nama_barang}.</p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2">
                         <a
                             href={`${prefix}/master/barang`}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50"
+                            className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 px-4 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 sm:flex-none"
                         >
                             <ArrowLeft className="w-4 h-4" /> Kembali
                         </a>
                         <button
                             type="button"
                             onClick={() => setShowCreate(true)}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition"
+                            className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 px-4 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition sm:flex-none"
                         >
                             <Plus className="w-4 h-4" /> Tambah Harga
                         </button>
@@ -133,38 +134,46 @@ export default function KelolaHarga({
                         <h2 className="text-sm font-bold text-slate-800">Daftar Harga ({hargaList.length})</h2>
                     </div>
                     {hargaList.length === 0 ? (
-                        <div className="py-12 text-center">
-                            <p className="text-slate-400 text-sm">Belum ada harga yang ditambahkan.</p>
-                            <button
-                                type="button"
-                                onClick={() => setShowCreate(true)}
-                                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl"
-                            >
-                                <Plus className="w-4 h-4" /> Tambah Harga Pertama
-                            </button>
-                        </div>
+                        <EmptyState
+                            title="Belum Ada Harga"
+                            description="Tambahkan harga satuan agar barang ini bisa dipakai pada pengajuan dan penerimaan."
+                            action={
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCreate(true)}
+                                    className="inline-flex min-h-10 items-center gap-1.5 px-4 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl"
+                                >
+                                    <Plus className="w-4 h-4" /> Tambah Harga Pertama
+                                </button>
+                            }
+                        />
                     ) : (
                         <div className="divide-y divide-slate-100">
                             {hargaList.map((harga) => (
-                                <div key={harga.id} className="flex items-center justify-between px-4 py-4">
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-lg font-bold text-emerald-700">{formatRupiah(harga.harga_satuan)}</span>
-                                        <span className="text-xs text-slate-500">Dibuat: {formatDate(harga.created_at)}</span>
+                                <div
+                                    key={harga.id}
+                                    className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="text-lg font-bold text-emerald-700">{formatRupiah(harga.harga_satuan)}</div>
+                                        <div className="text-xs text-slate-500">Dibuat: {formatDate(harga.created_at)}</div>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
                                         <button
                                             type="button"
                                             onClick={() => openEdit(harga)}
-                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-amber-500 hover:bg-amber-600"
+                                            aria-label={`Edit harga ${formatRupiah(harga.harga_satuan)}`}
+                                            className="inline-flex min-h-10 items-center justify-center gap-1 px-3 rounded-xl text-sm font-bold text-white bg-amber-500 hover:bg-amber-600"
                                         >
-                                            <Pencil className="w-3.5 h-3.5" /> Edit
+                                            <Pencil className="w-4 h-4" /> Edit
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setDeleteTarget(harga)}
-                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-700"
+                                            aria-label={`Hapus harga ${formatRupiah(harga.harga_satuan)}`}
+                                            className="inline-flex min-h-10 items-center justify-center gap-1 px-3 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700"
                                         >
-                                            <Trash2 className="w-3.5 h-3.5" /> Hapus
+                                            <Trash2 className="w-4 h-4" /> Hapus
                                         </button>
                                     </div>
                                 </div>
@@ -177,8 +186,9 @@ export default function KelolaHarga({
             <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Tambah Harga Baru">
                 <form onSubmit={submitCreate} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Harga Satuan</label>
+                        <label htmlFor="create-harga-satuan" className="block text-xs font-bold uppercase text-slate-500 mb-1">Harga Satuan</label>
                         <input
+                            id="create-harga-satuan"
                             type="number"
                             value={createForm.data.harga_satuan}
                             onChange={(e) => createForm.setData('harga_satuan', Number(e.target.value))}
@@ -187,11 +197,11 @@ export default function KelolaHarga({
                         />
                         {createForm.errors.harga_satuan && <p className="text-xs text-rose-600 mt-1">{createForm.errors.harga_satuan}</p>}
                     </div>
-                    <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" onClick={() => setShowCreate(false)} className="min-h-10 px-4 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
                             Batal
                         </button>
-                        <button type="submit" disabled={createForm.processing} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
+                        <button type="submit" disabled={createForm.processing} className="inline-flex min-h-10 items-center justify-center gap-1.5 px-4 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
                             <Save className="w-4 h-4" /> Tambah Harga
                         </button>
                     </div>
@@ -201,8 +211,9 @@ export default function KelolaHarga({
             <Modal isOpen={editTarget !== null} onClose={() => setEditTarget(null)} title="Edit Harga">
                 <form onSubmit={submitEdit} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Harga Satuan</label>
+                        <label htmlFor="edit-harga-satuan" className="block text-xs font-bold uppercase text-slate-500 mb-1">Harga Satuan</label>
                         <input
+                            id="edit-harga-satuan"
                             type="number"
                             value={editForm.data.harga_satuan}
                             onChange={(e) => editForm.setData('harga_satuan', Number(e.target.value))}
@@ -211,11 +222,11 @@ export default function KelolaHarga({
                         />
                         {editForm.errors.harga_satuan && <p className="text-xs text-rose-600 mt-1">{editForm.errors.harga_satuan}</p>}
                     </div>
-                    <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setEditTarget(null)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" onClick={() => setEditTarget(null)} className="min-h-10 px-4 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
                             Batal
                         </button>
-                        <button type="submit" disabled={editForm.processing} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
+                        <button type="submit" disabled={editForm.processing} className="inline-flex min-h-10 items-center justify-center gap-1.5 px-4 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
                             <Save className="w-4 h-4" /> Simpan Perubahan
                         </button>
                     </div>

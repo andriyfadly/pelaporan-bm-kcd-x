@@ -128,22 +128,24 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                         </div>
                     )}
                     {divisis.map((divisi) => (
-                        <div key={divisi.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-base font-bold text-slate-900">{divisi.nama}</h3>
-                                <div className="flex items-center gap-2">
+                        <div key={divisi.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm sm:p-6">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-baseline gap-2">
+                                    <h3 className="text-base font-bold text-slate-900">{divisi.nama}</h3>
                                     <span className="text-xs text-slate-500">{divisi.pengajuan_count} pengajuan</span>
+                                </div>
+                                <div className="flex items-center gap-2">
                                     <button
                                         type="button"
                                         onClick={() => openEdit(divisi)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50"
+                                        className="inline-flex min-h-9 items-center gap-1 px-3 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50"
                                     >
                                         <Pencil className="w-3.5 h-3.5" /> Edit
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setDeleteTarget(divisi)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-rose-200 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50"
+                                        className="inline-flex min-h-9 items-center gap-1 px-3 border border-rose-200 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" /> Hapus
                                     </button>
@@ -154,24 +156,34 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                                     <p className="text-xs text-slate-400">Belum ada akun operator pada divisi ini.</p>
                                 )}
                                 {divisi.users.map((operator) => (
-                                    <div key={operator.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2.5">
-                                        <div>
-                                            <div className="text-sm font-semibold text-slate-800">{operator.name}</div>
-                                            <div className="text-xs font-mono text-slate-500">{operator.username}</div>
+                                    <div
+                                        key={operator.id}
+                                        className="rounded-xl bg-slate-50 px-4 py-3 sm:flex sm:items-center sm:justify-between sm:gap-3"
+                                    >
+                                        <div className="flex items-center justify-between gap-2 sm:block">
+                                            <div>
+                                                <div className="text-sm font-semibold text-slate-800">{operator.name}</div>
+                                                <div className="text-xs font-mono text-slate-500">{operator.username}</div>
+                                            </div>
+                                            <span className={`shrink-0 px-2 py-1 rounded-full text-xs font-bold sm:hidden ${operator.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                                                {operator.is_active ? 'Aktif' : 'Nonaktif'}
+                                            </span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`px-2 py-1 rounded-full text-[11px] font-bold ${operator.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                                        <div className="mt-2 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+                                            <span className={`hidden px-2 py-1 rounded-full text-xs font-bold sm:inline ${operator.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
                                                 {operator.is_active ? 'Aktif' : 'Nonaktif'}
                                             </span>
                                             <button
                                                 onClick={() => setResetTarget(operator)}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-white"
+                                                aria-label={`Reset password ${operator.username}`}
+                                                className="inline-flex min-h-9 flex-1 items-center justify-center gap-1 px-2.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-white sm:flex-none"
                                             >
-                                                <KeyRound className="w-3.5 h-3.5" /> Reset Password
+                                                <KeyRound className="w-3.5 h-3.5" /> Reset
                                             </button>
                                             <button
                                                 onClick={() => toggleActive(operator)}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-white"
+                                                aria-label={`${operator.is_active ? 'Nonaktifkan' : 'Aktifkan'} ${operator.username}`}
+                                                className="inline-flex min-h-9 flex-1 items-center justify-center gap-1 px-2.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-white sm:flex-none"
                                             >
                                                 <Power className="w-3.5 h-3.5" /> {operator.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                                             </button>
@@ -191,20 +203,22 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                         diminta mengganti password saat login berikutnya.
                     </p>
                     <div>
-                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Password Baru</label>
+                        <label htmlFor="reset-password" className="block text-xs font-bold uppercase text-slate-500 mb-1">Password Baru</label>
                         <input
+                            id="reset-password"
                             type="password"
+                            autoComplete="new-password"
                             value={resetPasswordForm.data.password}
                             onChange={(e) => resetPasswordForm.setData('password', e.target.value)}
                             className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
                         />
                         {resetPasswordForm.errors.password && <p className="text-xs text-rose-600 mt-1">{resetPasswordForm.errors.password}</p>}
                     </div>
-                    <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setResetTarget(null)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" onClick={() => setResetTarget(null)} className="min-h-10 px-4 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
                             Batal
                         </button>
-                        <button type="submit" disabled={resetPasswordForm.processing} className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
+                        <button type="submit" disabled={resetPasswordForm.processing} className="min-h-10 px-4 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
                             Reset
                         </button>
                     </div>
@@ -215,8 +229,9 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                 <form onSubmit={submit} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Divisi</label>
+                            <label htmlFor="nama-divisi" className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Divisi</label>
                             <input
+                                id="nama-divisi"
                                 value={data.nama_divisi}
                                 onChange={(e) => setData('nama_divisi', e.target.value)}
                                 placeholder="Sarpras"
@@ -225,8 +240,9 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                             {errors.nama_divisi && <p className="text-xs text-rose-600 mt-1">{errors.nama_divisi}</p>}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Operator</label>
+                            <label htmlFor="nama-operator" className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Operator</label>
                             <input
+                                id="nama-operator"
                                 value={data.nama_operator}
                                 onChange={(e) => setData('nama_operator', e.target.value)}
                                 className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
@@ -234,12 +250,13 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                             {errors.nama_operator && <p className="text-xs text-rose-600 mt-1">{errors.nama_operator}</p>}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Username</label>
+                            <label htmlFor="username-suffix" className="block text-xs font-bold uppercase text-slate-500 mb-1">Username</label>
                             <div className="flex items-center">
                                 <span className="px-3 py-2 bg-slate-100 border border-r-0 border-slate-300 rounded-l-xl text-sm font-mono text-slate-500 whitespace-nowrap">
                                     {npsn ?? '???'}-
                                 </span>
                                 <input
+                                    id="username-suffix"
                                     value={data.username_suffix}
                                     onChange={(e) => setData('username_suffix', e.target.value.toLowerCase())}
                                     placeholder="sarpras"
@@ -249,18 +266,20 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                             {errors.username_suffix && <p className="text-xs text-rose-600 mt-1">{errors.username_suffix}</p>}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Password Awal</label>
+                            <label htmlFor="password-operator" className="block text-xs font-bold uppercase text-slate-500 mb-1">Password Awal</label>
                             <div className="relative">
                                 <input
+                                    id="password-operator"
                                     type={showPassword ? 'text' : 'password'}
+                                    autoComplete="new-password"
                                     value={data.password}
                                     onChange={(e) => setData('password', e.target.value)}
-                                    className="w-full px-3 py-2 pr-9 border border-slate-300 rounded-xl text-sm"
+                                    className="w-full px-3 py-2 pr-11 border border-slate-300 rounded-xl text-sm"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword((v) => !v)}
-                                    className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600"
+                                    className="absolute right-0 top-0 inline-flex h-10 w-10 items-center justify-center text-slate-400 hover:text-slate-600"
                                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                                 >
                                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -269,11 +288,11 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
                             {errors.password && <p className="text-xs text-rose-600 mt-1">{errors.password}</p>}
                         </div>
                     </div>
-                    <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" onClick={() => setShowCreate(false)} className="min-h-10 px-4 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
                             Batal
                         </button>
-                        <button type="submit" disabled={processing} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
+                        <button type="submit" disabled={processing} className="inline-flex min-h-10 items-center justify-center gap-1.5 px-4 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
                             <UserPlus className="w-4 h-4" /> Buat Divisi & Operator
                         </button>
                     </div>
@@ -283,19 +302,20 @@ export default function Index({ divisis, npsn }: { divisis: DivisiItem[]; npsn: 
             <Modal isOpen={editTarget !== null} onClose={() => setEditTarget(null)} title="Edit Divisi" maxWidth="sm">
                 <form onSubmit={submitEdit} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Divisi</label>
+                        <label htmlFor="edit-nama-divisi" className="block text-xs font-bold uppercase text-slate-500 mb-1">Nama Divisi</label>
                         <input
+                            id="edit-nama-divisi"
                             value={editForm.data.nama_divisi}
                             onChange={(e) => editForm.setData('nama_divisi', e.target.value)}
                             className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
                         />
                         {editForm.errors.nama_divisi && <p className="text-xs text-rose-600 mt-1">{editForm.errors.nama_divisi}</p>}
                     </div>
-                    <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setEditTarget(null)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" onClick={() => setEditTarget(null)} className="min-h-10 px-4 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">
                             Batal
                         </button>
-                        <button type="submit" disabled={editForm.processing} className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
+                        <button type="submit" disabled={editForm.processing} className="min-h-10 px-4 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50">
                             Simpan
                         </button>
                     </div>

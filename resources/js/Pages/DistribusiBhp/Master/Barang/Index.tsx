@@ -4,6 +4,7 @@ import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import CardStat from '@/Components/CardStat';
+import EmptyState from '@/Components/EmptyState';
 import SearchInput from '@/Components/SearchInput';
 import { formatRupiah } from '@/Utils/format';
 import { Package, Plus, Pencil, Trash2, DollarSign, Save, TrendingUp, Upload, Download } from 'lucide-react';
@@ -266,11 +267,11 @@ export default function Index({
                             Kelola data barang dan inventori {sumberDana} sekolah.
                         </p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2">
                         <button
                             type="button"
                             onClick={() => setShowImport(true)}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50"
+                            className="inline-flex min-h-10 items-center gap-1.5 px-3 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50"
                         >
                             <Upload className="w-4 h-4" /> Import
                         </button>
@@ -278,14 +279,14 @@ export default function Index({
                             type="button"
                             onClick={handleExport}
                             disabled={filtered.length === 0}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 disabled:opacity-50"
+                            className="inline-flex min-h-10 items-center gap-1.5 px-3 border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 disabled:opacity-50"
                         >
-                            Export
+                            <Download className="w-4 h-4" /> Export
                         </button>
                         <button
                             type="button"
                             onClick={() => setShowCreate(true)}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition"
+                            className="inline-flex min-h-10 items-center gap-1.5 px-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition"
                         >
                             <Plus className="w-4 h-4" /> Tambah Barang
                         </button>
@@ -302,98 +303,160 @@ export default function Index({
                     <div className="p-4 border-b border-slate-100">
                         <SearchInput value={search} onChange={setSearch} placeholder="Cari barang..." className="max-w-xs" />
                     </div>
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
-                            <tr>
-                                <th className="text-left py-3 px-4">Nama Barang</th>
-                                <th className="text-left py-3 px-4">Kode Barang / NUSP</th>
-                                <th className="text-left py-3 px-4">Satuan</th>
-                                <th className="text-left py-3 px-4">Harga Satuan</th>
-                                <th className="text-left py-3 px-4">Kode Rekening</th>
-                                <th className="text-right py-3 px-4 w-52">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filtered.length === 0 ? (
-                                <tr><td colSpan={6} className="py-10 text-center text-slate-400 text-xs">Belum ada barang.</td></tr>
-                            ) : (
-                                filtered.map((item) => {
+
+                    {filtered.length === 0 ? (
+                        <EmptyState
+                            title={search ? 'Barang Tidak Ditemukan' : 'Belum Ada Barang'}
+                            description={
+                                search
+                                    ? `Tidak ada barang ${sumberDana} yang cocok dengan “${search}”.`
+                                    : `Tambahkan barang ${sumberDana} lewat tombol Tambah Barang atau Import Excel.`
+                            }
+                        />
+                    ) : (
+                        <>
+                            <ul className="md:hidden divide-y divide-slate-100">
+                                {filtered.map((item) => {
                                     const harga = item.harga.at(-1)?.harga_satuan;
-                                    const priceCount = item.harga.length;
+
                                     return (
-                                        <tr key={item.id} className="hover:bg-slate-50/60">
-                                            <td className="py-3 px-4 font-medium text-slate-800">{item.nama_barang}</td>
-                                            <td className="py-3 px-4">
-                                                {item.kode_barang ? (
-                                                    <div className="space-y-1">
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-mono font-medium bg-blue-100 text-blue-800">
-                                                            {item.kode_barang}
-                                                        </span>
-                                                        {uraianFor(item.kode_barang) && (
-                                                            <div className="text-xs text-slate-500">{uraianFor(item.kode_barang)}</div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-400">-</span>
-                                                )}
-                                            </td>
-                                            <td className="py-3 px-4 text-slate-600">{item.satuan ?? '-'}</td>
-                                            <td className="py-3 px-4">
-                                                {harga ? (
-                                                    <div className="space-y-1">
-                                                        <span className="font-medium text-emerald-600 block">{formatRupiah(harga)}</span>
-                                                        <span className={`text-xs px-2 py-1 rounded border ${
-                                                            priceCount > 1
-                                                                ? 'text-blue-600 bg-blue-50 border-blue-200'
-                                                                : 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                                                        }`}>
-                                                            {priceCount} harga
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-400">-</span>
-                                                )}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                {item.kode_rekening ? (
-                                                    <div className="flex flex-col">
-                                                        <span className="font-mono text-sm text-blue-600">{item.kode_rekening.kode}</span>
-                                                        <span className="text-xs text-slate-500">{item.kode_rekening.nama}</span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-400">-</span>
-                                                )}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <a
-                                                        href={`${prefix}/master/barang/${item.id}/kelola-harga`}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700"
-                                                    >
-                                                        <DollarSign className="w-3.5 h-3.5" /> Kelola Harga
-                                                    </a>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openEdit(item)}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50"
-                                                    >
-                                                        <Pencil className="w-3.5 h-3.5" /> Edit
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setDeleteTarget(item)}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-rose-200 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50"
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" /> Hapus
-                                                    </button>
+                                        <li key={item.id} className="p-4 space-y-3">
+                                            <div className="min-w-0">
+                                                <div className="font-semibold text-slate-800 break-words">{item.nama_barang}</div>
+                                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                                                    {item.kode_barang && <span className="font-mono">{item.kode_barang}</span>}
+                                                    {item.satuan && <span>· {item.satuan}</span>}
+                                                    {item.kode_rekening && <span>· {item.kode_rekening.kode}</span>}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                                <div className="mt-1 text-sm font-medium text-emerald-600">
+                                                    {harga ? formatRupiah(harga) : '-'}
+                                                    {item.harga.length > 1 && (
+                                                        <span className="ml-2 text-xs font-normal text-blue-600">
+                                                            {item.harga.length} harga
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <a
+                                                    href={`${prefix}/master/barang/${item.id}/kelola-harga`}
+                                                    className="inline-flex min-h-10 items-center justify-center rounded-xl text-sm font-bold text-white bg-emerald-600"
+                                                >
+                                                    Harga
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openEdit(item)}
+                                                    className="inline-flex min-h-10 items-center justify-center border border-slate-300 rounded-xl text-sm font-bold text-slate-600"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDeleteTarget(item)}
+                                                    className="inline-flex min-h-10 items-center justify-center border border-rose-200 rounded-xl text-sm font-bold text-rose-600"
+                                                >
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        </li>
                                     );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                                })}
+                            </ul>
+
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                                        <tr>
+                                            <th className="text-left py-3 px-4">Nama Barang</th>
+                                            <th className="text-left py-3 px-4">Kode Barang / NUSP</th>
+                                            <th className="text-left py-3 px-4">Satuan</th>
+                                            <th className="text-left py-3 px-4">Harga Satuan</th>
+                                            <th className="text-left py-3 px-4">Kode Rekening</th>
+                                            <th className="text-right py-3 px-4 w-52">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filtered.map((item) => {
+                                            const harga = item.harga.at(-1)?.harga_satuan;
+                                            const priceCount = item.harga.length;
+
+                                            return (
+                                                <tr key={item.id} className="hover:bg-slate-50/60">
+                                                    <td className="py-3 px-4 font-medium text-slate-800">{item.nama_barang}</td>
+                                                    <td className="py-3 px-4">
+                                                        {item.kode_barang ? (
+                                                            <div className="space-y-1">
+                                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-mono font-medium bg-blue-100 text-blue-800">
+                                                                    {item.kode_barang}
+                                                                </span>
+                                                                {uraianFor(item.kode_barang) && (
+                                                                    <div className="text-xs text-slate-500">{uraianFor(item.kode_barang)}</div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-slate-600">{item.satuan ?? '-'}</td>
+                                                    <td className="py-3 px-4">
+                                                        {harga ? (
+                                                            <div className="space-y-1">
+                                                                <span className="font-medium text-emerald-600 block">{formatRupiah(harga)}</span>
+                                                                <span className={`text-xs px-2 py-1 rounded border ${
+                                                                    priceCount > 1
+                                                                        ? 'text-blue-600 bg-blue-50 border-blue-200'
+                                                                        : 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                                                                }`}>
+                                                                    {priceCount} harga
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        {item.kode_rekening ? (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-mono text-sm text-blue-600">{item.kode_rekening.kode}</span>
+                                                                <span className="text-xs text-slate-500">{item.kode_rekening.nama}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <a
+                                                                href={`${prefix}/master/barang/${item.id}/kelola-harga`}
+                                                                className="inline-flex min-h-9 items-center gap-1 px-2.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700"
+                                                            >
+                                                                <DollarSign className="w-3.5 h-3.5" /> Kelola Harga
+                                                            </a>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openEdit(item)}
+                                                                className="inline-flex min-h-9 items-center gap-1 px-2.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50"
+                                                            >
+                                                                <Pencil className="w-3.5 h-3.5" /> Edit
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDeleteTarget(item)}
+                                                                className="inline-flex min-h-9 items-center gap-1 px-2.5 border border-rose-200 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" /> Hapus
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
