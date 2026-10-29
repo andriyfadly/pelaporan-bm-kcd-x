@@ -41,12 +41,16 @@ class MutasiController extends Controller
                 ->latest('created_at')
                 ->paginate(25)
                 ->withQueryString(),
+            // Mutasi hanya untuk unit yang sudah punya lokasi: penempatan
+            // pertama adalah penyaluran.
             'units' => InventarisUnit::query()
                 ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
                 ->where('status', InventarisUnit::STATUS_AKTIF)
+                ->where(fn (Builder $q) => $q->whereNotNull('ruang_id')->orWhereNotNull('pegawai_id'))
                 ->orderBy('kode_barang')
+                ->orderBy('tahun_perolehan')
                 ->orderBy('nomor_register')
-                ->get(['id', 'nomor_register', 'kode_barang', 'nama_barang', 'sekolah_id']),
+                ->get(['id', 'nomor_register', 'kode_barang', 'nama_barang', 'sekolah_id', 'status']),
             'ruangList' => Ruang::query()
                 ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
                 ->orderBy('nama_ruang')
@@ -64,7 +68,7 @@ class MutasiController extends Controller
         $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
         Gate::authorize('mutasi', $unit);
 
-        $mutasi = $this->service->tempatkan($unit, $request->validated(), (string) $request->user()->id);
+        $mutasi = $this->service->mutasikan($unit, $request->validated(), (string) $request->user()->id);
 
         return back()->with('success', "Unit {$unit->nomor_register} dicatat sebagai {$mutasi->jenis}.");
     }

@@ -221,6 +221,10 @@ class InventarisSnapshotPejabatTest extends TestCase
         $unit->update(['ruang_id' => $ruang->id]);
 
         $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $unit), ['tanggal' => '2024-06-05', 'nomor' => 'BAST-2024'])
+            ->assertRedirect();
+
+        $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.pengembalian.store', $unit), ['kondisi' => 'RR', 'tanggal' => '2024-06-10'])
             ->assertRedirect();
 

@@ -264,6 +264,26 @@ class InventarisSyncTest extends TestCase
         $this->assertSame('003', InventarisUnit::where('unit_index', 3)->value('nomor_register'));
     }
 
+    public function test_sinkronisasi_ulang_tahun_berbeda_memulai_register_dari_001(): void
+    {
+        $sekolah = $this->sekolah();
+        $this->kunciStatus($sekolah, 'disetujui');
+
+        $lama = $this->realisasi($sekolah, 2);
+        activity()->withoutLogging(fn () => $lama->update(['ba_tgl' => '2025-03-05']));
+        $this->service()->syncRealisasi($lama->fresh());
+
+        $baru = $this->realisasi($sekolah, 2);
+        activity()->withoutLogging(fn () => $baru->update(['ba_tgl' => '2026-03-05']));
+        $this->service()->syncRealisasi($baru->fresh());
+
+        $perTahun = InventarisUnit::orderBy('tahun_perolehan')->orderBy('nomor_register')->get()
+            ->groupBy('tahun_perolehan')
+            ->map(fn ($rows) => $rows->pluck('nomor_register')->all());
+
+        $this->assertSame([2025 => ['001', '002'], 2026 => ['001', '002']], $perTahun->all());
+    }
+
     public function test_sync_log_mencatat_hasil(): void
     {
         $sekolah = $this->sekolah();
@@ -334,6 +354,7 @@ class InventarisSyncTest extends TestCase
             'unit_index' => 1,
             'kode_barang' => $lain->kode_barang,
             'nomor_register' => '002',
+            'tahun_perolehan' => 2026,
             'harga_satuan' => 0,
             'nilai_perolehan_unit' => 0,
         ]);
@@ -341,6 +362,7 @@ class InventarisSyncTest extends TestCase
             'id' => (string) Str::uuid(),
             'sekolah_id' => $sekolah->id,
             'kode_barang' => $realisasi->kode_barang,
+            'tahun' => 2026,
             'next_number' => 1,
             'created_at' => now(),
             'updated_at' => now(),

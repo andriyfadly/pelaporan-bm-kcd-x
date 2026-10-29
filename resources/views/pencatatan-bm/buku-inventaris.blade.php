@@ -47,6 +47,7 @@
         <th>Kode Barang</th>
         <th>Nama Barang</th>
         <th>Merk/Tipe</th>
+        <th>Asal Perolehan</th>
         <th style="width:40px;">Kondisi</th>
         <th style="width:60px;">Tgl Perolehan</th>
         <th style="width:70px;">Harga Satuan</th>
@@ -64,6 +65,7 @@
             <td>{{ $unit->kode_barang }}</td>
             <td>{{ $unit->nama_barang ?? '-' }}</td>
             <td>{{ $unit->merk_tipe ?? '-' }}</td>
+            <td>{{ $unit->asal_perolehan ?? '-' }}</td>
             <td class="mid">{{ $unit->kondisi }}</td>
             <td class="mid">{{ $unit->tanggal_perolehan?->format('d/m/Y') ?? '-' }}</td>
             <td class="num">{{ number_format((float) $unit->harga_satuan, 0, ',', '.') }}</td>
@@ -73,12 +75,12 @@
             <td class="mid">{{ $unit->status }}</td>
         </tr>
     @empty
-        <tr><td colspan="12" class="mid">Tidak ada unit pada tahun {{ $tahun }}.</td></tr>
+        <tr><td colspan="13" class="mid">Tidak ada unit pada tahun {{ $tahun }}.</td></tr>
     @endforelse
     </tbody>
     <tfoot>
     <tr>
-        <td colspan="8" class="num">Total Nilai</td>
+        <td colspan="9" class="num">Total Nilai</td>
         <td class="num">{{ number_format($totalNilai, 0, ',', '.') }}</td>
         <td colspan="3"></td>
     </tr>

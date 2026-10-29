@@ -34,7 +34,9 @@ use App\Http\Controllers\PencatatanBm\DashboardController as PencatatanDashboard
 use App\Http\Controllers\PencatatanBm\DokumenInventarisController as PencatatanDokumenController;
 use App\Http\Controllers\PencatatanBm\InventarisController as PencatatanInventarisController;
 use App\Http\Controllers\PencatatanBm\MutasiController as PencatatanMutasiController;
+use App\Http\Controllers\PencatatanBm\PendaftaranInventarisController as PencatatanPendaftaranController;
 use App\Http\Controllers\PencatatanBm\PengembalianController as PencatatanPengembalianController;
+use App\Http\Controllers\PencatatanBm\PenyaluranController as PencatatanPenyaluranController;
 use App\Http\Controllers\PencatatanBm\SyncController as PencatatanSyncController;
 use App\Http\Controllers\PencatatanBm\UnitInventarisController as PencatatanUnitController;
 use Illuminate\Support\Facades\Route;
@@ -310,6 +312,19 @@ Route::middleware(['auth'])->group(function () {
                 ->middleware('permission:kelola-inventaris-bm')->name('inventaris.kondisi');
             Route::get('/inventaris-export', [PencatatanInventarisController::class, 'export'])
                 ->middleware(['permission:cetak-inventaris-bm', 'throttle:30,1'])->name('inventaris.export');
+
+            // Daftar barang manual/impor: paralel dengan sinkronisasi realisasi.
+            Route::middleware('permission:kelola-inventaris-bm')->group(function () {
+                Route::post('/inventaris', [PencatatanPendaftaranController::class, 'store'])->name('inventaris.store');
+                Route::post('/inventaris-import', [PencatatanPendaftaranController::class, 'import'])
+                    ->middleware('throttle:10,1')->name('inventaris.import');
+                Route::get('/inventaris-template', [PencatatanPendaftaranController::class, 'template'])
+                    ->middleware('throttle:30,1')->name('inventaris.template');
+            });
+
+            Route::get('/penyaluran', [PencatatanPenyaluranController::class, 'index'])->name('penyaluran.index');
+            Route::post('/penyaluran/{unit}', [PencatatanPenyaluranController::class, 'store'])
+                ->middleware('permission:mutasi-inventaris-bm')->name('penyaluran.store');
 
             Route::get('/mutasi', [PencatatanMutasiController::class, 'index'])->name('mutasi.index');
             Route::get('/pengembalian', [PencatatanPengembalianController::class, 'index'])->name('pengembalian.index');

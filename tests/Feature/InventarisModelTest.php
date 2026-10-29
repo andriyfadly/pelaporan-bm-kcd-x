@@ -78,16 +78,62 @@ class InventarisModelTest extends TestCase
         }
     }
 
-    public function test_register_unik_per_sekolah_kode_barang_dan_terbit_ulang_ditolak(): void
+    public function test_register_unik_per_sekolah_kode_barang_dan_tahun(): void
     {
         $sekolah = $this->sekolah();
         $realisasi = $this->realisasi($sekolah);
 
-        $this->unit($sekolah, $realisasi, ['unit_index' => 1, 'nomor_register' => '001']);
+        $this->unit($sekolah, $realisasi, ['unit_index' => 1, 'nomor_register' => '001', 'tahun_perolehan' => 2026]);
 
         $this->expectException(UniqueConstraintViolationException::class);
 
-        $this->unit($sekolah, $realisasi, ['unit_index' => 2, 'nomor_register' => '001']);
+        $this->unit($sekolah, $realisasi, ['unit_index' => 2, 'nomor_register' => '001', 'tahun_perolehan' => 2026]);
+    }
+
+    public function test_register_boleh_sama_di_tahun_berbeda(): void
+    {
+        $sekolah = $this->sekolah();
+        $realisasi = $this->realisasi($sekolah);
+
+        $this->unit($sekolah, $realisasi, ['unit_index' => 1, 'nomor_register' => '001', 'tahun_perolehan' => 2025]);
+        $this->unit($sekolah, $realisasi, ['unit_index' => 2, 'nomor_register' => '001', 'tahun_perolehan' => 2026]);
+
+        $this->assertSame(2, InventarisUnit::count());
+    }
+
+    public function test_tahun_perolehan_tidak_boleh_kosong_karena_menentukan_register(): void
+    {
+        $sekolah = $this->sekolah();
+        $realisasi = $this->realisasi($sekolah);
+
+        // NULL di unique index dianggap berbeda-beda, jadi dua '001' tanpa
+        // tahun akan lolos. Model mengisinya otomatis dari tanggal perolehan.
+        $unit = $this->unit($sekolah, $realisasi, [
+            'unit_index' => 1,
+            'nomor_register' => '001',
+            'tanggal_perolehan' => '2025-07-01',
+            'tahun_perolehan' => null,
+        ]);
+
+        $this->assertSame(2025, $unit->tahun_perolehan);
+
+        $tanpaTanggal = $this->unit($sekolah, $realisasi, [
+            'unit_index' => 2,
+            'nomor_register' => '001',
+            'tahun_perolehan' => null,
+        ]);
+
+        $this->assertSame((int) now()->year, $tanpaTanggal->tahun_perolehan);
+    }
+
+    public function test_kolom_tahun_perolehan_wajib_di_database(): void
+    {
+        $kolom = collect(Schema::getColumns('inventaris_unit'))->firstWhere('name', 'tahun_perolehan');
+
+        $this->assertFalse(
+            $kolom['nullable'],
+            'tahun_perolehan harus NOT NULL: NULL membuat unique register tidak berlaku.',
+        );
     }
 
     public function test_sekolah_berbeda_boleh_memakai_register_sama(): void
@@ -146,12 +192,12 @@ class InventarisModelTest extends TestCase
         $mutasi = Mutasi::create([
             'sekolah_id' => $sekolah->id,
             'inventaris_unit_id' => $unit->id,
-            'jenis' => 'penempatan',
+            'jenis' => 'penyaluran',
             'tujuan_kondisi' => 'B',
             'tanggal' => '2026-03-10',
         ]);
 
-        $this->assertSame('penempatan', $mutasi->jenis);
+        $this->assertSame('penyaluran', $mutasi->jenis);
         $this->assertSame('2026-03-10', $mutasi->tanggal->format('Y-m-d'));
         $this->assertSame(1, $unit->mutasi()->count());
         $this->assertSame($sekolah->id, $mutasi->sekolah_id);

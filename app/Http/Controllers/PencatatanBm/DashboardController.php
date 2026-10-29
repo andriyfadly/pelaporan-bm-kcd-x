@@ -8,8 +8,8 @@ use App\Models\Master\Pegawai;
 use App\Models\Master\Ruang;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\SyncLog;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,50 +21,53 @@ class DashboardController extends Controller
     {
         $sekolahId = $this->resolveSekolahId($request);
 
-        $units = InventarisUnit::query()
-            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
-            ->where('status', InventarisUnit::STATUS_AKTIF)
-            ->get(['sekolah_id', 'kode_barang', 'nama_barang', 'kondisi', 'nilai_perolehan_unit']);
+        // Agregasi di database: dashboard tidak perlu menarik semua unit ke memori.
+        $aktif = fn () => InventarisUnit::query()
+            ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
+            ->where('status', InventarisUnit::STATUS_AKTIF);
+
+        $ringkasanUnit = $aktif()
+            ->toBase()
+            ->selectRaw('COUNT(*) as total_unit')
+            ->selectRaw('COALESCE(SUM(nilai_perolehan_unit), 0) as total_nilai')
+            ->selectRaw('COUNT(DISTINCT kode_barang) as jenis_barang')
+            ->first();
+
+        $perKondisi = $aktif()
+            ->toBase()
+            ->selectRaw('kondisi, COUNT(*) as jumlah')
+            ->groupBy('kondisi')
+            ->pluck('jumlah', 'kondisi');
 
         return Inertia::render('PencatatanBm/Dashboard', [
             'ringkasan' => [
-                'totalUnit' => $units->count(),
-                'totalNilai' => (float) $units->sum('nilai_perolehan_unit'),
-                'kondisi' => $this->hitungKondisi($units),
-                'jenisBarang' => $units->pluck('kode_barang')->unique()->count(),
+                'totalUnit' => (int) $ringkasanUnit->total_unit,
+                'totalNilai' => (float) $ringkasanUnit->total_nilai,
+                'kondisi' => array_merge(
+                    array_fill_keys(array_keys(InventarisUnit::KONDISI), 0),
+                    $perKondisi->map(fn ($jumlah) => (int) $jumlah)->all(),
+                ),
+                'jenisBarang' => (int) $ringkasanUnit->jenis_barang,
                 'ruang' => Ruang::when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))->count(),
                 'pegawai' => Pegawai::when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))->count(),
             ],
-            'perKodeBarang' => $units
+            'perKodeBarang' => $aktif()
+                ->toBase()
+                ->selectRaw('kode_barang, MAX(nama_barang) as nama_barang, COUNT(*) as jumlah, SUM(nilai_perolehan_unit) as nilai')
                 ->groupBy('kode_barang')
-                ->map(fn (Collection $rows, string $kode) => [
-                    'kode_barang' => $kode,
-                    'nama_barang' => $rows->first()->nama_barang,
-                    'jumlah' => $rows->count(),
-                    'nilai' => (float) $rows->sum('nilai_perolehan_unit'),
-                ])
-                ->sortByDesc('jumlah')
-                ->values()
-                ->take(10),
+                ->orderByDesc('jumlah')
+                ->limit(10)
+                ->get()
+                ->map(fn ($row) => [
+                    'kode_barang' => (string) $row->kode_barang,
+                    'nama_barang' => $row->nama_barang,
+                    'jumlah' => (int) $row->jumlah,
+                    'nilai' => (float) $row->nilai,
+                ]),
             'sinkronisasiTerakhir' => SyncLog::query()
                 ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
                 ->latest('created_at')
                 ->first(['status', 'dibuat', 'surplus', 'perlu_review', 'created_at']),
         ]);
-    }
-
-    /**
-     * @param  Collection<int, InventarisUnit>  $units
-     * @return array<string, int>
-     */
-    private function hitungKondisi(Collection $units): array
-    {
-        $hasil = array_fill_keys(array_keys(InventarisUnit::KONDISI), 0);
-
-        foreach ($units as $unit) {
-            $hasil[$unit->kondisi] = ($hasil[$unit->kondisi] ?? 0) + 1;
-        }
-
-        return $hasil;
     }
 }

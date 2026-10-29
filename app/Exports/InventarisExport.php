@@ -29,7 +29,7 @@ class InventarisExport implements FromQuery, ShouldAutoSize, WithHeadings, WithM
     {
         return [
             'No', 'Register', 'Kode Barang', 'Nama Barang', 'Jenis Aset', 'Merk/Tipe',
-            'No. Sertifikat', 'Ukuran Bangunan', 'Satuan', 'Tanggal Perolehan',
+            'No. Sertifikat', 'Asal Perolehan', 'Ukuran Bangunan', 'Satuan', 'Tanggal Perolehan',
             'Bulan Perolehan', 'Tahun Perolehan', 'Harga Satuan', 'Nilai Perolehan',
             'Kondisi', 'Status', 'Ruang', 'Penanggung Jawab', 'NIP', 'Keterangan',
         ];
@@ -53,6 +53,7 @@ class InventarisExport implements FromQuery, ShouldAutoSize, WithHeadings, WithM
             $unit->jenis_aset,
             $unit->merk_tipe,
             $unit->no_sertifikat,
+            $unit->asal_perolehan,
             $unit->ukuran_bangunan,
             $unit->satuan,
             $unit->tanggal_perolehan?->format('d/m/Y'),

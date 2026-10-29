@@ -84,18 +84,46 @@ class InventarisRegisterConcurrencyTest extends TestCase
             'unit_index' => 1,
             'kode_barang' => '5.2.02.01.004',
             'nomor_register' => '001',
+            'tahun_perolehan' => 2026,
             'harga_satuan' => 0,
             'nilai_perolehan_unit' => 0,
         ]);
     }
 
-    public function test_sequence_unik_per_sekolah_dan_kode_barang(): void
+    public function test_register_sama_boleh_di_tahun_berbeda(): void
+    {
+        $sekolah = $this->sekolah();
+        $this->approve($sekolah);
+
+        app(SinkronisasiInventarisService::class)->syncRealisasi($this->realisasi($sekolah, 1));
+
+        // Nomor register diulang tiap tahun perolehan, jadi '001' sah dipakai
+        // lagi pada tahun lain di sekolah dan kode barang yang sama.
+        InventarisUnit::create([
+            'sekolah_id' => $sekolah->id,
+            'realisasi_id' => $this->realisasi($sekolah, 1)->id,
+            'unit_index' => 2,
+            'kode_barang' => '5.2.02.01.004',
+            'nomor_register' => '001',
+            'tahun_perolehan' => 2025,
+            'harga_satuan' => 0,
+            'nilai_perolehan_unit' => 0,
+        ]);
+
+        $this->assertSame(
+            ['2025' => 1, '2026' => 1],
+            InventarisUnit::selectRaw('tahun_perolehan, count(*) as j')->groupBy('tahun_perolehan')->orderBy('tahun_perolehan')->pluck('j', 'tahun_perolehan')->map(fn ($v) => (int) $v)->all(),
+        );
+    }
+
+    public function test_sequence_unik_per_sekolah_kode_barang_dan_tahun(): void
     {
         $sekolah = $this->sekolah();
 
         InventarisRegisterSequence::create([
             'sekolah_id' => $sekolah->id,
             'kode_barang' => '5.2.02.01.004',
+            'tahun' => 2026,
             'next_number' => 5,
         ]);
 
@@ -104,6 +132,7 @@ class InventarisRegisterConcurrencyTest extends TestCase
         InventarisRegisterSequence::create([
             'sekolah_id' => $sekolah->id,
             'kode_barang' => '5.2.02.01.004',
+            'tahun' => 2026,
             'next_number' => 1,
         ]);
     }

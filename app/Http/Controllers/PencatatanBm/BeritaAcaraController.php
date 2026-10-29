@@ -9,6 +9,7 @@ use App\Models\PencatatanBm\Dokumen;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,6 +42,19 @@ class BeritaAcaraController extends Controller
         $validated = $request->validate([
             'nomor' => ['required', 'string', 'max:150'],
         ]);
+
+        // Acuan menolak nomor BA yang sudah dipakai dokumen lain di sekolah
+        // yang sama (rekapan_ba.php: cek duplikat no_urut_surat).
+        $duplikat = Dokumen::bastBernomor($dokumen->sekolah_id)
+            ->where('nomor', $validated['nomor'])
+            ->whereKeyNot($dokumen->id)
+            ->exists();
+
+        if ($duplikat) {
+            throw ValidationException::withMessages([
+                'nomor' => "Nomor {$validated['nomor']} sudah dipakai berita acara lain.",
+            ]);
+        }
 
         $dokumen->update(['nomor' => $validated['nomor'], 'nomor_dibatalkan_pada' => null]);
 

@@ -17,6 +17,7 @@ use App\Services\PencatatanBm\QrLabelService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -69,7 +70,10 @@ class DokumenInventarisController extends Controller
     {
         $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
         $validated = $request->validate([
-            'nomor' => ['nullable', 'string', 'max:150'],
+            'nomor' => ['nullable', 'string', 'max:150', Rule::unique('inventaris_dokumen', 'nomor')
+                ->where('sekolah_id', $unit->sekolah_id)
+                ->where('jenis', 'bast')
+                ->whereNull('nomor_dibatalkan_pada')],
             'tanggal' => ['nullable', 'date'],
         ]);
 
@@ -182,6 +186,7 @@ class DokumenInventarisController extends Controller
             ->where('sekolah_id', $sekolahId)
             ->where('status', InventarisUnit::STATUS_AKTIF)
             ->orderBy('kode_barang')
+            ->orderBy('tahun_perolehan')
             ->orderBy('nomor_register');
     }
 

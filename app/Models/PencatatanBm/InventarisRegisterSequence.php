@@ -15,10 +15,44 @@ class InventarisRegisterSequence extends Model
 
     protected $table = 'inventaris_register_sequences';
 
-    protected $fillable = ['sekolah_id', 'kode_barang', 'next_number'];
+    protected $fillable = ['sekolah_id', 'kode_barang', 'tahun', 'next_number'];
 
     protected function casts(): array
     {
-        return ['next_number' => 'integer'];
+        return ['tahun' => 'integer', 'next_number' => 'integer'];
+    }
+
+    /**
+     * Ambil nomor register berikutnya. Nomor diulang dari 001 setiap tahun
+     * perolehan, seperti aplikasi acuan.
+     *
+     * Harus dipanggil di dalam transaksi pemanggil: baris sequence dikunci agar
+     * dua pendaftaran bersamaan tidak mendapat nomor yang sama.
+     */
+    public static function alokasi(string $sekolahId, string $kodeBarang, ?int $tahun = null): string
+    {
+        $tahun = (int) ($tahun ?: now()->year);
+
+        static::query()->insertOrIgnore([
+            'id' => (string) str()->uuid(),
+            'sekolah_id' => $sekolahId,
+            'kode_barang' => $kodeBarang,
+            'tahun' => $tahun,
+            'next_number' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $sequence = static::where('sekolah_id', $sekolahId)
+            ->where('kode_barang', $kodeBarang)
+            ->where('tahun', $tahun)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $nomor = str_pad((string) $sequence->next_number, 3, '0', STR_PAD_LEFT);
+
+        $sequence->update(['next_number' => $sequence->next_number + 1]);
+
+        return $nomor;
     }
 }

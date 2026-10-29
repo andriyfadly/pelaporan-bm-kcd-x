@@ -12,6 +12,7 @@ use App\Models\Master\Pegawai;
 use App\Models\Master\Ruang;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\Mutasi;
+use App\Services\PencatatanBm\MutasiInventarisService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class InventarisController extends Controller
 {
     use ResolvesSekolah, SearchesText, TenantScope;
+
+    public function __construct(private readonly MutasiInventarisService $mutasi) {}
 
     public function index(Request $request): Response
     {
@@ -42,6 +45,7 @@ class InventarisController extends Controller
             ->when(in_array($kondisi, array_keys(InventarisUnit::KONDISI), true),
                 fn (Builder $q) => $q->where('kondisi', $kondisi))
             ->orderBy('kode_barang')
+            ->orderBy('tahun_perolehan')
             ->orderBy('nomor_register')
             ->paginate(25)
             ->withQueryString();
@@ -50,6 +54,7 @@ class InventarisController extends Controller
             'units' => $units,
             'filter' => ['search' => $search, 'kondisi' => $kondisi],
             'kondisiList' => InventarisUnit::KONDISI,
+            'canKelola' => $request->user()->can('kelola-inventaris-bm'),
         ]);
     }
 
@@ -84,7 +89,17 @@ class InventarisController extends Controller
         $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
         Gate::authorize('update', $unit);
 
-        $unit->update($request->validated());
+        // Lewat service supaya koreksi kondisi/penempatan juga meninggalkan
+        // histori; jenisnya (koreksi/penyaluran/mutasi) ditentukan dari state unit.
+        $this->mutasi->koreksi(
+            $unit,
+            $request->validated() + ['tanggal' => now()->toDateString()],
+            (string) $request->user()->id,
+        );
+
+        if ($request->has('keterangan')) {
+            $unit->update(['keterangan' => $request->validated()['keterangan']]);
+        }
 
         return back()->with('success', "Kondisi unit {$unit->nomor_register} diperbarui.");
     }
@@ -99,6 +114,7 @@ class InventarisController extends Controller
             ->when(in_array($kondisi, array_keys(InventarisUnit::KONDISI), true),
                 fn (Builder $q) => $q->where('kondisi', $kondisi))
             ->orderBy('kode_barang')
+            ->orderBy('tahun_perolehan')
             ->orderBy('nomor_register');
 
         return Excel::download(

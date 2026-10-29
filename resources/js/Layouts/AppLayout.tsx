@@ -564,6 +564,15 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                                 Inventaris
                                             </Link>
                                             <Link
+                                                href="/pencatatan-bm/penyaluran"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/penyaluran')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Penyaluran
+                                            </Link>
+                                            <Link
                                                 href="/pencatatan-bm/mutasi"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/mutasi')
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
@@ -729,6 +738,15 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                                     }`}
                                             >
                                                 Inventaris
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/penyaluran"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/penyaluran')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Penyaluran
                                             </Link>
                                             <Link
                                                 href="/pencatatan-bm/mutasi"

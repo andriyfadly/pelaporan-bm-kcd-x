@@ -27,6 +27,10 @@ class MutasiRequest extends FormRequest
     }
 
     /**
+     * Mutasi berarti pindah lokasi, jadi tujuan wajib ada: minimal salah satu
+     * dari ruang/pegawai. Koreksi kondisi saja punya jalurnya sendiri
+     * (halaman detail unit), bukan lewat mutasi.
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
@@ -35,11 +39,11 @@ class MutasiRequest extends FormRequest
 
         return [
             'ruang_id' => [
-                'nullable', 'uuid',
+                'nullable', 'required_without:pegawai_id', 'uuid',
                 Rule::exists('master_data_ruang', 'id')->where('sekolah_id', $sekolahId)->whereNull('deleted_at'),
             ],
             'pegawai_id' => [
-                'nullable', 'uuid',
+                'nullable', 'required_without:ruang_id', 'uuid',
                 Rule::exists('master_data_pegawai', 'id')->where('sekolah_id', $sekolahId)->whereNull('deleted_at'),
             ],
             'kondisi' => ['nullable', Rule::in(array_keys(InventarisUnit::KONDISI))],
@@ -48,16 +52,15 @@ class MutasiRequest extends FormRequest
         ];
     }
 
-    public function withValidator($validator): void
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
     {
-        $validator->after(function ($validator): void {
-            $ruang = $this->input('ruang_id');
-            $pegawai = $this->input('pegawai_id');
-
-            if ($ruang === null && $pegawai === null && $this->input('kondisi') === null) {
-                $validator->errors()->add('ruang_id', 'Pilih ruang, pegawai, atau kondisi yang berubah.');
-            }
-        });
+        return [
+            'ruang_id.required_without' => 'Mutasi wajib menentukan ruang atau penanggung jawab tujuan.',
+            'pegawai_id.required_without' => 'Mutasi wajib menentukan ruang atau penanggung jawab tujuan.',
+        ];
     }
 
     private function unit(): InventarisUnit

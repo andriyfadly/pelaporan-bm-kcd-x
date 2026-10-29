@@ -3,13 +3,14 @@ import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import ConfirmDialog from '@/Components/ConfirmDialog';
 import EmptyState from '@/Components/EmptyState';
-import { FileText, PackageCheck, Undo2 } from 'lucide-react';
+import { FileText, Lock, PackageCheck, Undo2 } from 'lucide-react';
 
 interface Unit {
     id: string;
     nomor_register: string;
     kode_barang: string;
     nama_barang: string | null;
+    punya_bast?: boolean;
     ruang?: { nama_ruang: string } | null;
     pegawai?: { nama_lengkap: string } | null;
 }
@@ -73,20 +74,20 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
                 <header>
                     <h1 className="text-xl font-bold text-slate-800">Pengembalian</h1>
                     <p className="text-sm text-slate-500">
-                        Unit yang sedang ditempatkan/dipinjam. Pengembalian menutup penempatan dan mencatat kondisi akhir.
+                        Unit yang sedang disalurkan/dipinjam. Pengembalian menutup penyaluran dan mencatat kondisi akhir.
                     </p>
                 </header>
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                     <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
                         <PackageCheck className="w-4 h-4 text-slate-400" />
-                        <h2 className="font-bold text-slate-800">Sedang Ditempatkan</h2>
+                        <h2 className="font-bold text-slate-800">Sedang Disalurkan</h2>
                     </div>
 
                     {dipinjam.length === 0 ? (
                         <EmptyState
-                            title="Tidak ada unit ditempatkan"
-                            description="Semua unit inventaris sedang berada di gudang atau belum ditempatkan."
+                            title="Tidak ada unit disalurkan"
+                            description="Semua unit inventaris sedang berada di gudang atau belum disalurkan."
                         />
                     ) : (
                         <table className="w-full text-sm">
@@ -107,13 +108,22 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
                                         <td className="px-4 py-3 text-slate-600">{unit.ruang?.nama_ruang ?? '-'}</td>
                                         <td className="px-4 py-3 text-slate-600">{unit.pegawai?.nama_lengkap ?? '-'}</td>
                                         <td className="px-4 py-3 text-right">
-                                            <button
-                                                type="button"
-                                                onClick={() => setTarget(unit)}
-                                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-amber-700 hover:bg-amber-50"
-                                            >
-                                                <Undo2 className="w-3.5 h-3.5" /> Kembalikan
-                                            </button>
+                                            {unit.punya_bast ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTarget(unit)}
+                                                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-amber-700 hover:bg-amber-50"
+                                                >
+                                                    <Undo2 className="w-3.5 h-3.5" /> Kembalikan
+                                                </button>
+                                            ) : (
+                                                <span
+                                                    title="Nomor BAST belum diisi di Rekapan BA"
+                                                    className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-slate-400"
+                                                >
+                                                    <Lock className="w-3.5 h-3.5" /> Isi Nomor BA
+                                                </span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -168,7 +178,7 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
                 onConfirm={kembalikan}
                 isDestructive={false}
                 title="Kembalikan Unit"
-                message={`Unit ${target?.nomor_register ?? ''} akan ditutup penempatannya dan kondisi akhir dicatat sebagai ${kondisiList[kondisi]}.`}
+                message={`Unit ${target?.nomor_register ?? ''} akan ditutup penyalurannya dan kondisi akhir dicatat sebagai ${kondisiList[kondisi]}.`}
                 confirmText="Kembalikan"
             />
 

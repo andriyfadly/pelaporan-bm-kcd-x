@@ -131,12 +131,78 @@ class InventarisBeritaAcaraTest extends TestCase
         $this->assertSame('BAST-01', $dokumen->fresh()->nomor);
     }
 
+    public function test_nomor_ba_duplikat_ditolak(): void
+    {
+        $unitLain = InventarisUnit::create([
+            'sekolah_id' => $this->sekolah->id,
+            'realisasi_id' => $this->unit->realisasi_id,
+            'unit_index' => 2,
+            'kode_barang' => $this->unit->kode_barang,
+            'nama_barang' => $this->unit->nama_barang,
+            'nomor_register' => '002',
+        ]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $unitLain), ['tanggal' => '2026-03-12', 'nomor' => 'BAST-02'])
+            ->assertRedirect();
+
+        $kedua = Dokumen::where('nomor', 'BAST-02')->firstOrFail();
+
+        $this->actingAs($this->operator)
+            ->put(route('pencatatan-bm.berita-acara.update', $kedua), ['nomor' => 'BAST-01'])
+            ->assertSessionHasErrors('nomor');
+
+        $this->assertSame('BAST-02', $kedua->fresh()->nomor);
+    }
+
+    public function test_nomor_bast_baru_tidak_boleh_duplikat(): void
+    {
+        $unitLain = InventarisUnit::create([
+            'sekolah_id' => $this->sekolah->id,
+            'realisasi_id' => $this->unit->realisasi_id,
+            'unit_index' => 2,
+            'kode_barang' => $this->unit->kode_barang,
+            'nama_barang' => $this->unit->nama_barang,
+            'nomor_register' => '002',
+        ]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $unitLain), ['tanggal' => '2026-03-12', 'nomor' => 'BAST-01'])
+            ->assertSessionHasErrors('nomor');
+
+        $this->assertSame(1, Dokumen::where('jenis', 'bast')->count());
+    }
+
+    public function test_no_ba_boleh_dipakai_lagi_setelah_dibatalkan(): void
+    {
+        $dokumen = Dokumen::firstOrFail();
+
+        $this->actingAs($this->operator)
+            ->delete(route('pencatatan-bm.berita-acara.destroy', $dokumen), ['alasan' => 'Ganti nomor'])
+            ->assertRedirect();
+
+        $unitLain = InventarisUnit::create([
+            'sekolah_id' => $this->sekolah->id,
+            'realisasi_id' => $this->unit->realisasi_id,
+            'unit_index' => 2,
+            'kode_barang' => $this->unit->kode_barang,
+            'nama_barang' => $this->unit->nama_barang,
+            'nomor_register' => '002',
+        ]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $unitLain), ['tanggal' => '2026-03-12', 'nomor' => 'BAST-01'])
+            ->assertRedirect();
+
+        $this->assertSame(1, Dokumen::where('nomor', 'BAST-01')->whereNull('nomor_dibatalkan_pada')->count());
+    }
+
     public function test_relasi_model_histori_dan_foto(): void
     {
         $mutasi = Mutasi::create([
             'sekolah_id' => $this->sekolah->id,
             'inventaris_unit_id' => $this->unit->id,
-            'jenis' => 'penempatan',
+            'jenis' => 'penyaluran',
             'tujuan_kondisi' => 'B',
             'tanggal' => '2026-03-10',
             'user_id' => $this->operator->id,

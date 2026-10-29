@@ -169,8 +169,10 @@ class SinkronisasiInventarisService
 
     private function buatUnit(Realisasi $realisasi, string $sekolahId, int $index): void
     {
-        $nomor = $this->alokasiRegister($sekolahId, (string) $realisasi->kode_barang);
         $tanggal = $realisasi->ba_tgl ? Carbon::parse($realisasi->ba_tgl) : null;
+        $tahun = $tanggal ? (int) $tanggal->format('Y') : (int) ($realisasi->tahun ?? now()->year);
+
+        $nomor = InventarisRegisterSequence::alokasi($sekolahId, (string) $realisasi->kode_barang, $tahun);
 
         InventarisUnit::create([
             'sekolah_id' => $sekolahId,
@@ -186,37 +188,10 @@ class SinkronisasiInventarisService
             'satuan' => $realisasi->satuan,
             'tanggal_perolehan' => $tanggal,
             'bulan_perolehan' => $tanggal ? (int) $tanggal->format('n') : (int) $realisasi->bulan_realisasi,
-            'tahun_perolehan' => $tanggal ? (int) $tanggal->format('Y') : (int) ($realisasi->tahun ?? now()->year),
+            'tahun_perolehan' => $tahun,
             'harga_satuan' => $realisasi->harga_satuan,
             'nilai_perolehan_unit' => $realisasi->harga_satuan,
         ]);
-    }
-
-    /**
-     * Alokasi nomor register dalam transaksi pemanggil: baris sequence dikunci
-     * agar dua sinkronisasi bersamaan tidak mendapat nomor yang sama.
-     */
-    private function alokasiRegister(string $sekolahId, string $kodeBarang): string
-    {
-        InventarisRegisterSequence::query()->insertOrIgnore([
-            'id' => (string) Str::uuid(),
-            'sekolah_id' => $sekolahId,
-            'kode_barang' => $kodeBarang,
-            'next_number' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $sequence = InventarisRegisterSequence::where('sekolah_id', $sekolahId)
-            ->where('kode_barang', $kodeBarang)
-            ->lockForUpdate()
-            ->firstOrFail();
-
-        $nomor = str_pad((string) $sequence->next_number, 3, '0', STR_PAD_LEFT);
-
-        $sequence->update(['next_number' => $sequence->next_number + 1]);
-
-        return $nomor;
     }
 
     /**

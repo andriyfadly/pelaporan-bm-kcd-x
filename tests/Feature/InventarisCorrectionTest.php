@@ -87,7 +87,7 @@ class InventarisCorrectionTest extends TestCase
         Mutasi::create([
             'sekolah_id' => $this->sekolah->id,
             'inventaris_unit_id' => $unit->id,
-            'jenis' => 'penempatan',
+            'jenis' => 'penyaluran',
             'tujuan_kondisi' => 'B',
             'tanggal' => '2026-03-10',
         ]);
@@ -105,7 +105,7 @@ class InventarisCorrectionTest extends TestCase
         Mutasi::create([
             'sekolah_id' => $this->sekolah->id,
             'inventaris_unit_id' => $bermutasi->id,
-            'jenis' => 'penempatan',
+            'jenis' => 'penyaluran',
             'tujuan_kondisi' => 'B',
             'tanggal' => '2026-03-10',
         ]);
@@ -158,7 +158,7 @@ class InventarisCorrectionTest extends TestCase
         Mutasi::create([
             'sekolah_id' => $this->sekolah->id,
             'inventaris_unit_id' => $bermutasi->id,
-            'jenis' => 'penempatan',
+            'jenis' => 'penyaluran',
             'tujuan_kondisi' => 'B',
             'tanggal' => '2026-03-10',
         ]);

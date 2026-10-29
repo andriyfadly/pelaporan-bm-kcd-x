@@ -32,6 +32,7 @@ class SyncController extends Controller
             ->whereHas('mutasi')
             ->whereHas('realisasi', fn (Builder $q) => $q->whereColumn('pelaporan_bm_realisasi.volume', '<', 'inventaris_unit.unit_index'))
             ->orderBy('kode_barang')
+            ->orderBy('tahun_perolehan')
             ->orderBy('nomor_register')
             ->get(['id', 'sekolah_id', 'realisasi_id', 'unit_index', 'kode_barang', 'nomor_register', 'nama_barang']);
 

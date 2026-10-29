@@ -97,25 +97,33 @@ class InventarisMutationTest extends TestCase
         return InventarisUnit::where('realisasi_id', $realisasi->id)->firstOrFail();
     }
 
-    private function tempatkan(Ruang $ruang, ?Pegawai $pegawai = null): void
+    private function salurkan(Ruang $ruang, ?Pegawai $pegawai = null): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
                 'ruang_id' => $ruang->id,
                 'pegawai_id' => $pegawai?->id,
                 'tanggal' => '2026-03-10',
             ])
             ->assertRedirect();
+
+        // Pengembalian menunggu nomor BA diisi, sama seperti aplikasi acuan.
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), [
+                'tanggal' => '2026-03-12',
+                'nomor' => 'BAST-01',
+            ])
+            ->assertRedirect();
     }
 
-    public function test_penempatan_pertama_membuat_histori_dan_mengisi_state_unit(): void
+    public function test_penyaluran_pertama_membuat_histori_dan_mengisi_state_unit(): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
                 'ruang_id' => $this->ruangA->id,
                 'pegawai_id' => $this->pegawai->id,
                 'tanggal' => '2026-03-10',
-                'keterangan' => 'Penempatan awal',
+                'keterangan' => 'Penyaluran awal',
             ])
             ->assertRedirect();
 
@@ -123,19 +131,45 @@ class InventarisMutationTest extends TestCase
         $this->assertSame($this->ruangA->id, $unit->ruang_id);
         $this->assertSame($this->pegawai->id, $unit->pegawai_id);
         $this->assertSame(InventarisUnit::STATUS_AKTIF, $unit->status);
-        $this->assertSame($this->sekolah->id, $unit->sekolah_id, 'Mutasi tidak boleh mengubah sekolah pemilik.');
+        $this->assertSame($this->sekolah->id, $unit->sekolah_id, 'Penyaluran tidak boleh mengubah sekolah pemilik.');
 
         $mutasi = Mutasi::where('inventaris_unit_id', $unit->id)->firstOrFail();
-        $this->assertSame('penempatan', $mutasi->jenis);
+        $this->assertSame('penyaluran', $mutasi->jenis);
         $this->assertNull($mutasi->asal_ruang_id);
         $this->assertSame($this->ruangA->id, $mutasi->tujuan_ruang_id);
         $this->assertSame('2026-03-10', $mutasi->tanggal->format('Y-m-d'));
         $this->assertSame($this->operator->id, $mutasi->user_id);
     }
 
+    public function test_mutasi_ditolak_untuk_unit_yang_belum_disalurkan(): void
+    {
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
+                'ruang_id' => $this->ruangA->id,
+                'tanggal' => '2026-03-10',
+            ])
+            ->assertSessionHasErrors('unit');
+
+        $this->assertSame(0, Mutasi::count());
+    }
+
+    public function test_penyaluran_kedua_ditolak_karena_harus_lewat_mutasi(): void
+    {
+        $this->salurkan($this->ruangA);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
+                'ruang_id' => $this->ruangB->id,
+                'tanggal' => '2026-04-01',
+            ])
+            ->assertSessionHasErrors('unit');
+
+        $this->assertSame($this->ruangA->id, $this->unit->fresh()->ruang_id);
+    }
+
     public function test_mutasi_kedua_mencatat_asal_dan_tujuan(): void
     {
-        $this->tempatkan($this->ruangA);
+        $this->salurkan($this->ruangA);
         $kondisiAwal = $this->unit->fresh()->kondisi;
 
         $this->actingAs($this->operator)
@@ -220,9 +254,46 @@ class InventarisMutationTest extends TestCase
         $this->assertSame(0, Mutasi::count());
     }
 
-    public function test_unit_dikembalikan_boleh_ditempatkan_ulang_tanpa_hapus_histori(): void
+    public function test_unit_dikembalikan_bisa_disalurkan_lagi_tanpa_hapus_histori(): void
     {
-        $this->tempatkan($this->ruangA);
+        $this->salurkan($this->ruangA);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), [
+                'kondisi' => 'RR',
+                'tanggal' => '2026-05-01',
+            ])
+            ->assertRedirect();
+
+        // Barang kembali ke gudang, jadi pilihan berikutnya penyaluran lagi —
+        // bukan mutasi, karena mutasi hanya untuk unit yang sedang di lokasi.
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.penyaluran.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('belumDisalurkan', 1));
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.mutasi.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('units', 0));
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
+                'ruang_id' => $this->ruangB->id,
+                'tanggal' => '2026-06-01',
+            ])
+            ->assertRedirect();
+
+        $unit = $this->unit->fresh();
+        $this->assertSame(InventarisUnit::STATUS_AKTIF, $unit->status);
+        $this->assertSame($this->ruangB->id, $unit->ruang_id);
+        // penyaluran → pengembalian → penyaluran lagi
+        $this->assertSame(3, Mutasi::where('inventaris_unit_id', $unit->id)->count());
+    }
+
+    public function test_koreksi_kondisi_saja_tidak_membuka_status_dikembalikan(): void
+    {
+        $this->salurkan($this->ruangA);
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.pengembalian.store', $this->unit), [
@@ -232,16 +303,35 @@ class InventarisMutationTest extends TestCase
             ->assertRedirect();
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
-                'ruang_id' => $this->ruangB->id,
-                'tanggal' => '2026-06-01',
+            ->put(route('pencatatan-bm.inventaris.kondisi', $this->unit), ['kondisi' => 'RB'])
+            ->assertRedirect();
+
+        $unit = $this->unit->fresh();
+        $this->assertSame(InventarisUnit::STATUS_DIKEMBALIKAN, $unit->status);
+        $this->assertNull($unit->ruang_id);
+        $this->assertSame('RB', $unit->kondisi);
+
+        $koreksi = Mutasi::where('inventaris_unit_id', $unit->id)->where('jenis', 'koreksi')->firstOrFail();
+        $this->assertSame('RR', $koreksi->asal_kondisi);
+        $this->assertSame('RB', $koreksi->tujuan_kondisi);
+    }
+
+    public function test_ubah_kondisi_lewat_detail_mencatat_histori(): void
+    {
+        $this->actingAs($this->operator)
+            ->put(route('pencatatan-bm.inventaris.kondisi', $this->unit), [
+                'kondisi' => 'RR',
+                'keterangan' => 'Layar retak',
             ])
             ->assertRedirect();
 
         $unit = $this->unit->fresh();
-        $this->assertSame(InventarisUnit::STATUS_AKTIF, $unit->status);
-        $this->assertSame($this->ruangB->id, $unit->ruang_id);
-        $this->assertSame(3, Mutasi::where('inventaris_unit_id', $unit->id)->count());
-        $this->assertSame('penempatan', Mutasi::where('inventaris_unit_id', $unit->id)->latest('tanggal')->first()->jenis);
+        $this->assertSame('RR', $unit->kondisi);
+        $this->assertSame('Layar retak', $unit->keterangan);
+
+        $mutasi = Mutasi::where('inventaris_unit_id', $unit->id)->firstOrFail();
+        $this->assertSame('koreksi', $mutasi->jenis);
+        $this->assertSame('B', $mutasi->asal_kondisi);
+        $this->assertSame('RR', $mutasi->tujuan_kondisi);
     }
 }

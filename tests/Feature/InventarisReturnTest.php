@@ -83,20 +83,70 @@ class InventarisReturnTest extends TestCase
         ]));
     }
 
-    private function tempatkan(): void
+    private function salurkan(): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
                 'ruang_id' => $this->ruang->id,
                 'pegawai_id' => $this->pegawai->id,
                 'tanggal' => '2026-03-10',
             ])
             ->assertRedirect();
+
+        // Pengembalian menunggu nomor BA diisi, sama seperti aplikasi acuan.
+        $this->buatBast();
+    }
+
+    private function buatBast(): void
+    {
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), [
+                'tanggal' => '2026-03-12',
+                'nomor' => 'BAST-01',
+            ])
+            ->assertRedirect();
+    }
+
+    public function test_daftar_pengembalian_mengunci_unit_tanpa_nomor_bast(): void
+    {
+        $this->salurkan(); // sudah punya BAST-01
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.pengembalian.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('dipinjam.0.punya_bast', true));
+    }
+
+    public function test_pengembalian_menunggu_nomor_bast_diisi(): void
+    {
+        // Ditempatkan, BAST dibuat tanpa nomor: pengembalian harus ditahan.
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
+                'ruang_id' => $this->ruang->id,
+                'tanggal' => '2026-03-10',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.pengembalian.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('dipinjam.0.punya_bast', false));
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-03-12'])
+            ->assertRedirect();
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['kondisi' => 'B', 'tanggal' => '2026-05-01'])
+            ->assertSessionHasErrors('unit');
+
+        $this->assertSame(InventarisUnit::STATUS_AKTIF, $this->unit->fresh()->status);
+        $this->assertSame(0, Mutasi::where('jenis', 'pengembalian')->count());
     }
 
     public function test_pengembalian_menutup_penempatan_dan_mencatat_kondisi(): void
     {
-        $this->tempatkan();
+        $this->salurkan();
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.pengembalian.store', $this->unit), [
@@ -122,7 +172,7 @@ class InventarisReturnTest extends TestCase
 
     public function test_pengembalian_tanpa_kondisi_ditolak(): void
     {
-        $this->tempatkan();
+        $this->salurkan();
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['tanggal' => '2026-05-01'])
@@ -140,7 +190,7 @@ class InventarisReturnTest extends TestCase
 
     public function test_pengembalian_dua_kali_ditolak(): void
     {
-        $this->tempatkan();
+        $this->salurkan();
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['kondisi' => 'B', 'tanggal' => '2026-05-01'])
@@ -155,7 +205,7 @@ class InventarisReturnTest extends TestCase
 
     public function test_tidak_bisa_mengembalikan_unit_sekolah_lain(): void
     {
-        $this->tempatkan();
+        $this->salurkan();
 
         $lain = activity()->withoutLogging(fn () => Sekolah::create(['nama_sekolah' => 'SMA Lain', 'kota_kab' => 'Kota Bandung']));
         $operatorLain = activity()->withoutLogging(fn () => User::create([
@@ -176,7 +226,7 @@ class InventarisReturnTest extends TestCase
 
     public function test_menghapus_ruang_tidak_menghapus_histori_mutasi(): void
     {
-        $this->tempatkan();
+        $this->salurkan();
 
         $this->actingAs($this->operator)
             ->delete(route('master-data.ruang.destroy', $this->ruang))
@@ -193,7 +243,7 @@ class InventarisReturnTest extends TestCase
 
     public function test_menghapus_pegawai_tidak_menghapus_histori_mutasi(): void
     {
-        $this->tempatkan();
+        $this->salurkan();
 
         $this->actingAs($this->operator)
             ->delete(route('master-data.pegawai.destroy', $this->pegawai))
@@ -211,7 +261,7 @@ class InventarisReturnTest extends TestCase
 
     public function test_histori_mutasi_tidak_bisa_di_hard_delete_lewat_relasi(): void
     {
-        $this->tempatkan();
+        $this->salurkan();
         $mutasi = Mutasi::firstOrFail();
 
         $this->expectException(QueryException::class);

@@ -75,14 +75,22 @@ class InventarisHalamanTest extends TestCase
 
     public function test_halaman_mutasi_menampilkan_riwayat_dan_pilihan(): void
     {
-        activity()->withoutLogging(fn () => Ruang::create(['sekolah_id' => $this->sekolah->id, 'nama_ruang' => 'Ruang Guru']));
+        $ruang = activity()->withoutLogging(fn () => Ruang::create(['sekolah_id' => $this->sekolah->id, 'nama_ruang' => 'Ruang Guru']));
         activity()->withoutLogging(fn () => Pegawai::create(['sekolah_id' => $this->sekolah->id, 'nama_lengkap' => 'Budi']));
+
+        // Mutasi hanya untuk unit yang sudah disalurkan.
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
+                'ruang_id' => $ruang->id,
+                'tanggal' => '2026-03-10',
+            ])
+            ->assertRedirect();
 
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.mutasi.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('riwayat.data', 0)
+                ->has('riwayat.data', 1)
                 ->has('units', 1)
                 ->has('ruangList', 1)
                 ->has('pegawaiList', 1));
@@ -91,7 +99,7 @@ class InventarisHalamanTest extends TestCase
     public function test_mutasi_tanpa_perubahan_apa_pun_ditolak(): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.mutasi.store', $this->unit), ['tanggal' => '2026-03-10'])
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), ['tanggal' => '2026-03-10'])
             ->assertSessionHasErrors('ruang_id');
 
         $this->assertSame(0, Mutasi::count());
@@ -104,7 +112,7 @@ class InventarisHalamanTest extends TestCase
         ]));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
                 'ruang_id' => $ruang->id,
                 'tanggal' => '2026-03-10',
             ])

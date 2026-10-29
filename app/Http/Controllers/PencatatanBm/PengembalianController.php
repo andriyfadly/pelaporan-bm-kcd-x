@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Concerns\TenantScope;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PencatatanBm\PengembalianRequest;
+use App\Models\PencatatanBm\Dokumen;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\Mutasi;
 use App\Services\PencatatanBm\MutasiInventarisService;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,10 +31,17 @@ class PengembalianController extends Controller
         return Inertia::render('PencatatanBm/Pengembalian/Index', [
             'dipinjam' => InventarisUnit::query()
                 ->with(['ruang:id,nama_ruang', 'pegawai:id,nama_lengkap'])
+                // Acuan menahan pengembalian sampai nomor BA diisi: unit tanpa
+                // BAST bernomor tetap tampil, tetapi tombolnya dikunci di UI.
+                ->withExists(['dokumen as punya_bast' => fn (Builder $q) => $q
+                    ->where('jenis', 'bast')
+                    ->whereNotNull('nomor')
+                    ->whereNull('nomor_dibatalkan_pada')])
                 ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
                 ->where('status', InventarisUnit::STATUS_AKTIF)
                 ->where(fn (Builder $q) => $q->whereNotNull('ruang_id')->orWhereNotNull('pegawai_id'))
                 ->orderBy('kode_barang')
+                ->orderBy('tahun_perolehan')
                 ->orderBy('nomor_register')
                 ->get(),
             'riwayat' => Mutasi::query()
@@ -51,6 +60,17 @@ class PengembalianController extends Controller
     {
         $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
         Gate::authorize('kembalikan', $unit);
+
+        // Acuan: pengembalian menunggu nomor BA diisi di Rekapan BA.
+        $punyaBast = Dokumen::bastBernomor($unit->sekolah_id)
+            ->where('inventaris_unit_id', $unit->id)
+            ->exists();
+
+        if (! $punyaBast) {
+            throw ValidationException::withMessages([
+                'unit' => 'Nomor BAST unit ini belum diisi, pengembalian belum bisa diproses.',
+            ]);
+        }
 
         $this->service->kembalikan($unit, $request->validated(), (string) $request->user()->id);
 

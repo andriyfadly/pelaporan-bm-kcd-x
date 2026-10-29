@@ -84,7 +84,7 @@ class InventarisDocumentTest extends TestCase
         ]));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
                 'ruang_id' => $ruang->id,
                 'tanggal' => '2026-03-10',
             ])
@@ -157,6 +157,11 @@ class InventarisDocumentTest extends TestCase
 
     public function test_surat_pengembalian_membaca_histori_terbaru(): void
     {
+        // Pengembalian menunggu nomor BA, sama seperti aplikasi acuan.
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-03-12', 'nomor' => 'BAST-01'])
+            ->assertRedirect();
+
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.pengembalian.store', $this->unit), [
                 'kondisi' => 'RR',

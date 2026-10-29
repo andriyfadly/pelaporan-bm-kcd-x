@@ -11,6 +11,7 @@ interface Unit {
     nomor_register: string;
     kode_barang: string;
     nama_barang: string | null;
+    status: string;
 }
 
 interface Riwayat {
@@ -47,10 +48,16 @@ interface Props {
 }
 
 const LABEL_JENIS: Record<string, string> = {
-    penempatan: 'Penempatan',
+    penyaluran: 'Penyaluran',
     mutasi: 'Mutasi',
     pengembalian: 'Pengembalian',
     koreksi: 'Koreksi',
+};
+
+const LABEL_STATUS: Record<string, string> = {
+    aktif: 'Aktif',
+    dikembalikan: 'Dikembalikan',
+    dihapus_koreksi: 'Dihapus (koreksi)',
 };
 
 export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiList }: Props) {
@@ -94,15 +101,17 @@ export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiL
                     <div>
                         <h1 className="text-xl font-bold text-slate-800">Mutasi Inventaris</h1>
                         <p className="text-sm text-slate-500">
-                            Perpindahan ruang/penanggung jawab unit. Histori lama tidak pernah ditimpa.
+                            Perpindahan unit dari lokasi pertama ke lokasi lain. Histori lama tidak pernah ditimpa.
                         </p>
                     </div>
                     <button
                         type="button"
                         onClick={() => setOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"
+                        disabled={units.length === 0}
+                        title={units.length === 0 ? 'Belum ada unit yang disalurkan' : undefined}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
                     >
-                        <Plus className="w-4 h-4" /> Tempatkan / Mutasi
+                        <Plus className="w-4 h-4" /> Mutasi Unit
                     </button>
                 </header>
 
@@ -113,7 +122,7 @@ export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiL
                     </div>
 
                     {riwayat.data.length === 0 ? (
-                        <EmptyState title="Belum ada mutasi" description="Riwayat muncul setelah unit ditempatkan." />
+                        <EmptyState title="Belum ada mutasi" description="Riwayat muncul setelah unit dipindahkan." />
                     ) : (
                         <ul className="divide-y divide-slate-50">
                             {riwayat.data.map((item) => (
@@ -152,7 +161,7 @@ export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiL
                 </div>
             </div>
 
-            <Modal isOpen={open} onClose={() => setOpen(false)} title="Tempatkan / Mutasi Unit">
+            <Modal isOpen={open} onClose={() => setOpen(false)} title="Mutasi Unit">
                 <form onSubmit={simpan} className="space-y-3">
                     <label className="block text-xs font-semibold text-slate-600">
                         Unit
@@ -162,10 +171,11 @@ export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiL
                             required
                             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                         >
-                            <option value="">Pilih unit</option>
+                            <option value="">Pilih unit yang sudah disalurkan</option>
                             {units.map((unit) => (
                                 <option key={unit.id} value={unit.id}>
                                     {unit.nomor_register} · {unit.nama_barang ?? unit.kode_barang}
+                                    {unit.status !== 'aktif' ? ` (${LABEL_STATUS[unit.status] ?? unit.status})` : ''}
                                 </option>
                             ))}
                         </select>
@@ -173,7 +183,7 @@ export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiL
                     </label>
 
                     <label className="block text-xs font-semibold text-slate-600">
-                        Ruang Tujuan
+                        Ruang Tujuan *
                         <select
                             value={form.ruang_id}
                             onChange={(e) => setForm({ ...form, ruang_id: e.target.value })}
@@ -245,6 +255,11 @@ export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiL
                         />
                     </label>
 
+                    <p className="text-xs text-slate-500">
+                        Isi minimal salah satu: ruang tujuan atau penanggung jawab. Untuk mengoreksi kondisi saja, gunakan
+                        halaman detail unit.
+                    </p>
+
                     <div className="flex justify-end gap-2 pt-2">
                         <button
                             type="button"
@@ -253,6 +268,7 @@ export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiL
                         >
                             Batal
                         </button>
+
                         <button
                             type="submit"
                             disabled={proses}

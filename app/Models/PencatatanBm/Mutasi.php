@@ -18,7 +18,7 @@ class Mutasi extends Model
 {
     use HasUuids;
 
-    public const JENIS = ['penempatan', 'mutasi', 'pengembalian', 'koreksi'];
+    public const JENIS = ['penyaluran', 'mutasi', 'pengembalian', 'koreksi'];
 
     protected $table = 'inventaris_mutasi';
 

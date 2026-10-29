@@ -83,7 +83,7 @@ class InventarisReviewFixTest extends TestCase
         ]));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
+            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
                 'ruang_id' => $this->ruang->id,
                 'pegawai_id' => $this->pegawai->id,
                 'tanggal' => '2026-03-10',
@@ -91,24 +91,29 @@ class InventarisReviewFixTest extends TestCase
             ->assertRedirect();
     }
 
-    public function test_mutasi_kondisi_saja_tidak_mengosongkan_ruang_dan_pegawai(): void
+    public function test_mutasi_tanpa_tujuan_ditolak_sejak_validasi(): void
     {
+        // Koreksi kondisi saja bukan mutasi: halaman detail unit yang
+        // menanganinya, dan mutasi wajib menyebut ruang/pegawai tujuan.
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
                 'kondisi' => 'RR',
                 'tanggal' => '2026-04-01',
                 'keterangan' => 'Layar retak',
             ])
-            ->assertRedirect();
+            ->assertSessionHasErrors('ruang_id');
 
         $unit = $this->unit->fresh();
-        $this->assertSame('RR', $unit->kondisi);
-        $this->assertSame($this->ruang->id, $unit->ruang_id, 'Ruang tidak disebut, jadi harus tetap.');
-        $this->assertSame($this->pegawai->id, $unit->pegawai_id, 'Pegawai tidak disebut, jadi harus tetap.');
+        $this->assertSame('B', $unit->kondisi, 'Kondisi tidak boleh berubah lewat mutasi tanpa tujuan.');
+        $this->assertSame($this->ruang->id, $unit->ruang_id);
+        $this->assertSame($this->pegawai->id, $unit->pegawai_id);
+        $this->assertSame(1, Mutasi::where('inventaris_unit_id', $unit->id)->count());
     }
 
-    public function test_null_eksplisit_tetap_mengosongkan_penempatan(): void
+    public function test_mutasi_tidak_boleh_mengosongkan_lokasi_tanpa_pengembalian(): void
     {
+        // Mengosongkan lokasi berarti barang kembali, bukan pindah: hanya boleh
+        // lewat pengembalian supaya BAST dan kondisi akhir ikut tercatat.
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.mutasi.store', $this->unit), [
                 'ruang_id' => null,
@@ -116,12 +121,12 @@ class InventarisReviewFixTest extends TestCase
                 'kondisi' => 'B',
                 'tanggal' => '2026-04-01',
             ])
-            ->assertRedirect();
+            ->assertSessionHasErrors('ruang_id');
 
         $unit = $this->unit->fresh();
-        $this->assertNull($unit->ruang_id);
-        $this->assertNull($unit->pegawai_id);
-        $this->assertSame(2, Mutasi::where('inventaris_unit_id', $unit->id)->count());
+        $this->assertSame($this->ruang->id, $unit->ruang_id);
+        $this->assertSame($this->pegawai->id, $unit->pegawai_id);
+        $this->assertSame(1, Mutasi::where('inventaris_unit_id', $unit->id)->count());
     }
 
     public function test_pesan_perlu_tinjau_manual_sampai_ke_flash_frontend(): void

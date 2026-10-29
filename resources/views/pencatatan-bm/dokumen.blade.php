@@ -52,6 +52,7 @@
         <tr><th>Kode Barang</th><td>{{ $unit['kode_barang'] ?? '-' }}</td></tr>
         <tr><th>Nama Barang</th><td>{{ $unit['nama_barang'] ?? '-' }}</td></tr>
         <tr><th>Merk / Tipe</th><td>{{ $unit['merk_tipe'] ?? '-' }}</td></tr>
+        <tr><th>Asal Perolehan</th><td>{{ $unit['asal_perolehan'] ?? '-' }}</td></tr>
         <tr><th>Kondisi</th><td>{{ $unit['kondisi'] ?? '-' }}</td></tr>
         <tr><th>Ruang</th><td>{{ $unit['ruang'] ?? '-' }}</td></tr>
         <tr><th>Penanggung Jawab</th><td>{{ $unit['pegawai'] ?? '-' }}</td></tr>

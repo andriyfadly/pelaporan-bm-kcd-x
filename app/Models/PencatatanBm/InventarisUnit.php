@@ -51,6 +51,7 @@ class InventarisUnit extends Model
         'tahun_perolehan',
         'harga_satuan',
         'nilai_perolehan_unit',
+        'asal_perolehan',
         'kondisi',
         'status',
         'ruang_id',
@@ -69,6 +70,17 @@ class InventarisUnit extends Model
             'harga_satuan' => 'decimal:2',
             'nilai_perolehan_unit' => 'decimal:2',
         ];
+    }
+
+    /**
+     * Tahun perolehan ikut menentukan bucket nomor register, jadi tidak boleh
+     * kosong. Diisi dari tanggal perolehan bila pemanggil lupa.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $unit): void {
+            $unit->tahun_perolehan ??= $unit->tanggal_perolehan?->year ?? now()->year;
+        });
     }
 
     public function sekolah(): BelongsTo
@@ -99,5 +111,10 @@ class InventarisUnit extends Model
     public function foto(): HasMany
     {
         return $this->hasMany(Foto::class, 'inventaris_unit_id');
+    }
+
+    public function dokumen(): HasMany
+    {
+        return $this->hasMany(Dokumen::class, 'inventaris_unit_id');
     }
 }

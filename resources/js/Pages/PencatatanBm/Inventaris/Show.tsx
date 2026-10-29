@@ -13,6 +13,7 @@ interface Unit {
     jenis_aset: string | null;
     merk_tipe: string | null;
     no_sertifikat: string | null;
+    asal_perolehan: string | null;
     satuan: string | null;
     tanggal_perolehan: string | null;
     harga_satuan: string;
@@ -48,7 +49,7 @@ interface Props {
 }
 
 const LABEL_JENIS: Record<string, string> = {
-    penempatan: 'Penempatan',
+    penyaluran: 'Penyaluran',
     mutasi: 'Mutasi',
     pengembalian: 'Pengembalian',
     koreksi: 'Koreksi',
@@ -114,6 +115,10 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
         });
     };
 
+    // Penempatan pertama lewat menu Penyaluran; halaman ini hanya mengoreksi
+    // kondisi atau memindahkan unit yang sudah punya lokasi.
+    const belumDisalurkan = !unit.ruang_id && !unit.pegawai_id;
+
     return (
         <AppLayout>
             <Head title={`Unit ${unit.nomor_register}`} />
@@ -150,6 +155,7 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
                         <dl className="grid grid-cols-2 gap-3 text-sm">
                             <Baris label="Merk / Tipe" nilai={unit.merk_tipe} />
                             <Baris label="Jenis Aset" nilai={unit.jenis_aset} />
+                            <Baris label="Asal Perolehan" nilai={unit.asal_perolehan} />
                             <Baris label="No. Sertifikat" nilai={unit.no_sertifikat} />
                             <Baris label="Satuan" nilai={unit.satuan} />
                             <Baris label="Tanggal Perolehan" nilai={unit.tanggal_perolehan} />
@@ -185,7 +191,8 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
                                     <select
                                         value={form.data.ruang_id}
                                         onChange={(e) => form.setData('ruang_id', e.target.value)}
-                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                        disabled={belumDisalurkan}
+                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
                                     >
                                         <option value="">-</option>
                                         {ruangList.map((ruang) => (
@@ -201,7 +208,8 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
                                     <select
                                         value={form.data.pegawai_id}
                                         onChange={(e) => form.setData('pegawai_id', e.target.value)}
-                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                        disabled={belumDisalurkan}
+                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
                                     >
                                         <option value="">-</option>
                                         {pegawaiList.map((pegawai) => (
@@ -211,6 +219,12 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
                                         ))}
                                     </select>
                                 </label>
+
+                                {belumDisalurkan && (
+                                    <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                        Unit ini belum disalurkan. Penempatan pertama dilakukan lewat menu Penyaluran.
+                                    </p>
+                                )}
 
                                 <label className="block text-xs font-semibold text-slate-600">
                                     Keterangan
