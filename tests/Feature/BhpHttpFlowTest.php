@@ -7,6 +7,7 @@ use App\Models\DistribusiBhp\Divisi;
 use App\Models\DistribusiBhp\Penerimaan;
 use App\Models\DistribusiBhp\PenerimaanDetail;
 use App\Models\DistribusiBhp\Pengajuan;
+use App\Models\DistribusiBhp\PengajuanDetail;
 use App\Models\Master\Sekolah;
 use App\Models\User;
 use Database\Seeders\PeranDanHakAksesSeeder;
@@ -69,6 +70,7 @@ class BhpHttpFlowTest extends TestCase
         $operator = $this->user($sekolah, 'operator_sekolah', 'op.bhp');
         $barang = $this->barang($sekolah, 'BOS', 100);
 
+        // Satu tombol: ajukan langsung membuat reservasi, tanpa draft antara.
         $this->actingAs($operator)
             ->post(route('distribusi-bhp.bos.pengajuan.store'), [
                 'sumber_dana' => 'BOS',
@@ -77,16 +79,58 @@ class BhpHttpFlowTest extends TestCase
                     ['barang_id' => $barang->id, 'jumlah_diminta' => 30],
                 ],
             ])
-            ->assertRedirect(route('distribusi-bhp.bos.pengajuan.index'));
+            ->assertRedirect(route('distribusi-bhp.bos.pengajuan.index'))
+            ->assertSessionHas('success');
 
         $pengajuan = Pengajuan::firstOrFail();
-        $this->assertSame('draft', $pengajuan->status);
+        $this->assertSame('submitted', $pengajuan->status);
+        $this->assertSame(30, (int) $pengajuan->details()->sum('jumlah_direservasi'));
+    }
+
+    public function test_ajukan_dengan_stok_kurang_tidak_meninggalkan_draft(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->user($sekolah, 'operator_sekolah', 'op.bhp.kurang');
+        $barang = $this->barang($sekolah, 'BOS', 5);
+
+        // Reservasi gagal → record yang sudah terlanjur dibuat harus dibersihkan,
+        // bukan jadi draft menggantung yang tak pernah tampil.
+        $this->actingAs($operator)
+            ->post(route('distribusi-bhp.bos.pengajuan.store'), [
+                'sumber_dana' => 'BOS',
+                'tanggal' => '2026-06-17',
+                'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 50]],
+            ])
+            ->assertRedirect(route('distribusi-bhp.bos.pengajuan.index'))
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Pengajuan::count());
+        $this->assertSame(0, PengajuanDetail::count());
+    }
+
+    public function test_draft_lama_tidak_tampil_di_daftar_pengajuan(): void
+    {
+        $sekolah = $this->sekolah();
+        $operator = $this->user($sekolah, 'operator_sekolah', 'op.bhp.sembunyi');
+        $barang = $this->barang($sekolah, 'BOS', 100);
+
+        foreach (['draft', 'submitted'] as $status) {
+            $pengajuan = Pengajuan::create([
+                'sekolah_id' => $sekolah->id,
+                'user_id' => $operator->id,
+                'sumber_dana' => 'BOS',
+                'status' => $status,
+                'tanggal' => '2026-06-17',
+            ]);
+            $pengajuan->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 1]);
+        }
 
         $this->actingAs($operator)
-            ->post(route('distribusi-bhp.bos.pengajuan.submit', $pengajuan))
-            ->assertRedirect();
-
-        $this->assertSame('submitted', $pengajuan->fresh()->status);
+            ->get(route('distribusi-bhp.bos.pengajuan.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('items.data', 1)
+                ->where('items.data.0.status', 'submitted'));
     }
 
     public function test_membuat_pengajuan_dengan_sumber_dana_tidak_sesuai_ditolak(): void
@@ -161,13 +205,16 @@ class BhpHttpFlowTest extends TestCase
         $operator = $this->user($sekolah, 'operator_sekolah', 'op.edit');
         $barang = $this->barang($sekolah, 'BOS', 100);
 
-        $this->actingAs($operator)->post(route('distribusi-bhp.bos.pengajuan.store'), [
+        // Draft hanya tersisa dari alur lama (isian baru disimpan di perangkat),
+        // tetapi endpoint ubah/hapus tetap harus bekerja untuk record itu.
+        $pengajuan = Pengajuan::create([
+            'sekolah_id' => $sekolah->id,
+            'user_id' => $operator->id,
             'sumber_dana' => 'BOS',
+            'status' => 'draft',
             'tanggal' => '2026-06-17',
-            'items' => [['barang_id' => $barang->id, 'jumlah_diminta' => 5]],
-        ])->assertRedirect();
-
-        $pengajuan = Pengajuan::firstOrFail();
+        ]);
+        $pengajuan->details()->create(['barang_id' => $barang->id, 'jumlah_diminta' => 5]);
 
         $this->actingAs($operator)->put(route('distribusi-bhp.bos.pengajuan.update', $pengajuan), [
             'sumber_dana' => 'BOS',

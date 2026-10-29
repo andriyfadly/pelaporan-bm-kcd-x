@@ -37,6 +37,9 @@ class PengajuanController extends Controller
         return SumberDana::dengan($sumberDana, function () use ($sekolahId, $sumberDana, $request): Response {
             $items = Pengajuan::with(['details.barang'])
                 ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+                // Draft hanya sisa alur lama; isian operator kini disimpan di
+                // perangkat, jadi draft tidak ditampilkan sebagai riwayat.
+                ->where('status', '!=', 'draft')
                 // Operator divisi hanya melihat pengajuan divisinya sendiri.
                 ->when($request->user()->divisi_id, fn ($q, $divisiId) => $q->where('divisi_id', $divisiId))
                 ->latest('id')
@@ -74,25 +77,30 @@ class PengajuanController extends Controller
         return SumberDana::dengan($sumberDana, function () use ($validated, $sekolahId, $request, $sumberDana): RedirectResponse {
             $this->pastikanDivisiSekolah($request, $sekolahId);
             $barangs = $this->barangsSesuaiDana($validated);
+            $daftar = redirect()->route('distribusi-bhp.'.strtolower($sumberDana).'.pengajuan.index');
 
-            $pengajuan = DB::transaction(function () use ($validated, $sekolahId, $request, $barangs) {
-                $pengajuan = Pengajuan::create([
-                    'sekolah_id' => $sekolahId,
-                    // divisi_id selalu dari user login; input request tidak pernah dipercaya.
-                    'divisi_id' => $request->user()->divisi_id,
-                    'user_id' => $request->user()->id,
-                    'tanggal' => $validated['tanggal'],
-                    'status' => 'draft',
-                ]);
+            // Buat + reservasi dalam satu transaksi: kalau stok tidak cukup,
+            // seluruh pengajuan ikut dibatalkan sehingga tidak ada draft
+            // menggantung yang tak pernah tampil di daftar.
+            try {
+                DB::transaction(function () use ($validated, $sekolahId, $request, $barangs) {
+                    $pengajuan = Pengajuan::create([
+                        'sekolah_id' => $sekolahId,
+                        // divisi_id selalu dari user login; input request tidak pernah dipercaya.
+                        'divisi_id' => $request->user()->divisi_id,
+                        'user_id' => $request->user()->id,
+                        'tanggal' => $validated['tanggal'],
+                        'status' => 'draft',
+                    ]);
 
-                $this->simpanDetail($pengajuan, $validated, $barangs);
+                    $this->simpanDetail($pengajuan, $validated, $barangs);
+                    $this->stok->submit($pengajuan->load('details'));
+                });
+            } catch (RuntimeException $e) {
+                return $daftar->with('error', $e->getMessage());
+            }
 
-                return $pengajuan;
-            });
-
-            return redirect()
-                ->route('distribusi-bhp.'.strtolower($sumberDana).'.pengajuan.index')
-                ->with('success', 'Pengajuan berhasil dibuat sebagai draft.');
+            return $daftar->with('success', 'Pengajuan diajukan dan stok direservasi.');
         });
     }
 
@@ -148,21 +156,31 @@ class PengajuanController extends Controller
             return back()->with('error', 'Hanya pengajuan draft yang dapat dihapus.');
         }
 
-        if ($pengajuan->sumber_dana !== SumberDana::pilih($request->input('sumber_dana'))) {
+        // Sumber dana acuan default adalah milik pengajuan itu sendiri. Tanpa
+        // default ini, route flat (tanpa prefix) jatuh ke BOS dan draft BOPD
+        // selalu gagal dihapus dari halaman BOPD.
+        $sumberDana = SumberDana::pilih($request->input('sumber_dana') ?? $pengajuan->sumber_dana);
+
+        if ($pengajuan->sumber_dana !== $sumberDana) {
             return back()->with('error', 'Sumber dana tidak sesuai dengan pengajuan.');
         }
 
         DB::transaction(function () use ($pengajuan) {
-            $pengajuan = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
+            // Route flat tidak menetapkan sumber dana, sehingga sumber dana
+            // aktif request bisa BOS sementara record-nya BOPD. Tanpa konteks
+            // ini, `whereKey()` mencari di tabel dana yang salah → 404.
+            SumberDana::dengan($pengajuan->sumber_dana, function () use ($pengajuan) {
+                $segarkan = Pengajuan::whereKey($pengajuan->id)->lockForUpdate()->firstOrFail();
 
-            if ($pengajuan->status !== 'draft') {
-                throw ValidationException::withMessages([
-                    'status' => 'Pengajuan sudah tidak berstatus draft.',
-                ]);
-            }
+                if ($segarkan->status !== 'draft') {
+                    throw ValidationException::withMessages([
+                        'status' => 'Pengajuan sudah tidak berstatus draft.',
+                    ]);
+                }
 
-            $pengajuan->details()->delete();
-            $pengajuan->delete();
+                $segarkan->details()->delete();
+                $segarkan->delete();
+            });
         });
 
         return redirect()

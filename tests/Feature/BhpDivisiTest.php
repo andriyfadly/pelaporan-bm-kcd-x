@@ -231,7 +231,7 @@ class BhpDivisiTest extends TestCase
                 'divisi_id' => $divisi->id,
                 'user_id' => $opSekolah->id,
                 'sumber_dana' => 'BOS',
-                'status' => 'draft',
+                'status' => 'submitted',
                 'tanggal' => '2026-06-17',
             ]);
         }
@@ -321,7 +321,7 @@ class BhpDivisiTest extends TestCase
             'divisi_id' => $divisi->id,
             'user_id' => $opDivisi->id,
             'sumber_dana' => 'BOS',
-            'status' => 'draft',
+            'status' => 'submitted',
             'tanggal' => '2026-06-17',
         ]);
 
@@ -392,9 +392,9 @@ class BhpDivisiTest extends TestCase
         $opSekolah = $this->user($sekolah, '20229910-admin', 'operator_sekolah');
 
         foreach ([
-            [$divisiA, 'draft'],
             [$divisiA, 'approved'],
-            [$divisiB, 'draft'],
+            [$divisiA, 'submitted'],
+            [$divisiB, 'submitted'],
             [$divisiB, 'submitted'],
         ] as [$divisi, $status]) {
             Pengajuan::create([
@@ -407,23 +407,21 @@ class BhpDivisiTest extends TestCase
             ]);
         }
 
-        // Operator divisi A hanya melihat 1 draft + 1 approved milik divisinya.
+        // Operator divisi A hanya melihat 1 submitted + 1 approved milik divisinya.
         $this->actingAs($opA)
             ->get(route('distribusi-bhp.dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('stats.pengajuanDraft', 1)
-                ->where('stats.pengajuanSubmitted', 0)
-                ->where('stats.pengajuanApproved', 1));
+                ->where('perDana.BOS.pengajuanSubmitted', 1)
+                ->where('perDana.BOS.pengajuanApproved', 1));
 
-        // Operator sekolah melihat semua divisi: 2 draft + 1 submitted + 1 approved.
+        // Operator sekolah melihat semua divisi: 3 submitted + 1 approved.
         $this->actingAs($opSekolah)
             ->get(route('distribusi-bhp.dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('stats.pengajuanDraft', 2)
-                ->where('stats.pengajuanSubmitted', 1)
-                ->where('stats.pengajuanApproved', 1));
+                ->where('perDana.BOS.pengajuanSubmitted', 3)
+                ->where('perDana.BOS.pengajuanApproved', 1));
     }
 
     public function test_operator_sekolah_mengubah_nama_divisi(): void

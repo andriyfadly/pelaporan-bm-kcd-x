@@ -24,32 +24,29 @@ class DashboardController extends Controller
         // tetap scope sekolah karena stok bukan milik divisi.
         $divisiId = $request->user()->divisi_id;
 
-        // Statistik dashboard menjumlahkan BOS + BOPD (tabel terpisah).
-        $total = [
-            'totalBarang' => 0,
-            'pengajuanDraft' => 0,
-            'pengajuanSubmitted' => 0,
-            'pengajuanApproved' => 0,
-            'totalPenerimaan' => 0,
-        ];
+        // Statistik dipisah per sumber dana (tabelnya memang terpisah). Satu
+        // angka gabungan BOS+BOPD tidak bisa ditindaklanjuti: operator perlu
+        // tahu dana mana yang menumpuk draft atau menunggu review.
+        $perDana = [];
 
         foreach (SumberDana::SEMUA as $dana) {
-            SumberDana::dengan($dana, function () use (&$total, $sekolahId, $divisiId) {
+            $perDana[$dana] = SumberDana::dengan($dana, function () use ($sekolahId, $divisiId): array {
                 $pengajuan = Pengajuan::query()
                     ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
                     ->when($divisiId, fn ($q) => $q->where('divisi_id', $divisiId));
                 $penerimaan = Penerimaan::query()->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId));
 
-                $total['totalBarang'] += Barang::count();
-                $total['pengajuanDraft'] += (clone $pengajuan)->where('status', 'draft')->count();
-                $total['pengajuanSubmitted'] += (clone $pengajuan)->where('status', 'submitted')->count();
-                $total['pengajuanApproved'] += (clone $pengajuan)->where('status', 'approved')->count();
-                $total['totalPenerimaan'] += (clone $penerimaan)->count();
+                return [
+                    'totalBarang' => Barang::count(),
+                    'pengajuanSubmitted' => (clone $pengajuan)->where('status', 'submitted')->count(),
+                    'pengajuanApproved' => (clone $pengajuan)->where('status', 'approved')->count(),
+                    'totalPenerimaan' => (clone $penerimaan)->count(),
+                ];
             });
         }
 
         return Inertia::render('DistribusiBhp/Dashboard', [
-            'stats' => $total,
+            'perDana' => $perDana,
         ]);
     }
 }

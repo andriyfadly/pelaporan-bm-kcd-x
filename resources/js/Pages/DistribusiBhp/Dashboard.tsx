@@ -1,24 +1,20 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { Boxes, ClipboardList, PackageCheck } from 'lucide-react';
+import CardStat from '@/Components/CardStat';
+import { Boxes, ClipboardList, PackageCheck, ArrowRight } from 'lucide-react';
 
-interface Stats {
+interface StatDana {
     totalBarang: number;
-    pengajuanDraft: number;
     pengajuanSubmitted: number;
     pengajuanApproved: number;
     totalPenerimaan: number;
 }
 
-export default function Dashboard({ stats }: { stats: Stats }) {
-    const cards = [
-        { label: 'Total Barang', value: stats.totalBarang, icon: Boxes, color: 'text-blue-600 bg-blue-50' },
-        { label: 'Pengajuan Draft', value: stats.pengajuanDraft, icon: ClipboardList, color: 'text-amber-600 bg-amber-50' },
-        { label: 'Menunggu Review', value: stats.pengajuanSubmitted, icon: ClipboardList, color: 'text-orange-600 bg-orange-50' },
-        { label: 'Pengajuan Disetujui', value: stats.pengajuanApproved, icon: PackageCheck, color: 'text-emerald-600 bg-emerald-50' },
-        { label: 'Total Penerimaan', value: stats.totalPenerimaan, icon: PackageCheck, color: 'text-slate-600 bg-slate-100' },
-    ];
+type PerDana = Record<'BOS' | 'BOPD', StatDana>;
 
+const DANA: Array<'BOS' | 'BOPD'> = ['BOS', 'BOPD'];
+
+export default function Dashboard({ perDana }: { perDana: PerDana }) {
     return (
         <AppLayout title="Dashboard BHP">
             <Head title="Distribusi BHP | Dashboard" />
@@ -27,25 +23,53 @@ export default function Dashboard({ stats }: { stats: Stats }) {
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                     <h1 className="text-lg font-bold text-slate-900">Distribusi BHP</h1>
                     <p className="text-sm text-slate-500 mt-1">
-                        Domain barang habis pakai. Terpisah dari Pelaporan Belanja Modal.
+                        Barang habis pakai, dipisah per sumber dana. Stok, dokumen, dan laporan BOS tidak
+                        pernah bercampur dengan BOPD.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {cards.map((card) => (
-                        <div key={card.label} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div className="text-xs font-bold uppercase text-slate-500 tracking-wider">{card.label}</div>
-                                <div className="text-3xl font-black text-slate-900 mt-2">{card.value}</div>
-                            </div>
-                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${card.color}`}>
-                                <card.icon className="w-5 h-5" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                {DANA.map((dana) => {
+                    const s = perDana[dana];
+                    const prefix = `/distribusi-bhp/${dana.toLowerCase()}`;
 
-                </div>
+                    return (
+                        <section key={dana} className="space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+                                    Sumber Dana {dana}
+                                </h2>
+                                <div className="flex flex-wrap gap-2">
+                                    <Link
+                                        href={`${prefix}/pengajuan`}
+                                        className="inline-flex min-h-10 items-center gap-1.5 px-3 rounded-xl text-xs font-bold border border-slate-300 text-slate-700 hover:bg-slate-50"
+                                    >
+                                        Pengajuan <ArrowRight className="w-3.5 h-3.5" />
+                                    </Link>
+                                    <Link
+                                        href={`${prefix}/penerimaan`}
+                                        className="inline-flex min-h-10 items-center gap-1.5 px-3 rounded-xl text-xs font-bold border border-slate-300 text-slate-700 hover:bg-slate-50"
+                                    >
+                                        Penerimaan <ArrowRight className="w-3.5 h-3.5" />
+                                    </Link>
+                                    <Link
+                                        href={`${prefix}/laporan`}
+                                        className="inline-flex min-h-10 items-center gap-1.5 px-3 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700"
+                                    >
+                                        Laporan <ArrowRight className="w-3.5 h-3.5" />
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <CardStat label="Barang" value={s.totalBarang} icon={<Boxes className="w-5 h-5" />} color="blue" />
+                                <CardStat label="Menunggu Review" value={s.pengajuanSubmitted} icon={<ClipboardList className="w-5 h-5" />} color="rose" />
+                                <CardStat label="Disetujui" value={s.pengajuanApproved} icon={<PackageCheck className="w-5 h-5" />} color="emerald" />
+                                <CardStat label="Penerimaan" value={s.totalPenerimaan} icon={<PackageCheck className="w-5 h-5" />} color="purple" />
+                            </div>
+                        </section>
+                    );
+                })}
+            </div>
         </AppLayout>
     );
 }

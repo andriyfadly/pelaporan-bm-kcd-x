@@ -51,13 +51,13 @@ Semua perubahan stok harus berada dalam database transaction dan menggunakan row
 
 ## 6. Pengajuan Divisi
 
-- User divisi membuat draft.
+- User divisi mengisi form pengajuan (isian disimpan otomatis di perangkat).
 - Sistem mengisi identitas pemohon dari akun/jabatan aktif.
 - Pemohon memilih sumber dana.
 - Pemohon menambahkan barang dan jumlah.
 - Sistem menampilkan stok tersedia.
 - Jumlah tidak boleh nol/negatif atau melebihi stok tersedia.
-- Draft dapat diedit.
+- Tombol ajukan langsung membuat reservasi; tidak ada draft tersimpan di server.
 - Submit mengubah status menjadi `submitted` dan membuat reservasi.
 - Pengajuan submitted tidak dapat diedit pemohon.
 

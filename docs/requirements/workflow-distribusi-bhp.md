@@ -17,18 +17,23 @@ Commit penerimaan dan update stok fisik
 ## 2. Pengajuan
 
 ```text
-User divisi membuat draft
+User divisi mengisi form pengajuan
         ↓
-Memilih sumber dana
+Isian disimpan otomatis di perangkat (localStorage), belum menyentuh server
         ↓
-Memilih barang dan jumlah
+Memilih sumber dana, barang, dan jumlah
         ↓
-Validasi stok tersedia
+Klik "Ajukan Pengajuan" → konfirmasi
         ↓
-Submit
+Validasi stok tersedia, buat pengajuan + reservasi dalam satu transaksi
         ↓
-Reservasi stok
+Reservasi stok terbentuk (status submitted)
 ```
+
+Catatan: status `draft` di database hanya sisa alur lama. Isian yang belum
+diajukan tidak pernah menjadi baris database, dan draft tidak ditampilkan di
+daftar pengajuan. Bila reservasi gagal (stok kurang), seluruh transaksi batal
+sehingga tidak ada record menggantung.
 
 ## 3. Approval
 
@@ -51,7 +56,7 @@ Dokumen dibuat
 
 | State | Aksi valid |
 |---|---|
-| `draft` | edit, submit, delete oleh pemilik berwenang |
+| `draft` | sisa alur lama: hanya transien di dalam transaksi ajukan; tidak tampil di daftar |
 | `submitted` | review, approve, reject; tidak boleh diedit pemohon |
 | `approved` | lihat, cetak; tidak boleh approve ulang |
 | `rejected` | lihat alasan; buat pengajuan baru atau revisi sesuai policy |
