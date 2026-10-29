@@ -67,8 +67,10 @@ Standar ini hasil audit UI seluruh halaman (Dashboard, Acuan, Rekapan, Cetak, Ko
 2. **Konfirmasi destruktif**: hapus/kunci/buka kunci/ACC selalu `ConfirmDialog`; aksi konstruktif (ACC) pakai `isDestructive={false}`.
 3. **Guard diri-sendiri di UI**: tombol hapus/nonaktifkan disembunyikan untuk akun yang sedang login (validasi backend tetap ada).
 4. **Lebar konten penuh**: wrapper halaman tanpa `max-w-* mx-auto`; padding hanya dari `main`.
-5. **Aksesibilitas**: widget filter clickable = `<button aria-pressed>`; toggle expand-baris = `aria-expanded`; kontrol filter tanpa label visual = `aria-label`; tombol ikon = `aria-label`; glyph redup minimal `slate-400`.
-6. **Tabel responsif**: `overflow-x-auto` + `min-w` skala sesuai jumlah kolom (skala di `docs/design.md` §4).
+5. **Aksesibilitas**: widget filter clickable = `<button aria-pressed>`; toggle expand-baris = `aria-expanded`; kontrol filter tanpa label visual = `aria-label`; tombol ikon = `aria-label`; setiap `<label>` punya `htmlFor` yang cocok dengan `id` input. **Teks** yang dibaca minimal `slate-500` (kontras 4.76:1); `slate-400` hanya untuk glyph/ikon dekoratif. Ukuran teks minimum `text-xs` (12px) — jangan `text-[11px]`.
+6. **Tabel responsif**: tabel **5 kolom atau lebih** tidak boleh hanya `overflow-x-auto` (kolom aksi di ujung kanan tak terlihat). Wajib dua tampilan: daftar kartu `<ul className="md:hidden">` + tabel `<div className="hidden md:block overflow-x-auto">`. Kontrak ini dijaga `tests/Feature/BhpUiKontrakTest.php`; menambah halaman riwayat baru berarti menambah entri di data provider test itu.
+7. **Target sentuh**: submit utama `min-h-11` (44px), tombol aksi/navigasi `min-h-10` (40px), aksi di dalam baris tabel `min-h-9` (36px). Tidak ada tombol < 24px.
+8. **Tabel kosong**: render `<EmptyState>` (boleh dengan `action`), bukan baris `<td>Belum ada data</td>` di dalam tabel.
 
 ---
 
@@ -154,3 +156,22 @@ permission *-bm                 ↔  permission *-bhp
   `sumber-dana-bhp` (fail-closed: invalid → 422). Bila menetapkan konteks dana
   di service, pakai `SumberDana::dengan()` (restore otomatis), bukan
   `setAktif()` permanen.
+- Validasi `exists` untuk record BHP wajib lewat `SumberDana::existsRule()`,
+  bukan `exists:bhp_barang,id`. Nama tabel literal selalu menunjuk satu dana
+  saja (default BOS), sehingga halaman BOPD menolak id yang sah dengan pesan
+  "selected id is invalid". Penjaga: `BhpAksiPrefixSumberDanaTest`.
+- Halaman BHP wajib memposting/mengirim ke route ber-prefix
+  `/distribusi-bhp/{bos|bopd}/...`. Route flat memakai sumber dana aktif
+  request, bukan sumber dana record.
+
+### Alur pengajuan BHP: satu tombol, tanpa draft server
+
+- Operator mengisi barang lalu langsung **Ajukan Pengajuan**; tidak ada tombol
+  "Simpan Draft" dan tidak ada draft yang disimpan ke database.
+- Isian diautosave ke `localStorage` per sumber dana, dipulihkan saat halaman
+  dibuka lagi, dan hanya dihapus setelah `flash.success` diterima.
+- `PengajuanController::store()` membuat pengajuan **dan** memanggil
+  `StokService::submit()` dalam satu `DB::transaction`; stok kurang membatalkan
+  seluruh transaksi dan dikirim sebagai `flash.error`.
+- `index()` menyembunyikan `status = draft` dari riwayat. Jangan menghidupkan
+  kembali alur draft tanpa membongkar autosave — dua mekanisme itu bertabrakan.

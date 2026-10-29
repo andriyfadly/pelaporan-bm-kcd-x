@@ -19,9 +19,9 @@ Pelaporan BM. Lihat `docs/requirements/` untuk kontrak kedua domain.
 5. [Endpoint & Kontrak Data](api.md) — rute web, controller, middleware, payload (BM + BHP).
 6. [Alur & Modul per Role](modules.md) — detail operasional tiap modul, termasuk BHP **dan Pencatatan BM (inventaris)**.
 7. [Keamanan](security.md) — matriks RBAC (32 permission, 5 role), isolasi tenant, audit trail, checklist rilis.
-8. [Testing](testing.md) — strategi, perintah, matriks file test, status.
+8. [Testing](testing.md) — strategi, perintah, matriks file test, status, kontrak UI.
 9. [Instalasi Lokal](setup.md) — prasyarat, instalasi, verifikasi kualitas.
-10. [Deployment Produksi](deployment.md) — prasyarat server, rilis, backup, troubleshooting.
+10. [Deployment Produksi & Staging](deployment.md) — prasyarat server, rilis, backup, staging QA (§8), troubleshooting.
 11. [User Manual](user-guide.md) — panduan operator & admin KCD (BM, BHP, dan pencatatan inventaris).
 12. [Developer Guidelines](guidelines.md) — standar kode, testing, RBAC, relative-path.
 13. [Glosarium](glossary.md) — istilah BM, SPJ, kunci, log, BHP, dan inventaris.
@@ -53,6 +53,7 @@ Sub-folder `docs/requirements/` memuat spesifikasi rinci kedua domain:
 | Ubah skema / query | `database.md` |
 | Tambah endpoint | `api.md` |
 | Rilis ke produksi | `deployment.md` + `security.md` |
+| QA perubahan sebelum rilis | `deployment.md` §8 (Staging) |
 | Pakai aplikasi | `user-guide.md` |
 
 ---

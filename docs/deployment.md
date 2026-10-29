@@ -1,6 +1,7 @@
-# Deployment Produksi
+# Deployment Produksi & Staging
 
 > Instalasi lokal: `docs/setup.md`. Keamanan: `docs/security.md` (§6 checklist).
+> Staging QA: §8 di dokumen ini.
 
 ## 1. Prasyarat Server
 
@@ -176,5 +177,205 @@ unduhan. Uji restore minimal 1× per kuartal.
 | 500 setelah deploy | `storage/logs/laravel.log`, permission `storage/`, `config:clear` bila env baru diganti |
 | Inertia blank / aset 404 | `npm run build` + `public/build/manifest.json` ada; `APP_URL` benar |
 | Login gagal massal | Jam server (2FA), `sessions` table, Turnstile key/domain |
-| Unduhan 204 terus | Data filter kosong (normal) atau queue Excel error → cek log |
+| Unduhan Excel 204 terus | Data filter kosong (normal) | Periksa periode/filter; tidak ada worker yang terlibat |
 | Permission error | `php artisan permission:cache-reset` (Spatie) |
+
+## 8. Staging (QA)
+
+Staging dipakai QA untuk mencoba perubahan sebelum rilis. Letaknya di server yang
+sama dengan produksi, tetapi **semua komponen terpisah**: direktori, database,
+user DB, dan cron. Tidak ada data produksi yang tersentuh.
+
+| Komponen | Staging | Produksi |
+|---|---|---|
+| Direktori | `/var/www/pelaporan-bm-staging` | `/var/www/aset-kcd-x-superapps` |
+| Domain | `staging.sidipta-kcd10.my.id` | `sidipta-kcd10.my.id` |
+| `APP_ENV` | `staging` | `production` |
+| Database | `pelaporan_bm_staging` | `aset_kcd_x_superapps_db` |
+| User DB | `pelaporan_bm_staging_user` | `aset_kcd_x_user` |
+| Nginx | `/etc/nginx/sites-available/staging.sidipta-kcd10.my.id` | `.../sidipta-kcd10.my.id` |
+| Queue | `pelaporan-bm-staging-queue.service` | belum ada worker (aplikasi belum mengirim job async) |
+| Scheduler | `/etc/cron.d/pelaporan-bm-staging` | entri cron produksi |
+
+### 8.1 Trafik masuk lewat Cloudflare Tunnel
+
+Port 80/443 server **tidak terbuka ke internet**; trafik publik masuk lewat
+tunnel `cloudflared`. Karena itu Certbot tidak dipakai untuk staging — HTTPS
+diterminasi di edge Cloudflare.
+
+Menambah site baru berarti menambah entri di `/etc/cloudflared/config.yml`, lalu:
+
+```bash
+cloudflared tunnel --config /etc/cloudflared/config.yml ingress validate
+systemctl restart cloudflared
+```
+
+Tanpa langkah ini Cloudflare akan membalas **404** untuk hostname tersebut,
+walaupun Nginx lokal sudah benar (`curl -H "Host: <domain>" http://127.0.0.1/`
+mengembalikan 200). Ini penyebab kegagalan Certbot HTTP-01 yang paling sering
+terjadi di server ini.
+
+### 8.2 Inisialisasi dari nol
+
+```bash
+# 1. Kode
+git clone <url> /var/www/pelaporan-bm-staging
+cd /var/www/pelaporan-bm-staging && git checkout <branch>
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+
+# 2. Database (sebagai root)
+sudo -u postgres psql -c "CREATE ROLE pelaporan_bm_staging_user LOGIN PASSWORD '<pw>'"
+sudo -u postgres createdb -O pelaporan_bm_staging_user pelaporan_bm_staging
+
+# 3. .env — salin .env.example lalu sesuaikan (lihat §8.3)
+
+# 4. Migrasi + seed
+php artisan key:generate --force
+php artisan migrate --force
+php artisan db:seed --force --class=DatabaseSeeder
+php artisan db:seed --force --class=DemoDistribusiBhpSmkn4KuninganSeeder
+
+# 5. Cache
+php artisan storage:link
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan permission:cache-reset
+```
+
+`DemoDistribusiBhpSmkn4KuninganSeeder` membutuhkan sekolah NPSN `20246369` yang
+sudah ada. `KodeSekolahSeeder` hanya mengisi data itu bila `storage/bm-kcd-x.sql`
+tersedia — pada clone bersih file itu tidak ada, dan seeder **diam tanpa
+melakukan apa pun**. Buat sekolahnya lebih dulu:
+
+```bash
+php artisan tinker --execute 'App\Models\Master\Sekolah::create([
+    "nama_sekolah" => "SMK NEGERI 4 KUNINGAN",
+    "kota_kab" => "KABUPATEN KUNINGAN",
+    "npsn" => "20246369",
+    "kode_sub_pengguna" => "1.01.01",
+    "kode_wilayah" => "32.08",
+]);'
+```
+
+### 8.3 `.env` staging (wajib)
+
+```env
+APP_ENV=staging
+APP_DEBUG=false
+APP_URL=https://staging.sidipta-kcd10.my.id
+APP_NAME="ASET KCD 10"
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_DATABASE=pelaporan_bm_staging
+DB_USERNAME=pelaporan_bm_staging_user
+DB_PASSWORD=...
+SESSION_SECURE_COOKIE=true
+BACKUP_NOTIFICATION_EMAIL=admin@example.com
+TURNSTILE_ENABLED=true
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+```
+
+Dua nilai yang mudah terlewat dan langsung mematikan aplikasi:
+
+- `BACKUP_NOTIFICATION_EMAIL` **tidak boleh kosong**. `config/backup.php`
+  memvalidasinya saat service provider boot, jadi nilai kosong membuat semua
+  request 500 (`InvalidConfig: is not a valid email address`).
+- `TURNSTILE_ENABLED=false` di luar `local` menolak **semua** login
+  (`TurnstileService::verify()` hanya meloloskan `local` dan unit test). Untuk
+  staging gunakan Cloudflare **test key** di atas yang selalu lolos. Key itu
+  publik dan hanya untuk pengujian — jangan pernah dipakai di produksi.
+
+### 8.4 Worker & scheduler
+
+Aplikasi saat ini **tidak mengirim job ke queue** (ekspor XLSX dan cetak PDF
+dikerjakan sinkron di request), jadi worker hanya disiapkan untuk antisipasi job
+baru di masa depan. Bila belum dibutuhkan, langkah ini boleh dilewati.
+
+Buat `/etc/systemd/system/pelaporan-bm-staging-queue.service`:
+
+```ini
+[Unit]
+Description=Laravel Queue Worker - Pelaporan BM Staging
+After=network.target postgresql.service
+
+[Service]
+User=pplgsmk4
+Group=www-data
+Restart=always
+RestartSec=5
+WorkingDirectory=/var/www/pelaporan-bm-staging
+ExecStart=/usr/bin/php artisan queue:work database --sleep=3 --tries=3 --timeout=300 --max-time=3600
+StandardOutput=append:/var/www/pelaporan-bm-staging/storage/logs/queue-worker.log
+StandardError=append:/var/www/pelaporan-bm-staging/storage/logs/queue-worker.log
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Aktifkan:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now pelaporan-bm-staging-queue.service
+```
+
+Isi `/etc/cron.d/pelaporan-bm-staging`:
+
+```cron
+* * * * * pplgsmk4 cd /var/www/pelaporan-bm-staging && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+### 8.5 Update staging
+
+```bash
+cd /var/www/pelaporan-bm-staging
+git pull origin <branch>
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+npm ci && npm run build
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan permission:cache-reset
+sudo systemctl restart pelaporan-bm-staging-queue.service
+```
+
+`migrate --force` di staging aman karena databasenya terpisah. Jangan menyalin
+perintah ini ke produksi tanpa backup (lihat §5).
+
+### 8.6 Reset data QA
+
+Untuk mengembalikan dataset demo tanpa menyentuh skema:
+
+```bash
+php artisan db:seed --force --class=DemoDistribusiBhpSmkn4KuninganSeeder
+```
+
+Seeder ini idempotent: baris demo ditandai prefix `DEMO-SMKN4-2026`, jadi
+menjalankannya ulang tidak menggandakan data. Jangan pakai `migrate:fresh` —
+perintah itu menghapus seluruh isi database. Bila benar-benar perlu skema
+bersih, buat database baru lalu `migrate --force` di sana.
+
+### 8.7 Verifikasi pasca-setup
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://staging.sidipta-kcd10.my.id/login   # 200
+curl -s https://staging.sidipta-kcd10.my.id/login | grep -o '<title[^>]*>[^<]*'      # ASET KCD 10
+systemctl is-active pelaporan-bm-staging-queue.service                              # active (bila worker dipasang)
+php artisan queue:failed                                                            # kosong
+```
+
+Login dengan akun demo, lalu periksa: dashboard, pengajuan/penerimaan BOS & BOPD,
+laporan stok, kartu persediaan, dan unduh satu PDF dokumen
+(`content-type: application/pdf`, diawali `%PDF-`).
+
+### 8.8 Troubleshooting staging
+
+| Gejala | Cek |
+|---|---|
+| Hostname staging balas 404 dari internet, tapi `curl -H "Host: ..." http://127.0.0.1/` = 200 | Entri `ingress` belum ada di `/etc/cloudflared/config.yml`; restart `cloudflared` |
+| Semua login ditolak "Verifikasi keamanan gagal" | `TURNSTILE_*` kosong/`false`; pakai test key |
+| Seluruh halaman 500 setelah `.env` diubah | `BACKUP_NOTIFICATION_EMAIL` kosong, atau `config:cache` belum dijalankan |
+| Jam/tanggal form mundur sehari | `tanggalHariIni()` memakai zona waktu lokal; cek `date.timezone` PHP |
+| 500 hanya di halaman yang menulis file | `storage/` & `bootstrap/cache/` harus milik user PHP-FPM (`chown -R pplgsmk4:www-data`) |
+| Aset lama masih muncul setelah `npm run build` | `php artisan view:cache` + hard refresh; cek `public/build/manifest.json` |
+

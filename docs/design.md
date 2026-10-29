@@ -92,13 +92,14 @@ Submenu aktif: teks bold + `bg-blue-50/50`.
 
 | Komponen | Props inti | Aturan pakai |
 |----------|-----------|--------------|
-| `Pagination` | `links`, `total?` | Selalu di bawah tabel; sembunyi bila ≤ 3 link |
+| `Pagination` | `links`, `total?` | Selalu di bawah tabel; sembunyi bila ≤ 3 link; target sentuh 36px, wrap |
+| `PeriodeFilter` | `path`, `periode`, `sumberDana`, `extra?` | Pemilih bulan/tahun laporan; satu-satunya pembentuk parameter `bulan`/`tahun`; full-width di mobile |
 | `SearchInput` | `value`, `onChange`, `placeholder?`, `className?`, `ariaLabel?` | Ikon Search + tombol clear + `aria-label` (fallback ke placeholder); submit via form Enter |
-| `EmptyState` | `icon`, `title`, `description` | Data kosong / filter tak cocok |
-| `Modal` | `isOpen`, `onClose`, `title`, `maxWidth` | Form tambah/edit; ESC + scroll lock + fokus otomatis |
+| `EmptyState` | `title?`, `description?`, `icon?`, `action?` | Data kosong / filter tak cocok; `action` untuk tombol ajakan (mis. "Tambah Barang Pertama") |
+| `Modal` | `isOpen`, `onClose`, `title`, `maxWidth?` | Form tambah/edit; `role="dialog"` + `aria-modal` + `aria-labelledby`, focus trap, focus restore, ESC, scroll lock |
 | `ConfirmDialog` | `title`, `message`, `confirmText`, `isDestructive` | Hapus, kirim laporan, kunci, ACC, buka kunci, logout |
 | `StatusBadge` | status | `draft`/`menunggu_approval`/`disetujui`/kunci |
-| `CardStat` | label, nilai, ikon | 4 kartu dashboard sekolah, rekap admin |
+| `CardStat` | label, nilai, ikon, `color?`, `subtext?` | Kartu metrik dashboard; padding `p-4` di mobile, `sm:p-5` di atasnya |
 
 > **Wajib pakai komponen ini, jangan reinvent.** Halaman baru yang butuh modal,
 > konfirmasi hapus, search box, atau empty state harus mengimpor dari
@@ -226,8 +227,15 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 
 ### Responsif
 
-- Tabel dibungkus `overflow-x-auto` (scroll horizontal di HP, bukan remuk);
-  `min-w` sesuai jumlah kolom — lihat skala §4.
+- **Tabel 5 kolom atau lebih**: jangan hanya `overflow-x-auto`. Wajib dua
+  tampilan — daftar kartu `<ul className="md:hidden divide-y">` untuk ponsel dan
+  tabel di dalam `<div className="hidden md:block overflow-x-auto">`. Alasannya
+  praktis: kolom aksi ada di ujung kanan, jadi di ponsel pengguna harus menggeser
+  tabel ke samping untuk menemukan tombol. Pola ini dipakai seluruh modul
+  Distribusi BHP dan dijaga `BhpUiKontrakTest`.
+- Tabel **8+ kolom** (Buku Penerimaan, rekonsiliasi bulanan) tetap scroll
+  horizontal di desktop karena memadatkan kolom lebih buruk, tetapi tetap wajib
+  punya ringkasan/daftar mobile.
 - Grid tidak boleh turun ke kolom terlalu sempit: pakai breakpoint `sm`/`xl`
   sesuai §4, bukan `md`/`lg` yang memadatkan konten.
 - Split form+daftar memakai `xl:` (§4); header halaman menumpuk di mobile
@@ -235,9 +243,24 @@ magick "$SRC" -define icon:auto-resize=16,32,48,64 public/favicon.ico
 - Panel status dengan `min-w-[240px]` hanya di `md:` ke atas; di mobile
   `w-full`.
 - Aksi ikon-only di dalam tabel: `aria-label` deskriptif (mis.
-  `` `Hapus kode ${item.kode_barang}` ``) + `title`; target sentuh `p-1.5`.
+  `` `Hapus kode ${item.kode_barang}` ``) + `title`; target sentuh `min-h-9`.
 - Kontras teks primer ≥ 4.5:1 di atas putih (slate-500 ke atas untuk teks kecil);
   teks di atas tint berwarna pakai shade hue yang sama (§5).
+
+### Ukuran teks & kontras
+
+| Elemen | Nilai |
+|---|---|
+| Submit utama / aksi utama | `min-h-11` (44px) |
+| Tombol aksi, navigasi, paginator | `min-h-10` (40px) |
+| Aksi di dalam baris tabel | `min-h-9` (36px) |
+| Ukuran teks minimum | `text-xs` (12px) |
+| Teks sekunder yang dibaca | `text-slate-500` (4.76:1 pada putih) |
+| Ikon/glyph dekoratif | `text-slate-400` boleh |
+
+`text-slate-400` sebagai **warna teks** hanya mencapai 2.56:1 dan gagal WCAG AA.
+Dulu dipakai untuk heading seksi, satuan barang, dan keterangan tabel; semuanya
+sudah dinaikkan ke `slate-500`. Jangan turunkan lagi saat mengubah halaman.
 
 ## 9. Yang Belum / Batasan Diketahui
 

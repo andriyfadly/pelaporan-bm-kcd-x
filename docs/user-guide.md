@@ -171,18 +171,27 @@ membatalkan seluruh import). Tombol **Hapus** pada satu baris hanya menghapus
 barang itu — barang lain pada periode yang sama tetap ada. Barang yang sudah
 dipakai pengajuan aktif tidak dapat dihapus.
 
-### 6.4 Membuat & Mensubmit Pengajuan
+### 6.4 Membuat & Mengajukan Pengajuan
 
 1. Buka **Pengajuan / Nota Permintaan** (`/distribusi-bhp/{bos|bopd}/pengajuan`, menu sidebar
-   di sub-grup **Distribusi Barang**), buat draft: pilih sumber dana (telah ditentukan
-   oleh grup BOS/BOPD yang dipilih), tanggal, lalu daftar barang + jumlah diminta.
-   Kolom barang menampilkan **stok tersedia** sekolah Anda.
-2. Draft bisa **Edit** (ubah tanggal/daftar barang) atau **Hapus** selama masih
-   `draft`. Setelah disubmit, draft terkunci — perubahan harus lewat Reject lalu
-   buat pengajuan baru.
-3. Klik **Submit**. Sistem memeriksa stok **Tersedia**; bila cukup, jumlah
-   tersebut **direservasi** (belum mengurangi stok terpakai). Bila tidak cukup,
-   submit ditolak dengan pesan sisa stok.
+   di sub-grup **Distribusi Barang**). Sumber dana sudah ditentukan oleh grup
+   BOS/BOPD yang dipilih.
+2. Isi tanggal, lalu tambahkan baris barang + jumlah diminta lewat **+ Tambah
+   Baris**. Kolom barang menampilkan **stok tersedia** sekolah Anda, dan
+   peringatan muncul bila jumlah melebihi stok.
+3. Klik **Ajukan Pengajuan** (satu-satunya tombol). Tidak ada langkah draft:
+   sistem langsung memeriksa stok **Tersedia** dan, bila cukup, membuat
+   pengajuan sekaligus **mereservasi** jumlah tersebut (belum mengurangi stok
+   terpakai). Bila stok tidak cukup, seluruh pengajuan dibatalkan dan pesan
+   sisa stok ditampilkan — tidak ada data setengah jadi.
+4. Isian yang belum terkirim **tersimpan otomatis di perangkat** (per sumber
+   dana), jadi menutup atau me-refresh halaman tidak menghilangkan pekerjaan.
+   Isian baru hilang setelah pengajuan berhasil dikirim, atau bila Anda
+   mengubahnya sendiri.
+5. Riwayat menampilkan pengajuan yang sudah diajukan beserta statusnya:
+   **Menunggu Review**, **Disetujui**, atau **Ditolak**. Pengajuan yang sudah
+   diajukan tidak bisa diedit — perubahan dilakukan lewat Reject lalu buat
+   pengajuan baru.
 
 ### 6.5 Review & Approval (Admin)
 
@@ -226,7 +235,8 @@ dipakai pengajuan aktif tidak dapat dihapus.
 
 ### 6.7 Melihat Laporan
 
-1. Buka **Laporan Stok** (`/distribusi-bhp/{bos|bopd}/laporan`), pilih sumber dana BOS/BOPD (lewat grup sidebar).2. Sub-grup **Laporan** di sidebar menyediakan halaman read-only per jenis:
+1. Buka **Laporan Stok** (`/distribusi-bhp/{bos|bopd}/laporan`), pilih sumber dana BOS/BOPD (lewat grup sidebar).
+2. Sub-grup **Laporan** di sidebar menyediakan halaman read-only per jenis:
    - **BAST Internal**: dokumen BAST (`jenis=bast`)
    - **Berita Acara Pemeriksaan**: dokumen BAP
    - **Buku Pengeluaran**: item yang sudah disetujui

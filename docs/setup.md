@@ -1,6 +1,7 @@
-# Panduan Instalasi & Setup Lingkungan (Setup & Deployment)
+# Panduan Instalasi & Setup Lingkungan (Setup)
 
-Petunjuk instalasi, konfigurasi environment lokal, dan deployment aplikasi Pelaporan Belanja Modal KCD Wilayah X.
+Petunjuk instalasi dan konfigurasi environment lokal. Deployment produksi dan
+staging ada di `docs/deployment.md`.
 
 ---
 
@@ -123,3 +124,61 @@ composer test-coverage
    npm run build
    ```
 3. Konfigurasi Web Server: Arahkan DocumentRoot ke direktori `public/`.
+
+---
+
+## 5. Data Demo Distribusi BHP
+
+Untuk menguji domain BHP tanpa data legacy, sediakan satu sekolah
+(NPSN `20246369`) lalu jalankan seeder demo:
+
+```bash
+php artisan db:seed --class=DemoDistribusiBhpSmkn4KuninganSeeder
+```
+
+Hasil: 10 barang, 19 penerimaan, dan 26 pengajuan **per sumber dana** (BOS dan
+BOPD), beberapa divisi + akun operator divisi, tiga pejabat sekolah, dan 82
+dokumen. Baris demo ditandai prefix `DEMO-SMKN4-2026`, jadi seeder aman
+dijalankan ulang (idempotent).
+
+`KodeSekolahSeeder` hanya mengisi sekolah dari `storage/bm-kcd-x.sql`. Pada
+clone bersih file itu tidak ada dan seeder **diam tanpa melakukan apa pun**,
+sehingga seeder demo gagal dengan "Sekolah NPSN 20246369 tidak ditemukan".
+Buat sekolahnya dulu:
+
+```bash
+php artisan tinker --execute 'App\Models\Master\Sekolah::create([
+    "nama_sekolah" => "SMK NEGERI 4 KUNINGAN",
+    "kota_kab" => "KABUPATEN KUNINGAN",
+    "npsn" => "20246369",
+    "kode_sub_pengguna" => "1.01.01",
+    "kode_wilayah" => "32.08",
+]);'
+```
+
+Akun yang dihasilkan seeder demo memakai password yang sama untuk semua akun
+demo; lihat konstanta `PASSWORD` di file seeder. Jangan pakai akun itu di
+produksi.
+
+---
+
+## 6. Staging
+
+QA dilakukan di staging, bukan di mesin lokal maintainer. Prosedur inisialisasi,
+konfigurasi `.env`, worker, dan troubleshooting ada di `docs/deployment.md` §8.
+
+Ringkas: staging memakai direktori, database, user DB, queue worker, dan cron
+terpisah dari produksi, serta masuk lewat Cloudflare Tunnel (port 80/443 server
+tidak terbuka ke internet). Dua nilai `.env` yang wajib diisi dan mudah
+terlewat:
+
+```env
+BACKUP_NOTIFICATION_EMAIL=admin@example.com
+TURNSTILE_ENABLED=true
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+```
+
+`BACKUP_NOTIFICATION_EMAIL` kosong membuat seluruh aplikasi 500 saat boot.
+`TURNSTILE_ENABLED=false` di luar `local` menolak semua login. Key di atas adalah
+Cloudflare **test key** (selalu lolos) dan hanya boleh dipakai untuk pengujian.

@@ -3,9 +3,10 @@
 > Gate: `composer test-coverage` (Xdebug, line coverage ≥ 80%) wajib hijau
 > sebelum merge. Gate memeriksa dua level: total ≥ 80% (flag `--min` phpunit)
 > **dan** tiap file ≥ 80% (script `tests/coverage-per-file.php` atas Clover XML).
-> Status terakhir: 877 passed / 6007 assertions (96 file Feature+Unit, 37
-> di antaranya domain Distribusi BHP — termasuk hari kerja, profil sekolah, dan
-> penandatangan PDF). Coverage gate tetap wajib dijalankan sebelum merge.
+> Status terakhir: 952 passed / 6295 assertions (95 file Feature + 4 file Unit,
+> **37** di antaranya domain Distribusi BHP — termasuk hari kerja, profil
+> sekolah, penandatangan PDF, sweep rute, dan kontrak UI). Coverage gate tetap
+> wajib dijalankan sebelum merge.
 
 ## 1. Perintah
 
@@ -28,7 +29,10 @@ XDEBUG_MODE=coverage vendor/bin/phpunit tests/Feature/AcuanIndexEdgeTest.php \
 `composer test-coverage` menjalankan dua pengecekan: total ≥ 80% (flag `--min`
 phpunit) **dan** tiap file ≥ 80% lewat `tests/coverage-per-file.php` yang
 mem-parse Clover XML dan keluar `exit 1` bila ada satu file di bawah ambang.
-Status kini: **100% total, semua file 100%**.
+
+> **Gate butuh driver coverage.** Tanpa Xdebug atau PCOV, `composer test-coverage`
+> gagal dengan "No code coverage driver available". Itu masalah environment,
+> bukan kode — pasang driver-nya dulu. `composer test` tetap jalan tanpa driver.
 
 ## 2. Fondasi
 
@@ -51,7 +55,7 @@ Status kini: **100% total, semua file 100%**.
   (`AcuanController::defaultBulan(?int)`, `DashboardController::bulanLapor(?int)`)
   agar deterministik tanpa mengunci jam sistem.
 
-## 3. Matriks Cakupan (92 Feature + 4 Unit, termasuk 37 file BHP)
+## 3. Matriks Cakupan (95 Feature + 4 Unit, termasuk 37 file BHP)
 
 | File | Menjamin |
 |------|----------|
@@ -82,8 +86,7 @@ Status kini: **100% total, semua file 100%**.
 | `SekolahFlowFixTest` | Regresi alur sekolah |
 | Unit: `FortifyActionsTest`, `ModelRelationsTest`, `ProvidersTest` | Action reset/update, relasi & accessor `is_realisasi`, gate super_admin |
 
-### Distribusi BHP (37 file, 402 kasus)
-
+### Distribusi BHP (37 file, 490 kasus)
 | File | Menjamin |
 |------|----------|
 | `BhpDomainBoundaryTest` | Pemisahan domain: tidak ada tabel/model/route BM yang tercampur BHP (dan sebaliknya); `sumber_dana` invalid di middleware → 422 (fail-closed), default BOS bila kosong, state sumber dana kembali setelah request, `availablePeriods` saldo awal hanya menampilkan periode sumber dana aktif |
@@ -123,6 +126,8 @@ Status kini: **100% total, semua file 100%**.
 | `BhpKartuPersediaanTest` | Saldo berjalan kronologis, masuk-didahului pada tanggal sama, hanya mutasi dana terkait, abaikan pengajuan non-approved, pakai `jumlah_disetujui`, export + validasi `barang_id` (`uuid` + `exists` ke tabel sumber dana laporan), UUID tak dikenal → validation error, barang sumber dana lain → redirect + flash (bukan 500) |
 | `BhpImportSeederTest` | Impor master + penerimaan: skip soft-delete, hanya detail `cart_status=saved`, relasi rekening, `source_id` unik (no_bast duplikat/NULL tetap terpisah), tabel tanpa `deleted_at`, idempotensi, sumber tidak ada → dilewati |
 | `BhpDivisiTest` | Buat divisi + akun operator (suffix NPSN), validasi prefix/suffix/username duplikat, isolasi pengajuan per divisi, submit/divisi lain 403, **dokumen divisi lain 403 (show/PDF/batch/tambahan)**, dashboard operator divisi hanya menghitung divisinya, reset password + toggle ter-scope sekolah, **ubah/hapus divisi ter-scope sekolah (403 lintas sekolah, hapus ikut hapus operator, ditolak bila masih ada pengajuan)** |
+| `BhpAksiPrefixSumberDanaTest` | **Regresi prefix BOPD**: aksi `update`/`destroy`/`approve`/`reject`/`batchAssign` dari halaman berprefix `{bos\|bopd}` mengenai record sumber dana yang benar, bukan default BOS; record dana lain ditolak |
+| `BhpUiKontrakTest` | **Kontrak UI dari sumber**: setiap halaman bertabel punya padanan daftar kartu (`md:hidden` + `hidden md:block`), setiap paginator dirender, halaman per sumber dana memakai prefix `/distribusi-bhp/{dana}/...`, tidak ada `confirm()` bawaan browser, dan autosave localStorage pengajuan tetap ada tanpa tombol draft |
 
 ## 4. Menambah Test Baru
 
@@ -161,7 +166,12 @@ Status kini: **100% total, semua file 100%**.
 
 ## 5. Batasan Diketahui
 
-- Tanpa test browser/JS (Vite/Inertia diuji via HTTP + `tsc`).
+- Tanpa test browser/JS otomatis (Vite/Inertia diuji via HTTP + `tsc`). Kontrak
+  yang hanya terlihat di layar—daftar kartu mobile, paginator terender, prefix
+  URL mutasi—dijaga `BhpUiKontrakTest` dengan memindai source, bukan merender
+  browser. Verifikasi visual tetap manual dan wajib untuk perubahan UI: cek
+  viewport 320 / 375 / 768 / 1280 (tidak ada horizontal scroll, tidak ada
+  target sentuh < 24px, daftar kartu muncul di bawah `md`).
 - Belum ada test konkurensi multi-request; transaction dan `lockForUpdate()` sudah
   digunakan pada alokasi, tetapi verifikasi race condition nyata tetap perlu
   diuji pada PostgreSQL.
