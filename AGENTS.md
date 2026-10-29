@@ -501,6 +501,7 @@ default seeder (hanya berlaku pada instalasi baru).
 Jalankan berurutan; jangan mengaku selesai tanpa output yang mendukung:
 
 ```bash
+composer analyse                                   # Larastan level 5, 0 error
 npx tsc --noEmit                                   # 0 error
 vendor/bin/pint --dirty --format agent             # formatting PHP
 php artisan test --compact                         # seluruh suite

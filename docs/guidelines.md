@@ -26,6 +26,13 @@ Dokumen ini memuat standar kerja teknis, konvensi kode, penulisan dokumentasi, s
   ```
 - Selalu patuhi standar PSR-12, deklarasikan strict return types, serta manfaatkan constructor property promotion PHP 8.4.
 
+### PHP (Larastan)
+- Analisis statis wajib bersih sebelum commit — tidak ada baseline, tidak ada aba-aba `ignoreErrors`:
+  ```bash
+  composer analyse
+  ```
+- Level 5, mencakup `app/`, `database/`, dan `tests/`. Menambah kolom atau relasi model berarti menambah `@property` / `@return` di model — lihat `.ai/rules/models.md`.
+
 ### TypeScript & React Best Practices
 - Selalu periksa type correctness sebelum commit:
   ```bash

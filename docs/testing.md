@@ -11,6 +11,7 @@
 ## 1. Perintah
 
 ```bash
+composer analyse                 # Larastan level 5 (app/, database/, tests/)
 composer test            # cepat, tanpa coverage (iterasi harian)
 composer test-coverage   # gate penuh, gagal bila < 80%
 php artisan test tests/Feature/PelaporanBmTest.php   # satu file

@@ -18,6 +18,7 @@
 | Backup | spatie/laravel-backup | 10.3.3 (bulanan + monitor) |
 | Captcha login | Cloudflare Turnstile (`TurnstileService`) | opsional via env |
 | Test | PHPUnit 13.4, Pint 1.32, `tsc --noEmit` | coverage gate 80% |
+| Analisis statis | Larastan 3.13 (PHPStan level 5) | `composer analyse`, 0 error, tanpa baseline |
 
 Roles: `super_admin`, `admin_kcd`, `operator_sekolah`, `bendahara_sekolah`,
 `operator_divisi`. 32 permission: **11 Distribusi BHP**, **18 BM**

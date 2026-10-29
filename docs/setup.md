@@ -78,6 +78,9 @@ php artisan serve
 ## 3. Perintah Verifikasi Kualitas
 
 ```bash
+# Analisis statis (Larastan level 5)
+composer analyse
+
 # Format kode PHP sesuai standar proyek
 vendor/bin/pint --format agent
 

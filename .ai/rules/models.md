@@ -5,7 +5,8 @@ paths:
 
 # Model & Analisis Statis (Larastan)
 
-`composer analyse` menjalankan PHPStan level 5 (config `phpstan.neon`) atas `app/`.
+`composer analyse` menjalankan PHPStan level 5 (config `phpstan.neon`) atas
+`app/`, `database/`, dan `tests/`.
 
 ## Deklarasikan atribut model sebagai `@property`
 
