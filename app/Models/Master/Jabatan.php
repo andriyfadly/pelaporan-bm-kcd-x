@@ -3,16 +3,31 @@
 namespace App\Models\Master;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Jabatan sekolah (master, bukan enum): kepala sekolah, wakasek, bendahara,
  * operator, dan jabatan internal lain. Kode dipakai sebagai kunci stabil yang
  * tidak berubah walau nama jabatan diperbaiki.
+ *
+ * @property string $id
+ * @property string $sekolah_id
+ * @property string $kode
+ * @property string $nama
+ * @property string|null $kategori
+ * @property bool $aktif
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read bool $wajib
+ * @property-read Sekolah|null $sekolah
+ * @property-read Collection<int, PenugasanPegawai> $penugasan
  */
 class Jabatan extends Model
 {
@@ -44,17 +59,24 @@ class Jabatan extends Model
         return ['aktif' => 'boolean'];
     }
 
+    /** @return BelongsTo<Sekolah, $this> */
     public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
     }
 
+    /** @return HasMany<PenugasanPegawai, $this> */
     public function penugasan(): HasMany
     {
         return $this->hasMany(PenugasanPegawai::class, 'jabatan_id');
     }
 
-    /** Jabatan aktif satu sekolah; dipakai untuk membangun daftar pilihan. */
+    /**
+     * Jabatan aktif satu sekolah; dipakai untuk membangun daftar pilihan.
+     *
+     * @param  Builder<Jabatan>  $query
+     * @return Builder<Jabatan>
+     */
     public function scopeTersedia(Builder $query, ?string $sekolahId = null): Builder
     {
         return $query->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))

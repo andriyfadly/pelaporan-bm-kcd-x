@@ -119,7 +119,7 @@ class PendaftaranInventarisController extends Controller
      *
      * @param  Collection<int, mixed>  $row
      */
-    private function tanggalPerolehan(Collection $row): ?string
+    private function tanggalPerolehan(Collection $row): string
     {
         $tanggal = $row[3] ?? null;
 

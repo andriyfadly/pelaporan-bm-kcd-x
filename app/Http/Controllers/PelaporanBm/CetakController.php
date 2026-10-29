@@ -109,14 +109,14 @@ class CetakController extends Controller
         }
 
         $items = $query->get()
-            ->sortBy(fn ($r) => [$r->sekolah?->nama_sekolah ?? '', $r->ba_tgl ?? '', $r->id])->values();
+            ->sortBy(fn ($r) => [$r->sekolah->nama_sekolah ?? '', $r->ba_tgl ?? '', $r->id])->values();
 
         if ($items->isEmpty()) {
             return response()->noContent(204)->withCookie(cookie('download_status', 'empty', 1, '/'));
         }
 
-        $namaSekolah = $request->user()->sekolah?->nama_sekolah
-            ?? $items->first()?->sekolah?->nama_sekolah
+        $namaSekolah = $request->user()->sekolah->nama_sekolah
+            ?? $items->first()?->sekolah->nama_sekolah
             ?? 'SEMUA SEKOLAH';
 
         activity('sistem')
@@ -131,7 +131,7 @@ class CetakController extends Controller
             ->log('unduh-cetak');
 
         $response = Excel::download(
-            new CetakBmExport($items, $namaSekolah, $bulan, $tahun),
+            new CetakBmExport($items, $namaSekolah, $tahun),
             $filename
         );
 

@@ -8,3 +8,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | phpunit.xml, tests/** | .ai/rules/general.md |
 | app/Http/Controllers/PelaporanBm/**, app/Http/Controllers/PelaporanBm/RekapanController.php | .ai/rules/pelaporan-bm.md |
 | tests/** | .ai/rules/tests.md |
+| app/Models/** | .ai/rules/models.md |

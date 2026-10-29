@@ -5,12 +5,32 @@ namespace App\Models\DistribusiBhp;
 use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $id
+ * @property string|null $source_id
+ * @property string $sekolah_id
+ * @property string|null $no_nota_invoice
+ * @property string|null $no_bast
+ * @property Carbon|null $tanggal_bast
+ * @property string|null $no_kwitansi
+ * @property Carbon|null $tanggal_pembayaran
+ * @property string|null $penyedia_id
+ * @property Carbon|null $tanggal_titimangsa
+ * @property bool $is_saldo_awal
+ * @property int|null $periode_tahun
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Penyedia|null $penyedia
+ * @property-read Collection<int, PenerimaanDetail> $details
+ */
 class Penerimaan extends Model
 {
     use HasFactory, HasSumberDanaTable, HasUuids;
@@ -51,6 +71,9 @@ class Penerimaan extends Model
      * tanggal input sebagai cadangan data lama. Urutan ini SAMA dengan
      * {@see tanggalEfektif()} supaya laporan per periode dan kartu persediaan
      * tidak pernah berbeda hitungan.
+     *
+     * @param  Builder<Penerimaan>  $query
+     * @return Builder<Penerimaan>
      */
     public function scopeEfektifSampai(Builder $query, string $tanggal): Builder
     {
@@ -102,11 +125,13 @@ class Penerimaan extends Model
         return $this->created_at ? CarbonImmutable::parse($this->created_at)->startOfDay() : null;
     }
 
+    /** @return BelongsTo<Penyedia, $this> */
     public function penyedia(): BelongsTo
     {
         return $this->belongsTo(Penyedia::class, 'penyedia_id');
     }
 
+    /** @return HasMany<PenerimaanDetail, $this> */
     public function details(): HasMany
     {
         return $this->hasMany(PenerimaanDetail::class, 'bhp_penerimaan_id');

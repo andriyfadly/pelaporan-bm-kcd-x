@@ -179,6 +179,7 @@ class DokumenInventarisController extends Controller
         ]);
     }
 
+    /** @return Builder<InventarisUnit> */
     private function unitScope(string $sekolahId): Builder
     {
         return InventarisUnit::query()

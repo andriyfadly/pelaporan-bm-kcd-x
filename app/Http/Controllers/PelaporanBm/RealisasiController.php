@@ -18,6 +18,7 @@ class RealisasiController extends Controller
 {
     use ResolvesSekolah, SearchesText;
 
+    /** @return Builder<Realisasi> */
     private function applyFilters(Request $request): Builder
     {
         $user = $request->user();
@@ -92,14 +93,14 @@ class RealisasiController extends Controller
         // Legacy data_realisasi.php: laporan diurut ASC, satu file .xlsx;
         // data kosong -> 204 + cookie download_status=empty (tanpa file)
         $records = $this->applyFilters($request)->orderBy('ba_tgl')->orderBy('id')->get()
-            ->sortBy(fn ($r) => [$r->sekolah?->nama_sekolah ?? '', $r->ba_tgl ?? '', $r->id])->values();
+            ->sortBy(fn ($r) => [$r->sekolah->nama_sekolah ?? '', $r->ba_tgl ?? '', $r->id])->values();
 
         if ($records->isEmpty()) {
             return response()->noContent(204)->withCookie(cookie('download_status', 'empty', 1, '/'));
         }
 
         $user = $request->user();
-        $namaSekolah = $user->sekolah?->nama_sekolah ?? $records->first()?->sekolah?->nama_sekolah ?? 'SEMUA SEKOLAH';
+        $namaSekolah = $user->sekolah->nama_sekolah ?? $records->first()?->sekolah->nama_sekolah ?? 'SEMUA SEKOLAH';
         $filterBulan = (int) $request->input('filter_bulan', 0);
         $filterTahun = (int) $request->input('filter_tahun', 0);
 

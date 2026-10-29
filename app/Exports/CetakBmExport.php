@@ -18,7 +18,6 @@ class CetakBmExport implements Export, WithMultipleSheets
     public function __construct(
         private Collection $records,
         private string $namaSekolah,
-        private int $filterBulan,
         private int $filterTahun,
     ) {}
 

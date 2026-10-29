@@ -126,7 +126,7 @@ class ExportDanLogLanjutanTest extends TestCase
 
         // Baca-balik isi: header A8, data A10, VLOOKUP dinamis, SUM.
         $items = Realisasi::with(['sekolah', 'acuan'])->get();
-        $binary = Excel::raw(new CetakBmExport($items, $sekolah->nama_sekolah, 5, 2026), ExcelWriter::XLSX);
+        $binary = Excel::raw(new CetakBmExport($items, $sekolah->nama_sekolah, 2026), ExcelWriter::XLSX);
         $sheet = $this->loadSheetBinary($binary);
 
         $this->assertEquals('No', $sheet->getCell('A8')->getValue());

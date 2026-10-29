@@ -86,8 +86,8 @@ class LaporanService
             ->selectRaw('barang_id, sum(nilai_total) as nilai, sum(jumlah) as jumlah')
             ->get()
             ->mapWithKeys(fn ($row): array => [
-                (string) $row->barang_id => (int) $row->jumlah > 0
-                    ? (int) round((int) $row->nilai / (int) $row->jumlah)
+                (string) $row['barang_id'] => (int) $row['jumlah'] > 0
+                    ? (int) round((int) $row['nilai'] / (int) $row['jumlah'])
                     : 0,
             ]);
 
@@ -154,7 +154,7 @@ class LaporanService
 
                     return [
                         'tanggal' => $penerimaan?->tanggalEfektif()?->toDateString(),
-                        'no_bast' => $penerimaan?->no_bast ?? ($penerimaan?->is_saldo_awal ? 'Saldo Awal '.$penerimaan?->periode_tahun : null),
+                        'no_bast' => $penerimaan->no_bast ?? ($penerimaan->is_saldo_awal ? 'Saldo Awal '.$penerimaan->periode_tahun : null),
                         'no_nota_invoice' => $penerimaan?->no_nota_invoice,
                         'penyedia' => $penerimaan?->penyedia?->nama,
                         'kode_barang' => $barang?->kode_barang,
@@ -265,7 +265,7 @@ class LaporanService
                 ->get()
                 ->map(fn (PenerimaanDetail $d) => [
                     'tanggal' => $d->penerimaan?->tanggalEfektif()?->toDateString(),
-                    '_sort' => ($d->penerimaan?->tanggalEfektif()?->timestamp ?? 0).'.0.'.str_pad((string) $d->created_at?->timestamp, 12, '0', STR_PAD_LEFT),
+                    '_sort' => ($d->penerimaan->tanggalEfektif()->timestamp ?? 0).'.0.'.str_pad((string) $d->created_at?->timestamp, 12, '0', STR_PAD_LEFT),
                     'jenis' => 'masuk',
                     'referensi' => $d->penerimaan?->no_bast ?: 'Penerimaan',
                     'masuk' => (int) $d->jumlah,
@@ -297,7 +297,7 @@ class LaporanService
 
                     return [
                         'tanggal' => $tanggal?->toDateString(),
-                        '_sort' => ($tanggal?->timestamp ?? 0).'.1.',
+                        '_sort' => ($tanggal->timestamp ?? 0).'.1.',
                         'jenis' => 'keluar',
                         'referensi' => $referensi,
                         'masuk' => 0,
@@ -384,9 +384,9 @@ class LaporanService
                 ->each(function (PenerimaanDetail $detail) use (&$mutasi): void {
                     $penerimaan = $detail->penerimaan;
                     // Saldo awal tidak punya tanggal bast; periodenya yang menentukan.
-                    $tanggal = $penerimaan?->is_saldo_awal && $penerimaan?->periode_tahun
+                    $tanggal = $penerimaan->is_saldo_awal && $penerimaan->periode_tahun
                         ? Carbon::create($penerimaan->periode_tahun, 1, 1)
-                        : ($penerimaan?->tanggal_bast ?? $penerimaan?->created_at);
+                        : ($penerimaan->tanggal_bast ?? $penerimaan->created_at);
 
                     $mutasi[] = [
                         'barang_id' => $detail->barang_id,
@@ -395,7 +395,7 @@ class LaporanService
                         'keluar' => 0,
                         'referensi' => $penerimaan?->no_bast ?: 'Penerimaan',
                         'saldo_awal' => (bool) $penerimaan?->is_saldo_awal,
-                        'periode' => (int) ($penerimaan?->periode_tahun ?? 0),
+                        'periode' => (int) ($penerimaan->periode_tahun ?? 0),
                     ];
                 });
 
@@ -484,7 +484,7 @@ class LaporanService
                     if ($bulan === $bulanAwal && $buka < 0) {
                         $anomali[] = sprintf(
                             '%s: saldo buka %s sudah negatif (%d) akibat mutasi bulan sebelumnya.',
-                            $barang?->nama_barang ?? $barangId,
+                            $barang->nama_barang ?? $barangId,
                             str_pad((string) $bulan, 2, '0', STR_PAD_LEFT),
                             $buka,
                         );
@@ -496,7 +496,7 @@ class LaporanService
                     if ($tutup < 0 && ! $sudahAnomali && $bulan >= $bulanAwal && $bulan <= $bulanAkhir) {
                         $anomali[] = sprintf(
                             '%s bulan %d: keluar %d melebihi stok (saldo menjadi %d).',
-                            $barang?->nama_barang ?? $barangId,
+                            $barang->nama_barang ?? $barangId,
                             $bulan,
                             $keluar,
                             $tutup,

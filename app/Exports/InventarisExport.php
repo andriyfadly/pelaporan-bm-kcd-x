@@ -65,7 +65,7 @@ class InventarisExport implements FromQuery, ShouldAutoSize, WithHeadings, WithM
             $unit->status,
             $unit->ruang?->nama_ruang,
             $unit->pegawai?->nama_lengkap,
-            $unit->pegawai?->nip ?? null,
+            $unit->pegawai->nip ?? null,
             $unit->keterangan,
         ];
     }

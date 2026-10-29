@@ -46,8 +46,8 @@ class InputRealisasiController extends Controller
             $kunci = KunciLaporan::where('sekolah_id', $sekolahId)
                 ->where('bulan', $bulan)
                 ->first();
-            $isLocked = (bool) ($kunci?->status_kunci ?? false);
-            $statusKirim = $kunci?->status_kirim ?? 'draft';
+            $isLocked = (bool) ($kunci->status_kunci ?? false);
+            $statusKirim = $kunci->status_kirim ?? 'draft';
         }
 
         // Ambil target acuan kerja bulan berjalan

@@ -3,14 +3,46 @@
 namespace App\Models\PelaporanBm;
 
 use App\Models\Master\Sekolah;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
+/**
+ * @property string $id
+ * @property string|null $sekolah_id
+ * @property string|null $acuan_id
+ * @property string|null $kategori
+ * @property string|null $no_sp2d
+ * @property string|null $sumber_perolehan
+ * @property int|null $bulan_realisasi
+ * @property int $tahun
+ * @property string $no_spk
+ * @property string|null $ba_no
+ * @property string|null $ba_tgl
+ * @property string $kode_barang
+ * @property string $nama_barang
+ * @property string $jenis_aset
+ * @property string|null $merk_tipe
+ * @property string|null $no_sertifikat
+ * @property string|null $ukuran_bangunan
+ * @property string|null $satuan
+ * @property float $volume
+ * @property float $harga_satuan
+ * @property float $nilai_perolehan
+ * @property int|null $id_spj_lama
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Sekolah|null $sekolah
+ * @property-read Acuan|null $acuan
+ * @property-read Collection<int, Realisasi> $realisasi
+ * @property-read bool $is_realisasi
+ */
 class Spj extends Model
 {
     use HasFactory, HasUuids, LogsActivity;
@@ -66,16 +98,19 @@ class Spj extends Model
         ];
     }
 
+    /** @return BelongsTo<Sekolah, $this> */
     public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
     }
 
+    /** @return BelongsTo<Acuan, $this> */
     public function acuan(): BelongsTo
     {
         return $this->belongsTo(Acuan::class, 'acuan_id');
     }
 
+    /** @return HasMany<Realisasi, $this> */
     public function realisasi(): HasMany
     {
         return $this->hasMany(Realisasi::class, 'spj_id');

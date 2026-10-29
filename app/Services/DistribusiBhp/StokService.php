@@ -85,7 +85,7 @@ class StokService
      * (fisik, terpakai, reservasi) — dipakai laporan stok agar tidak N+1.
      * Baris barang tanpa mutasi tetap muncul dengan angka 0.
      *
-     * @param  list<Barang>  $barangs
+     * @param  iterable<Barang>  $barangs
      * @return array<string,array{fisik:int,terpakai:int,reservasi:int,tersedia:int}> keyed by barang id
      */
     public function rekapPerBarang(iterable $barangs, ?string $sekolahId = null, ?string $sampai = null): array
@@ -96,7 +96,7 @@ class StokService
             return [];
         }
 
-        $dana = collect($barangs)->first()?->sumber_dana ?? SumberDana::aktif();
+        $dana = collect($barangs)->first()->sumber_dana ?? SumberDana::aktif();
 
         return SumberDana::dengan($dana, fn (): array => $this->snapshot(
             fn (): array => $this->rekapDalamDana($barangs, $barangIds, $sekolahId, $sampai),
@@ -214,7 +214,7 @@ class StokService
             // divalidasi terhadap TOTAL baris itu, bukan per baris — kalau tidak,
             // stok 10 bisa direservasi 8 + 8 dua-duanya "lolos".
             $dimintaPerBarang = $details->groupBy('barang_id')
-                ->filter(fn ($rows, $barangId): bool => $barangId !== null && $barangId !== '')
+                ->filter(fn ($rows, $barangId): bool => $barangId !== '')
                 ->map(fn ($rows): int => (int) $rows->sum('jumlah_diminta'));
 
             foreach ($details as $detail) {
@@ -288,7 +288,7 @@ class StokService
     /**
      * Approve pengajuan: koreksi jumlah, konversi reservasi menjadi pemakaian.
      *
-     * @param  array<string,int>  $jumlahDisetujui  map detail_id => jumlah disetujui
+     * @param  array<string,int|string>  $jumlahDisetujui  map detail_id => jumlah disetujui (nilai request bisa berupa string)
      */
     public function approve(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui = []): Pengajuan
     {
@@ -299,7 +299,7 @@ class StokService
      * Inti approval tanpa membuka transaction sendiri, agar dapat dipanggil
      * di dalam transaction milik caller (mis. DokumenService).
      *
-     * @param  array<string,int>  $jumlahDisetujui
+     * @param  array<string,int|string>  $jumlahDisetujui
      */
     public function applyApprove(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui = []): Pengajuan
     {
@@ -307,7 +307,7 @@ class StokService
     }
 
     /**
-     * @param  array<string,int>  $jumlahDisetujui
+     * @param  array<string,int|string>  $jumlahDisetujui
      */
     private function applyApproveDalamDana(Pengajuan $pengajuan, User $reviewer, array $jumlahDisetujui): Pengajuan
     {

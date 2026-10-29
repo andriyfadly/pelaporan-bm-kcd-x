@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 
@@ -10,6 +11,11 @@ class CatatLoginLogout
     public function handle(Login|Logout $event): void
     {
         $user = $event->user;
+
+        if (! $user instanceof User) {
+            return;
+        }
+
         $isLogin = $event instanceof Login;
 
         activity('sistem')

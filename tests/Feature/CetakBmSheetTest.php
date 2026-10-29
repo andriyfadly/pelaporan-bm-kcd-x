@@ -60,7 +60,7 @@ class CetakBmSheetTest extends TestCase
         ]);
 
         $binary = Excel::raw(
-            new CetakBmExport(Realisasi::with(['sekolah', 'acuan'])->get(), 'SMKN Uji', 5, 2026),
+            new CetakBmExport(Realisasi::with(['sekolah', 'acuan'])->get(), 'SMKN Uji', 2026),
             ExcelWriter::XLSX
         );
         $sheet = $this->loadSheetBinary($binary);
@@ -75,7 +75,7 @@ class CetakBmSheetTest extends TestCase
         $this->baris(['kota_kab' => 'Kab. Bandung Barat', 'kode_barang' => '1.3.2.10']);
 
         $binary = Excel::raw(
-            new CetakBmExport(Realisasi::with(['sekolah', 'acuan'])->get(), 'SMKN Uji', 5, 2026),
+            new CetakBmExport(Realisasi::with(['sekolah', 'acuan'])->get(), 'SMKN Uji', 2026),
             ExcelWriter::XLSX
         );
         $sheet = $this->loadSheetBinary($binary);
@@ -88,7 +88,7 @@ class CetakBmSheetTest extends TestCase
         $this->baris(['kota_kab' => 'Kota Cimahi', 'kode_barang' => '1.3.2.11']);
 
         $binary = Excel::raw(
-            new CetakBmExport(Realisasi::with(['sekolah', 'acuan'])->get(), 'SMKN Uji', 5, 2026),
+            new CetakBmExport(Realisasi::with(['sekolah', 'acuan'])->get(), 'SMKN Uji', 2026),
             ExcelWriter::XLSX
         );
         $sheet = $this->loadSheetBinary($binary);
@@ -101,7 +101,7 @@ class CetakBmSheetTest extends TestCase
         $this->baris(['kota_kab' => 'Sumedang', 'kode_barang' => '1.3.2.12']);
 
         $binary = Excel::raw(
-            new CetakBmExport(Realisasi::with(['sekolah', 'acuan'])->get(), 'SMKN Uji', 5, 2026),
+            new CetakBmExport(Realisasi::with(['sekolah', 'acuan'])->get(), 'SMKN Uji', 2026),
             ExcelWriter::XLSX
         );
         $sheet = $this->loadSheetBinary($binary);

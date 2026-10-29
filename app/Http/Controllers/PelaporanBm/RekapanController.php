@@ -59,7 +59,7 @@ class RekapanController extends Controller
             $acuans = $allAcuan->get($id, collect());
             $kunci = $kunciMap->get($id);
 
-            $statusKirimRaw = $kunci?->status_kirim ?? 'draft';
+            $statusKirimRaw = $kunci->status_kirim ?? 'draft';
             $statusKirim = match (strtolower($statusKirimRaw)) {
                 'menunggu_approval' => 'Menunggu Approval',
                 'disetujui' => 'Disetujui',
@@ -152,7 +152,7 @@ class RekapanController extends Controller
                 'bulan_disp' => $bulan,
                 'status' => $status,
                 'status_kirim' => $statusKirim,
-                'is_locked' => (bool) ($kunci?->status_kunci ?? false),
+                'is_locked' => (bool) ($kunci->status_kunci ?? false),
                 'progres' => [
                     'match' => $matchKoderingCount,
                     'total' => $totalKodering,

@@ -6,11 +6,27 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Riwayat penugasan pegawai pada sebuah jabatan. Satu baris = satu periode.
  * Pegawai lama tidak pernah dikosongkan saat mutasi: periodenya ditutup
  * (selesai_menjabat) dan baris baru dibuat untuk penggantinya.
+ *
+ * @property string $id
+ * @property string $sekolah_id
+ * @property string $pegawai_id
+ * @property string $jabatan_id
+ * @property string $jenis_penugasan
+ * @property Carbon $mulai_menjabat
+ * @property Carbon|null $selesai_menjabat
+ * @property string|null $created_by
+ * @property string|null $updated_by
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Sekolah|null $sekolah
+ * @property-read Pegawai|null $pegawai
+ * @property-read Jabatan|null $jabatan
  */
 class PenugasanPegawai extends Model
 {
@@ -48,22 +64,30 @@ class PenugasanPegawai extends Model
         ];
     }
 
+    /** @return BelongsTo<Sekolah, $this> */
     public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
     }
 
+    /** @return BelongsTo<Pegawai, $this> */
     public function pegawai(): BelongsTo
     {
         return $this->belongsTo(Pegawai::class, 'pegawai_id');
     }
 
+    /** @return BelongsTo<Jabatan, $this> */
     public function jabatan(): BelongsTo
     {
         return $this->belongsTo(Jabatan::class, 'jabatan_id');
     }
 
-    /** Penugasan yang masih berjalan pada jabatan tertentu. */
+    /**
+     * Penugasan yang masih berjalan pada jabatan tertentu.
+     *
+     * @param  Builder<PenugasanPegawai>  $query
+     * @return Builder<PenugasanPegawai>
+     */
     public function scopeAktif(Builder $query, string $sekolahId, string $jabatanId): Builder
     {
         return $query->where('sekolah_id', $sekolahId)
@@ -75,6 +99,9 @@ class PenugasanPegawai extends Model
     /**
      * Kandidat pejabat yang menjabat pada sebuah tanggal (dokumen lampau).
      * Prioritas definitif > plt > plh, lalu mulai terbaru.
+     *
+     * @param  Builder<PenugasanPegawai>  $query
+     * @return Builder<PenugasanPegawai>
      */
     public function scopeBerlakuPada(Builder $query, string $sekolahId, string $jabatanId, string $tanggal): Builder
     {
@@ -91,7 +118,7 @@ class PenugasanPegawai extends Model
     /** Label jabatan siap cetak, termasuk awalan Plt./Plh. */
     public function labelJabatan(): string
     {
-        $nama = $this->jabatan?->nama ?? '';
+        $nama = $this->jabatan->nama ?? '';
 
         return (self::LABEL_JENIS[$this->jenis_penugasan] ?? '').$nama;
     }
@@ -112,7 +139,7 @@ class PenugasanPegawai extends Model
             'jabatan_id' => $this->jabatan_id,
             'jabatan' => $this->labelJabatan(),
             'jenis_penugasan' => $this->jenis_penugasan,
-            'mulai_menjabat' => $this->mulai_menjabat?->toDateString(),
+            'mulai_menjabat' => $this->mulai_menjabat->toDateString(),
             'selesai_menjabat' => $this->selesai_menjabat?->toDateString(),
         ];
     }

@@ -72,7 +72,7 @@ class SettingsController extends Controller
             }
 
             preg_match_all('/\{[^}]*\}/', $value, $matches);
-            $asing = collect($matches[0] ?? [])
+            $asing = collect($matches[0])
                 ->reject(fn (string $p): bool => in_array($p, self::PLACEHOLDER_SAH, true))
                 ->implode(', ');
 

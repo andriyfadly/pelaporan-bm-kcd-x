@@ -45,14 +45,14 @@ class BhpKartuPersediaanExport implements Export, FromCollection, WithHeadings, 
             $row['keterangan'],
         ]);
 
-        return $rows->prepend(collect([
+        return $rows->prepend([
             'Tanggal', 'Jenis', 'Referensi', 'Masuk', 'Keluar', 'Saldo', 'Keterangan',
-        ]))->push(collect([
+        ])->push([
             'Total', '', '',
             $this->barang['total_masuk'] ?? 0,
             $this->barang['total_keluar'] ?? 0,
             $this->barang['saldo_akhir'] ?? 0,
             '',
-        ]));
+        ]);
     }
 }

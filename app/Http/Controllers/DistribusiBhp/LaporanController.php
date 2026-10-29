@@ -12,7 +12,6 @@ use App\Models\DistribusiBhp\Barang;
 use App\Models\DistribusiBhp\Dokumen;
 use App\Models\Master\Sekolah;
 use App\Services\DistribusiBhp\LaporanService;
-use App\Services\DistribusiBhp\SettingsService;
 use App\Support\DistribusiBhp\Periode;
 use App\Support\DistribusiBhp\SumberDana;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -33,7 +32,6 @@ class LaporanController extends Controller
 
     public function __construct(
         private readonly LaporanService $laporan,
-        private readonly SettingsService $settings,
     ) {}
 
     public function index(Request $request): Response
@@ -234,12 +232,12 @@ class LaporanController extends Controller
             'sumberDana' => $sumberDana,
             'periode' => $periode,
             'items' => $this->laporan->bukuPenerimaan($sumberDana, $sekolahId, $periode),
-            'sekolah' => $sekolah?->nama_sekolah ?? 'Semua Sekolah',
-            'alamat' => $sekolah?->alamat ?? '',
-            'telepon' => $sekolah?->telepon ?? '',
-            'website' => $sekolah?->website ?? '',
-            'email' => $sekolah?->email ?? '',
-            'kodePos' => $sekolah?->kode_pos ?? '',
+            'sekolah' => $sekolah->nama_sekolah ?? 'Semua Sekolah',
+            'alamat' => $sekolah->alamat ?? '',
+            'telepon' => $sekolah->telepon ?? '',
+            'website' => $sekolah->website ?? '',
+            'email' => $sekolah->email ?? '',
+            'kodePos' => $sekolah->kode_pos ?? '',
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download("buku_penerimaan_bhp_{$sumberDana}_{$periode->kode()}.pdf");

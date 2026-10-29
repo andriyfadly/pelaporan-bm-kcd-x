@@ -5,7 +5,23 @@ namespace App\Models\DistribusiBhp;
 use App\Models\DistribusiBhp\Concerns\HasSumberDanaTable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $id
+ * @property string $format_nomor
+ * @property bool $is_singleton
+ * @property string|null $format_nomor_nota_permintaan
+ * @property string|null $format_nomor_surat_permintaan
+ * @property string|null $format_nomor_surat_penyaluran
+ * @property string|null $format_nomor_bast
+ * @property string|null $format_nomor_bap
+ * @property string|null $format_nomor_stok_opname
+ * @property string|null $format_nomor_buku_pengeluaran
+ * @property string|null $format_nomor_buku_penyaluran
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
 class Settings extends Model
 {
     use HasSumberDanaTable, HasUuids;

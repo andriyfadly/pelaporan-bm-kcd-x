@@ -11,10 +11,29 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
 
+/**
+ * @property string $id
+ * @property string $name
+ * @property string $username
+ * @property string|null $sekolah_id
+ * @property string|null $divisi_id
+ * @property bool $is_active
+ * @property string $password
+ * @property string|null $remember_token
+ * @property string|null $two_factor_secret
+ * @property string|null $two_factor_recovery_codes
+ * @property Carbon|null $two_factor_confirmed_at
+ * @property Carbon|null $password_changed_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Sekolah|null $sekolah
+ * @property-read Divisi|null $divisi
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -83,11 +102,13 @@ class User extends Authenticatable
         return $this->password_changed_at->diffInDays(now()) >= 90;
     }
 
+    /** @return BelongsTo<Sekolah, $this> */
     public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
     }
 
+    /** @return BelongsTo<Divisi, $this> */
     public function divisi(): BelongsTo
     {
         return $this->belongsTo(Divisi::class, 'divisi_id');

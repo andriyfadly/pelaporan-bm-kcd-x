@@ -64,7 +64,7 @@ class RealisasiBmSheet implements Export, WithEvents, WithTitle
             $valM = $this->safeCell($row->no_sertifikat);
             $valN = $this->safeCell($row->ukuran_bangunan);
             $valO = $this->safeCell($row->satuan);
-            $valY = $this->safeCell($row->sekolah?->nama_sekolah ?? $this->namaSekolah);
+            $valY = $this->safeCell($row->sekolah->nama_sekolah ?? $this->namaSekolah);
             $this->dataRows[] = [
                 $no++,
                 $valB,
@@ -183,17 +183,15 @@ class RealisasiBmSheet implements Export, WithEvents, WithTitle
                     $sheet->fromArray($this->dataRows, null, 'A10');
                 }
 
-                if ($lastRow >= 10) {
-                    $sheet->getStyle("A10:Y{$lastRow}")->getFont()->setSize(11)->setName('Calibri');
-                    $sheet->getStyle("A10:Y{$lastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('000000');
-                    $sheet->getStyle("A10:A{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("G10:I{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("O10:P{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("U10:U{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $acct = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
-                    $sheet->getStyle("Q10:R{$lastRow}")->getNumberFormat()->setFormatCode($acct);
-                    $sheet->getStyle("V10:X{$lastRow}")->getNumberFormat()->setFormatCode($acct);
-                }
+                $sheet->getStyle("A10:Y{$lastRow}")->getFont()->setSize(11)->setName('Calibri');
+                $sheet->getStyle("A10:Y{$lastRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('000000');
+                $sheet->getStyle("A10:A{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("G10:I{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("O10:P{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("U10:U{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $acct = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)';
+                $sheet->getStyle("Q10:R{$lastRow}")->getNumberFormat()->setFormatCode($acct);
+                $sheet->getStyle("V10:X{$lastRow}")->getNumberFormat()->setFormatCode($acct);
 
                 $sheet->setCellValue('R7', "=SUM(R10:R{$lastRow})");
                 $sheet->getStyle('R7')->getNumberFormat()->setFormatCode('_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)');

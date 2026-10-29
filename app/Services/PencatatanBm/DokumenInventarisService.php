@@ -73,7 +73,7 @@ class DokumenInventarisService
     }
 
     /**
-     * @param  array<string, mixed>  $atribut
+     * @param  array<string, mixed>  $tambahan
      */
     public function simpan(Dokumen $dokumen, string $view, array $tambahan = []): Dokumen
     {

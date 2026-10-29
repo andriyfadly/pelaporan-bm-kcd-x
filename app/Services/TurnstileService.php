@@ -41,7 +41,7 @@ class TurnstileService
         $memoKey = 'turnstile_verified_'.hash('sha256', $token);
         $request = request();
 
-        if ($request?->attributes->has($memoKey)) {
+        if ($request->attributes->has($memoKey)) {
             return (bool) $request->attributes->get($memoKey);
         }
 
@@ -62,12 +62,12 @@ class TurnstileService
                     'http_status' => $response->status(),
                     'error_codes' => $body['error-codes'] ?? null,
                     'hostname' => $body['hostname'] ?? null,
-                    'token_len' => strlen($token ?? ''),
+                    'token_len' => strlen($token),
                     'token_prefix' => substr((string) $token, 0, 12),
                 ]);
             }
 
-            $request?->attributes->set($memoKey, $success);
+            $request->attributes->set($memoKey, $success);
 
             return $success;
         } catch (\Throwable $e) {

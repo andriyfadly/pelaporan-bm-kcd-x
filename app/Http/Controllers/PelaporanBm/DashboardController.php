@@ -25,10 +25,6 @@ class DashboardController extends Controller
             abort(403, 'Akun Anda belum terhubung ke sekolah mana pun.');
         }
 
-        if (! $isAdmin && ! $user->sekolah_id) {
-            abort(403, 'Akun Anda belum terhubung ke sekolah mana pun.');
-        }
-
         $namaBulanArr = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
             5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
@@ -111,7 +107,7 @@ class DashboardController extends Controller
             ->where('tahun', $tahunSekarang)
             ->first();
 
-        $statusRaw = strtolower(trim($kunciLapor?->status_kirim ?? ''));
+        $statusRaw = strtolower(trim($kunciLapor->status_kirim ?? ''));
         $statusBulanLapor = in_array($statusRaw, ['disetujui', 'selesai', 'menunggu_approval', 'menunggu approval'])
             ? 'SELESAI'
             : 'BELUM SELESAI';
@@ -142,9 +138,9 @@ class DashboardController extends Controller
         for ($m = 1; $m <= 12; $m++) {
             $spjM = $spjPerBulan->get($m);
             $nilaiAcuan = (float) ($acuanPerBulan[$m] ?? 0);
-            $totalReal = (float) ($spjM?->total_realisasi ?? 0);
-            $totalAst = (int) ($spjM?->total_aset ?? 0);
-            $berkasSpk = (int) ($spjM?->berkas_spk ?? 0);
+            $totalReal = (float) ($spjM->total_realisasi ?? 0);
+            $totalAst = (int) ($spjM->total_aset ?? 0);
+            $berkasSpk = (int) ($spjM->berkas_spk ?? 0);
 
             $totalKeseluruhanAcuan += $nilaiAcuan;
             $totalKeseluruhanRealisasi += $totalReal;
@@ -166,8 +162,8 @@ class DashboardController extends Controller
             'isAdmin' => false,            'sekolah' => $sekolah,
             'bulanSekarang' => $bulanSekarang,
             'bulanLapor' => $bulanLapor,
-            'namaBulanSekarang' => $namaBulanArr[$bulanSekarang] ?? 'Januari',
-            'namaBulanLapor' => $namaBulanArr[$bulanLapor] ?? 'Desember',
+            'namaBulanSekarang' => $namaBulanArr[$bulanSekarang],
+            'namaBulanLapor' => $namaBulanArr[$bulanLapor],
             'statusBulanLapor' => $statusBulanLapor,
             'totalAcuan' => $totalKeseluruhanAcuan,
             'totalRealisasi' => $totalKeseluruhanRealisasi,

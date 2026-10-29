@@ -101,7 +101,7 @@ class QrLabelService
         return [
             'id' => $mutasi->id,
             'jenis' => $mutasi->jenis,
-            'tanggal' => $mutasi->tanggal?->format('Y-m-d'),
+            'tanggal' => $mutasi->tanggal->format('Y-m-d'),
             'asal_kondisi' => $mutasi->asal_kondisi,
             'tujuan_kondisi' => $mutasi->tujuan_kondisi,
             'asal_ruang' => $mutasi->asalRuang?->nama_ruang,

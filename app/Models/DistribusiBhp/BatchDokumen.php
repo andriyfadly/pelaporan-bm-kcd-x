@@ -7,7 +7,24 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $id
+ * @property string $jenis
+ * @property string|null $bhp_pengajuan_id
+ * @property string $status
+ * @property int $total
+ * @property int $berhasil
+ * @property int $gagal
+ * @property array<string, mixed>|null $files
+ * @property string|null $error_message
+ * @property string|null $path
+ * @property string|null $created_by
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Pengajuan|null $pengajuan
+ */
 class BatchDokumen extends Model
 {
     use HasFactory, HasSumberDanaTable, HasUuids;
@@ -40,6 +57,7 @@ class BatchDokumen extends Model
         ];
     }
 
+    /** @return BelongsTo<Pengajuan, $this> */
     public function pengajuan(): BelongsTo
     {
         return $this->belongsTo(Pengajuan::class, 'bhp_pengajuan_id');

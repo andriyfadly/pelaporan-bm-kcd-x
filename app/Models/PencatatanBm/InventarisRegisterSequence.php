@@ -4,10 +4,19 @@ namespace App\Models\PencatatanBm;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Penomoran register atomic per (sekolah_id, kode_barang). Nomor yang sudah
  * terbit tidak pernah dipakai ulang.
+ *
+ * @property string $id
+ * @property string $sekolah_id
+ * @property string $kode_barang
+ * @property int $tahun
+ * @property int $next_number
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class InventarisRegisterSequence extends Model
 {
