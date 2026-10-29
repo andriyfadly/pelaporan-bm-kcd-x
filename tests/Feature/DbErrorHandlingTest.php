@@ -44,13 +44,13 @@ class DbErrorHandlingTest extends TestCase
 
     public function test_db_error_web_kembali_dengan_pesan_dan_tercatat_di_file_log(): void
     {
-        Log::spy();
+        $log = Log::spy();
 
         $response = $this->actingAs($this->operator())->from('/dashboard')->get('/__db-gagal');
 
         $response->assertRedirect('/dashboard');
         $response->assertSessionHas('error', 'Terjadi gangguan database. Coba lagi beberapa saat.');
-        Log::shouldHaveReceived('error')
+        $log->shouldHaveReceived('error')
             ->withArgs(fn (string $pesan, array $konteks) => $pesan === 'db-error'
                 && ($konteks['route'] ?? null) === '__db-gagal'
                 && ($konteks['username'] ?? null) === 'op_dberror'

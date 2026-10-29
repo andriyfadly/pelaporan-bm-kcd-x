@@ -45,19 +45,6 @@ class SpjGapTest extends TestCase
         return $user;
     }
 
-    private function admin(string $username = 'admin_spj'): User
-    {
-        $user = activity()->withoutLogging(fn () => User::create([
-            'name' => 'Admin KCD',
-            'username' => $username,
-            'password' => bcrypt('Password123!'),
-            'password_changed_at' => now(),
-        ]));
-        $user->assignRole('admin_kcd');
-
-        return $user;
-    }
-
     private function spj(Sekolah $sekolah, int $bulan, string $noSpk = 'SPK/01'): Spj
     {
         return activity()->withoutLogging(fn () => Spj::create([

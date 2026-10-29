@@ -50,7 +50,7 @@ class KodeBarangImportTest extends TestCase
             ->post(route('admin.kode-barang.import'), ['file' => $file])
             ->assertRedirect();
 
-        $this->assertStringContainsString('1 data', $response->getSession()->get('success'));
+        $this->assertStringContainsString('1 data', (string) session('success'));
 
         $kb = KodeBarang::where('kode_barang', '1.3.2.01.02')->first();
         $this->assertNotNull($kb);

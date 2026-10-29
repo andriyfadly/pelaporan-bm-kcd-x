@@ -131,7 +131,7 @@ class MasterDataPenugasanModelTest extends TestCase
         ]);
 
         $this->assertSame(2, PenugasanPegawai::count());
-        $this->assertTrue(PenugasanPegawai::aktif($sekolah->id, $jabatan->id)->get()->contains($kedua));
+        $this->assertTrue(PenugasanPegawai::aktif($sekolah->id, $jabatan->id)->whereKey($kedua->id)->exists());
     }
 
     public function test_scope_berlaku_pada_mencari_pejabat_tanggal_lampau(): void

@@ -145,6 +145,7 @@ class ActivityLogTest extends TestCase
         $this->assertNotNull($login);
         $this->assertEquals($admin->id, $login->causer_id);
         $this->assertEquals(User::class, $login->causer_type);
+        $this->assertInstanceOf(User::class, $login->causer);
         $this->assertEquals('super_audit', $login->causer->username);
 
         // Auto-log model via HTTP terautentikasi ikut terisi causer-nya.

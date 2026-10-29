@@ -93,7 +93,7 @@ class BhpDemoDokumenBalanceTest extends TestCase
             'website' => '',
             'email' => '',
             'kodePos' => '',
-            'pemohon' => $pengajuan->pemohon?->name ?? '-',
+            'pemohon' => $pengajuan->pemohon->name ?? '-',
             'penandatangan' => $dokumen->payload['penandatangan'] ?? [],
             'labelJabatan' => app(PenugasanPegawaiService::class)->labelPenandatangan((string) $this->sekolah->id),
             'settings' => app(SettingsService::class)->get($pengajuan->sumber_dana),

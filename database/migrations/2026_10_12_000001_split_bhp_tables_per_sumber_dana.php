@@ -18,21 +18,6 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
-    /** Suffix tabel yang dipecah per sumber dana. */
-    private array $suffix = [
-        'kode_rekening',
-        'barang',
-        'harga_barang',
-        'penerimaan',
-        'penerimaan_detail',
-        'pengajuan',
-        'pengajuan_detail',
-        'nomor_sequence',
-        'dokumen',
-        'batch_dokumen',
-        'settings',
-    ];
-
     /**
      * Tabel lama yang dipecah, dalam urutan aman untuk DROP: detail dulu
      * (memegang FK ke master), master terakhir.

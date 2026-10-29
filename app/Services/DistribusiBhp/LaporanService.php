@@ -265,7 +265,7 @@ class LaporanService
                 ->get()
                 ->map(fn (PenerimaanDetail $d) => [
                     'tanggal' => $d->penerimaan?->tanggalEfektif()?->toDateString(),
-                    '_sort' => ($d->penerimaan->tanggalEfektif()->timestamp ?? 0).'.0.'.str_pad((string) $d->created_at?->timestamp, 12, '0', STR_PAD_LEFT),
+                    '_sort' => ($d->penerimaan?->tanggalEfektif()->timestamp ?? 0).'.0.'.str_pad((string) $d->created_at?->timestamp, 12, '0', STR_PAD_LEFT),
                     'jenis' => 'masuk',
                     'referensi' => $d->penerimaan?->no_bast ?: 'Penerimaan',
                     'masuk' => (int) $d->jumlah,

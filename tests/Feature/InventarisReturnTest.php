@@ -238,7 +238,6 @@ class InventarisReturnTest extends TestCase
         $this->assertSame(1, Mutasi::count(), 'Histori mutasi tidak boleh ikut terhapus.');
         // FK nullOnDelete hanya melepas referensi; baris histori tetap ada.
         $this->assertNotNull($mutasi->fresh());
-        $this->assertNotNull($mutasi->fresh()->tanggal);
     }
 
     public function test_menghapus_pegawai_tidak_menghapus_histori_mutasi(): void

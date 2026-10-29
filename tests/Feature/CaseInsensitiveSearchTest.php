@@ -6,6 +6,8 @@ use App\Http\Controllers\Concerns\SearchesText;
 use Illuminate\Database\PostgresConnection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\File;
+use PDO;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -38,7 +40,7 @@ class CaseInsensitiveSearchTest extends TestCase
 
     public function test_where_any_like_memakai_ilike_di_postgres(): void
     {
-        $connection = new PostgresConnection(fn () => null, 'verify');
+        $connection = new PostgresConnection(fn (): PDO => throw new RuntimeException('PDO tidak dipakai di test kompilasi SQL'), 'verify');
 
         $sql = $this->searcher()
             ->build($connection->table('master_data_sekolah'), ['nama_sekolah', 'npsn'], 'smkn')

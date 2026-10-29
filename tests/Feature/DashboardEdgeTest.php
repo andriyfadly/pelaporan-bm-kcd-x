@@ -35,27 +35,29 @@ class DashboardEdgeTest extends TestCase
         return $user;
     }
 
-    private function sekolah(string $nama, ?string $username = null): Sekolah|array
+    private function sekolah(string $nama): Sekolah
     {
-        $sekolah = activity()->withoutLogging(fn () => Sekolah::create([
+        return activity()->withoutLogging(fn () => Sekolah::create([
             'nama_sekolah' => $nama,
             'kota_kab' => 'Kota Bandung',
         ]));
+    }
 
-        if ($username === null) {
-            return $sekolah;
-        }
+    /** @return array{0: Sekolah, 1: User} */
+    private function sekolahDenganOperator(string $nama, string $username): array
+    {
+        $sekolah = $this->sekolah($nama);
 
-        $user = activity()->withoutLogging(fn () => User::create([
+        $operator = activity()->withoutLogging(fn () => User::create([
             'name' => 'Operator',
             'username' => $username,
             'password' => bcrypt('Password123!'),
             'sekolah_id' => $sekolah->id,
             'password_changed_at' => now(),
         ]));
-        $user->assignRole('operator_sekolah');
+        $operator->assignRole('operator_sekolah');
 
-        return [$sekolah, $user];
+        return [$sekolah, $operator];
     }
 
     private function acuan(Sekolah $sekolah, int $bulan): void
@@ -125,7 +127,7 @@ class DashboardEdgeTest extends TestCase
 
     public function test_dashboard_sekolah_menandai_menunggu_approval_sebagai_selesai(): void
     {
-        [$sekolah, $operator] = $this->sekolah('SMKN Status', 'op_dash_status');
+        [$sekolah, $operator] = $this->sekolahDenganOperator('SMKN Status', 'op_dash_status');
 
         // Bulan lapor = bulan sekarang - 1; isi kunci untuk bulan itu dengan
         // status menunggu_approval -> dashboard harus menandai SELESAI.
@@ -150,7 +152,7 @@ class DashboardEdgeTest extends TestCase
 
     public function test_dashboard_sekolah_tanpa_kunci_belum_selesai(): void
     {
-        [, $operator] = $this->sekolah('SMKN Kosong', 'op_dash_kosong');
+        [, $operator] = $this->sekolahDenganOperator('SMKN Kosong', 'op_dash_kosong');
 
         $this->actingAs($operator)
             ->get(route('dashboard'))

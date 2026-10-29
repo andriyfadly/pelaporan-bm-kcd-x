@@ -39,11 +39,9 @@ class BhpSettingsTest extends TestCase
 
     public function test_default_format_nomor_menghasilkan_nomor_lama(): void
     {
-        $service = app(SettingsService::class);
         $nomor = app(NomorDokumenService::class)->generate('nota_permintaan', 'BOS', 2026, 6);
 
         $this->assertSame('001/BHP/NPB/BOS/VI/2026', $nomor);
-        $this->assertNotNull($service->get());
     }
 
     public function test_format_nomor_bisa_diubah_melalui_settings(): void
@@ -123,8 +121,7 @@ class BhpSettingsTest extends TestCase
         $this->assertSame($pertama->id, $service->get('BOS')->id);
 
         // BOPD baru dibuat saat pertama kali dipanggil.
-        $bopd = $service->get('BOPD');
-        $this->assertNotNull($bopd);
+        $service->get('BOPD');
 
         // Total 1 baris per dana, di tabel terpisah.
         $this->assertSame(1, SumberDana::dengan('BOS', fn () => Settings::count()));

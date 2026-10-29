@@ -27,7 +27,7 @@ class HariKerjaTest extends TestCase
         Cache::flush();
     }
 
-    /** @param list<array{string,string,string}> $items */
+    /** @param list<array{0: string, 1: string, 2?: string}> $items */
     private function fakeApi(array $items): void
     {
         Http::fake([

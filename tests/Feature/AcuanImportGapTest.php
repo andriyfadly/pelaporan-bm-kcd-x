@@ -108,7 +108,7 @@ class AcuanImportGapTest extends TestCase
             ->post(route('pelaporan-bm.acuan.import'), ['file' => $file, 'bulan' => 5])
             ->assertRedirect();
 
-        $pesan = $response->getSession()->get('success');
+        $pesan = (string) session('success');
         $this->assertStringContainsString('1 data acuan', $pesan);
         $this->assertStringContainsString('3 baris dilewati', $pesan);
 
