@@ -80,7 +80,7 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                     <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-                        <PackageCheck className="w-4 h-4 text-slate-400" />
+                        <PackageCheck className="w-4 h-4 text-slate-500" />
                         <h2 className="font-bold text-slate-800">Sedang Disalurkan</h2>
                     </div>
 
@@ -90,45 +90,47 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
                             description="Semua unit inventaris sedang berada di gudang atau belum disalurkan."
                         />
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
-                                    <th className="px-4 py-3">Register</th>
-                                    <th className="px-4 py-3">Barang</th>
-                                    <th className="px-4 py-3">Ruang</th>
-                                    <th className="px-4 py-3">Penanggung Jawab</th>
-                                    <th className="px-4 py-3 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {dipinjam.map((unit) => (
-                                    <tr key={unit.id} className="border-b border-slate-50 last:border-0">
-                                        <td className="px-4 py-3 font-mono text-xs font-bold text-slate-700">{unit.nomor_register}</td>
-                                        <td className="px-4 py-3 text-slate-700">{unit.nama_barang ?? unit.kode_barang}</td>
-                                        <td className="px-4 py-3 text-slate-600">{unit.ruang?.nama_ruang ?? '-'}</td>
-                                        <td className="px-4 py-3 text-slate-600">{unit.pegawai?.nama_lengkap ?? '-'}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            {unit.punya_bast ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setTarget(unit)}
-                                                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-amber-700 hover:bg-amber-50"
-                                                >
-                                                    <Undo2 className="w-3.5 h-3.5" /> Kembalikan
-                                                </button>
-                                            ) : (
-                                                <span
-                                                    title="Nomor BAST belum diisi di Rekapan BA"
-                                                    className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-slate-400"
-                                                >
-                                                    <Lock className="w-3.5 h-3.5" /> Isi Nomor BA
-                                                </span>
-                                            )}
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[880px] text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                        <th className="px-4 py-3">Register</th>
+                                        <th className="px-4 py-3">Barang</th>
+                                        <th className="px-4 py-3">Ruang</th>
+                                        <th className="px-4 py-3">Penanggung Jawab</th>
+                                        <th className="px-4 py-3 text-right">Aksi</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {dipinjam.map((unit) => (
+                                        <tr key={unit.id} className="border-b border-slate-50 last:border-0">
+                                            <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-bold text-slate-700">{unit.nomor_register}</td>
+                                            <td className="px-4 py-3 text-slate-700">{unit.nama_barang ?? unit.kode_barang}</td>
+                                            <td className="px-4 py-3 text-slate-600">{unit.ruang?.nama_ruang ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{unit.pegawai?.nama_lengkap ?? '-'}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                {unit.punya_bast ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setTarget(unit)}
+                                                        className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                    >
+                                                        <Undo2 className="w-3.5 h-3.5" /> Kembalikan
+                                                    </button>
+                                                ) : (
+                                                    <span
+                                                        title="Nomor BAST belum diisi di Rekapan BA"
+                                                        className="inline-flex min-h-9 cursor-not-allowed items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500"
+                                                    >
+                                                        <Lock className="w-3.5 h-3.5" /> Isi Nomor BA
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </section>
 
@@ -146,7 +148,7 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
                                         <span className="font-semibold text-slate-700">
                                             {item.unit?.nomor_register ?? '-'} · {item.unit?.nama_barang ?? '-'}
                                         </span>
-                                        <span className="text-xs text-slate-400">{item.tanggal.slice(0, 10)}</span>
+                                        <span className="text-xs text-slate-500">{item.tanggal.slice(0, 10)}</span>
                                     </div>
                                     <p className="mt-1 text-xs text-slate-500">
                                         Dari {item.asal_ruang?.nama_ruang ?? '-'} / {item.asal_pegawai?.nama_lengkap ?? '-'} · kondisi akhir{' '}
@@ -159,7 +161,7 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
                                             <button
                                                 type="button"
                                                 onClick={() => buatSurat(item)}
-                                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50"
+                                                className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                             >
                                                 <FileText className="w-3.5 h-3.5" /> Buat Surat Pengembalian
                                             </button>
@@ -183,13 +185,13 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
             />
 
             {target && (
-                <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-lg">
+                <div className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2">
                     <label className="text-xs font-semibold text-slate-600">
                         Kondisi akhir
                         <select
                             value={kondisi}
                             onChange={(e) => setKondisi(e.target.value)}
-                            className="ml-2 rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                            className="ml-2 min-h-9 rounded-lg border border-slate-200 px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             {Object.entries(kondisiList).map(([kode, label]) => (
                                 <option key={kode} value={kode}>

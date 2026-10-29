@@ -46,7 +46,7 @@ export default function Index({ dokumen, ruangList }: Props) {
 
                 <section className="rounded-2xl border border-slate-200 bg-white p-5">
                     <h2 className="mb-1 flex items-center gap-1.5 font-bold text-slate-800">
-                        <Printer className="w-4 h-4 text-slate-400" /> Cetak Langsung
+                        <Printer className="w-4 h-4 text-slate-500" /> Cetak Langsung
                     </h2>
                     <p className="mb-3 text-xs text-slate-500">
                         Cetak langsung memakai data dan pejabat yang aktif saat ini, dan tidak tersimpan sebagai dokumen.
@@ -58,7 +58,7 @@ export default function Index({ dokumen, ruangList }: Props) {
                             <select
                                 value={ruangId}
                                 onChange={(e) => setRuangId(e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             >
                                 {ruangList.length === 0 && <option value="">Belum ada ruang</option>}
                                 {ruangList.map((ruang) => (
@@ -83,7 +83,7 @@ export default function Index({ dokumen, ruangList }: Props) {
                                 type="number"
                                 value={tahun}
                                 onChange={(e) => setTahun(Number(e.target.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                         </label>
                         {[
@@ -93,7 +93,7 @@ export default function Index({ dokumen, ruangList }: Props) {
                             <a
                                 key={cetak.url}
                                 href={`${cetak.url}?tahun=${tahun}`}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 min-h-10 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             >
                                 <FileText className="w-3.5 h-3.5" /> {cetak.label}
                             </a>
@@ -109,36 +109,38 @@ export default function Index({ dokumen, ruangList }: Props) {
                             icon={<FileText className="w-12 h-12 text-slate-300" />}
                         />
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
-                                    <th className="px-4 py-3">Jenis</th>
-                                    <th className="px-4 py-3">Nomor</th>
-                                    <th className="px-4 py-3">Tanggal</th>
-                                    <th className="px-4 py-3 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {dokumen.map((item) => (
-                                    <tr key={item.id} className="border-b border-slate-50 last:border-0">
-                                        <td className="px-4 py-3 font-semibold text-slate-700">
-                                            {LABEL_JENIS[item.jenis] ?? item.jenis}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-600">{item.nomor ?? '-'}</td>
-                                        <td className="px-4 py-3 text-slate-600">{item.tanggal?.slice(0, 10) ?? item.created_at}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            <button
-                                                type="button"
-                                                onClick={() => router.get(`/pencatatan-bm/dokumen/${item.id}/pdf`)}
-                                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50"
-                                            >
-                                                <Download className="w-3.5 h-3.5" /> Unduh
-                                            </button>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[640px] text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                        <th className="px-4 py-3">Jenis</th>
+                                        <th className="px-4 py-3">Nomor</th>
+                                        <th className="px-4 py-3">Tanggal</th>
+                                        <th className="px-4 py-3 text-right">Aksi</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {dokumen.map((item) => (
+                                        <tr key={item.id} className="border-b border-slate-50 last:border-0">
+                                            <td className="px-4 py-3 font-semibold text-slate-700">
+                                                {LABEL_JENIS[item.jenis] ?? item.jenis}
+                                            </td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{item.nomor ?? '-'}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{item.tanggal?.slice(0, 10) ?? item.created_at}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.get(`/pencatatan-bm/dokumen/${item.id}/pdf`)}
+                                                    className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                >
+                                                    <Download className="w-3.5 h-3.5" /> Unduh
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             </div>

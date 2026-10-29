@@ -111,18 +111,20 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
             <Head title="Inventaris BM" />
 
             <div className="space-y-5">
-                <header className="flex flex-wrap items-end justify-between gap-3">
+                <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
                     <div>
                         <h1 className="text-xl font-bold text-slate-800">Inventaris BM</h1>
-                        <p className="text-sm text-slate-500">Daftar unit aset hasil sinkronisasi realisasi yang disetujui.</p>
+                        <p className="text-sm text-slate-500">
+                            Unit aset dari sinkronisasi realisasi yang disetujui, tambah manual, atau impor Excel/CSV.
+                        </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-400">
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                        <span className="w-full text-xs text-slate-500 sm:w-auto">
                             Total: <strong>{units.total.toLocaleString('id-ID')}</strong> unit
                         </span>
                         <a
                             href={`/pencatatan-bm/inventaris-export${kondisi ? `?kondisi=${kondisi}` : ''}`}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 min-h-10 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:flex-none"
                         >
                             <Download className="w-3.5 h-3.5" /> Ekspor Excel
                         </a>
@@ -130,7 +132,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                             <button
                                 type="button"
                                 onClick={() => setTambah(true)}
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"
+                                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:flex-none"
                             >
                                 <Plus className="w-3.5 h-3.5" /> Tambah Barang
                             </button>
@@ -156,7 +158,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                             terapkan(search, e.target.value);
                         }}
                         aria-label="Filter kondisi"
-                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
+                        className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                         <option value="">Semua kondisi</option>
                         {Object.entries(kondisiList).map(([kode, label]) => (
@@ -171,54 +173,56 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                     {units.data.length === 0 ? (
                         <EmptyState
                             title="Belum ada unit inventaris"
-                            description="Unit muncul setelah laporan realisasi periode terkait disetujui Admin KCD."
+                            description="Unit muncul dari realisasi yang disetujui, tambah barang manual, atau impor Excel/CSV."
                             icon={<Boxes className="w-12 h-12 text-slate-300" />}
                         />
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
-                                    <th className="px-4 py-3">Register</th>
-                                    <th className="px-4 py-3">Kode Barang</th>
-                                    <th className="px-4 py-3">Nama Barang</th>
-                                    <th className="px-4 py-3">Ruang</th>
-                                    <th className="px-4 py-3">Penanggung Jawab</th>
-                                    <th className="px-4 py-3">Kondisi</th>
-                                    <th className="px-4 py-3 text-right">Nilai</th>
-                                    <th className="px-4 py-3 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {units.data.map((unit) => (
-                                    <tr key={unit.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
-                                        <td className="px-4 py-3 font-mono text-xs font-bold text-slate-700">{unit.nomor_register}</td>
-                                        <td className="px-4 py-3 font-mono text-xs text-slate-500">{unit.kode_barang}</td>
-                                        <td className="px-4 py-3">
-                                            <p className="font-semibold text-slate-700">{unit.nama_barang ?? '-'}</p>
-                                            <p className="text-xs text-slate-400">
-                                                {unit.merk_tipe ?? '-'} · {LABEL_STATUS[unit.status] ?? unit.status}
-                                            </p>
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-600">{unit.ruang?.nama_ruang ?? '-'}</td>
-                                        <td className="px-4 py-3 text-slate-600">{unit.pegawai?.nama_lengkap ?? '-'}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${BADGE_KONDISI[unit.kondisi] ?? ''}`}>
-                                                {kondisiList[unit.kondisi] ?? unit.kondisi}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-slate-600">{formatRupiah(unit.harga_satuan)}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            <Link
-                                                href={`/pencatatan-bm/inventaris/${unit.id}`}
-                                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50"
-                                            >
-                                                <Eye className="w-3.5 h-3.5" /> Detail
-                                            </Link>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[1080px] text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                        <th className="px-4 py-3">Register</th>
+                                        <th className="px-4 py-3">Kode Barang</th>
+                                        <th className="px-4 py-3">Nama Barang</th>
+                                        <th className="px-4 py-3">Ruang</th>
+                                        <th className="px-4 py-3">Penanggung Jawab</th>
+                                        <th className="px-4 py-3">Kondisi</th>
+                                        <th className="px-4 py-3 text-right">Nilai</th>
+                                        <th className="px-4 py-3 text-right">Aksi</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {units.data.map((unit) => (
+                                        <tr key={unit.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                                            <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-bold text-slate-700">{unit.nomor_register}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">{unit.kode_barang}</td>
+                                            <td className="px-4 py-3">
+                                                <p className="font-semibold text-slate-700">{unit.nama_barang ?? '-'}</p>
+                                                <p className="text-xs text-slate-500">
+                                                    {unit.merk_tipe ?? '-'} · {LABEL_STATUS[unit.status] ?? unit.status}
+                                                </p>
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-600">{unit.ruang?.nama_ruang ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{unit.pegawai?.nama_lengkap ?? '-'}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${BADGE_KONDISI[unit.kondisi] ?? ''}`}>
+                                                    {kondisiList[unit.kondisi] ?? unit.kondisi}
+                                                </span>
+                                            </td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-right text-slate-600">{formatRupiah(unit.harga_satuan)}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <Link
+                                                    href={`/pencatatan-bm/inventaris/${unit.id}`}
+                                                    className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" /> Detail
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
 
                     {units.data.length > 0 && (
@@ -239,7 +243,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 value={form.data.kode_barang}
                                 onChange={(e) => form.setData('kode_barang', e.target.value)}
                                 placeholder="1.3.2.10.01.02.002"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                             {form.errors.kode_barang && <p className="mt-1 text-xs text-rose-600">{form.errors.kode_barang}</p>}
                         </label>
@@ -251,7 +255,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 value={form.data.nama_barang}
                                 onChange={(e) => form.setData('nama_barang', e.target.value)}
                                 placeholder="Kosongkan = ikut master kode barang"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                         </label>
 
@@ -261,7 +265,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 type="text"
                                 value={form.data.merk_tipe}
                                 onChange={(e) => form.setData('merk_tipe', e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                         </label>
 
@@ -271,7 +275,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 type="date"
                                 value={form.data.tanggal_perolehan}
                                 onChange={(e) => form.setData('tanggal_perolehan', e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                             {form.errors.tanggal_perolehan && (
                                 <p className="mt-1 text-xs text-rose-600">{form.errors.tanggal_perolehan}</p>
@@ -286,7 +290,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 max={500}
                                 value={form.data.volume}
                                 onChange={(e) => form.setData('volume', Number(e.target.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                             {form.errors.volume && <p className="mt-1 text-xs text-rose-600">{form.errors.volume}</p>}
                         </label>
@@ -298,7 +302,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 value={form.data.satuan}
                                 onChange={(e) => form.setData('satuan', e.target.value)}
                                 placeholder="Unit"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                         </label>
 
@@ -309,7 +313,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 min={0}
                                 value={form.data.harga_satuan}
                                 onChange={(e) => form.setData('harga_satuan', Number(e.target.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                         </label>
 
@@ -320,7 +324,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 value={form.data.asal_perolehan}
                                 onChange={(e) => form.setData('asal_perolehan', e.target.value)}
                                 placeholder="BOS / APBN / Hibah"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             />
                         </label>
 
@@ -329,7 +333,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                             <select
                                 value={form.data.kondisi}
                                 onChange={(e) => form.setData('kondisi', e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             >
                                 {Object.entries(kondisiList).map(([kode, label]) => (
                                     <option key={kode} value={kode}>
@@ -344,14 +348,14 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                         <button
                             type="button"
                             onClick={() => setTambah(false)}
-                            className="rounded-xl px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                            className="rounded-xl px-4 min-h-10 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             Batal
                         </button>
                         <button
                             type="submit"
                             disabled={form.processing}
-                            className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+                            className="rounded-xl bg-blue-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             Simpan
                         </button>
@@ -369,18 +373,18 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                             accept=".xlsx,.xls,.csv"
                             onChange={(e) => setBerkasImpor(e.target.files?.[0] ?? null)}
                             aria-label="Pilih berkas impor inventaris"
-                            className="text-xs text-slate-600"
+                            className="min-h-10 flex-1 text-xs text-slate-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-slate-700 hover:file:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         />
                         <button
                             type="submit"
                             disabled={!berkasImpor}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 min-h-10 py-2 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             <Upload className="w-3.5 h-3.5" /> Impor
                         </button>
                         <a
                             href="/pencatatan-bm/inventaris-template"
-                            className="text-xs font-bold text-blue-600 hover:underline"
+                            className="text-xs font-bold text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             Unduh template
                         </a>

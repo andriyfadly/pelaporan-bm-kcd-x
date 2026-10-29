@@ -9,3 +9,11 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Placeholder bawaan browser = teks 50% opacity, gagal kontras 4.5:1. */
+@layer base {
+    ::placeholder {
+        color: var(--color-slate-500);
+        opacity: 1;
+    }
+}

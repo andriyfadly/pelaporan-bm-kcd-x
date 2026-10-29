@@ -66,7 +66,7 @@ export default function Index({ logs, perluReview, sekolahList, filter }: Props)
                             <select
                                 value={form.data.sekolah_id}
                                 onChange={(e) => form.setData('sekolah_id', e.target.value)}
-                                className="mt-1 block rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                className="mt-1 block rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                             >
                                 <option value="">Pilih sekolah</option>
                                 {sekolahList.map((sekolah) => (
@@ -86,7 +86,7 @@ export default function Index({ logs, perluReview, sekolahList, filter }: Props)
                             max={12}
                             value={form.data.bulan}
                             onChange={(e) => form.setData('bulan', e.target.value)}
-                            className="mt-1 block w-24 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            className="mt-1 block w-24 rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         />
                     </label>
                     <label className="text-xs font-semibold text-slate-600">
@@ -96,13 +96,13 @@ export default function Index({ logs, perluReview, sekolahList, filter }: Props)
                             min={2026}
                             value={form.data.tahun}
                             onChange={(e) => form.setData('tahun', e.target.value)}
-                            className="mt-1 block w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            className="mt-1 block w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         />
                     </label>
                     <button
                         type="submit"
                         disabled={form.processing}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                         <RefreshCw className="w-4 h-4" /> Jalankan
                     </button>
@@ -131,35 +131,37 @@ export default function Index({ logs, perluReview, sekolahList, filter }: Props)
                     {logs.length === 0 ? (
                         <EmptyState title="Belum ada log sinkronisasi" description="Log muncul setelah sinkronisasi pertama dijalankan." />
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
-                                    <th className="px-4 py-3">Waktu</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-right">Dibuat</th>
-                                    <th className="px-4 py-3 text-right">Tetap</th>
-                                    <th className="px-4 py-3 text-right">Surplus</th>
-                                    <th className="px-4 py-3 text-right">Review</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {logs.map((log) => (
-                                    <tr key={log.id} className="border-b border-slate-50 last:border-0">
-                                        <td className="px-4 py-3 text-slate-600">{log.created_at}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${BADGE[log.status] ?? ''}`}>
-                                                {log.status}
-                                            </span>
-                                            {log.error && <p className="mt-1 text-xs text-rose-600">{log.error}</p>}
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-slate-600">{log.dibuat}</td>
-                                        <td className="px-4 py-3 text-right text-slate-600">{log.tetap}</td>
-                                        <td className="px-4 py-3 text-right text-slate-600">{log.surplus}</td>
-                                        <td className="px-4 py-3 text-right text-slate-600">{log.perlu_review}</td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[880px] text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                        <th className="px-4 py-3">Waktu</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 text-right">Dibuat</th>
+                                        <th className="px-4 py-3 text-right">Tetap</th>
+                                        <th className="px-4 py-3 text-right">Surplus</th>
+                                        <th className="px-4 py-3 text-right">Review</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {logs.map((log) => (
+                                        <tr key={log.id} className="border-b border-slate-50 last:border-0">
+                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{log.created_at}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${BADGE[log.status] ?? ''}`}>
+                                                    {log.status}
+                                                </span>
+                                                {log.error && <p className="mt-1 text-xs text-rose-600">{log.error}</p>}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{log.dibuat}</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{log.tetap}</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{log.surplus}</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{log.perlu_review}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             </div>

@@ -50,7 +50,7 @@ export default function Dashboard({ ringkasan, perKodeBarang, sinkronisasiTerakh
                 <header>
                     <h1 className="text-xl font-bold text-slate-800">Pencatatan BM</h1>
                     <p className="text-sm text-slate-500">
-                        Inventaris aset terbentuk otomatis dari realisasi yang laporannya sudah disetujui.
+                        Inventaris aset berasal dari realisasi yang laporannya sudah disetujui, tambah manual, atau impor.
                     </p>
                 </header>
 
@@ -75,10 +75,10 @@ export default function Dashboard({ ringkasan, perKodeBarang, sinkronisasiTerakh
                     <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                         <h2 className="font-bold text-slate-800">Kondisi Unit</h2>
                     </div>
-                    <div className="grid grid-cols-3 divide-x divide-slate-100">
+                    <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                         {Object.entries(ringkasan.kondisi).map(([kode, jumlah]) => (
                             <div key={kode} className="px-5 py-4">
-                                <p className="text-xs font-semibold text-slate-400">{LABEL_KONDISI[kode] ?? kode}</p>
+                                <p className="text-xs font-semibold text-slate-500">{LABEL_KONDISI[kode] ?? kode}</p>
                                 <p className="mt-1 text-lg font-bold text-slate-800">{jumlah}</p>
                             </div>
                         ))}
@@ -88,40 +88,42 @@ export default function Dashboard({ ringkasan, perKodeBarang, sinkronisasiTerakh
                 <section className="rounded-2xl border border-slate-200 bg-white">
                     <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                         <h2 className="font-bold text-slate-800">Unit per Kode Barang</h2>
-                        <span className="text-xs text-slate-400">10 terbesar</span>
+                        <span className="text-xs text-slate-500">10 terbesar</span>
                     </div>
                     {perKodeBarang.length === 0 ? (
                         <EmptyState
                             title="Belum ada unit inventaris"
-                            description="Unit terbentuk setelah Admin KCD menyetujui laporan realisasi suatu periode."
+                            description="Unit muncul dari realisasi yang disetujui, tambah manual, atau impor Excel/CSV."
                             icon={<Boxes className="w-12 h-12 text-slate-300" />}
                         />
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
-                                    <th className="px-5 py-3">Kode Barang</th>
-                                    <th className="px-5 py-3">Nama Barang</th>
-                                    <th className="px-5 py-3 text-right">Unit</th>
-                                    <th className="px-5 py-3 text-right">Nilai</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {perKodeBarang.map((baris) => (
-                                    <tr key={baris.kode_barang} className="border-b border-slate-50 last:border-0">
-                                        <td className="px-5 py-3 font-mono text-xs text-slate-600">{baris.kode_barang}</td>
-                                        <td className="px-5 py-3 text-slate-700">{baris.nama_barang ?? '-'}</td>
-                                        <td className="px-5 py-3 text-right font-semibold text-slate-800">{baris.jumlah}</td>
-                                        <td className="px-5 py-3 text-right text-slate-600">{formatRupiah(baris.nilai)}</td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[720px] text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                        <th className="px-5 py-3">Kode Barang</th>
+                                        <th className="px-5 py-3">Nama Barang</th>
+                                        <th className="px-5 py-3 text-right">Unit</th>
+                                        <th className="px-5 py-3 text-right">Nilai</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {perKodeBarang.map((baris) => (
+                                        <tr key={baris.kode_barang} className="border-b border-slate-50 last:border-0">
+                                            <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-slate-600">{baris.kode_barang}</td>
+                                            <td className="px-5 py-3 text-slate-700">{baris.nama_barang ?? '-'}</td>
+                                            <td className="px-5 py-3 text-right font-semibold text-slate-800">{baris.jumlah}</td>
+                                            <td className="whitespace-nowrap px-5 py-3 text-right text-slate-600">{formatRupiah(baris.nilai)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </section>
 
                 {sinkronisasiTerakhir && (
-                    <p className="flex items-center gap-2 text-xs text-slate-400">
+                    <p className="flex items-center gap-2 text-xs text-slate-500">
                         <RefreshCw className="w-3.5 h-3.5" />
                         Sinkronisasi terakhir: {sinkronisasiTerakhir.status} · {sinkronisasiTerakhir.dibuat} dibuat ·{' '}
                         {sinkronisasiTerakhir.surplus} surplus · {sinkronisasiTerakhir.perlu_review} perlu review
