@@ -55,6 +55,8 @@ reviewer adalah pembuat pengajuan (defense-in-depth selain RBAC). Terverifikasi
 |-----------|:-----------:|:---------:|:------------------:|
 | Lihat modul (`lihat-pencatatan-bm`) | ✅ | ✅ (lintas sekolah) | ✅ (sekolah sendiri) |
 | Kelola unit inventaris (`kelola-inventaris-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
+| Tambah/impor barang manual | ✅ | ❌ | ✅ (sekolah sendiri) — gate `kelola-inventaris-bm` |
+| Penyaluran pertama | ✅ | ❌ | ✅ (sekolah sendiri) — gate `mutasi-inventaris-bm` |
 | Kelola ruang / pegawai (`kelola-ruang-bm`, `kelola-pegawai-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
 | Kelola jabatan / penugasan (`kelola-jabatan-bm`, `kelola-penugasan-pegawai-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
 | Mutasi (`mutasi-inventaris-bm`) | ✅ | ❌ | ✅ (sekolah sendiri) |
@@ -62,10 +64,13 @@ reviewer adalah pembuat pengajuan (defense-in-depth selain RBAC). Terverifikasi
 | Cetak/ekspor (`cetak-inventaris-bm`) | ✅ | ✅ | ✅ |
 | Sinkronisasi ulang (`sinkronisasi-inventaris-bm`) | ✅ | ❌ | ❌ |
 
-Unit inventaris hanya terbentuk dari realisasi yang periodenya `disetujui`;
-tidak ada jalur input manual. Data sekolah lain dijawab **404** (bukan 403) agar
-UUID sekolah lain tidak membocorkan keberadaan data. Terverifikasi
-`InventarisTenantIsolationTest` dan `InventarisPermissionTest`.
+Unit inventaris terbentuk dari dua jalur: sinkronisasi realisasi yang
+periodenya `disetujui`, atau pendaftaran manual/impor oleh pemegang
+`kelola-inventaris-bm`. Keduanya memakai layanan penomoran register yang sama.
+Pengembalian mensyaratkan BAST bernomor (backend menolak, bukan hanya UI).
+Data sekolah lain dijawab **404** (bukan 403) agar UUID sekolah lain tidak
+membocorkan keberadaan data. Terverifikasi `InventarisTenantIsolationTest`,
+`InventarisPermissionTest`, dan `InventarisPendaftaranTest`.
 
 \* Grup rute `/admin` memakai `role:super_admin|admin_kcd`; halaman user
 menyembunyikan super_admin dari daftar dan menolak hapus diri. `Gate::before`

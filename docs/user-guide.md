@@ -8,10 +8,10 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 
 | Peran | Akses Halaman | Kredensial & Scope |
 |---|---|---|
-| **Operator Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi (Target Acuan), Data Realisasi, Cetak Laporan, Ubah Password, **Distribusi BHP (master, penerimaan, pengajuan, review, dokumen, laporan)** | Username `[npsn]-admin`, default password `#SidiptaKCD10`. Terikat satu sekolah (`sekolah_id`). Wajib ganti password saat login pertama dan berkala tiap 3 bulan. |
+| **Operator Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi (Target Acuan), Data Realisasi, Cetak Laporan, Ubah Password, **Distribusi BHP (master, penerimaan, pengajuan, review, dokumen, laporan)**, **Pencatatan BM (inventaris, penyaluran, mutasi, pengembalian, dokumen)** | Username `[npsn]-admin`, default password `#SidiptaKCD10`. Terikat satu sekolah (`sekolah_id`). Wajib ganti password saat login pertama dan berkala tiap 3 bulan. |
 | **Admin KCD** | Dashboard Wilayah, Master Kode Barang, Acuan Belanja Modal, Rekapan Sekolah, Kelola Pengguna, Cetak Laporan, **Distribusi BHP** | Username `admin_kcd`. Akun `admin` tanpa `sekolah_id`. Memiliki wewenang lintas sekolah dan kunci laporan. |
 | **Operator Divisi** | **Distribusi BHP: Pengajuan saja** (buat & submit) | Role khusus BHP. Tanpa akses master, penerimaan, approval, atau cetak. |
-| **Bendahara Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi, Data Realisasi, Cetak Laporan, **Distribusi BHP (lihat + pengajuan)** | Terikat satu sekolah; tanpa approval/cetak BHP. |
+| **Bendahara Sekolah** | Dashboard Sekolah, Data Barang (Buku SPJ), Input Realisasi, Data Realisasi, Cetak Laporan, **Distribusi BHP (lihat + pengajuan)**, **Pencatatan BM (inventaris, penyaluran, mutasi, pengembalian)** | Terikat satu sekolah; tanpa approval/cetak BHP. |
 
 ---
 
@@ -244,3 +244,89 @@ dipakai pengajuan aktif tidak dapat dihapus.
 > divisinya; review, approval, master, dan cetak dikerjakan role sekolah/admin
 > yang berwenang (`docs/security.md` §1). Dashboard operator divisi menampilkan
 > statistik pengajuan divisinya saja.
+
+---
+
+## 7. Panduan Pencatatan BM (Inventaris Aset)
+
+Modul ini mencatat aset yang sudah dibelanjakan menjadi unit inventaris per
+register, lalu menelusuri ke mana barang itu disalurkan.
+
+### 7.1 Dari mana unit inventaris berasal
+
+Ada dua jalur, keduanya bermuara ke daftar **Inventaris**:
+
+1. **Sinkronisasi realisasi** — setelah laporan bulanan disetujui Admin KCD,
+   admin menjalankan **Sinkronisasi** (`/pencatatan-bm/sinkronisasi`) untuk
+   periode tersebut. Satu baris realisasi dengan volume N menjadi N unit.
+2. **Tambah/impor sendiri** — di halaman **Inventaris** klik **Tambah Barang**
+   untuk satu barang, atau unggah berkas Excel/CSV pada form yang sama.
+
+### 7.2 Menambah barang manual
+
+1. Buka **Pencatatan BM → Inventaris**, klik **Tambah Barang**.
+2. Isi **Kode Barang** (bebas; kalau ada di master kode barang, nama/jenis/
+   satuan terisi otomatis), **Nama Barang**, **Merek/Tipe**, **Tanggal
+   Perolehan** (wajib), **Volume**, **Satuan**, **Harga Satuan**, **Asal
+   Perolehan**, dan **Kondisi**.
+3. Klik **Simpan**. Volume 3 menghasilkan tiga unit dengan register berurutan.
+
+### 7.3 Impor Excel/CSV
+
+1. Pada form yang sama, klik **Unduh template** untuk mendapat berkas acuan.
+2. Isi kolom: Kode Barang, Nama Barang, Merek/Tipe, Tanggal, Bulan, Tahun,
+   Satuan, Volume, Harga Satuan, Asal Perolehan. Tahun perolehan **wajib**.
+3. Pilih berkas lalu klik **Impor**. Impor bersifat all-or-nothing: satu baris
+   gagal membatalkan seluruh berkas, jadi tidak ada register yang terbit untuk
+   data yang batal.
+
+### 7.4 Nomor register
+
+- Format tiga digit: `001`, `002`, dst.
+- **Diulang dari 001 setiap tahun perolehan.** Barang tahun 2025 dan 2026
+  masing-masing mulai dari `001`, jadi register selalu dibaca bersama tahunnya.
+- Nomor yang sudah terbit tidak pernah dipakai ulang.
+
+### 7.5 Penyaluran — penempatan pertama
+
+1. Buka **Pencatatan BM → Penyaluran**, klik **Salurkan Barang**.
+2. Pilih unit (hanya unit yang belum punya lokasi yang muncul), **Ruang
+   Tujuan** (wajib), **Penanggung Jawab** (opsional), kondisi saat disalurkan,
+   tanggal, dan keterangan.
+3. Setelah tersimpan, unit hilang dari daftar penyaluran dan pindah ke daftar
+   mutasi.
+
+### 7.6 Mutasi — pindah dari lokasi pertama
+
+1. Buka **Pencatatan BM → Mutasi**, klik **Mutasi Unit**.
+2. Pilih unit yang **sudah disalurkan**, lalu isi ruang tujuan **atau**
+   penanggung jawab tujuan (minimal salah satu).
+3. Untuk mengoreksi kondisi saja tanpa memindahkan barang, gunakan halaman
+   **detail unit** — bukan mutasi.
+
+### 7.7 Pengembalian
+
+1. Pastikan unit sudah punya **BAST bernomor**. Selama nomor BA belum diisi di
+   **Berita Acara**, tombol kembalikan terkunci.
+2. Buka **Pencatatan BM → Pengembalian**, pilih unit, tentukan kondisi akhir.
+3. Unit kembali ke gudang: lokasinya dikosongkan dan statusnya `dikembalikan`.
+   Barang itu muncul lagi di menu **Penyaluran** bila nanti akan ditempatkan.
+
+### 7.8 Dokumen, label, dan BAST
+
+- **Detail unit** menyediakan Label PDF, QR, tombol **Buat BAST**, dan **Fakta
+  Integritas** (tombol fakta integritas aktif setelah unit punya penanggung
+  jawab).
+- **Berita Acara** (`/pencatatan-bm/berita-acara`) untuk mengoreksi atau
+  membatalkan nomor BAST. Nomor yang masih aktif tidak boleh duplikat; nomor
+  yang sudah dibatalkan boleh dipakai lagi.
+- **Dokumen** (`/pencatatan-bm/dokumen`) mendaftar dokumen tersimpan dan
+  menyediakan cetak langsung: KIR per ruang, Buku Inventaris per tahun, dan
+  Sensus Aset per tahun.
+- Tanggal dokumen bisa diisi mundur; penandatangan mengikuti pejabat yang
+  menjabat pada tanggal tersebut.
+
+### 7.9 Ekspor
+
+Tombol **Ekspor Excel** di halaman Inventaris mengunduh daftar unit sesuai
+filter kondisi yang aktif, termasuk kolom asal perolehan dan tahun perolehan.

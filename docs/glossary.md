@@ -53,7 +53,7 @@
 | Fisik | Total barang masuk (Σ detail penerimaan) |
 | Tersedia | `Fisik − Terpakai − Reservasi`, tidak pernah negatif — "stok 4-tier" |
 | Stok 4-tier | Empat angka stok: Fisik, Terpakai, Reservasi, Tersedia (`StokService`) |
-| Submit pengajuan | Aksi pemohon: validasi stok tersedia lalu buat reservasi (`draft → submitted`) |
+| Ajukan pengajuan | Aksi pemohon: validasi stok tersedia lalu buat reservasi dalam satu transaksi (`submitted`) |
 | Approve | Aksi admin: koreksi jumlah, reservasi → pemakaian (`submitted → approved`) |
 | Reject | Aksi admin: lepas reservasi + alasan wajib (`submitted → rejected`) |
 | Dokumen BHP | Surat/berita acara hasil generate (`bhp_{bos,bopd}_dokumen`), satu tabel per dana dengan kolom `jenis` |
@@ -76,3 +76,21 @@
 | Impor BHP | `DistribusiBhpImportSeeder` — impor master + penerimaan dari DB SQLite legacy |
 | source_id | ID asli entitas dari DB sumber (`bhp_{bos,bopd}_penerimaan.source_id`) untuk jejak audit/impor |
 | cart_status | Status baris di DB sumber; hanya `saved` yang diimpor (`in_cart` = draft keranjang) |
+
+## Istilah Pencatatan BM
+
+| Istilah | Arti di sistem ini |
+|---------|--------------------|
+| Unit inventaris | Satu baris `inventaris_unit` = satu barang fisik bernomor register |
+| Register | Nomor urut 3 digit per `(sekolah, kode barang, tahun perolehan)`; **diulang dari 001 tiap tahun** |
+| Tahun perolehan | Tahun yang menjadi bucket register; wajib terisi, diambil dari tanggal perolehan |
+| Jalur masuk unit | `sinkronisasi` (dari realisasi disetujui) atau `manual/impor` (`realisasi_id` NULL) |
+| Penyaluran | Penempatan **pertama** unit ke ruang/penerima. Setelah itu jalurnya mutasi |
+| Mutasi | Perpindahan unit dari satu lokasi ke lokasi lain; tujuan wajib, pengosongan bukan mutasi |
+| Pengembalian | Unit kembali ke gudang; ruang & pegawai dikosongkan, status `dikembalikan` |
+| Koreksi | Perubahan kondisi/keterangan tanpa perpindahan, dicatat sebagai histori jenis `koreksi` |
+| BAST bernomor | Dokumen BAST yang `nomor` terisi dan belum dibatalkan; syarat pengembalian |
+| Nomor BA dibatalkan | `nomor` dikosongkan + `nomor_dibatalkan_pada` diisi, dokumen tetap ada, nomornya boleh dipakai ulang |
+| Sinkronisasi | Pembentukan unit dari realisasi periode `disetujui`; aman dijalankan ulang |
+| Unit surplus | Unit yang melebihi volume realisasi setelah koreksi; `dihapus_koreksi` bila belum pernah dimutasi |
+| Perlu review | Unit surplus yang sudah berpindah tangan; sengaja tidak dipensiunkan otomatis |
