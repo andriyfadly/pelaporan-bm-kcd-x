@@ -68,21 +68,32 @@ class KodeRekeningController extends Controller
 
     public function batchAssign(Request $request): RedirectResponse
     {
+        // Tabel kode rekening dipisah per sumber dana, jadi `exists` harus
+        // menunjuk tabel yang benar SEBELUM validasi. Tanpa ini, halaman BOPD
+        // yang memposting ke route flat (default BOS) selalu menolak id BOPD
+        // dengan "selected id is invalid".
+        $sumberDana = SumberDana::pilih($request->input('sumber_dana'));
+
         $validated = $request->validate([
+            'sumber_dana' => ['nullable', Rule::in(SumberDana::SEMUA)],
             'assignments' => ['required', 'array', 'min:1'],
-            'assignments.*.id' => ['required', 'uuid', 'exists:'.KodeRekening::class.',id'],
+            'assignments.*.id' => ['required', 'uuid', SumberDana::existsRule('kode_rekening', $sumberDana)],
             'assignments.*.kode_barang' => ['nullable', 'string', Rule::in(KodeBarang::kode())],
             'assignments.*.uraian_kode_barang' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $count = 0;
-        foreach ($validated['assignments'] as $assignment) {
-            KodeRekening::whereKey($assignment['id'])->update([
-                'kode_barang' => $assignment['kode_barang'] ?? null,
-                'uraian_kode_barang' => $assignment['uraian_kode_barang'] ?? null,
-            ]);
-            $count++;
-        }
+        $count = SumberDana::dengan($sumberDana, function () use ($validated): int {
+            $count = 0;
+            foreach ($validated['assignments'] as $assignment) {
+                KodeRekening::whereKey($assignment['id'])->update([
+                    'kode_barang' => $assignment['kode_barang'] ?? null,
+                    'uraian_kode_barang' => $assignment['uraian_kode_barang'] ?? null,
+                ]);
+                $count++;
+            }
+
+            return $count;
+        });
 
         return back()->with('success', "{$count} kode rekening berhasil di-assign kode barang.");
     }

@@ -60,6 +60,7 @@ class ReviewPengajuanController extends Controller
 
         return Inertia::render('DistribusiBhp/Review/Index', [
             'items' => $items,
+            'sumberDana' => $sumberDana,
             'pejabatWarning' => $pejabatWarning,
         ]);
     }

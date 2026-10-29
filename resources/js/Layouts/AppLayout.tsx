@@ -43,7 +43,11 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
     const canDivisi = permissions.includes('kelola-divisi-bhp');
     const canKelolaPenyedia = permissions.includes('kelola-penyedia-bhp');
     const canKelolaBarang = permissions.includes('kelola-barang-bhp');
-    const canCetak = permissions.includes('cetak-dokumen-bhp');
+    // Halaman daftar dokumen (BAST/BAP/buku/stok opname) hanya read-only dan
+    // dijaga `lihat-distribusi-bhp` di routes/web.php. Memakai `cetak-dokumen-bhp`
+    // di sidebar menyembunyikannya dari bendahara sekolah yang memang boleh
+    // membukanya.
+    const canLihat = permissions.includes('lihat-distribusi-bhp');
 
     const isBhpActive = currentPath.startsWith('/distribusi-bhp');
 
@@ -126,54 +130,59 @@ function BhpHtmlMenu({ currentPath, collapsed, openBhp, setOpenBhp, permissions 
                     )}
                     {/* Penyaluran group */}
                     <PageGroupTitle title="Penyaluran" />
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/surat-permintaan-barang`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/surat-permintaan-barang`))}>
                             Surat Permintaan Barang
                         </Link>
                     )}
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/surat-perintah-penyaluran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/surat-perintah-penyaluran`))}>
                             Surat Perintah Penyaluran
                         </Link>
                     )}
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/berita-acara-serah-terima`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/berita-acara-serah-terima`))}>
                             Berita Acara Serah Terima
                         </Link>
                     )}
                     {/* Laporan group */}
                     <PageGroupTitle title="Laporan" />
-                    {canCetak && (
+                    {canLihat && (
+                        <Link href={`${prefix}/laporan`} className={subNavClass(currentPath === `${prefix}/laporan` || currentPath.startsWith(`${prefix}/laporan?`))}>
+                            Laporan Stok
+                        </Link>
+                    )}
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/bast-internal`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/bast-internal`))}>
                             BAST Internal
                         </Link>
                     )}
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/berita-acara-pemeriksaan`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/berita-acara-pemeriksaan`))}>
                             Berita Acara Pemeriksaan
                         </Link>
                     )}
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/buku-pengeluaran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-pengeluaran`))}>
                             Buku Pengeluaran
                         </Link>
                     )}
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/buku-penerimaan`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-penerimaan`))}>
                             Buku Penerimaan
                         </Link>
                     )}
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/buku-penyaluran`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/buku-penyaluran`))}>
                             Buku Penyaluran
                         </Link>
                     )}
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/kartu-persediaan`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/kartu-persediaan`))}>
                             Kartu Persediaan
                         </Link>
                     )}
-                    {canCetak && (
+                    {canLihat && (
                         <Link href={`${prefix}/laporan/stok-opname`} className={subNavClass(currentPath.startsWith(`${prefix}/laporan/stok-opname`))}>
                             Stok Opname
                         </Link>
