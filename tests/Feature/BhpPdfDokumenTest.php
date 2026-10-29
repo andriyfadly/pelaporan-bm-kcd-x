@@ -127,9 +127,9 @@ class BhpPdfDokumenTest extends TestCase
         $response = $this->actingAs($operator)
             ->post(route('distribusi-bhp.dokumen.batch', $pengajuan));
 
-        // Batch mengembalikan satu PDF kompilasi sekaligus mencatat histori.
+        // Batch mengembalikan ZIP berisi PDF per dokumen sekaligus mencatat histori.
         $response->assertOk();
-        $this->assertSame('application/pdf', $response->headers->get('content-type'));
+        $this->assertSame('application/zip', $response->headers->get('content-type'));
 
         $batch = BatchDokumen::sumberDana($pengajuan->sumber_dana)->firstOrFail();
         $this->assertSame('selesai', $batch->status);

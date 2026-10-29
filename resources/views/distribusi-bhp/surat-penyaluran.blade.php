@@ -40,7 +40,7 @@
     <table class="meta">
         <tr><td class="label">Dasar Penyaluran</td><td></td></tr>
         <tr><td class="label">&nbsp;&nbsp;a. Nomor</td><td>: {{ $suratPermintaan->nomor ?? $nota->nomor ?? '-' }}</td></tr>
-        <tr><td class="label">&nbsp;&nbsp;b. Tanggal</td><td>: {{ optional($suratPermintaan->tanggal_titimangsa ?? $nota->tanggal_titimangsa ?? $pengajuan->tanggal)->format('d F Y') ?? '-' }}</td></tr>
+        <tr><td class="label">&nbsp;&nbsp;b. Tanggal</td><td>: {{ optional($suratPermintaan->tanggal_titimangsa ?? $nota->tanggal_titimangsa ?? $pengajuan->tanggal)->translatedFormat('d F Y') ?? '-' }}</td></tr>
         <tr><td class="label">&nbsp;&nbsp;c. Pihak Peminta</td><td>: {{ $pengajuan->divisi->nama ?? '-' }}</td></tr>
     </table>
 
@@ -81,7 +81,7 @@
         <tr>
             <td></td>
             <td>
-                {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}
+                {{ optional($dokumen->tanggal_titimangsa)->translatedFormat('d F Y') ?? now()->translatedFormat('d F Y') }}
                 <div class="space"></div>
                 <strong>{{ $penandatangan['wakasek_sarpras']['nama'] ?? '-' }}</strong>
                 @if(!empty($penandatangan['wakasek_sarpras']['pangkat_golongan']))

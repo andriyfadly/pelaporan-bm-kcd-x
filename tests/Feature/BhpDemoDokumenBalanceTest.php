@@ -125,6 +125,60 @@ class BhpDemoDokumenBalanceTest extends TestCase
 
             $nomor = $pengajuan->dokumen->firstWhere('jenis', 'nota_permintaan')->nomor;
             $this->assertStringContainsString($nomor, $teks, "Nomor Nota Permintaan {$dana} harus tercetak.");
+
+            // Tanggal titimangsa dulu tercetak dua kali (tanggal dokumen + created_at).
+            $tanggal = $pengajuan->dokumen->firstWhere('jenis', 'nota_permintaan')->tanggal_titimangsa->translatedFormat('d F Y');
+            $this->assertStringContainsString($tanggal, $teks, "Tanggal {$dana} harus tercetak.");
+            $this->assertDoesNotMatchRegularExpression(
+                '/\d{4},\s+\d{1,2}\s+\S+\s+\d{4}/',
+                $teks,
+                "Tanggal {$dana} tercetak ganda.",
+            );
+        }
+    }
+
+    /** Dokumen resmi tidak boleh memakai nama bulan/hari Inggris. */
+    public function test_tanggal_dokumen_berbahasa_indonesia(): void
+    {
+        $bulanInggris = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        $hariInggris = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $terlarang = [...$bulanInggris, ...$hariInggris];
+
+        foreach (SumberDana::SEMUA as $dana) {
+            $pengajuan = $this->pengajuanJuni($dana);
+
+            foreach (['nota_permintaan', 'surat_permintaan', 'surat_penyaluran', 'bast', 'bap', 'stok_opname', 'buku_pengeluaran', 'buku_penyaluran'] as $jenis) {
+                $dokumen = $pengajuan->dokumen->firstWhere('jenis', $jenis);
+                if (! $dokumen) {
+                    continue;
+                }
+
+                $teks = $this->teks($this->renderDokumen($pengajuan, $jenis, "distribusi-bhp.{$this->viewJenis($jenis)}"));
+
+                foreach ($terlarang as $kata) {
+                    $this->assertStringNotContainsString($kata, $teks, "Dokumen {$jenis} {$dana} memakai nama tanggal Inggris '{$kata}'.");
+                }
+            }
+        }
+    }
+
+    private function viewJenis(string $jenis): string
+    {
+        return str_replace('_', '-', $jenis);
+    }
+
+    /** Kolom tanggal tabel buku memakai d-m-Y, bukan tanggal ISO mentah. */
+    public function test_kolom_tanggal_buku_bukan_iso_mentah(): void
+    {
+        foreach (['buku_pengeluaran', 'buku_penyaluran'] as $jenis) {
+            $pengajuan = $this->pengajuanJuni(SumberDana::BOS);
+            $teks = $this->teks($this->renderDokumen($pengajuan, $jenis, "distribusi-bhp.{$this->viewJenis($jenis)}"));
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/\b\d{4}-\d{2}-\d{2}\b/',
+                $teks,
+                "Tabel {$jenis} mencetak tanggal ISO mentah.",
+            );
         }
     }
 

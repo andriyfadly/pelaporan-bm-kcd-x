@@ -9,6 +9,7 @@ use App\Models\PencatatanBm\InventarisUnit;
 use App\Policies\InventarisPolicy;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -28,6 +29,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Tanggal selalu bahasa Indonesia. `format('d F Y')` memakai nama bulan
+        // PHP (selalu Inggris) dan `translatedFormat`/`isoFormat` ikut locale
+        // Carbon; APP_LOCALE tidak bisa dijadikan patokan karena phpunit.xml
+        // menguncinya ke `en` dan pesan validasi Indonesia dipilih lewat
+        // `lang/id`. Dokumen resmi tidak boleh tercetak "30 January 2026".
+        Carbon::setLocale('id');
+
         Gate::before(function ($user, $ability) {
             return $user->hasRole('super_admin') ? true : null;
         });

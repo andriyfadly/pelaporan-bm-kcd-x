@@ -18,8 +18,10 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use InvalidArgumentException;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
+use ZipArchive;
 
 class DokumenController extends Controller
 {
@@ -49,7 +51,9 @@ class DokumenController extends Controller
         'surat_penyaluran' => ['paper' => 'a4', 'orientation' => 'portrait'],
         'bast' => ['paper' => 'a4', 'orientation' => 'portrait'],
         'bap' => ['paper' => 'a4', 'orientation' => 'portrait'],
-        'stok_opname' => ['paper' => 'a4', 'orientation' => 'portrait'],
+        // F4 (210 × 330 mm) — mengikuti template baku sistem manajemen aset.
+        // Dompdf memakai point: mm × 72/25.4.
+        'stok_opname' => ['paper' => [0, 0, 595.28, 935.43], 'orientation' => 'portrait'],
         'buku_pengeluaran' => ['paper' => 'a4', 'orientation' => 'landscape'],
         'buku_penyaluran' => ['paper' => 'a4', 'orientation' => 'landscape'],
     ];
@@ -100,26 +104,27 @@ class DokumenController extends Controller
             ]);
 
             try {
-                $pdf = Pdf::loadHtml(
-                    view('distribusi-bhp.dokumen-kompilasi', [
-                        'pengajuan' => $pengajuan->load('details.barang'),
-                        'dokumenList' => $dokumenList,
-                        'judulMap' => self::JUDUL,
-                        'sekolah' => $pengajuan->sekolah?->nama_sekolah ?? 'Dinas / Administrator',
-                        'alamat' => $pengajuan->sekolah?->alamat ?? '',
-                        'telepon' => $pengajuan->sekolah?->telepon ?? '',
-                        'website' => $pengajuan->sekolah?->website ?? '',
-                        'email' => $pengajuan->sekolah?->email ?? '',
-                        'kodePos' => $pengajuan->sekolah?->kode_pos ?? '',
-                        'pemohon' => $pengajuan->pemohon?->name ?? '-',
-                        // Tiap halaman kompilasi memakai snapshot dokumennya
-                        // sendiri: dokumen tambahan bisa dibuat pada tanggal
-                        // berbeda sehingga pejabatnya bisa berbeda.
-                        'labelJabatan' => $this->penugasan->labelPenandatangan((string) $pengajuan->sekolah_id),
-                        'settings' => $this->settings->get($pengajuan->sumber_dana),
-                    ])->render()
-                )->setPaper('a4', 'portrait');
-                $response = $pdf->download("batch_dokumen_bhp_{$pengajuan->sumber_dana}.pdf");
+                // Satu PDF per dokumen lalu di-ZIP. Menggabung semuanya ke satu
+                // halaman HTML memaksa satu ukuran/orientasi untuk semua jenis:
+                // surat permintaan dan buku jadi terpotong, stok opname kehilangan
+                // F4. Dompdf tidak mendukung @page bernama, jadi ZIP adalah cara
+                // termurah untuk mempertahankan format tiap dokumen.
+                $zip = new ZipArchive;
+                $path = (string) tempnam(sys_get_temp_dir(), 'bhp-batch-');
+
+                if ($zip->open($path, ZipArchive::OVERWRITE) !== true) {
+                    throw new RuntimeException('Berkas ZIP batch tidak dapat dibuat.');
+                }
+
+                foreach ($dokumenList as $dokumen) {
+                    $zip->addFromString($this->safeFilename($dokumen->nomor), $this->render($pengajuan, $dokumen)->output());
+                }
+
+                $zip->close();
+
+                $response = response()->download($path, "batch_dokumen_bhp_{$pengajuan->sumber_dana}.zip", [
+                    'Content-Type' => 'application/zip',
+                ])->deleteFileAfterSend(true);
             } catch (Throwable $e) {
                 $batch->update([
                     'status' => 'gagal',

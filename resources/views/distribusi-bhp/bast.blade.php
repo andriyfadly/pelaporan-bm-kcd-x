@@ -41,7 +41,7 @@
 
     <div class="narasi">
         Pada hari ini, {{ optional($dokumen->tanggal_titimangsa)->isoFormat('dddd') ?? '-' }} tanggal
-        {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? '-' }},
+        {{ optional($dokumen->tanggal_titimangsa)->translatedFormat('d F Y') ?? '-' }},
         bertempat di Gudang {{ $sekolah }},
         telah dilakukan serah terima penyaluran barang persediaan dengan rincian sebagai berikut:
     </div>
@@ -57,7 +57,7 @@
         @if(!empty($ppb['nip']))
             <tr><td class="label">&nbsp;&nbsp;NIP</td><td>: {{ $ppb['nip'] }}</td></tr>
         @endif
-        <tr><td class="label">Dasar</td><td>: SPPB No. {{ $suratPenyaluran->nomor ?? '-' }} tanggal {{ optional($suratPenyaluran->tanggal_titimangsa)->format('d F Y') ?? '-' }}</td></tr>
+        <tr><td class="label">Dasar</td><td>: SPPB No. {{ $suratPenyaluran->nomor ?? '-' }} tanggal {{ optional($suratPenyaluran->tanggal_titimangsa)->translatedFormat('d F Y') ?? '-' }}</td></tr>
     </table>
 
     <table class="data">

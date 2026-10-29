@@ -65,7 +65,7 @@
         <tr>
             <td></td>
             <td>
-                {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? ($penandatangan['lokasi'] ?? 'Kabupaten') }}, {{ $dokumen->created_at?->format('d F Y') ?? now()->format('d F Y') }}
+                {{ optional($dokumen->tanggal_titimangsa)->translatedFormat('d F Y') ?? now()->translatedFormat('d F Y') }}
                 <div class="space"></div>
                 <strong>{{ $penandatangan['pembantu_pengurus_barang']['nama'] ?? $pemohon ?? '-' }}</strong>
                 @if(!empty($penandatangan['pembantu_pengurus_barang']['nip']))

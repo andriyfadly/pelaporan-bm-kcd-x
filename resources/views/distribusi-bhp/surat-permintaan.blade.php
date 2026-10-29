@@ -31,7 +31,7 @@
     <table class="meta">
         <tr><td class="label">Dasar Permintaan</td><td></td></tr>
         <tr><td class="label">&nbsp;&nbsp;a. Nomor</td><td>: {{ $dokumen->payload['nomor_nota_permintaan'] ?? $pengajuan->dokumen->where('jenis','nota_permintaan')->first()?->nomor ?? '-' }}</td></tr>
-        <tr><td class="label">&nbsp;&nbsp;b. Tanggal</td><td>: {{ optional($pengajuan->tanggal)->format('d F Y') ?? '-' }}</td></tr>
+        <tr><td class="label">&nbsp;&nbsp;b. Tanggal</td><td>: {{ optional($pengajuan->tanggal)->translatedFormat('d F Y') ?? '-' }}</td></tr>
         <tr><td class="label">&nbsp;&nbsp;c. Pihak yang meminta</td><td>: {{ $pengajuan->divisi->nama ?? '-' }}</td></tr>
     </table>
 
@@ -87,7 +87,7 @@
     <table class="ttd">
         <tr>
             <td>
-                {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}
+                {{ optional($dokumen->tanggal_titimangsa)->translatedFormat('d F Y') ?? now()->translatedFormat('d F Y') }}
                 <div class="space"></div>
                 <strong>{{ $penandatangan['wakasek_sarpras']['nama'] ?? '-' }}</strong>
                 @if(!empty($penandatangan['wakasek_sarpras']['nip']))

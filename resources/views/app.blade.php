@@ -12,6 +12,8 @@
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
         <link rel="manifest" href="/site.webmanifest">
         <meta name="theme-color" content="#2563eb">
+        {{-- Dipakai unduhan berbasis form/fetch (batch PDF, cek cetak). --}}
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="msapplication-TileColor" content="#2563eb">
         <meta name="msapplication-TileImage" content="/icons/mstile-150x150.png">
 

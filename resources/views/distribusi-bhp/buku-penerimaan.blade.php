@@ -20,15 +20,8 @@
     </style>
 </head>
 <body>
-    @include('distribusi-bhp.partials.kop-surat', [
-        'sekolah' => $sekolah,
-        'alamat' => $alamat ?? '',
-        'telepon' => $telepon ?? '',
-        'website' => $website ?? '',
-        'email' => $email ?? '',
-        'kodePos' => $kodePos ?? '',
-    ])
-
+    {{-- Tanpa kop surat: mengikuti template baku buku penerimaan (judul +
+         identitas kuasa pengguna barang langsung di atas tabel). --}}
     <h2 class="judul">Buku Penerimaan Barang</h2>
     <p class="nomor">{{ $sumberDana }} — {{ $periode->label() }}</p>
 
@@ -36,7 +29,7 @@
         <thead>
             <tr>
                 <th style="width:26px;">No</th>
-                <th style="width:52px;">Tanggal</th>
+                <th style="width:62px;">Tanggal</th>
                 <th>No. BAST</th>
                 <th>No. Nota/Invoice</th>
                 <th>Penyedia</th>
@@ -55,7 +48,7 @@
                 @php $totalNilai += (int) $item['nilai_total']; @endphp
                 <tr>
                     <td class="center">{{ $i + 1 }}</td>
-                    <td class="center">{{ $item['tanggal'] ?? '-' }}</td>
+                    <td class="center">{{ ($item['tanggal'] ?? null) ? \Illuminate\Support\Carbon::parse($item['tanggal'])->format('d-m-Y') : '-' }}</td>
                     <td>{{ $item['no_bast'] ?? '-' }}</td>
                     <td>{{ $item['no_nota_invoice'] ?? '-' }}</td>
                     <td>{{ $item['penyedia'] ?? '-' }}</td>

@@ -53,6 +53,25 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
             tanggal: tanggal || null,
         });
 
+    // Unduhan batch berisi ZIP, bukan respons Inertia: `router.post` memakai XHR
+    // dengan responseType text sehingga berkas tidak pernah sampai ke pengguna.
+    // Form POST asli membiarkan browser menangani Content-Disposition.
+    const unduhBatch = () => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `${prefix}/pengajuan/${pengajuan.id}/dokumen/batch`;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '_token';
+        csrf.value = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
+    };
+
     return (
         <AppLayout title="Dokumen BHP">
             <Head title="Dokumen Distribusi BHP" />
@@ -104,7 +123,7 @@ export default function Show({ pengajuan }: { pengajuan: Pengajuan }) {
                     {pengajuan.dokumen.length > 0 && (
                         <button
                             type="button"
-                            onClick={() => router.post(`${prefix}/pengajuan/${pengajuan.id}/dokumen/batch`)}
+                            onClick={() => unduhBatch()}
                             className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
                         >
                             <Printer className="w-4 h-4" /> Unduh Batch PDF

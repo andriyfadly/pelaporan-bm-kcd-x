@@ -39,7 +39,7 @@
 
     <div class="narasi">
         Pada hari ini, {{ optional($dokumen->tanggal_titimangsa)->isoFormat('dddd') ?? '-' }} tanggal
-        {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? '-' }},
+        {{ optional($dokumen->tanggal_titimangsa)->translatedFormat('d F Y') ?? '-' }},
         Tim/Petugas Pemeriksa Barang menerangkan bahwa telah dilakukan pemeriksaan barang persediaan
         dengan hasil sebagai berikut:
     </div>
@@ -80,7 +80,7 @@
     </table>
 
     <div class="narasi" style="margin-top:16px;">
-        Berdasarkan pemeriksaan tanggal {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? '-' }},
+        Berdasarkan pemeriksaan tanggal {{ optional($dokumen->tanggal_titimangsa)->translatedFormat('d F Y') ?? '-' }},
         barang tersebut telah diperiksa dan dinyatakan telah sesuai.
     </div>
 
@@ -88,7 +88,7 @@
         <tr>
             <td></td>
             <td>
-                {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}
+                {{ optional($dokumen->tanggal_titimangsa)->translatedFormat('d F Y') ?? now()->translatedFormat('d F Y') }}
                 <div class="space"></div>
                 <strong>{{ $ppb['nama'] ?? '-' }}</strong>
                 @if(!empty($ppb['nip']))

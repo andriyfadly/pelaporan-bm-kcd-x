@@ -129,7 +129,6 @@ class PdfPenandatanganSourceTest extends TestCase
             'distribusi-bhp/stok-opname.blade.php',
             'distribusi-bhp/buku-pengeluaran.blade.php',
             'distribusi-bhp/buku-penyaluran.blade.php',
-            'distribusi-bhp/dokumen-kompilasi.blade.php',
         ];
 
         foreach ($wajibBaca as $relatif) {
@@ -192,47 +191,6 @@ class PdfPenandatanganSourceTest extends TestCase
         $user->assignRole('operator_sekolah');
 
         return $user;
-    }
-
-    public function test_kompilasi_batch_memakai_snapshot_tiap_dokumen(): void
-    {
-        $lama = $this->dokumenDenganPejabat('bast', 'BAST-2025', '2025-06-01', 'PPB Lama');
-        $baru = $this->dokumenDenganPejabat('bap', 'BAP-2026', '2026-06-01', 'PPB Baru');
-
-        $html = view('distribusi-bhp.dokumen-kompilasi', [
-            'dokumenList' => collect([$lama, $baru]),
-            'pengajuan' => $this->pengajuan(),
-            'judulMap' => ['bast' => 'Berita Acara Serah Terima', 'bap' => 'Berita Acara Pemeriksaan'],
-            'sekolah' => $this->sekolah->nama_sekolah,
-            'alamat' => '',
-            'telepon' => '',
-            'website' => '',
-            'email' => '',
-            'kodePos' => '',
-            'pemohon' => 'Pemohon',
-            'labelJabatan' => ['kepala_sekolah' => 'Kepala Sekolah'],
-            'settings' => null,
-        ])->render();
-
-        // Tiap halaman memakai penandatangan dokumennya sendiri; halaman lama
-        // tidak boleh tertimpa snapshot dokumen berikutnya.
-        $this->assertStringContainsString('PPB Lama', $html);
-        $this->assertStringContainsString('PPB Baru', $html);
-    }
-
-    /** @return Dokumen */
-    private function dokumenDenganPejabat(string $jenis, string $nomor, string $tanggal, string $namaPpb)
-    {
-        return new Dokumen([
-            'jenis' => $jenis,
-            'nomor' => $nomor,
-            'tanggal_titimangsa' => $tanggal,
-            'payload' => [
-                'penandatangan' => [
-                    'pembantu_pengurus_barang' => ['nama' => $namaPpb, 'nip' => '198001012005011001', 'jabatan' => 'Pembantu Pengurus Barang'],
-                ],
-            ],
-        ]);
     }
 
     /** @param array<string, array<string, mixed>> $snapshot */

@@ -78,7 +78,7 @@
             @forelse ($items as $i => $item)
                 <tr>
                     <td class="center">{{ $i + 1 }}</td>
-                    <td>{{ $item['tanggal'] ?? '-' }}</td>
+                    <td>{{ ($item['tanggal'] ?? null) ? \Illuminate\Support\Carbon::parse($item['tanggal'])->format('d-m-Y') : '-' }}</td>
                     <td>{{ $item['nomor_dokumen'] ?? $dokumen->nomor }}</td>
                     <td>{{ $item['penerima'] ?? '-' }}</td>
                     <td>{{ $item['kode_barang'] ?? '-' }}</td>
@@ -106,7 +106,7 @@
                 @if(!empty($ws['nip']))<br>NIP. {{ $ws['nip'] }}@endif
             </td>
             <td>
-                {{ optional($dokumen->tanggal_titimangsa)->format('d F Y') ?? now()->format('d F Y') }}<br>
+                {{ optional($dokumen->tanggal_titimangsa)->translatedFormat('d F Y') ?? now()->translatedFormat('d F Y') }}<br>
                 {{ $labelJabatan['pembantu_pengurus_barang'] ?? '-' }},<div class="space"></div>
                 <strong>{{ $ppb['nama'] ?? '-' }}</strong>
                 @if(!empty($ppb['nip']))<br>NIP. {{ $ppb['nip'] }}@endif
