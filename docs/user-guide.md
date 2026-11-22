@@ -42,7 +42,10 @@ Panduan operasional sistem Pelaporan Belanja Modal Cabang Dinas Pendidikan Wilay
 4. Masukkan rincian barang per accordion: cari dari **Katalog Pagu** (mengisi otomatis Kode Barang, Nama Barang, Jenis Aset), lalu lengkapi Merk/Tipe, Satuan, Volume, dan Harga Satuan. Untuk kategori **Buku**, No Sertifikat/Penerbit wajib diisi.
 5. Klik **Simpan Realisasi**. Isi form tersimpan otomatis sebagai draft di browser — aman jika halaman ter-refresh, draft hilang setelah tersimpan.
 
-**Alternatif: Import Excel** (hanya sekolah tertentu yang memiliki tombol ini). Klik **Import Excel** di halaman Data Barang, unduh **Template**, isi 12 kolom (No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\* — `*` = wajib; Kode Barang harus ada di katalog), lalu unggah. Import bersifat **all-or-nothing**: bila ada satu baris tidak valid, seluruh impor dibatalkan dan sistem menampilkan nomor baris + alasannya. Baris dengan No. SPK sama otomatis digabung menjadi satu dokumen SPK multi-item.
+**Alternatif: Import Excel** (hanya sekolah tertentu yang memiliki tombol ini). Klik **Import Excel** di halaman Data Barang, unduh **Template**, isi 13 kolom (No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\*, Jenis\*; `*` = wajib). Nilai Jenis wajib `Peralatan & Mesin` atau `Buku` dan disimpan ke `kategori`. Import bersifat **all-or-nothing**: bila ada satu baris tidak valid, seluruh impor dibatalkan. Jika impor gagal:
+- **Modal Import Excel tetap terbuka** dan menampilkan blok "Detail kesalahan impor": hingga 30 kesalahan pertama, satu per baris (`Baris N: alasan`), plus jumlah kesalahan sisanya. Perbaiki baris yang disebut lalu unggah ulang.
+- **Toast** hanya memberi ringkasan: "Impor dibatalkan, tidak ada data tersimpan (N kesalahan). Rincian ada di dialog impor."
+Baris dengan No. SPK sama otomatis digabung menjadi satu dokumen SPK multi-item.
 
 ### Langkah 2: Alokasikan Realisasi ke Kodering
 1. Buka menu **Input Realisasi** (`/pelaporan-bm/input-realisasi`), pilih bulan.

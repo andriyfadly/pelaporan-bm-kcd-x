@@ -45,8 +45,11 @@ Dokumentasi rute web, controller, middleware, dan format payload data aplikasi.
     ditolak dengan flash error. Halaman index mengirim flag `canImportSpj`
     untuk menampilkan/menyembunyikan tombol Import Excel.
   - Payload: `file` (xlsx/xls, max 10MB, template `/templates/template_import_spj.xlsx`), `bulan` (1-12).
-  - Kolom template (urutan tetap): No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\*.
-  - Result: **All-or-nothing** — pre-validasi seluruh baris (kolom wajib, BA TGL valid/serial Excel, `kode_barang` harus ada di master katalog → `nama_barang`+`jenis_aset` di-lookup, volume &gt; 0, harga ≥ 0); satu baris invalid = batal semua + flash error per baris. Baris `no_spk` sama = 1 dokumen SPK multi-item (sama seperti UI). Limit 5.000 baris. Diblokir saat laporan terkunci. Tercatat di log `sistem` (event `import-spj`) **dengan flag `sembunyi_dari_admin_kcd`** — log hanya terlihat oleh super_admin.
+  - Kolom template (urutan tetap, 13 kolom): No. SP2D, Sumber Perolehan\*, No. SPK/Kwitansi\*, BA NO\*, BA TGL\*, Kode Barang, Merk/Tipe\*, No. Sertifikat/Pabrik/Penerbit, Ukuran/Dimensi Bangunan, Satuan\*, Volume\*, Harga Satuan\*, Jenis\* (`Peralatan & Mesin` atau `Buku`, disimpan ke `kategori`).
+  - Result: **All-or-nothing** — pre-validasi seluruh baris (kolom wajib, BA TGL valid/serial Excel, `kode_barang` harus ada di master katalog → `nama_barang`+`jenis_aset` di-lookup, volume > 0, harga ≥ 0); satu baris invalid = batal seluruh impor. Kegagalan mengirim dua jalur:
+    - **`errors.import`** (dari `withErrors`): rincian hingga 30 kesalahan pertama, satu per baris (`Baris N: ...`), ditambah jumlah sisanya. `PelaporanBm/Spj/Index.tsx` menampilkannya di blok "Detail kesalahan impor" dan **tidak** menutup modal selama `flash.success` belum ada.
+    - **`flash.error`**: ringkasan singkat `Impor dibatalkan, tidak ada data tersimpan (N kesalahan). Rincian ada di dialog impor.` (toast).
+    - Baris `no_spk` sama = 1 dokumen SPK multi-item (sama seperti UI). Limit 5.000 baris. Diblokir saat laporan terkunci. Tercatat di log `sistem` (event `import-spj`) **dengan flag `sembunyi_dari_admin_kcd`** — log hanya terlihat oleh super_admin.
 - **`DELETE /pelaporan-bm/spj/{id}`**: Hapus item barang SPJ (beserta realisasi terkait, transaksi DB).
 - **`DELETE /pelaporan-bm/spj/spk/{no_spk}`**: Hapus seluruh item satu dokumen SPK + realisasi terkait (`no_spk` wildcard).
 - **`GET /pelaporan-bm/cari-barang`**

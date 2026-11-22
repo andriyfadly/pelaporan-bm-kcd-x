@@ -416,11 +416,14 @@ class SpjController extends Controller
         }
 
         if ($errors !== []) {
-            $ringkasan = count($errors) > 5
-                ? implode(' ', array_slice($errors, 0, 5)).' (dan '.(count($errors) - 5).' kesalahan lain)'
-                : implode(' ', $errors);
+            $maxTampil = 30;
+            $detail = count($errors) > $maxTampil
+                ? implode("\n", array_slice($errors, 0, $maxTampil))."\n… dan ".(count($errors) - $maxTampil).' kesalahan lain.'
+                : implode("\n", $errors);
 
-            return back()->with('error', "Impor dibatalkan, tidak ada data tersimpan. {$ringkasan}");
+            return back()
+                ->with('error', 'Impor dibatalkan, tidak ada data tersimpan ('.count($errors).' kesalahan). Rincian ada di dialog impor.')
+                ->withErrors(['import' => $detail]);
         }
 
         $count = 0;

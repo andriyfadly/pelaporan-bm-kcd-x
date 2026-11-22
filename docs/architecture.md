@@ -146,6 +146,9 @@ database/seeders/
   BA TGL serial Excel via `PhpSpreadsheet\Shared\Date`. **Restricted NPSN**:
   allowlist `SpjController::NPSN_IMPORT_SPJ` (backend tolak + flag
   `canImportSpj` untuk UI). Log `import-spj` ber-flag `sembunyi_dari_admin_kcd`.
+  Kegagalan validasi mengirim `withErrors(['import' => rincian])` (maks 30
+  kesalahan pertama, satu per baris) + `flash.error` ringkas; modal import
+  hanya ditutup bila `flash.success` ada.
 
 ### 4.6 Logging aktivitas (sistem-wide)
 - Trait `LogsActivity` di 6 model (Spj, Realisasi, Acuan, KunciLaporan,
@@ -260,6 +263,8 @@ transaction sendiri agar caller (mis. `DokumenService`) dapat membungkus approve
 - Settings BHP hanya kolom `format_nomor` (paper_size & orientation **dihapus** — hardcode per jenis dokumen di `DokumenController::PAPER`).
 - Import SPJ: tombol "Import Excel" + modal unggah di `Spj/Index.tsx`
   (kondisional `canImportSpj`), link template `template_import_spj.xlsx`.
+  Jika impor gagal, modal tetap terbuka dan menampilkan `errors.import` di
+  blok "Detail kesalahan impor" (maks 30 baris, scrollable).
 - Cetak: pre-flight check, cegah unduh kosong, modal progres (cookie status).
 - Ikon: lucide-react. Tanpa `any` (aturan `docs/guidelines.md`).
 
