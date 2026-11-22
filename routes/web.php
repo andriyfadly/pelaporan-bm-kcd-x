@@ -191,6 +191,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/laporan/berita-acara-serah-terima', [BhpLaporanController::class, 'bastSerahTerima'])->name('laporan.bast-serah-terima');
         });
 
+
         Route::get('/penerimaan/lunas-bayar', [BhpPenerimaanController::class, 'lunasBayar'])
             ->middleware('permission:kelola-penerimaan-bhp')->name('penerimaan.lunas-bayar');
     };

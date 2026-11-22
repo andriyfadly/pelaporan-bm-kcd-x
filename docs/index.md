@@ -26,6 +26,10 @@ Pelaporan BM. Lihat `docs/requirements/` untuk kontrak kedua domain.
 12. [Developer Guidelines](guidelines.md) — standar kode, testing, RBAC, relative-path.
 13. [Glosarium](glossary.md) — istilah BM, SPJ, kunci, log, BHP.
 
+### Flow per modul (rujukan perilaku aktual)
+
+Dokumen flow di `docs/flows/` merangkum **urutan langkah, guard, side effect, dan test penjaga** per domain (turunan dari `routes/web.php`, controller, service). Mulai dari [`docs/flows/README.md`](flows/README.md), lihat juga diagram lintas domain di [`docs/flows/repository-overview.md`](flows/repository-overview.md). Konvensi penulisan: [`docs/flows/conventions.md`](flows/conventions.md).
+
 ---
 
 ## Requirements (kontrak domain)
