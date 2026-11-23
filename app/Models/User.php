@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Models\DistribusiBhp\Divisi;
 use App\Models\Master\Sekolah;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -31,7 +30,6 @@ class User extends Authenticatable
         'password',
         'password_changed_at',
         'sekolah_id',
-        'divisi_id',
         'is_active',
     ];
 
@@ -70,9 +68,7 @@ class User extends Authenticatable
 
     public function isPasswordExpired(): bool
     {
-        // Akun sekolah & operator divisi dibuat dengan password awal dari pihak
-        // lain (admin/operator sekolah), jadi wajib lewat ganti password pertama.
-        if (! $this->hasRole(['operator_sekolah', 'bendahara_sekolah', 'operator_divisi'])) {
+        if (! $this->hasRole(['operator_sekolah', 'bendahara_sekolah'])) {
             return false;
         }
 
@@ -86,10 +82,5 @@ class User extends Authenticatable
     public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
-    }
-
-    public function divisi(): BelongsTo
-    {
-        return $this->belongsTo(Divisi::class, 'divisi_id');
     }
 }

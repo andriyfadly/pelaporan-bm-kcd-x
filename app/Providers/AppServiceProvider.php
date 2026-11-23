@@ -3,10 +3,6 @@
 namespace App\Providers;
 
 use App\Listeners\CatatLoginLogout;
-use App\Models\Master\Pegawai;
-use App\Models\Master\Ruang;
-use App\Models\PencatatanBm\InventarisUnit;
-use App\Policies\InventarisPolicy;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
@@ -33,10 +29,6 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('viewLogViewer', fn ($user) => $user->can('lihat-log-aktivitas'));
-
-        Gate::policy(InventarisUnit::class, InventarisPolicy::class);
-        Gate::policy(Ruang::class, InventarisPolicy::class);
-        Gate::policy(Pegawai::class, InventarisPolicy::class);
 
         Event::listen(Login::class, CatatLoginLogout::class);
         Event::listen(Logout::class, CatatLoginLogout::class);

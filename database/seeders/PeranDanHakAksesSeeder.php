@@ -24,28 +24,6 @@ class PeranDanHakAksesSeeder extends Seeder
             'cetak-laporan-bm',
             'kelola-user',
             'lihat-log-aktivitas',
-            'lihat-distribusi-bhp',
-            'kelola-master-bhp',
-            'assign-kode-rekening-bhp',
-            'kelola-penerimaan-bhp',
-            'kelola-pengajuan-bhp',
-            'review-pengajuan-bhp',
-            'approve-pengajuan-bhp',
-            'cetak-dokumen-bhp',
-            'kelola-divisi-bhp',
-            'kelola-penyedia-bhp',
-            'kelola-barang-bhp',
-            'kelola-master-data-sekolah',
-            'lihat-pencatatan-bm',
-            'kelola-inventaris-bm',
-            'kelola-ruang-bm',
-            'kelola-pegawai-bm',
-            'kelola-jabatan-bm',
-            'kelola-penugasan-pegawai-bm',
-            'mutasi-inventaris-bm',
-            'proses-pengembalian-bm',
-            'cetak-inventaris-bm',
-            'sinkronisasi-inventaris-bm',
         ];
 
         foreach ($hakAkses as $hak) {
@@ -53,8 +31,7 @@ class PeranDanHakAksesSeeder extends Seeder
         }
 
         $adminKcd = Role::firstOrCreate(['name' => 'admin_kcd', 'guard_name' => 'web']);
-        // Re-sync/koreksi massal khusus super admin.
-        $adminKcd->syncPermissions(array_values(array_diff($hakAkses, ['sinkronisasi-inventaris-bm'])));
+        $adminKcd->syncPermissions($hakAkses);
 
         $superAdmin = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
         $superAdmin->syncPermissions(Permission::all());
@@ -66,24 +43,6 @@ class PeranDanHakAksesSeeder extends Seeder
             'edit-spj-bm',
             'hapus-spj-bm',
             'cetak-laporan-bm',
-            'unduh-rekap-bm',
-            'lihat-distribusi-bhp',
-            'kelola-penerimaan-bhp',
-            'kelola-pengajuan-bhp',
-            'cetak-dokumen-bhp',
-            'kelola-divisi-bhp',
-            'kelola-penyedia-bhp',
-            'kelola-barang-bhp',
-            'kelola-master-data-sekolah',
-            'lihat-pencatatan-bm',
-            'kelola-inventaris-bm',
-            'kelola-ruang-bm',
-            'kelola-pegawai-bm',
-            'kelola-jabatan-bm',
-            'kelola-penugasan-pegawai-bm',
-            'mutasi-inventaris-bm',
-            'proses-pengembalian-bm',
-            'cetak-inventaris-bm',
         ]);
 
         $bendaharaSekolah = Role::firstOrCreate(['name' => 'bendahara_sekolah', 'guard_name' => 'web']);
@@ -93,24 +52,6 @@ class PeranDanHakAksesSeeder extends Seeder
             'edit-spj-bm',
             'hapus-spj-bm',
             'cetak-laporan-bm',
-            'unduh-rekap-bm',
-            'lihat-distribusi-bhp',
-            'kelola-pengajuan-bhp',
-            'lihat-pencatatan-bm',
-            'kelola-inventaris-bm',
-            'kelola-ruang-bm',
-            'kelola-pegawai-bm',
-            'kelola-jabatan-bm',
-            'kelola-penugasan-pegawai-bm',
-            'mutasi-inventaris-bm',
-            'proses-pengembalian-bm',
-            'cetak-inventaris-bm',
-        ]);
-
-        $operatorDivisi = Role::firstOrCreate(['name' => 'operator_divisi', 'guard_name' => 'web']);
-        $operatorDivisi->syncPermissions([
-            'lihat-distribusi-bhp',
-            'kelola-pengajuan-bhp',
         ]);
     }
 }

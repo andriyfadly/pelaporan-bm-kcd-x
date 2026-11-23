@@ -79,9 +79,6 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
         bulan,
     });
 
-    // `errors.import` dikirim server lewat withErrors, di luar field form.
-    const importDetail = (importErrors as Record<string, string | undefined>).import;
-
     const isReadOnly = isLocked || statusKirim === 'menunggu_approval' || statusKirim === 'disetujui';
 
     // Grouping by SPK
@@ -154,13 +151,7 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
         e.preventDefault();
         postImport('/pelaporan-bm/spj/import', {
             forceFormData: true,
-            onSuccess: (page) => {
-                // Inertia memanggil onSuccess juga saat server membalas flash error;
-                // tutup modal hanya bila impor benar-benar sukses.
-                const flash = page.props.flash as { success?: string } | undefined;
-                if (!flash?.success) {
-                    return;
-                }
+            onSuccess: () => {
                 setShowImportModal(false);
                 resetImport();
             },
@@ -236,10 +227,7 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                                 {canImportSpj && (
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            resetImport();
-                                            setShowImportModal(true);
-                                        }}
+                                        onClick={() => setShowImportModal(true)}
                                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
                                     >
                                         <Upload className="w-4 h-4" />
@@ -493,19 +481,10 @@ export default function Index({ items, realisasiIds = [], bulan, isLocked, statu
                             <p className="text-red-500 text-xs mt-2">{importErrors.file}</p>
                         )}
                     </div>
-                    {importDetail && (
-                        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-left">
-                            <p className="text-xs font-bold text-red-700 mb-1">Detail kesalahan impor</p>
-                            <pre className="whitespace-pre-wrap break-words text-xs text-red-700 font-sans max-h-64 overflow-y-auto">{importDetail}</pre>
-                        </div>
-                    )}
                     <div className="flex justify-end gap-2">
                         <button
                             type="button"
-                            onClick={() => {
-                                setShowImportModal(false);
-                                resetImport();
-                            }}
+                            onClick={() => setShowImportModal(false)}
                             className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
                         >
                             Batal

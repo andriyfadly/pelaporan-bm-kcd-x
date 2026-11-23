@@ -16,36 +16,23 @@ class KodeSekolahSeeder extends Seeder
         }
 
         $sql = File::get($sqlPath);
-
-        // Parse kode_sekolah
-        if (preg_match('/INSERT INTO `kode_sekolah`[^V]+VALUES\s*(.+?);/s', $sql, $matches)) {
-            preg_match_all("/\((\d+),\s*(\d+),\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*(NULL|\d+)\)/", $matches[1], $rows, PREG_SET_ORDER);
-
-            foreach ($rows as $row) {
-                Sekolah::updateOrCreate(
-                    ['id_sekolah_lama' => (int) $row[1]],
-                    [
-                        'no_urut' => (int) $row[2],
-                        'nama_sekolah' => trim($row[3]),
-                        'kota_kab' => trim($row[4]),
-                        'kode_sub_pengguna' => trim($row[5]),
-                        'kode_wilayah' => trim($row[6]),
-                    ]
-                );
-            }
+        if (! preg_match('/INSERT INTO `kode_sekolah`[^V]+VALUES\s*(.+?);/s', $sql, $matches)) {
+            return;
         }
 
-        // Isi NPSN dari data_barang_acuan (kolom ke-4: npsn)
-        $namaToNpsn = [];
-        if (preg_match('/INSERT INTO `data_barang_acuan`[^V]+VALUES\s*(.+?);/s', $sql, $matches)) {
-            preg_match_all("/\([^,]+,\s*[^,]+,\s*'([^']+)',\s*'([^']+)'/", $matches[1], $rows, PREG_SET_ORDER);
-            foreach ($rows as $row) {
-                $namaToNpsn[trim($row[1])] = trim($row[2]);
-            }
-        }
+        preg_match_all("/\((\d+),\s*(\d+),\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*(NULL|\d+)\)/", $matches[1], $rows, PREG_SET_ORDER);
 
-        foreach ($namaToNpsn as $satuan => $npsn) {
-            Sekolah::where('nama_sekolah', $satuan)->whereNull('npsn')->update(['npsn' => $npsn]);
+        foreach ($rows as $row) {
+            Sekolah::updateOrCreate(
+                ['id_sekolah_lama' => (int) $row[1]],
+                [
+                    'no_urut' => (int) $row[2],
+                    'nama_sekolah' => trim($row[3]),
+                    'kota_kab' => trim($row[4]),
+                    'kode_sub_pengguna' => trim($row[5]),
+                    'kode_wilayah' => trim($row[6]),
+                ]
+            );
         }
     }
 }

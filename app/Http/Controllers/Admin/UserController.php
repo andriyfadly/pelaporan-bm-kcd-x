@@ -40,26 +40,24 @@ class UserController extends Controller
 
         $this->validateRoleSchoolPair($validated['role'], $validated['sekolah_id'] ?? null);
 
-        DB::transaction(function () use ($validated): void {
-            $user = activity()->withoutLogging(fn () => User::create([
-                'name' => $validated['name'],
-                'username' => $validated['username'],
-                'password' => $validated['password'],
-                'sekolah_id' => $validated['sekolah_id'] ?? null,
-            ]));
+        $user = activity()->withoutLogging(fn () => User::create([
+            'name' => $validated['name'],
+            'username' => $validated['username'],
+            'password' => $validated['password'],
+            'sekolah_id' => $validated['sekolah_id'] ?? null,
+        ]));
 
-            $user->assignRole($validated['role']);
+        $user->assignRole($validated['role']);
 
-            activity('sistem')
-                ->performedOn($user)
-                ->event('tambah-user')
-                ->withProperties([
-                    'ringkasan' => "Tambah user {$user->username} ({$validated['role']})",
-                    'sekolah_id' => $user->sekolah_id,
-                    'role' => $validated['role'],
-                ])
-                ->log('tambah-user');
-        });
+        activity('sistem')
+            ->performedOn($user)
+            ->event('tambah-user')
+            ->withProperties([
+                'ringkasan' => "Tambah user {$user->username} ({$validated['role']})",
+                'sekolah_id' => $user->sekolah_id,
+                'role' => $validated['role'],
+            ])
+            ->log('tambah-user');
 
         return back()->with('success', 'User berhasil ditambahkan.');
     }
@@ -81,11 +79,9 @@ class UserController extends Controller
 
         $menonaktifkan = array_key_exists('is_active', $validated) && ! (bool) $validated['is_active'];
 
-        $finalRole = $validated['role'] ?? $user->roles()->value('name');
-        $finalSekolahId = array_key_exists('sekolah_id', $validated)
-            ? $validated['sekolah_id']
-            : (($validated['role'] ?? null) === 'admin_kcd' ? null : $user->sekolah_id);
-        $this->validateRoleSchoolPair($finalRole, $finalSekolahId);
+        if (array_key_exists('role', $validated)) {
+            $this->validateRoleSchoolPair($validated['role'], $validated['sekolah_id'] ?? null);
+        }
 
         if ($menonaktifkan && $user->id === auth()->id()) {
             return back()->with('error', 'Anda tidak dapat menonaktifkan akun Anda sendiri!');
@@ -113,32 +109,36 @@ class UserController extends Controller
             $data['is_active'] = (bool) $validated['is_active'];
         }
 
-        DB::transaction(function () use ($user, $data, $validated, $menonaktifkan): void {
-            activity()->withoutLogging(fn () => $user->update($data));
+        activity()->withoutLogging(fn () => $user->update($data));
 
-            if ($menonaktifkan) {
-                DB::table('sessions')->where('user_id', $user->id)->delete();
-            }
+        // Nonaktif = putus semua sesi login yang sedang berjalan.
+        if ($menonaktifkan) {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
 
-            if (! empty($validated['role'])) {
-                $user->syncRoles([$validated['role']]);
-            }
+        if (! empty($validated['role'])) {
+            $roleName = match ($validated['role']) {
+                'admin', 'admin_kcd' => 'admin_kcd',
+                'bendahara_sekolah' => 'bendahara_sekolah',
+                default => 'operator_sekolah',
+            };
+            $user->syncRoles([$roleName]);
+        }
 
-            $ringkasan = "Ubah user {$user->username}"
-                .(! empty($validated['role']) ? " ({$validated['role']})" : '')
-                .(array_key_exists('is_active', $validated) ? ($validated['is_active'] ? ' [diaktifkan]' : ' [dinonaktifkan]') : '');
+        $ringkasan = "Ubah user {$user->username}"
+            .(! empty($validated['role']) ? " ({$validated['role']})" : '')
+            .(array_key_exists('is_active', $validated) ? ($validated['is_active'] ? ' [diaktifkan]' : ' [dinonaktifkan]') : '');
 
-            activity('sistem')
-                ->performedOn($user)
-                ->event('ubah-user')
-                ->withProperties([
-                    'ringkasan' => $ringkasan,
-                    'sekolah_id' => $user->sekolah_id,
-                    'role' => $validated['role'] ?? null,
-                    'is_active' => array_key_exists('is_active', $validated) ? (bool) $validated['is_active'] : null,
-                ])
-                ->log('ubah-user');
-        });
+        activity('sistem')
+            ->performedOn($user)
+            ->event('ubah-user')
+            ->withProperties([
+                'ringkasan' => $ringkasan,
+                'sekolah_id' => $user->sekolah_id,
+                'role' => $validated['role'] ?? null,
+                'is_active' => array_key_exists('is_active', $validated) ? (bool) $validated['is_active'] : null,
+            ])
+            ->log('ubah-user');
 
         return back()->with('success', 'Data user berhasil diperbarui!');
     }
@@ -166,19 +166,16 @@ class UserController extends Controller
 
         $username = $user->username;
         $sekolahId = $user->sekolah_id;
-        DB::transaction(function () use ($user, $username, $sekolahId): void {
-            DB::table('sessions')->where('user_id', $user->id)->delete();
-            activity()->withoutLogging(fn () => $user->delete());
+        activity()->withoutLogging(fn () => $user->delete());
 
-            activity('sistem')
-                ->event('hapus-user')
-                ->withProperties([
-                    'ringkasan' => "Hapus user {$username}",
-                    'sekolah_id' => $sekolahId,
-                    'username' => $username,
-                ])
-                ->log('hapus-user');
-        });
+        activity('sistem')
+            ->event('hapus-user')
+            ->withProperties([
+                'ringkasan' => "Hapus user {$username}",
+                'sekolah_id' => $sekolahId,
+                'username' => $username,
+            ])
+            ->log('hapus-user');
 
         return back()->with('success', 'User berhasil dihapus!');
     }
