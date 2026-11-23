@@ -25,8 +25,16 @@ class Acuan extends Model
         'uraian',
         'nominal',
         'bulan',
+        'tahun',
         'id_acuan_lama',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $acuan): void {
+            $acuan->tahun ??= $acuan->tanggal ? (int) date('Y', strtotime((string) $acuan->tanggal)) : (int) now()->year;
+        });
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

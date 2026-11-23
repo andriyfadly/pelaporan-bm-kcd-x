@@ -197,10 +197,36 @@ class SpjImportTest extends TestCase
         $this->actingAs($operator)
             ->post(route('pelaporan-bm.spj.import'), ['file' => $file, 'bulan' => 5])
             ->assertRedirect()
-            ->assertSessionHas('error');
+            ->assertSessionHas('error')
+            ->assertSessionHasErrors(['import']);
+
+        $detail = session('errors')->getBag('default')->first('import');
+        $this->assertStringContainsString('Baris 3: Sumber Perolehan wajib diisi.', $detail);
 
         // All-or-nothing: baris valid pun tidak tersimpan.
         $this->assertDatabaseCount('pelaporan_bm_spj', 0);
+    }
+
+    public function test_import_gagal_membatasi_detail_30_kesalahan_pertama(): void
+    {
+        $sekolah = $this->sekolah('SMKN Banyak Error');
+        $operator = $this->operator($sekolah, 'op_banyak_error');
+        $this->buatKatalog();
+
+        $rows = [$this->header()];
+        for ($i = 0; $i < 31; $i++) {
+            $rows[] = $this->barisValid(['sumber' => '']);
+        }
+
+        $this->actingAs($operator)
+            ->post(route('pelaporan-bm.spj.import'), ['file' => $this->xlsx($rows), 'bulan' => 5])
+            ->assertRedirect()
+            ->assertSessionHasErrors(['import']);
+
+        $detail = session('errors')->getBag('default')->first('import');
+        $this->assertSame(30, substr_count($detail, 'Baris '));
+        $this->assertStringContainsString('… dan 1 kesalahan lain.', $detail);
+        $this->assertStringNotContainsString('Baris 32:', $detail);
     }
 
     public function test_import_gagal_kode_barang_tidak_ada_di_katalog(): void

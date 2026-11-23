@@ -14,11 +14,13 @@ class KunciLaporanController extends Controller
         $request->validate([
             'sekolah_id' => 'required|uuid|exists:master_data_sekolah,id',
             'bulan' => 'required|integer|between:1,12',
+            'tahun' => 'nullable|integer|between:2026,9999',
         ]);
 
         $kunci = KunciLaporan::firstOrNew([
             'sekolah_id' => $request->input('sekolah_id'),
             'bulan' => (int) $request->input('bulan'),
+            'tahun' => (int) $request->input('tahun', now()->year),
         ]);
 
         $kunci->status_kunci = ! $kunci->status_kunci;
@@ -47,12 +49,14 @@ class KunciLaporanController extends Controller
         $request->validate([
             'sekolah_id' => 'required|uuid|exists:master_data_sekolah,id',
             'bulan' => 'required|integer|between:1,12',
+            'tahun' => 'nullable|integer|between:2026,9999',
             'status_kirim' => 'required|string|in:draft,menunggu_approval,disetujui',
         ]);
 
         $kunci = KunciLaporan::firstOrNew([
             'sekolah_id' => $request->input('sekolah_id'),
             'bulan' => (int) $request->input('bulan'),
+            'tahun' => (int) $request->input('tahun', now()->year),
         ]);
 
         $statusKirim = $request->input('status_kirim');

@@ -13,7 +13,7 @@ master_data_sekolah (Sekolah)
   ├── 1──N pelaporan_bm_acuan
   ├── 1──N pelaporan_bm_spj
   ├── 1──N pelaporan_bm_realisasi
-  └── 1──N pelaporan_bm_kunci_laporan  [unique(sekolah_id, bulan)]
+  └── 1──N pelaporan_bm_kunci_laporan  [unique(sekolah_id, bulan, tahun)]
 
 pelaporan_bm_acuan (Acuan)
   ├── 1──N pelaporan_bm_spj (acuan_id)
@@ -57,12 +57,12 @@ Catatan: migrasi `drop_email_and_email_verified_at` menghapus kolom email.
 ### `pelaporan_bm_acuan`
 `id` uuid PK · `sekolah_id` FK · `tanggal` date · `kodering` (255) ·
 `bku` (100) · `uraian` text · `nominal` numeric(15,2) · `bulan` int 1–12 ·
-`id_acuan_lama` int (jejak legacy).
+`tahun` smallint default 2026 · `id_acuan_lama` int (jejak legacy).
 
 ### `pelaporan_bm_spj`
 Dokumen + item fisik per baris. `sekolah_id` FK · `acuan_id` NULLABLE FK ·
 `kategori` (50) · `no_sp2d` (100) · `sumber_perolehan` (100) ·
-`bulan_realisasi` int · `no_spk` (150) · `ba_no` (150), `ba_tgl` date ·
+`bulan_realisasi` int · `tahun` smallint default 2026 · `no_spk` (150) · `ba_no` (150), `ba_tgl` date ·
 barang: `kode_barang` (50), `nama_barang` (255), `jenis_aset` (100),
 `merk_tipe` (255), `no_sertifikat` (150), `ukuran_bangunan` (150),
 `satuan` (50), `volume` numeric(10,2), `harga_satuan`/`nilai_perolehan`
@@ -70,14 +70,14 @@ numeric(15,2) · `id_spj_lama` int.
 
 ### `pelaporan_bm_realisasi`
 Snapshot alokasi per kodering: `spj_id` FK, `sekolah_id` FK, `acuan_id` FK,
-`kodering_belanja` (255), `bulan_realisasi` int + salinan seluruh field
+`kodering_belanja` (255), `bulan_realisasi` int, `tahun` smallint default 2026 + salinan seluruh field
 dokumen & barang SPJ · `id_realisasi_lama` bigint.
 
 ### `pelaporan_bm_kunci_laporan`
 `sekolah_id` FK · `bulan` int · `tahun` int · `status_kunci` boolean ·
 `dikunci_pada` · `dikunci_oleh` (uuid → users) · `status_kirim`
 (`draft`/`menunggu_approval`/`disetujui`) · `dikirim_pada`.
-Unique `(sekolah_id, bulan)`.
+Unique `(sekolah_id, bulan, tahun)`.
 
 ### `activity_log` (Spatie v5, morph UUID)
 `id` bigint PK · `log_name` (app memakai `sistem`) · `description` text ·
@@ -96,7 +96,9 @@ Fortify (`password_reset_tokens`, 2FA di users, `passkeys`), `sessions`,
 - Uang: `numeric(15,2)`; volume `numeric(10,2)`; bulan int 1–12 (bukan date).
 - `nilai_perolehan = volume × harga_satuan` dihitung server-side.
 - Hapus SPJ/SPK: cascade manual (`realisasi` by `spj_id` dulu) dalam transaksi.
-- Unique: `kode_barang`, `username`, `(sekolah_id, bulan)` di kunci.
+- Unique: `kode_barang`, `username`, `(sekolah_id, bulan, tahun)` di kunci.
+- Kolom `tahun` pada `acuan`/`spj`/`realisasi`/`kunci_laporan` wajib terisi;
+  migrasi lama membackfill 2026 dan seluruh query periode memfilter bulan+tahun.
 - Migrasi legacy: kolom `*_lama` (`id_sekolah_lama`, `id_acuan_lama`,
   `id_spj_lama`, `id_realisasi_lama`) + `updateOrCreate` idempoten.
 

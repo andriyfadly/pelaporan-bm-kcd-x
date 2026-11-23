@@ -50,13 +50,8 @@ class DashboardController extends Controller
             // fallback ke semua sekolah: bulan tanpa acuan = target 0.
             $acuanQuery = Acuan::query()
                 ->where('bulan', $filterBulan)
-                ->whereNotNull('sekolah_id')
-                ->where(function ($q) use ($filterTahun) {
-                    $q->whereYear('tanggal', $filterTahun)
-                        ->orWhere(function ($q) use ($filterTahun) {
-                            $q->whereNull('tanggal')->whereYear('created_at', $filterTahun);
-                        });
-                });
+                ->where('tahun', $filterTahun)
+                ->whereNotNull('sekolah_id');
 
             $targetSekolah = Sekolah::query()
                 ->whereIn('id', $acuanQuery->select('sekolah_id'))
@@ -67,12 +62,7 @@ class DashboardController extends Controller
             // (hanya Realisasi final; Spj = katalog draft tidak dihitung).
             $selesaiIds = Realisasi::query()
                 ->where('bulan_realisasi', $filterBulan)
-                ->where(function ($q) use ($filterTahun) {
-                    $q->whereYear('ba_tgl', $filterTahun)
-                        ->orWhere(function ($q) use ($filterTahun) {
-                            $q->whereNull('ba_tgl')->whereYear('created_at', $filterTahun);
-                        });
-                })
+                ->where('tahun', $filterTahun)
                 ->whereNotNull('sekolah_id')
                 ->distinct()
                 ->pluck('sekolah_id')
@@ -113,10 +103,12 @@ class DashboardController extends Controller
         $sekolah = $user->sekolah ?: Sekolah::find($sekolahId);
 
         $bulanSekarang = (int) date('n');
+        $tahunSekarang = (int) date('Y');
         $bulanLapor = $this->bulanLapor($bulanSekarang);
 
         $kunciLapor = KunciLaporan::where('sekolah_id', $sekolahId)
             ->where('bulan', $bulanLapor)
+            ->where('tahun', $tahunSekarang)
             ->first();
 
         $statusRaw = strtolower(trim($kunciLapor?->status_kirim ?? ''));
@@ -125,17 +117,20 @@ class DashboardController extends Controller
             : 'BELUM SELESAI';
 
         $acuanPerBulan = Acuan::where('sekolah_id', $sekolahId)
+            ->where('tahun', $tahunSekarang)
             ->selectRaw('bulan, SUM(nominal) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan');
 
         $spjPerBulan = Spj::where('sekolah_id', $sekolahId)
+            ->where('tahun', $tahunSekarang)
             ->selectRaw('bulan_realisasi, SUM(nilai_perolehan) as total_realisasi, COUNT(id) as total_aset, COUNT(DISTINCT CASE WHEN TRIM(no_spk) != \'\' THEN no_spk END) as berkas_spk')
             ->groupBy('bulan_realisasi')
             ->get()
             ->keyBy('bulan_realisasi');
 
         $kunciPerBulan = KunciLaporan::where('sekolah_id', $sekolahId)
+            ->where('tahun', $tahunSekarang)
             ->pluck('status_kirim', 'bulan');
 
         $rekapBulanan = [];

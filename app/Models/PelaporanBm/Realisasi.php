@@ -24,6 +24,7 @@ class Realisasi extends Model
         'sumber_perolehan',
         'kodering_belanja',
         'bulan_realisasi',
+        'tahun',
         'no_spk',
         'ba_no',
         'ba_tgl',
@@ -39,6 +40,13 @@ class Realisasi extends Model
         'nilai_perolehan',
         'id_realisasi_lama',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $realisasi): void {
+            $realisasi->tahun ??= $realisasi->ba_tgl ? (int) date('Y', strtotime((string) $realisasi->ba_tgl)) : (int) now()->year;
+        });
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

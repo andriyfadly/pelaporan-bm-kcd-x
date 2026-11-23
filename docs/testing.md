@@ -54,7 +54,7 @@ Status kini: **100% total, semua file 100%**.
 
 | File | Menjamin |
 |------|----------|
-| `PelaporanBmTest` | Alur SPJ multi-item, realisasi, export 204/cookie, cetak pre-flight |
+| `PelaporanBmTest` | Alur SPJ multi-item, realisasi, export 204/cookie, cetak pre-flight, scoping periode per `tahun` |
 | `ExportDanLogLanjutanTest` | Baca-balik isi XLSX (`A8`/`A10`/VLOOKUP/`SUM`), cookie `complete`/`empty`, 204 tanpa log, kirim sukses, kunci/buka/verifikasi, logout, ganti password, tambah/ubah/hapus user, import + hapus-massal acuan, sinkron/hapus-item/hapus SPK, auto-log acuan & kode barang, unduh SPJ |
 | `DbErrorHandlingTest` | `QueryException` → Inertia `Error` 500 (XHR) / redirect + flash (web biasa) / JSON 500 tanpa SQL bocor, `Log::error` konteks user+route |
 | `ErrorPageTest` | Error page kustom: Blade `errors.page` (load awal) + Inertia `Error` (navigasi) untuk 404/403 |
@@ -63,7 +63,7 @@ Status kini: **100% total, semua file 100%**.
 | `SecurityHardeningTest` | Cross-tenant 403, bulan terkunci diblokir, rate-limit, operator tanpa sekolah ditolak 403 di semua endpoint lintas-sekolah (index + unduh), dan role sekolah tanpa tenant tidak masuk jalur admin |
 | `InputRealisasiTest` | Alur realisasi: pilih-bulan normalisasi, index hitung kekurangan, tambah/simpan (validasi item, acuan, batas anggaran), duplicate allocation ditolak, edit readonly, `super_admin` dapat mengedit laporan `disetujui` tanpa mengubah status approval, update uncheck ter-scope bulan+kodering, kirim balance→lock, submit ulang ditolak |
 | `SpjGapTest` | SPJ: pilih-bulan, create/edit-spk lock, store-spk lock, destroy/update cross-tenant 403 + acuan lintas sekolah, cari-barang kosong & fallback master→SPJ |
-| `SpjImportTest` | Import SPJ: sukses multi-item + lookup katalog, BA TGL serial Excel, all-or-nothing (baris invalid/kode tak dikenal/BA TGL rusak → 0 tersimpan), laporan terkunci ditolak, tenant isolation, allowlist NPSN (di daftar → sukses, luar → ditolak), flag `canImportSpj` per NPSN, batas 5000 baris, validasi payload, log `import-spj` terlihat super_admin & tersembunyi dari admin_kcd |
+| `SpjImportTest` | Import SPJ: sukses multi-item + lookup katalog, BA TGL serial Excel, all-or-nothing (baris invalid/kode tak dikenal/BA TGL rusak → 0 tersimpan), rincian kesalahan `errors.import` untuk dialog, laporan terkunci ditolak, tenant isolation, allowlist NPSN (di daftar → sukses, luar → ditolak), flag `canImportSpj` per NPSN, batas 5000 baris, validasi payload, log `import-spj` terlihat super_admin & tersembunyi dari admin_kcd |
 | `AcuanImportGapTest` | Import acuan: skip baris pendek/invalid, tanggal serial Excel, bulan dari request, target via NPSN, batas 5000 baris, tenant isolation store/destroy |
 | `CetakBmSheetTest` | `safeCell` netralkan formula injection (`=`/`+`/`@`), `formatKotaKab` normalisasi "Kab."→"KABUPATEN" |
 | `AcuanIndexEdgeTest` | Default bulan Januari→Desember (unit `defaultBulan`), `search_satuan` by nama/NPSN + escape wildcard `%`, `parseTanggal` kosong, `parseXlsx` zip rusak + rich-text/inlineStr, daftar sekolah untuk admin, bulan kosong tanpa filter |
