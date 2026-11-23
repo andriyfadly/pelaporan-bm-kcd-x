@@ -35,7 +35,13 @@ else
     echo "Migrasi dilewati."
 fi
 
-npm ci && npm run build
+# SSH non-interaktif tidak memuat nvm; muat bila tersedia.
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
+    . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+fi
+command -v npm >/dev/null || { echo "npm tidak ditemukan di PATH. Deploy dihentikan." >&2; exit 1; }
+npm ci
+npm run build
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 php artisan permission:cache-reset
 echo "Deploy selesai."
