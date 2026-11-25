@@ -77,6 +77,9 @@ class BeritaAcaraController extends Controller
                     'alasan' => $validated['alasan'],
                     'oleh' => $request->user()->name,
                     'pada' => now()->toIso8601String(),
+                    // Serial disimpan supaya penomoran otomatis berikutnya tidak
+                    // memakai ulang nomor yang pernah terbit.
+                    'nomor_urut' => $dokumen->nomor !== null ? explode('/', (string) $dokumen->nomor)[0] : null,
                 ],
             ]),
         ]);

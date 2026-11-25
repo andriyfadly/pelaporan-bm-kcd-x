@@ -570,7 +570,16 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                                         : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
                                                     }`}
                                             >
-                                                Inventaris
+                                                Data Barang Inventaris
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/dokumen/buku-inventaris"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/dokumen/buku-inventaris')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Buku Inventaris
                                             </Link>
                                             <Link
                                                 href="/pencatatan-bm/penyaluran"
@@ -579,9 +588,54 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                                         : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
                                                     }`}
                                             >
-                                                Penyaluran
+                                                Buku Penyaluran
                                             </Link>
                                             <Link
+                                                href="/pencatatan-bm/dokumen"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath === '/pencatatan-bm/dokumen'
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Kartu Inventaris Ruangan
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/label"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/label')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Labeling
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/pengguna"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengguna')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Data Pengguna Barang
+                                            </Link>
+<Link
+                                                href="/pencatatan-bm/berita-acara"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/berita-acara')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Rekapan BA
+                                            </Link>
+<Link
+                                                href="/pencatatan-bm/pengembalian"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengembalian')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Pengembalian Barang
+                                            </Link>
+<Link
                                                 href="/pencatatan-bm/mutasi"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/mutasi')
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
@@ -590,44 +644,15 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Mutasi
                                             </Link>
-                                            <Link
-                                                href="/pencatatan-bm/pengembalian"
-                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengembalian')
+                                                                                                                                                                                <Link
+                                                href="/pencatatan-bm/sinkronisasi"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/sinkronisasi')
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
                                                         : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
                                                     }`}
                                             >
-                                                Pengembalian
+                                                Sinkronisasi
                                             </Link>
-                                            <Link
-                                                href="/pencatatan-bm/berita-acara"
-                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/berita-acara')
-                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
-                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                                    }`}
-                                            >
-                                                Berita Acara
-                                            </Link>
-                                            <Link
-                                                href="/pencatatan-bm/dokumen"
-                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/dokumen')
-                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
-                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                                    }`}
-                                            >
-                                                Dokumen
-                                            </Link>
-                                            {canSyncInventaris && (
-                                                <Link
-                                                    href="/pencatatan-bm/sinkronisasi"
-                                                    className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/sinkronisasi')
-                                                            ? 'text-[#2563eb] font-bold bg-blue-50/50'
-                                                            : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                                        }`}
-                                                >
-                                                    Sinkronisasi
-                                                </Link>
-                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -746,7 +771,16 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                                         : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
                                                     }`}
                                             >
-                                                Inventaris
+                                                Data Barang Inventaris
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/dokumen/buku-inventaris"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/dokumen/buku-inventaris')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Buku Inventaris
                                             </Link>
                                             <Link
                                                 href="/pencatatan-bm/penyaluran"
@@ -755,16 +789,43 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                                         : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
                                                     }`}
                                             >
-                                                Penyaluran
+                                                Buku Penyaluran
                                             </Link>
                                             <Link
-                                                href="/pencatatan-bm/mutasi"
-                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/mutasi')
+                                                href="/pencatatan-bm/dokumen"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath === '/pencatatan-bm/dokumen'
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
                                                         : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
                                                     }`}
                                             >
-                                                Mutasi
+                                                Kartu Inventaris Ruangan
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/label"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/label')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Labeling
+                                            </Link>
+                                            <Link
+                                                href="/pencatatan-bm/pengguna"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengguna')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Data Pengguna Barang
+                                            </Link>
+                                                                                        <Link
+                                                href="/pencatatan-bm/berita-acara"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/berita-acara')
+                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
+                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
+                                                    }`}
+                                            >
+                                                Rekapan BA
                                             </Link>
                                             <Link
                                                 href="/pencatatan-bm/pengembalian"
@@ -773,25 +834,16 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                                         : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
                                                     }`}
                                             >
-                                                Pengembalian
+                                                Pengembalian Barang
                                             </Link>
-                                            <Link
-                                                href="/pencatatan-bm/berita-acara"
-                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/berita-acara')
+<Link
+                                                href="/pencatatan-bm/mutasi"
+                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/mutasi')
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
                                                         : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
                                                     }`}
                                             >
-                                                Berita Acara
-                                            </Link>
-                                            <Link
-                                                href="/pencatatan-bm/dokumen"
-                                                className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/dokumen')
-                                                        ? 'text-[#2563eb] font-bold bg-blue-50/50'
-                                                        : 'text-slate-500 hover:text-[#2563eb] hover:bg-slate-50 font-medium'
-                                                    }`}
-                                            >
-                                                Dokumen
+                                                Mutasi
                                             </Link>
                                         </div>
                                     )}

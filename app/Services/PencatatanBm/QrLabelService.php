@@ -33,28 +33,6 @@ class QrLabelService
     }
 
     /**
-     * Blok data label yang dipakai halaman cetak.
-     *
-     * @return array<string, string|null>
-     */
-    public function dataLabel(InventarisUnit $unit): array
-    {
-        $unit->loadMissing('ruang:id,nama_ruang', 'pegawai:id,nama_lengkap');
-
-        return [
-            'register' => $unit->nomor_register,
-            'kode_barang' => $unit->kode_barang,
-            'nama_barang' => $unit->nama_barang,
-            'merk_tipe' => $unit->merk_tipe,
-            'asal_perolehan' => $unit->asal_perolehan,
-            'sekolah' => $unit->sekolah?->nama_sekolah,
-            'ruang' => $unit->ruang?->nama_ruang,
-            'pegawai' => $unit->pegawai?->nama_lengkap,
-            'kondisi' => InventarisUnit::KONDISI[$unit->kondisi] ?? $unit->kondisi,
-        ];
-    }
-
-    /**
      * Snapshot unit untuk payload dokumen: cetak ulang memakai data ini,
      * bukan data hidup yang mungkin sudah dikoreksi.
      *

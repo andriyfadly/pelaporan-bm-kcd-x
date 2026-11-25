@@ -1,12 +1,13 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import Pagination from '@/Components/Pagination';
 import SearchInput from '@/Components/SearchInput';
 import EmptyState from '@/Components/EmptyState';
 import Modal from '@/Components/Modal';
+import ConfirmDialog from '@/Components/ConfirmDialog';
 import { formatRupiah } from '@/Utils/format';
-import { Boxes, Download, Eye, Plus, Upload } from 'lucide-react';
+import { Download, Eye, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 
 interface UnitItem {
     id: string;
@@ -14,27 +15,31 @@ interface UnitItem {
     kode_barang: string;
     nama_barang: string | null;
     merk_tipe: string | null;
+    bahan: string | null;
+    foto_path: string | null;
     satuan: string | null;
+    tanggal_perolehan: string | null;
+    tahun_perolehan: number;
+    asal_perolehan: string | null;
     harga_satuan: string;
+    nilai_perolehan_unit: string;
+    no_sertifikat: string | null;
+    keterangan: string | null;
     kondisi: string;
     status: string;
     ruang?: { id: string; nama_ruang: string } | null;
     pegawai?: { id: string; nama_lengkap: string } | null;
 }
 
-interface PaginationLink {
-    url: string | null;
-    label: string;
-    active: boolean;
-}
-
 interface Props {
     units: {
         data: UnitItem[];
-        links: PaginationLink[];
+        links: { url: string | null; label: string; active: boolean }[];
         total: number;
     };
-    filter: { search: string; kondisi: string };
+    filter: { search: string; tahun: string; asal: string };
+    tahunList: number[];
+    asalList: string[];
     kondisiList: Record<string, string>;
     canKelola: boolean;
 }
@@ -43,42 +48,116 @@ const BADGE_KONDISI: Record<string, string> = {
     B: 'bg-emerald-50 text-emerald-700 border-emerald-100',
     RR: 'bg-amber-50 text-amber-700 border-amber-100',
     RB: 'bg-rose-50 text-rose-700 border-rose-100',
+    H: 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
-const LABEL_STATUS: Record<string, string> = {
-    aktif: 'Aktif',
-    dikembalikan: 'Dikembalikan',
-    dihapus_koreksi: 'Dihapus (koreksi)',
+const KOSONG = {
+    kode_barang: '',
+    nama_barang: '',
+    merk_tipe: '',
+    bahan: '',
+    satuan: '',
+    tanggal_perolehan: new Date().toISOString().slice(0, 10),
+    volume: 1,
+    harga_satuan: 0,
+    asal_perolehan: '',
+    no_sertifikat: '',
+    kondisi: 'B',
+    keterangan: '',
 };
 
-export default function Index({ units, filter, kondisiList, canKelola }: Props) {
-    const [search, setSearch] = useState(filter.search);
-    const [kondisi, setKondisi] = useState(filter.kondisi);
-    const [tambah, setTambah] = useState(false);
+export default function Index({ units, filter, tahunList, asalList, kondisiList, canKelola }: Props) {
+    const [modalInput, setModalInput] = useState(false);
+    const [modalEdit, setModalEdit] = useState<UnitItem | null>(null);
+    const [hapus, setHapus] = useState<UnitItem | null>(null);
+    const [hapusSemua, setHapusSemua] = useState(false);
     const [berkasImpor, setBerkasImpor] = useState<File | null>(null);
+    const [registerPratinjau, setRegisterPratinjau] = useState('');
+    const [terpilih, setTerpilih] = useState<string[]>([]);
+    const [modalKondisi, setModalKondisi] = useState(false);
+    const [kondisiMassal, setKondisiMassal] = useState<Record<string, string>>({});
+    const [kondisiSemua, setKondisiSemua] = useState('');
 
-    const form = useForm({
+    const form = useForm({ ...KOSONG });
+    const edit = useForm({
         kode_barang: '',
         nama_barang: '',
         merk_tipe: '',
+        bahan: '',
         satuan: '',
-        tanggal_perolehan: new Date().toISOString().slice(0, 10),
-        volume: 1,
+        tanggal_perolehan: '',
         harga_satuan: 0,
+        nilai_perolehan_unit: 0,
         asal_perolehan: '',
+        no_sertifikat: '',
         kondisi: 'B',
         keterangan: '',
     });
 
-    const simpan = (e: React.FormEvent) => {
+    const terapkan = (patch: Partial<{ search: string; tahun: string; asal: string }>) => {
+        router.get(
+            '/pencatatan-bm/inventaris',
+            { ...filter, ...patch } as Record<string, string>,
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
+    const pratinjauRegister = (kode: string, tanggal: string) => {
+        if (kode.trim() === '') {
+            setRegisterPratinjau('');
+            return;
+        }
+
+        const tahun = tanggal ? new Date(tanggal).getFullYear() : new Date().getFullYear();
+        fetch(`/pencatatan-bm/inventaris/register-berikutnya?kode_barang=${encodeURIComponent(kode)}&tahun=${tahun}`, {
+            headers: { Accept: 'application/json' },
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('gagal'))))
+            .then((data: { register: string }) => setRegisterPratinjau(data.register))
+            .catch(() => setRegisterPratinjau(''));
+    };
+
+    const simpanInput = (e: React.FormEvent) => {
         e.preventDefault();
         form.post('/pencatatan-bm/inventaris', {
             preserveScroll: true,
             onSuccess: () => {
-                setTambah(false);
+                setModalInput(false);
                 form.reset();
+                setRegisterPratinjau('');
             },
         });
+    };
+
+    const simpanEdit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!modalEdit) {
+            return;
+        }
+
+        edit.put(`/pencatatan-bm/inventaris/${modalEdit.id}`, {
+            preserveScroll: true,
+            onSuccess: () => setModalEdit(null),
+        });
+    };
+
+    const konfirmasiHapus = () => {
+        if (!hapus) {
+            return;
+        }
+
+        router.delete(`/pencatatan-bm/inventaris/${hapus.id}`, {
+            preserveScroll: true,
+            onSuccess: () => setHapus(null),
+        });
+    };
+
+    const konfirmasiHapusSemua = () => {
+        router.post(
+            '/pencatatan-bm/inventaris-hapus-semua',
+            { konfirmasi: 'HAPUS SEMUA' },
+            { preserveScroll: true, onSuccess: () => setHapusSemua(false) },
+        );
     };
 
     const impor = (e: React.FormEvent) => {
@@ -90,19 +169,72 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
         router.post(
             '/pencatatan-bm/inventaris-import',
             { file: berkasImpor },
-            {
-                preserveScroll: true,
-                forceFormData: true,
-                onSuccess: () => setBerkasImpor(null),
-            },
+            { preserveScroll: true, forceFormData: true, onSuccess: () => setBerkasImpor(null) },
         );
     };
 
-    const terapkan = (nextSearch: string, nextKondisi: string) => {
-        router.get(
-            '/pencatatan-bm/inventaris',
-            { search: nextSearch || undefined, kondisi: nextKondisi || undefined },
-            { preserveState: true, replace: true },
+    const bukaEdit = (unit: UnitItem) => {
+        edit.setData({
+            kode_barang: unit.kode_barang,
+            nama_barang: unit.nama_barang ?? '',
+            merk_tipe: unit.merk_tipe ?? '',
+            bahan: unit.bahan ?? '',
+            satuan: unit.satuan ?? '',
+            tanggal_perolehan: unit.tanggal_perolehan ?? '',
+            harga_satuan: Number(unit.harga_satuan),
+            nilai_perolehan_unit: Number(unit.nilai_perolehan_unit),
+            asal_perolehan: unit.asal_perolehan ?? '',
+            no_sertifikat: unit.no_sertifikat ?? '',
+            kondisi: unit.kondisi,
+            keterangan: unit.keterangan ?? '',
+        });
+        setModalEdit(unit);
+    };
+
+    const togglePilih = (id: string) => {
+        setTerpilih((sebelum) => (sebelum.includes(id) ? sebelum.filter((x) => x !== id) : [...sebelum, id]));
+    };
+
+    const semuaTerpilih = units.data.length > 0 && units.data.every((u) => terpilih.includes(u.id));
+
+    const togglePilihSemua = () => {
+        setTerpilih(semuaTerpilih ? [] : units.data.map((u) => u.id));
+    };
+
+    const bukaModalKondisi = () => {
+        const awal: Record<string, string> = {};
+        units.data.filter((u) => terpilih.includes(u.id)).forEach((u) => {
+            awal[u.id] = u.kondisi;
+        });
+        setKondisiMassal(awal);
+        setKondisiSemua('');
+        setModalKondisi(true);
+    };
+
+    const pilihKondisiSemua = (kode: string) => {
+        setKondisiSemua(kode);
+        if (kode === '') {
+            return;
+        }
+        const baru: Record<string, string> = {};
+        Object.keys(kondisiMassal).forEach((id) => {
+            baru[id] = kode;
+        });
+        setKondisiMassal(baru);
+    };
+
+    const simpanKondisiMassal = (e: React.FormEvent) => {
+        e.preventDefault();
+        router.put(
+            '/pencatatan-bm/inventaris/kondisi-massal',
+            { unit_ids: terpilih, kondisi: kondisiMassal },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setModalKondisi(false);
+                    setTerpilih([]);
+                },
+            },
         );
     };
 
@@ -111,112 +243,207 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
             <Head title="Inventaris BM" />
 
             <div className="space-y-5">
-                <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-800">Inventaris BM</h1>
-                        <p className="text-sm text-slate-500">
-                            Unit aset dari sinkronisasi realisasi yang disetujui, tambah manual, atau impor Excel/CSV.
-                        </p>
-                    </div>
-                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                        <span className="w-full text-xs text-slate-500 sm:w-auto">
-                            Total: <strong>{units.total.toLocaleString('id-ID')}</strong> unit
-                        </span>
-                        <a
-                            href={`/pencatatan-bm/inventaris-export${kondisi ? `?kondisi=${kondisi}` : ''}`}
-                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 min-h-10 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:flex-none"
-                        >
-                            <Download className="w-3.5 h-3.5" /> Ekspor Excel
-                        </a>
-                        {canKelola && (
-                            <button
-                                type="button"
-                                onClick={() => setTambah(true)}
-                                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:flex-none"
-                            >
-                                <Plus className="w-3.5 h-3.5" /> Tambah Barang
-                            </button>
-                        )}
-                    </div>
+                <header>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Sistem Inventaris</p>
+                    <h1 className="text-xl font-bold text-slate-800">Daftar Barang Belanja Modal</h1>
                 </header>
 
-                <div className="flex flex-wrap items-center gap-2">
-                    <SearchInput
-                        value={search}
-                        onChange={(value) => {
-                            setSearch(value);
-                            terapkan(value, kondisi);
-                        }}
-                        placeholder="Cari nama, kode, register, atau merek..."
-                        ariaLabel="Cari unit inventaris"
-                        className="w-full sm:w-80"
-                    />
-                    <select
-                        value={kondisi}
-                        onChange={(e) => {
-                            setKondisi(e.target.value);
-                            terapkan(search, e.target.value);
-                        }}
-                        aria-label="Filter kondisi"
-                        className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    >
-                        <option value="">Semua kondisi</option>
-                        {Object.entries(kondisiList).map(([kode, label]) => (
-                            <option key={kode} value={kode}>
-                                {label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                {canKelola && (
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <h2 className="font-bold text-slate-800">Input &amp; Opsi Data</h2>
+                        <p className="text-xs text-slate-500">Tambah data barang inventaris atau hapus seluruh data.</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setModalInput(true)}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white"
+                            >
+                                <Plus className="h-3.5 w-3.5" /> Input Manual
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setHapusSemua(true)}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" /> Hapus Semua Data
+                            </button>
+                        </div>
+                    </section>
+                )}
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                    {units.data.length === 0 ? (
-                        <EmptyState
-                            title="Belum ada unit inventaris"
-                            description="Unit muncul dari realisasi yang disetujui, tambah barang manual, atau impor Excel/CSV."
-                            icon={<Boxes className="w-12 h-12 text-slate-300" />}
+                {canKelola && (
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <h2 className="font-bold text-slate-800">Import Excel</h2>
+                        <p className="text-xs text-slate-500">Format file: .xlsx</p>
+                        <form onSubmit={impor} className="mt-3 flex flex-wrap items-center gap-2">
+                            <input
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                onChange={(e) => setBerkasImpor(e.target.files?.[0] ?? null)}
+                                aria-label="Pilih file Excel"
+                                className="min-h-10 flex-1 text-xs text-slate-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-slate-700"
+                            />
+                            <button
+                                type="submit"
+                                disabled={!berkasImpor}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                            >
+                                <Upload className="h-3.5 w-3.5" /> Import Data
+                            </button>
+                            <a href="/pencatatan-bm/inventaris-template" className="text-xs font-bold text-blue-600 hover:underline">
+                                Download Template
+                            </a>
+                        </form>
+                    </section>
+                )}
+
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4">
+                        <h2 className="mr-auto font-bold text-slate-800">Daftar Barang</h2>
+                        <SearchInput
+                            value={filter.search}
+                            onChange={(value) => terapkan({ search: value })}
+                            placeholder="Cari nama, kode, atau merk..."
+                            ariaLabel="Cari barang inventaris"
+                            className="w-full sm:w-72"
                         />
+                        <select
+                            value={filter.tahun}
+                            onChange={(e) => terapkan({ tahun: e.target.value })}
+                            aria-label="Filter tahun"
+                            className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
+                        >
+                            <option value="">Semua Tahun</option>
+                            {tahunList.map((t) => (
+                                <option key={t} value={t}>{t}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={filter.asal}
+                            onChange={(e) => terapkan({ asal: e.target.value })}
+                            aria-label="Filter sumber perolehan"
+                            className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
+                        >
+                            <option value="">Semua Sumber Perolehan</option>
+                            {asalList.map((a) => (
+                                <option key={a} value={a}>{a}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {canKelola && terpilih.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2 border-b border-blue-100 bg-blue-50 px-4 py-2.5">
+                            <span className="mr-auto text-xs font-bold text-blue-800">{terpilih.length} unit dipilih</span>
+                            <button
+                                type="button"
+                                onClick={bukaModalKondisi}
+                                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white"
+                            >
+                                Ubah Kondisi
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTerpilih([])}
+                                className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-bold text-blue-700"
+                            >
+                                Batal
+                            </button>
+                        </div>
+                    )}
+
+                    {units.data.length === 0 ? (
+                        <EmptyState title="Data barang tidak ditemukan..." description="Ubah filter atau tambahkan barang baru." />
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[1080px] text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                                        <th className="px-4 py-3">Register</th>
-                                        <th className="px-4 py-3">Kode Barang</th>
-                                        <th className="px-4 py-3">Nama Barang</th>
-                                        <th className="px-4 py-3">Ruang</th>
-                                        <th className="px-4 py-3">Penanggung Jawab</th>
+                                        {canKelola && (
+                                            <th className="w-10 px-4 py-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={semuaTerpilih}
+                                                    onChange={togglePilihSemua}
+                                                    aria-label="Pilih semua baris"
+                                                />
+                                            </th>
+                                        )}
+                                        <th className="px-4 py-3">No</th>
+                                        <th className="px-4 py-3">No. Reg</th>
+                                        <th className="px-4 py-3">Foto Barang</th>
+                                        <th className="px-4 py-3">Nama Barang / Merk</th>
+                                        <th className="px-4 py-3">Tgl Perolehan</th>
+                                        <th className="px-4 py-3">Sumber Perolehan</th>
+                                        <th className="px-4 py-3">Vol</th>
+                                        <th className="px-4 py-3 text-right">Harga Satuan</th>
                                         <th className="px-4 py-3">Kondisi</th>
-                                        <th className="px-4 py-3 text-right">Nilai</th>
                                         <th className="px-4 py-3 text-right">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {units.data.map((unit) => (
-                                        <tr key={unit.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                                    {units.data.map((unit, index) => (
+                                        <tr key={unit.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+                                            {canKelola && (
+                                                <td className="px-4 py-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={terpilih.includes(unit.id)}
+                                                        onChange={() => togglePilih(unit.id)}
+                                                        aria-label={`Pilih unit ${unit.nomor_register}`}
+                                                    />
+                                                </td>
+                                            )}
+                                            <td className="px-4 py-3 text-slate-500">{index + 1}</td>
                                             <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-bold text-slate-700">{unit.nomor_register}</td>
-                                            <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-500">{unit.kode_barang}</td>
+                                            <td className="px-4 py-3 text-xs text-slate-400">{unit.foto_path ?? '-'}</td>
                                             <td className="px-4 py-3">
                                                 <p className="font-semibold text-slate-700">{unit.nama_barang ?? '-'}</p>
-                                                <p className="text-xs text-slate-500">
-                                                    {unit.merk_tipe ?? '-'} · {LABEL_STATUS[unit.status] ?? unit.status}
-                                                </p>
+                                                <p className="text-xs text-slate-500">{unit.merk_tipe ?? '-'}</p>
                                             </td>
-                                            <td className="px-4 py-3 text-slate-600">{unit.ruang?.nama_ruang ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{unit.pegawai?.nama_lengkap ?? '-'}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                                                {unit.tanggal_perolehan ? unit.tanggal_perolehan.split('-').reverse().join('/') : '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-600">{unit.asal_perolehan ?? '-'}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">1 {unit.satuan ?? 'Unit'}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-right text-slate-600">{formatRupiah(unit.harga_satuan)}</td>
                                             <td className="px-4 py-3">
                                                 <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${BADGE_KONDISI[unit.kondisi] ?? ''}`}>
                                                     {kondisiList[unit.kondisi] ?? unit.kondisi}
                                                 </span>
                                             </td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-right text-slate-600">{formatRupiah(unit.harga_satuan)}</td>
-                                            <td className="px-4 py-3 text-right">
-                                                <Link
-                                                    href={`/pencatatan-bm/inventaris/${unit.id}`}
-                                                    className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                                >
-                                                    <Eye className="w-3.5 h-3.5" /> Detail
-                                                </Link>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Link
+                                                        href={`/pencatatan-bm/inventaris/${unit.id}`}
+                                                        title="Detail Kondisi Unit"
+                                                        aria-label="Detail Kondisi Unit"
+                                                        className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                    {canKelola && (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                title="Edit Barang"
+                                                                aria-label="Edit Barang"
+                                                                onClick={() => bukaEdit(unit)}
+                                                                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                title="Hapus Barang"
+                                                                aria-label="Hapus Barang"
+                                                                onClick={() => setHapus(unit)}
+                                                                className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -230,56 +457,74 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                             <Pagination links={units.links} total={units.total} />
                         </div>
                     )}
+                </section>
+
+                <div className="flex justify-end">
+                    <a
+                        href="/pencatatan-bm/inventaris-export"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                        <Download className="h-3.5 w-3.5" /> Ekspor Excel
+                    </a>
                 </div>
             </div>
 
-            <Modal isOpen={tambah} onClose={() => setTambah(false)} title="Tambah Barang Inventaris">
-                <form onSubmit={simpan} className="space-y-3">
+            <Modal isOpen={modalInput} onClose={() => setModalInput(false)} title="INPUT DATA INVENTARIS MANUAL">
+                <form onSubmit={simpanInput} className="space-y-3">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <label className="block text-xs font-semibold text-slate-600">
-                            Kode Barang *
+                            No. Register (Otomatis)
+                            <input
+                                readOnly
+                                value={registerPratinjau || '.......'}
+                                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-500"
+                            />
+                        </label>
+
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Kode Barang / Cari Nama Barang *
                             <input
                                 type="text"
                                 value={form.data.kode_barang}
-                                onChange={(e) => form.setData('kode_barang', e.target.value)}
-                                placeholder="1.3.2.10.01.02.002"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                onChange={(e) => {
+                                    form.setData('kode_barang', e.target.value);
+                                    pratinjauRegister(e.target.value, form.data.tanggal_perolehan);
+                                }}
+                                placeholder="Contoh: 1.02.01 atau ketik nama barang Laptop..."
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                             />
                             {form.errors.kode_barang && <p className="mt-1 text-xs text-rose-600">{form.errors.kode_barang}</p>}
                         </label>
 
                         <label className="block text-xs font-semibold text-slate-600">
-                            Nama Barang
+                            Nama Jenis Barang (Otomatis dari Kode Barang)
                             <input
                                 type="text"
                                 value={form.data.nama_barang}
                                 onChange={(e) => form.setData('nama_barang', e.target.value)}
-                                placeholder="Kosongkan = ikut master kode barang"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                placeholder="Terisi otomatis setelah Kode Aset dipilih"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                             />
                         </label>
 
                         <label className="block text-xs font-semibold text-slate-600">
-                            Merek / Tipe
+                            Merek / Type
                             <input
                                 type="text"
                                 value={form.data.merk_tipe}
                                 onChange={(e) => form.setData('merk_tipe', e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                             />
                         </label>
 
                         <label className="block text-xs font-semibold text-slate-600">
-                            Tanggal Perolehan *
+                            Bahan / Material
                             <input
-                                type="date"
-                                value={form.data.tanggal_perolehan}
-                                onChange={(e) => form.setData('tanggal_perolehan', e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                type="text"
+                                value={form.data.bahan}
+                                onChange={(e) => form.setData('bahan', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                             />
-                            {form.errors.tanggal_perolehan && (
-                                <p className="mt-1 text-xs text-rose-600">{form.errors.tanggal_perolehan}</p>
-                            )}
                         </label>
 
                         <label className="block text-xs font-semibold text-slate-600">
@@ -290,7 +535,7 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 max={500}
                                 value={form.data.volume}
                                 onChange={(e) => form.setData('volume', Number(e.target.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                             />
                             {form.errors.volume && <p className="mt-1 text-xs text-rose-600">{form.errors.volume}</p>}
                         </label>
@@ -302,95 +547,290 @@ export default function Index({ units, filter, kondisiList, canKelola }: Props) 
                                 value={form.data.satuan}
                                 onChange={(e) => form.setData('satuan', e.target.value)}
                                 placeholder="Unit"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                             />
                         </label>
 
                         <label className="block text-xs font-semibold text-slate-600">
-                            Harga Satuan
+                            Keadaan Barang
+                            <select
+                                value={form.data.kondisi}
+                                onChange={(e) => form.setData('kondisi', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            >
+                                {Object.entries(kondisiList).map(([kode, label]) => (
+                                    <option key={kode} value={kode}>{`${kode} (${label})`}</option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Harga Satuan (Rp)
                             <input
                                 type="number"
                                 min={0}
                                 value={form.data.harga_satuan}
                                 onChange={(e) => form.setData('harga_satuan', Number(e.target.value))}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                             />
                         </label>
 
                         <label className="block text-xs font-semibold text-slate-600">
-                            Asal Perolehan
+                            Tanggal Perolehan *
+                            <input
+                                type="date"
+                                value={form.data.tanggal_perolehan}
+                                onChange={(e) => {
+                                    form.setData('tanggal_perolehan', e.target.value);
+                                    pratinjauRegister(form.data.kode_barang, e.target.value);
+                                }}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                            {form.errors.tanggal_perolehan && (
+                                <p className="mt-1 text-xs text-rose-600">{form.errors.tanggal_perolehan}</p>
+                            )}
+                        </label>
+
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Asal Usul Perolehan
                             <input
                                 type="text"
                                 value={form.data.asal_perolehan}
                                 onChange={(e) => form.setData('asal_perolehan', e.target.value)}
                                 placeholder="BOS / APBN / Hibah"
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                             />
                         </label>
 
                         <label className="block text-xs font-semibold text-slate-600">
-                            Kondisi
-                            <select
-                                value={form.data.kondisi}
-                                onChange={(e) => form.setData('kondisi', e.target.value)}
-                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                            >
-                                {Object.entries(kondisiList).map(([kode, label]) => (
-                                    <option key={kode} value={kode}>
-                                        {label}
-                                    </option>
-                                ))}
-                            </select>
+                            No Identitas
+                            <input
+                                type="text"
+                                value={form.data.no_sertifikat}
+                                onChange={(e) => form.setData('no_sertifikat', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+
+                        <label className="block text-xs font-semibold text-slate-600 sm:col-span-2">
+                            Keterangan
+                            <textarea
+                                value={form.data.keterangan}
+                                onChange={(e) => form.setData('keterangan', e.target.value)}
+                                rows={2}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
                         </label>
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2">
+                        <button type="button" onClick={() => setModalInput(false)} className="rounded-xl px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100">
+                            Batal
+                        </button>
+                        <button type="submit" disabled={form.processing} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+                            Simpan
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal isOpen={modalKondisi} onClose={() => setModalKondisi(false)} title="UBAH KONDISI UNIT">
+                <form onSubmit={simpanKondisiMassal} className="space-y-3">
+                    <label className="block text-xs font-semibold text-slate-600">
+                        Ubah Semua Sekaligus
+                        <select
+                            value={kondisiSemua}
+                            onChange={(e) => pilihKondisiSemua(e.target.value)}
+                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                        >
+                            <option value="">-- Pilih Kondisi --</option>
+                            {Object.entries(kondisiList).map(([kode, label]) => (
+                                <option key={kode} value={kode}>{label}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                        {units.data.filter((u) => terpilih.includes(u.id)).map((unit) => (
+                            <div key={unit.id} className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-2">
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-xs font-semibold text-slate-700">{unit.nama_barang ?? '-'}</p>
+                                    <p className="text-[11px] text-slate-500">Reg {unit.nomor_register}</p>
+                                </div>
+                                <select
+                                    value={kondisiMassal[unit.id] ?? unit.kondisi}
+                                    onChange={(e) => setKondisiMassal((s2) => ({ ...s2, [unit.id]: e.target.value }))}
+                                    aria-label={`Kondisi unit ${unit.nomor_register}`}
+                                    className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                                >
+                                    {Object.entries(kondisiList).map(([kode, label]) => (
+                                        <option key={kode} value={kode}>{kode}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1">
                         <button
                             type="button"
-                            onClick={() => setTambah(false)}
-                            className="rounded-xl px-4 min-h-10 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                            onClick={() => setModalKondisi(false)}
+                            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600"
                         >
                             Batal
                         </button>
                         <button
                             type="submit"
-                            disabled={form.processing}
-                            className="rounded-xl bg-blue-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white"
                         >
-                            Simpan
+                            Simpan Kondisi
                         </button>
-                    </div>
-                </form>
-
-                <form onSubmit={impor} className="mt-5 space-y-2 border-t border-slate-100 pt-4">
-                    <p className="text-xs text-slate-500">
-                        Impor massal: kolom Kode, Nama, Merek/Tipe, Tanggal, Bulan, Tahun, Satuan, Volume, Harga Satuan,
-                        Asal Perolehan.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <input
-                            type="file"
-                            accept=".xlsx,.xls,.csv"
-                            onChange={(e) => setBerkasImpor(e.target.files?.[0] ?? null)}
-                            aria-label="Pilih berkas impor inventaris"
-                            className="min-h-10 flex-1 text-xs text-slate-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-slate-700 hover:file:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        />
-                        <button
-                            type="submit"
-                            disabled={!berkasImpor}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 min-h-10 py-2 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        >
-                            <Upload className="w-3.5 h-3.5" /> Impor
-                        </button>
-                        <a
-                            href="/pencatatan-bm/inventaris-template"
-                            className="text-xs font-bold text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        >
-                            Unduh template
-                        </a>
                     </div>
                 </form>
             </Modal>
+
+            <Modal isOpen={modalEdit !== null} onClose={() => setModalEdit(null)} title="EDIT DATA INVENTARIS">
+                <form onSubmit={simpanEdit} className="space-y-3">
+                    <label className="block text-xs font-semibold text-slate-600">
+                        No. Register Saat Ini
+                        <input
+                            readOnly
+                            value={modalEdit?.nomor_register ?? ''}
+                            className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-500"
+                        />
+                    </label>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Kode Barang *
+                            <input
+                                type="text"
+                                value={edit.data.kode_barang}
+                                onChange={(e) => edit.setData('kode_barang', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                            {edit.errors.kode_barang && <p className="mt-1 text-xs text-rose-600">{edit.errors.kode_barang}</p>}
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Nama Barang *
+                            <input
+                                type="text"
+                                value={edit.data.nama_barang}
+                                onChange={(e) => edit.setData('nama_barang', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                            {edit.errors.nama_barang && <p className="mt-1 text-xs text-rose-600">{edit.errors.nama_barang}</p>}
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Merek / Type
+                            <input
+                                type="text"
+                                value={edit.data.merk_tipe}
+                                onChange={(e) => edit.setData('merk_tipe', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Bahan / Material
+                            <input
+                                type="text"
+                                value={edit.data.bahan}
+                                onChange={(e) => edit.setData('bahan', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Tanggal Perolehan *
+                            <input
+                                type="date"
+                                value={edit.data.tanggal_perolehan}
+                                onChange={(e) => edit.setData('tanggal_perolehan', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Satuan
+                            <input
+                                type="text"
+                                value={edit.data.satuan}
+                                onChange={(e) => edit.setData('satuan', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Harga Satuan (Rp)
+                            <input
+                                type="number"
+                                min={0}
+                                value={edit.data.harga_satuan}
+                                onChange={(e) => edit.setData('harga_satuan', Number(e.target.value))}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Keadaan Barang
+                            <select
+                                value={edit.data.kondisi}
+                                onChange={(e) => edit.setData('kondisi', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            >
+                                {Object.entries(kondisiList).map(([kode, label]) => (
+                                    <option key={kode} value={kode}>{`${kode} (${label})`}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Asal Usul Perolehan
+                            <input
+                                type="text"
+                                value={edit.data.asal_perolehan}
+                                onChange={(e) => edit.setData('asal_perolehan', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            No Identitas
+                            <input
+                                type="text"
+                                value={edit.data.no_sertifikat}
+                                onChange={(e) => edit.setData('no_sertifikat', e.target.value)}
+                                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            />
+                        </label>
+                    </div>
+
+                    <p className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] italic text-slate-500">
+                        Volume tidak bisa diubah per unit. Tambah atau hapus unit untuk mengubah jumlah.
+                    </p>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <button type="button" onClick={() => setModalEdit(null)} className="rounded-xl px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100">
+                            Tutup
+                        </button>
+                        <button type="submit" disabled={edit.processing} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+                            Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            <ConfirmDialog
+                isOpen={hapus !== null}
+                title="Hapus Data?"
+                message={`Data barang ${hapus?.nama_barang ?? ''} akan dihapus permanen dan tidak dapat dikembalikan.`}
+                confirmText="Ya, Hapus"
+                onConfirm={konfirmasiHapus}
+                onClose={() => setHapus(null)}
+            />
+
+            <ConfirmDialog
+                isOpen={hapusSemua}
+                title="Hapus SEMUA Data?"
+                message="Seluruh data barang dan detail kondisi sekolah ini akan dihapus PERMANEN dan tidak dapat dikembalikan."
+                confirmText="Ya, Hapus Semua"
+                onConfirm={konfirmasiHapusSemua}
+                onClose={() => setHapusSemua(false)}
+            />
         </AppLayout>
     );
 }

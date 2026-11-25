@@ -100,10 +100,13 @@ class InventarisMutationTest extends TestCase
     private function salurkan(Ruang $ruang, ?Pegawai $pegawai = null): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $ruang->id,
-                'pegawai_id' => $pegawai?->id,
-                'tanggal' => '2026-03-10',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $ruang->id,
+                    'pegawai_id' => $pegawai?->id,
+                    'tanggal' => '2026-03-10',
+                ]],
             ])
             ->assertRedirect();
 
@@ -119,11 +122,14 @@ class InventarisMutationTest extends TestCase
     public function test_penyaluran_pertama_membuat_histori_dan_mengisi_state_unit(): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $this->ruangA->id,
-                'pegawai_id' => $this->pegawai->id,
-                'tanggal' => '2026-03-10',
-                'keterangan' => 'Penyaluran awal',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $this->ruangA->id,
+                    'pegawai_id' => $this->pegawai->id,
+                    'tanggal' => '2026-03-10',
+                    'keterangan' => 'Penyaluran awal',
+                ]],
             ])
             ->assertRedirect();
 
@@ -158,9 +164,12 @@ class InventarisMutationTest extends TestCase
         $this->salurkan($this->ruangA);
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $this->ruangB->id,
-                'tanggal' => '2026-04-01',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $this->ruangB->id,
+                    'tanggal' => '2026-04-01',
+                ]],
             ])
             ->assertSessionHasErrors('unit');
 
@@ -259,7 +268,7 @@ class InventarisMutationTest extends TestCase
         $this->salurkan($this->ruangA);
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), [
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id],
                 'kondisi' => 'RR',
                 'tanggal' => '2026-05-01',
             ])
@@ -270,7 +279,10 @@ class InventarisMutationTest extends TestCase
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.penyaluran.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('belumDisalurkan', 1));
+            ->assertInertia(fn ($page) => $page
+                ->has('baris', 1)
+                ->where('baris.0.nomor_register', InventarisUnit::firstOrFail()->nomor_register)
+                ->where('baris.0.sudah_disalurkan', false));
 
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.mutasi.index'))
@@ -278,9 +290,12 @@ class InventarisMutationTest extends TestCase
             ->assertInertia(fn ($page) => $page->has('units', 0));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $this->ruangB->id,
-                'tanggal' => '2026-06-01',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $this->ruangB->id,
+                    'tanggal' => '2026-06-01',
+                ]],
             ])
             ->assertRedirect();
 
@@ -296,7 +311,7 @@ class InventarisMutationTest extends TestCase
         $this->salurkan($this->ruangA);
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), [
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id],
                 'kondisi' => 'RR',
                 'tanggal' => '2026-05-01',
             ])

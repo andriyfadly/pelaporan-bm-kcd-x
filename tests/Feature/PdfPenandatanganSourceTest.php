@@ -120,10 +120,12 @@ class PdfPenandatanganSourceTest extends TestCase
     public function test_template_pdf_yang_menampilkan_pejabat_membaca_sumber_database(): void
     {
         $wajibBaca = [
-            'pencatatan-bm/dokumen.blade.php',
+            'pencatatan-bm/bast.blade.php',
+            'pencatatan-bm/fakta-integritas.blade.php',
+            'pencatatan-bm/berita-acara-pengembalian.blade.php',
+            'pencatatan-bm/surat-pengembalian.blade.php',
             'pencatatan-bm/kir.blade.php',
             'pencatatan-bm/buku-inventaris.blade.php',
-            'pencatatan-bm/sensus.blade.php',
             'distribusi-bhp/bast.blade.php',
             'distribusi-bhp/bap.blade.php',
             'distribusi-bhp/stok-opname.blade.php',

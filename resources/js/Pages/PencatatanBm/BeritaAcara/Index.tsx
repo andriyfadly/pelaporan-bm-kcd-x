@@ -1,36 +1,41 @@
 import { Head, router } from '@inertiajs/react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
 import Modal from '@/Components/Modal';
-import { Ban, FileText, Pencil } from 'lucide-react';
+import { Ban, Download, Pencil } from 'lucide-react';
 
-interface DokumenBa {
+interface BarisBa {
     id: string;
     nomor: string | null;
+    no_urut: string;
     tanggal: string | null;
-    nomor_dibatalkan_pada: string | null;
-    payload: {
-        pembatalan?: { alasan?: string; oleh?: string };
-        unit?: { nama_barang?: string | null; nomor_register?: string | null };
-    };
-    created_at: string;
+    dibatalkan: boolean;
+    penerima: string;
+    nama_barang: string;
+    no_reg: string;
+    kondisi: string;
 }
 
 interface Props {
-    daftar: DokumenBa[];
+    daftar: BarisBa[];
+    kodeBast: string;
+    total: number;
 }
 
-export default function Index({ daftar }: Props) {
-    const [editTarget, setEditTarget] = useState<DokumenBa | null>(null);
-    const [nomor, setNomor] = useState('');
-    const [batalTarget, setBatalTarget] = useState<DokumenBa | null>(null);
+export default function Index({ daftar, kodeBast, total }: Props) {
+    const [editTarget, setEditTarget] = useState<BarisBa | null>(null);
+    const [urut, setUrut] = useState('');
+    const [batalTarget, setBatalTarget] = useState<BarisBa | null>(null);
     const [alasan, setAlasan] = useState('');
     const [proses, setProses] = useState(false);
+    const [cari, setCari] = useState('');
 
-    const bukaEdit = (item: DokumenBa) => {
+    const daftarTampil = daftar.filter((item) => item.penerima.toLowerCase().includes(cari.toLowerCase()));
+
+    const bukaEdit = (item: BarisBa) => {
         setEditTarget(item);
-        setNomor(item.nomor ?? '');
+        setUrut(item.no_urut);
     };
 
     const simpanNomor = (e: React.FormEvent) => {
@@ -40,13 +45,15 @@ export default function Index({ daftar }: Props) {
         }
 
         setProses(true);
-        router.put(`/pencatatan-bm/berita-acara/${editTarget.id}`, { nomor }, {
-            preserveScroll: true,
-            onFinish: () => {
-                setProses(false);
-                setEditTarget(null);
+        router.put(
+            `/pencatatan-bm/berita-acara/${editTarget.id}`,
+            { nomor: kodeBast ? `${urut}/${kodeBast}` : urut },
+            {
+                preserveScroll: true,
+                onSuccess: () => setEditTarget(null),
+                onFinish: () => setProses(false),
             },
-        });
+        );
     };
 
     const batalkan = () => {
@@ -57,76 +64,95 @@ export default function Index({ daftar }: Props) {
         router.delete(`/pencatatan-bm/berita-acara/${batalTarget.id}`, {
             data: { alasan },
             preserveScroll: true,
-            onFinish: () => {
-                setBatalTarget(null);
-                setAlasan('');
-            },
+            onSuccess: () => setBatalTarget(null),
         });
     };
 
     return (
         <AppLayout>
-            <Head title="Rekap Berita Acara" />
+            <Head title="Rekapan Berita Acara" />
 
             <div className="space-y-5">
                 <header>
-                    <h1 className="text-xl font-bold text-slate-800">Rekap Berita Acara</h1>
-                    <p className="text-sm text-slate-500">
-                        Koreksi atau batalkan nomor BA. Dokumen yang dibatalkan tetap tersimpan beserta alasannya.
-                    </p>
+                    <h1 className="text-xl font-bold text-slate-800">Rekapan Berita Acara (BAST)</h1>
+                    <p className="text-sm text-slate-500">Daftar rekapan nomor surat BAST otomatis dan unduh laporan Excel.</p>
                 </header>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                    {daftar.length === 0 ? (
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4">
+                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase text-blue-700">
+                            {total} Total BA
+                        </span>
+                        <input
+                            value={cari}
+                            onChange={(e) => setCari(e.target.value)}
+                            placeholder="Cari nama penerima..."
+                            className="ml-auto w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-72"
+                        />
+                        <a
+                            href="/pencatatan-bm/berita-acara/export"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"
+                        >
+                            <Download className="h-3.5 w-3.5" /> Export ke Excel (.xlsx)
+                        </a>
+                    </div>
+
+                    {daftarTampil.length === 0 ? (
                         <EmptyState
-                            title="Belum ada berita acara"
-                            description="BAST dibuat dari halaman detail unit inventaris."
-                            icon={<FileText className="w-12 h-12 text-slate-300" />}
+                            title={daftar.length === 0 ? 'Belum ada data history BAST terekam.' : 'Nama penerima tidak ditemukan dalam rekapan.'}
+                            description="BAST dibuat dari Buku Penyaluran."
                         />
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[760px] text-sm">
+                            <table className="w-full min-w-[1000px] text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                                        <th className="px-4 py-3">Nomor</th>
-                                        <th className="px-4 py-3">Unit</th>
-                                        <th className="px-4 py-3">Tanggal</th>
+                                        <th className="px-4 py-3">No</th>
+                                        <th className="px-4 py-3">No Urut</th>
+                                        <th className="px-4 py-3">Nomor Surat Lengkap</th>
+                                        <th className="px-4 py-3">Nama Barang</th>
+                                        <th className="px-4 py-3">No. Reg</th>
+                                        <th className="px-4 py-3">Kondisi Barang</th>
+                                        <th className="px-4 py-3">Penerima</th>
+                                        <th className="px-4 py-3">Tanggal BA</th>
                                         <th className="px-4 py-3 text-right">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {daftar.map((item) => (
+                                    {daftarTampil.map((item, index) => (
                                         <tr key={item.id} className="border-b border-slate-50 last:border-0">
-                                            <td className="px-4 py-3">
-                                                <p className="font-semibold text-slate-700">{item.nomor ?? '-'}</p>
-                                                {item.nomor_dibatalkan_pada && (
-                                                    <p className="text-xs text-rose-600">
-                                                        Dibatalkan: {item.payload.pembatalan?.alasan ?? '-'}
-                                                    </p>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-600">
-                                                {item.payload.unit?.nama_barang ?? '-'} · {item.payload.unit?.nomor_register ?? '-'}
-                                            </td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{item.tanggal?.slice(0, 10) ?? item.created_at}</td>
+                                            <td className="px-4 py-3 text-slate-500">{index + 1}</td>
+                                            <td className="px-4 py-3 font-mono text-xs text-slate-700">{item.no_urut || '-'}</td>
+                                            <td className="px-4 py-3 font-mono text-xs text-slate-700">{item.nomor ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-700">{item.nama_barang}</td>
+                                            <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.no_reg}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.kondisi}</td>
+                                            <td className="px-4 py-3 text-slate-700">{item.penerima}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.tanggal ?? '-'}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => bukaEdit(item)}
-                                                        aria-label={`Koreksi nomor ${item.nomor ?? ''}`}
-                                                        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setBatalTarget(item)}
-                                                        aria-label={`Batalkan nomor ${item.nomor ?? ''}`}
-                                                        className="rounded-lg p-2 text-rose-600 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                                    >
-                                                        <Ban className="w-4 h-4" />
-                                                    </button>
+                                                    {item.dibatalkan ? (
+                                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">Selesai</span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => bukaEdit(item)}
+                                                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" /> {item.nomor ? 'Edit No' : 'Input No'}
+                                                        </button>
+                                                    )}
+                                                    {item.nomor && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setBatalTarget(item)}
+                                                            title="Batalkan nomor"
+                                                            aria-label="Batalkan nomor"
+                                                            className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50"
+                                                        >
+                                                            <Ban className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -135,66 +161,70 @@ export default function Index({ daftar }: Props) {
                             </table>
                         </div>
                     )}
-                </div>
+                </section>
             </div>
 
-            <Modal isOpen={editTarget !== null} onClose={() => setEditTarget(null)} title="Koreksi Nomor BA" maxWidth="sm">
-                <form onSubmit={simpanNomor} className="space-y-3">
+            <Modal isOpen={editTarget !== null} onClose={() => setEditTarget(null)} title={editTarget?.nomor ? 'Edit Nomor Urut BA' : 'Input Nomor Urut BA'} maxWidth="md">
+                <p className="text-sm text-slate-500">
+                    Lengkapi urutan nomor dokumen Berita Acara untuk barang: <strong>{editTarget?.nama_barang}</strong>
+                </p>
+
+                <form onSubmit={simpanNomor} className="mt-4 space-y-3">
                     <label className="block text-xs font-semibold text-slate-600">
-                        Nomor
+                        Nomor Urut Surat
                         <input
-                            type="text"
-                            value={nomor}
-                            onChange={(e) => setNomor(e.target.value)}
+                            value={urut}
+                            onChange={(e) => setUrut(e.target.value)}
+                            placeholder="Contoh: 94"
                             required
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                         />
                     </label>
-                    <div className="flex justify-end gap-2 pt-1">
-                        <button
-                            type="button"
-                            onClick={() => setEditTarget(null)}
-                            className="rounded-xl px-4 min-h-10 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                        >
+
+                    <label className="block text-xs font-semibold text-slate-600">
+                        Kode Klasifikasi Internal (Readonly)
+                        <input
+                            readOnly
+                            value={kodeBast}
+                            className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-500"
+                        />
+                    </label>
+
+                    <p className="text-[11px] italic text-slate-400">
+                        *Sistem otomatis menggabungkan kedua kolom di atas menjadi satu kesatuan nomor surat utuh.
+                    </p>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <button type="button" onClick={() => setEditTarget(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
                             Batal
                         </button>
-                        <button
-                            type="submit"
-                            disabled={proses}
-                            className="rounded-xl bg-blue-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none disabled:opacity-60"
-                        >
-                            Simpan
+                        <button type="submit" disabled={proses} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+                            Simpan Nomor
                         </button>
                     </div>
                 </form>
             </Modal>
 
-            <Modal isOpen={batalTarget !== null} onClose={() => setBatalTarget(null)} title="Batalkan Nomor BA" maxWidth="sm">
-                <label className="block text-xs font-semibold text-slate-600">
+            <Modal isOpen={batalTarget !== null} onClose={() => setBatalTarget(null)} title="Batalkan Nomor Urut" maxWidth="md">
+                <p className="text-sm text-slate-600">
+                    Apakah Anda yakin ingin membatalkan dan mengosongkan kembali nomor urut dokumen ini?
+                </p>
+                <label className="mt-3 block text-xs font-semibold text-slate-600">
                     Alasan pembatalan
-                    <textarea
+                    <input
                         value={alasan}
                         onChange={(e) => setAlasan(e.target.value)}
-                        rows={3}
+                        placeholder="Alasan pembatalan"
                         required
-                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                     />
                 </label>
                 <div className="mt-4 flex justify-end gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setBatalTarget(null)}
-                        className="rounded-xl px-4 min-h-10 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                    >
+                    <button type="button" onClick={() => setBatalTarget(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
                         Batal
                     </button>
-                    <button
-                        type="button"
-                        onClick={batalkan}
-                        disabled={!alasan}
-                        className="rounded-xl bg-rose-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none disabled:opacity-60"
-                    >
-                        Batalkan Nomor
+                    <button type="button" onClick={batalkan} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white">
+                        Kosongkan Nomor
                     </button>
                 </div>
             </Modal>

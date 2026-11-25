@@ -80,9 +80,12 @@ class InventarisHalamanTest extends TestCase
 
         // Mutasi hanya untuk unit yang sudah disalurkan.
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $ruang->id,
-                'tanggal' => '2026-03-10',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $ruang->id,
+                    'tanggal' => '2026-03-10',
+                ]],
             ])
             ->assertRedirect();
 
@@ -99,8 +102,13 @@ class InventarisHalamanTest extends TestCase
     public function test_mutasi_tanpa_perubahan_apa_pun_ditolak(): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), ['tanggal' => '2026-03-10'])
-            ->assertSessionHasErrors('ruang_id');
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'tanggal' => '2026-03-10',
+                ]],
+            ])
+            ->assertSessionHasErrors('baris.0.ruang_id');
 
         $this->assertSame(0, Mutasi::count());
     }
@@ -112,16 +120,19 @@ class InventarisHalamanTest extends TestCase
         ]));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $ruang->id,
-                'tanggal' => '2026-03-10',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $ruang->id,
+                    'tanggal' => '2026-03-10',
+                ]],
             ])
             ->assertRedirect();
 
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.pengembalian.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('dipinjam', 1)->has('riwayat', 0));
+            ->assertInertia(fn ($page) => $page->has('baris', 1)->has('riwayat', 0));
     }
 
     public function test_halaman_dokumen_menampilkan_riwayat_dokumen(): void
@@ -157,11 +168,16 @@ class InventarisHalamanTest extends TestCase
                 ->has('ruangList.0', fn ($item) => $item->hasAll(['id', 'nama_ruang'])->etc()));
     }
 
-    public function test_surat_pengembalian_ditolak_bila_unit_belum_dikembalikan(): void
+    public function test_surat_pengembalian_pegawai_wajib_bernomor(): void
     {
+        $pegawai = activity()->withoutLogging(fn () => Pegawai::create([
+            'sekolah_id' => $this->sekolah->id,
+            'nama_lengkap' => 'Budi Santoso',
+        ]));
+
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.dokumen.surat-pengembalian', $this->unit), ['tanggal' => '2026-05-02'])
-            ->assertSessionHasErrors('unit');
+            ->post(route('pencatatan-bm.dokumen.surat-pengembalian-pegawai', $pegawai), ['tanggal' => '2026-05-02'])
+            ->assertSessionHasErrors('nomor');
 
         $this->assertSame(0, Dokumen::count());
     }

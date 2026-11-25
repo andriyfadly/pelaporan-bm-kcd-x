@@ -7,6 +7,7 @@ use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PelaporanBm\KunciLaporan;
 use App\Models\PelaporanBm\Realisasi;
+use App\Models\PencatatanBm\Dokumen;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\Mutasi;
 use App\Models\User;
@@ -14,6 +15,7 @@ use App\Services\PencatatanBm\SinkronisasiInventarisService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 /**
@@ -86,10 +88,13 @@ class InventarisReturnTest extends TestCase
     private function salurkan(): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $this->ruang->id,
-                'pegawai_id' => $this->pegawai->id,
-                'tanggal' => '2026-03-10',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $this->ruang->id,
+                    'pegawai_id' => $this->pegawai->id,
+                    'tanggal' => '2026-03-10',
+                ]],
             ])
             ->assertRedirect();
 
@@ -107,41 +112,49 @@ class InventarisReturnTest extends TestCase
             ->assertRedirect();
     }
 
-    public function test_daftar_pengembalian_mengunci_unit_tanpa_nomor_bast(): void
+    public function test_daftar_pengembalian_tetap_menampilkan_unit_tanpa_nomor_bast(): void
     {
         $this->salurkan(); // sudah punya BAST-01
 
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.pengembalian.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('dipinjam.0.punya_bast', true));
+            ->assertInertia(fn ($page) => $page
+                ->has('baris', 1)
+                ->missing('baris.0.punya_bast')
+                ->where('baris.0.nomor_bast_terakhir', 'BAST-01'));
     }
 
-    public function test_pengembalian_menunggu_nomor_bast_diisi(): void
+    public function test_pengembalian_tanpa_bast_tetap_diproses_dan_menerbitkan_ba(): void
     {
-        // Ditempatkan, BAST dibuat tanpa nomor: pengembalian harus ditahan.
+        // Ditempatkan tanpa BAST sama sekali: acuan membolehkan pengembalian,
+        // Berita Acara Pengembalian terbit otomatis.
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $this->ruang->id,
-                'tanggal' => '2026-03-10',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $this->ruang->id,
+                    'tanggal' => '2026-03-10',
+                ]],
             ])
             ->assertRedirect();
 
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.pengembalian.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('dipinjam.0.punya_bast', false));
+            ->assertInertia(fn ($page) => $page
+                ->has('baris', 1)
+                ->where('baris.0.nomor_bast_terakhir', null));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-03-12'])
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id], 'kondisi' => 'B', 'tanggal' => '2026-05-01'])
             ->assertRedirect();
 
-        $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['kondisi' => 'B', 'tanggal' => '2026-05-01'])
-            ->assertSessionHasErrors('unit');
+        $this->assertSame(InventarisUnit::STATUS_DIKEMBALIKAN, $this->unit->fresh()->status);
+        $this->assertSame(1, Mutasi::where('jenis', 'pengembalian')->count());
 
-        $this->assertSame(InventarisUnit::STATUS_AKTIF, $this->unit->fresh()->status);
-        $this->assertSame(0, Mutasi::where('jenis', 'pengembalian')->count());
+        $dokumen = Dokumen::where('jenis', 'pengembalian')->firstOrFail();
+        $this->assertMatchesRegularExpression('/^\d{3}(\/.*)?$/', (string) $dokumen->nomor);
     }
 
     public function test_pengembalian_menutup_penempatan_dan_mencatat_kondisi(): void
@@ -149,7 +162,7 @@ class InventarisReturnTest extends TestCase
         $this->salurkan();
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), [
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id],
                 'kondisi' => 'RR',
                 'tanggal' => '2026-05-01',
                 'keterangan' => 'Dikembalikan ke gudang',
@@ -175,14 +188,14 @@ class InventarisReturnTest extends TestCase
         $this->salurkan();
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['tanggal' => '2026-05-01'])
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id], 'tanggal' => '2026-05-01'])
             ->assertSessionHasErrors('kondisi');
     }
 
     public function test_pengembalian_unit_yang_belum_ditempatkan_ditolak(): void
     {
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['kondisi' => 'B', 'tanggal' => '2026-05-01'])
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id], 'kondisi' => 'B', 'tanggal' => '2026-05-01'])
             ->assertSessionHasErrors('unit');
 
         $this->assertSame(0, Mutasi::count());
@@ -193,11 +206,11 @@ class InventarisReturnTest extends TestCase
         $this->salurkan();
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['kondisi' => 'B', 'tanggal' => '2026-05-01'])
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id], 'kondisi' => 'B', 'tanggal' => '2026-05-01'])
             ->assertRedirect();
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['kondisi' => 'B', 'tanggal' => '2026-05-02'])
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id], 'kondisi' => 'B', 'tanggal' => '2026-05-02'])
             ->assertSessionHasErrors('unit');
 
         $this->assertSame(1, Mutasi::where('inventaris_unit_id', $this->unit->id)->where('jenis', 'pengembalian')->count());
@@ -218,7 +231,7 @@ class InventarisReturnTest extends TestCase
         $operatorLain->assignRole('operator_sekolah');
 
         $this->actingAs($operatorLain)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), ['kondisi' => 'B', 'tanggal' => '2026-05-01'])
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id], 'kondisi' => 'B', 'tanggal' => '2026-05-01'])
             ->assertNotFound();
 
         $this->assertSame(InventarisUnit::STATUS_AKTIF, $this->unit->fresh()->status);
@@ -256,6 +269,105 @@ class InventarisReturnTest extends TestCase
         $unit = InventarisUnit::firstOrFail();
         $this->assertNull($unit->pegawai);
         $this->assertSame($this->pegawai->id, $unit->getOriginal('pegawai_id'));
+    }
+
+    public function test_pengembalian_banyak_unit_menerbitkan_satu_ba_untuk_satu_baris(): void
+    {
+        $units = $this->buatUnitBaris('5.2.02.01.004', 3);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => $units->pluck('id')->all(),
+                    'ruang_id' => $this->ruang->id,
+                    'pegawai_id' => $this->pegawai->id,
+                    'tanggal' => '2026-03-10',
+                ]],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.pengembalian.store'), [
+                'unit_ids' => $units->pluck('id')->all(),
+                'kondisi' => 'RR',
+                'tanggal' => '2026-05-01',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', fn (string $pesan): bool => str_contains($pesan, 'Berita Acara Pengembalian'));
+
+        $this->assertSame(3, Mutasi::where('jenis', 'pengembalian')->count());
+        $this->assertSame(1, Dokumen::where('jenis', 'pengembalian')->count());
+
+        $dokumen = Dokumen::where('jenis', 'pengembalian')->firstOrFail();
+        $this->assertNull($dokumen->inventaris_unit_id);
+        $this->assertCount(3, $dokumen->payload['units']);
+        $this->assertCount(3, $dokumen->payload['mutasi_ids']);
+        $this->assertEqualsCanonicalizing(
+            $units->pluck('id')->all(),
+            collect($dokumen->payload['units'])->pluck('id')->all(),
+        );
+
+        // Riwayat menampilkan satu baris per unit dengan nomor BA yang sama.
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.pengembalian.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('riwayat', 3)
+                ->where('riwayat.0.nomor', $dokumen->nomor)
+                ->where('riwayat.1.nomor', $dokumen->nomor)
+                ->where('riwayat.2.nomor', $dokumen->nomor));
+    }
+
+    public function test_pengembalian_banyak_unit_menolak_barang_berbeda(): void
+    {
+        $lain = $this->buatUnitBaris('5.2.02.01.005', 1)->firstOrFail();
+        $this->salurkan();
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$lain->id],
+                    'ruang_id' => $this->ruang->id,
+                    'pegawai_id' => $this->pegawai->id,
+                    'tanggal' => '2026-03-10',
+                ]],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.pengembalian.store'), [
+                'unit_ids' => [$this->unit->id, $lain->id],
+                'kondisi' => 'B',
+                'tanggal' => '2026-05-01',
+            ])
+            ->assertSessionHasErrors('unit');
+
+        $this->assertSame(0, Mutasi::where('jenis', 'pengembalian')->count());
+    }
+
+    /**
+     * Unit tambahan dengan barang yang sama, nomor register berurutan.
+     *
+     * @return Collection<int, InventarisUnit>
+     */
+    private function buatUnitBaris(string $kode, int $volume): Collection
+    {
+        $realisasi = activity()->withoutLogging(fn () => Realisasi::create([
+            'sekolah_id' => $this->sekolah->id,
+            'bulan_realisasi' => 3,
+            'tahun' => 2026,
+            'kode_barang' => $kode,
+            'nama_barang' => 'Laptop',
+            'volume' => $volume,
+            'harga_satuan' => 9000000,
+            'nilai_perolehan' => 9000000 * $volume,
+        ]));
+
+        app(SinkronisasiInventarisService::class)->syncRealisasi($realisasi);
+
+        return InventarisUnit::where('realisasi_id', $realisasi->id)
+            ->orderBy('unit_index')
+            ->get();
     }
 
     public function test_histori_mutasi_tidak_bisa_di_hard_delete_lewat_relasi(): void

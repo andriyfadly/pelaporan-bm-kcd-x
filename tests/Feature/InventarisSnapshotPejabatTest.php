@@ -186,12 +186,20 @@ class InventarisSnapshotPejabatTest extends TestCase
             'mulai_menjabat' => '2026-01-01',
         ]);
 
+        // Pakta Integritas butuh BAST terbit untuk unit yang dipegang pegawai.
+        $unit = $this->unit();
+        $unit->update(['pegawai_id' => $pegawai->id]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $unit), ['tanggal' => '2026-03-05'])
+            ->assertRedirect();
+
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.dokumen.fakta-integritas', $pegawai), ['tanggal' => '2026-03-05'])
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        $dokumen = Dokumen::firstOrFail();
+        $dokumen = Dokumen::where('jenis', 'fakta_integritas')->firstOrFail();
 
         $this->assertSame('Plt. Pembantu Pengurus Barang', $dokumen->payload['pegawai']['jabatan']);
         $this->assertSame('plt', $dokumen->payload['pegawai']['jenis_penugasan']);
@@ -218,20 +226,28 @@ class InventarisSnapshotPejabatTest extends TestCase
             'sekolah_id' => $this->sekolah->id,
             'nama_ruang' => 'Ruang Guru',
         ]));
-        $unit->update(['ruang_id' => $ruang->id]);
+
+        // Surat permohonan ditujukan ke pegawai pemegang barang.
+        $pemegang = activity()->withoutLogging(fn () => Pegawai::create([
+            'sekolah_id' => $this->sekolah->id,
+            'nama_lengkap' => 'Pemegang 2024',
+        ]));
+        $unit->update(['ruang_id' => $ruang->id, 'pegawai_id' => $pemegang->id]);
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.dokumen.bast', $unit), ['tanggal' => '2024-06-05', 'nomor' => 'BAST-2024'])
             ->assertRedirect();
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $unit), ['kondisi' => 'RR', 'tanggal' => '2024-06-10'])
+            ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$unit->id], 'kondisi' => 'RR', 'tanggal' => '2024-06-10'])
             ->assertRedirect();
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.dokumen.surat-pengembalian', $unit), ['tanggal' => '2024-06-17'])
-            ->assertRedirect()
-            ->assertSessionHas('success');
+            ->post(route('pencatatan-bm.dokumen.surat-pengembalian-pegawai', $pemegang), [
+                'nomor' => '002/AR.03.05-CADISDIK.WIL-X',
+                'tanggal' => '2024-06-17',
+            ])
+            ->assertOk();
 
         $dokumen = Dokumen::where('jenis', 'surat_pengembalian')->firstOrFail();
 

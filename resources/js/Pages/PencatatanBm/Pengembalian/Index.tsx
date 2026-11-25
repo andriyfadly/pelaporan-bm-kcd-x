@@ -1,130 +1,227 @@
 import { Head, router } from '@inertiajs/react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
-import ConfirmDialog from '@/Components/ConfirmDialog';
 import EmptyState from '@/Components/EmptyState';
-import { FileText, Lock, PackageCheck, Undo2 } from 'lucide-react';
+import { FileText, Undo2 } from 'lucide-react';
 
-interface Unit {
+interface UnitRegister {
     id: string;
     nomor_register: string;
+}
+
+interface Baris {
+    unit_ids: string[];
+    unit_registers: UnitRegister[];
     kode_barang: string;
     nama_barang: string | null;
-    punya_bast?: boolean;
-    ruang?: { nama_ruang: string } | null;
-    pegawai?: { nama_lengkap: string } | null;
+    merk_tipe: string | null;
+    tahun_perolehan: number;
+    nomor_register: string;
+    volume: number;
+    satuan: string | null;
+    harga_satuan: number;
+    ruang: string | null;
+    pegawai: string | null;
+    pegawai_id: string | null;
+    nomor_bast_terakhir: string | null;
 }
 
 interface Riwayat {
     id: string;
-    inventaris_unit_id: string;
-    tanggal: string;
-    tujuan_kondisi: string | null;
-    keterangan: string | null;
-    unit?: { nomor_register: string; nama_barang: string | null } | null;
-    asal_ruang?: { nama_ruang: string } | null;
-    asal_pegawai?: { nama_lengkap: string } | null;
-    user?: { name: string } | null;
+    tanggal: string | null;
+    kode_barang: string | null;
+    nomor_register: string | null;
+    nama_barang: string | null;
+    merk_tipe: string | null;
+    tahun_perolehan: number | null;
+    asal_pegawai: string | null;
+    asal_ruang: string | null;
+    volume: number;
+    kondisi_akhir: string | null;
+    dokumen_id: string | null;
+    nomor: string | null;
 }
 
 interface Props {
-    dipinjam: Unit[];
+    baris: Baris[];
     riwayat: Riwayat[];
     kondisiList: Record<string, string>;
+    nomorBerikutnya: string | null;
 }
 
-export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
-    const [target, setTarget] = useState<Unit | null>(null);
-    const [kondisi, setKondisi] = useState('B');
+const KONDISI_KEMBALI: [string, string][] = [
+    ['B', 'B (Baik)'],
+    ['RR', 'RR (Rusak Ringan)'],
+    ['RB', 'RB (Rusak Berat)'],
+];
 
-    const kembalikan = () => {
+const BULAN_SINGKAT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+const tanggalSingkat = (nilai: string | null): string => {
+    if (!nilai) {
+        return '-';
+    }
+    const [tahun, bulan, hari] = nilai.slice(0, 10).split('-');
+    return `${Number(hari)} ${BULAN_SINGKAT[Number(bulan) - 1]} ${tahun}`;
+};
+
+const nomorTerkecil = (baris: Baris): number => Math.min(...baris.unit_registers.map((u) => Number(u.nomor_register)));
+
+const nomorTerbesar = (baris: Baris): number => Math.max(...baris.unit_registers.map((u) => Number(u.nomor_register)));
+
+export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: Props) {
+    const [target, setTarget] = useState<Baris | null>(null);
+    const [mode, setMode] = useState<'semua' | 'sebagian'>('semua');
+    const [regDari, setRegDari] = useState('');
+    const [regSampai, setRegSampai] = useState('');
+    const [kondisi, setKondisi] = useState('B');
+    const [tanggal, setTanggal] = useState(() => new Date().toISOString().slice(0, 10));
+    const [keterangan, setKeterangan] = useState('');
+    const [galat, setGalat] = useState<string | null>(null);
+    const [cari, setCari] = useState('');
+    const [cariRiwayat, setCariRiwayat] = useState('');
+
+    const daftar = baris.filter((unit) => {
+        const kunci = `${unit.nama_barang ?? ''} ${unit.merk_tipe ?? ''} ${unit.pegawai ?? ''} ${unit.ruang ?? ''} ${unit.nomor_register}`.toLowerCase();
+        return kunci.includes(cari.toLowerCase());
+    });
+
+    const riwayatTampil = riwayat.filter((item) => {
+        const kunci = `${item.nama_barang ?? ''} ${item.merk_tipe ?? ''} ${item.nomor ?? ''} ${item.asal_pegawai ?? ''}`.toLowerCase();
+        return kunci.includes(cariRiwayat.toLowerCase());
+    });
+
+    const bukaModal = (unit: Baris) => {
+        setTarget(unit);
+        setMode('semua');
+        setRegDari(String(nomorTerkecil(unit)));
+        setRegSampai(String(nomorTerbesar(unit)));
+        setGalat(null);
+    };
+
+    /** Unit yang ikut dikembalikan: seluruh baris atau yang nomor registernya di rentang. */
+    const unitTerpilih = (): string[] | null => {
         if (!target) {
+            return null;
+        }
+
+        if (mode === 'semua') {
+            return target.unit_ids;
+        }
+
+        const dari = Number(regDari);
+        const sampai = Number(regSampai);
+        const batasBawah = nomorTerkecil(target);
+        const batasAtas = nomorTerbesar(target);
+
+        if (!Number.isInteger(dari) || !Number.isInteger(sampai) || regDari.trim() === '' || regSampai.trim() === '') {
+            setGalat('Nomor registrasi awal dan akhir harus diisi dengan angka yang valid!');
+            return null;
+        }
+
+        if (dari > sampai) {
+            setGalat(`No. Reg awal (${dari}) tidak boleh lebih besar dari No. Reg akhir (${sampai})!`);
+            return null;
+        }
+
+        if (dari < batasBawah || sampai > batasAtas) {
+            setGalat(`Rentang (${dari}-${sampai}) berada di luar rentang paket aktif (${target.nomor_register})!`);
+            return null;
+        }
+
+        return target.unit_registers
+            .filter((u) => Number(u.nomor_register) >= dari && Number(u.nomor_register) <= sampai)
+            .map((u) => u.id);
+    };
+
+    const proses = () => {
+        const unitIds = unitTerpilih();
+
+        if (!unitIds || unitIds.length === 0) {
             return;
         }
 
+        setGalat(null);
         router.post(
-            `/pencatatan-bm/pengembalian/${target.id}`,
-            { kondisi, tanggal: new Date().toISOString().slice(0, 10) },
+            '/pencatatan-bm/pengembalian',
+            { unit_ids: unitIds, kondisi, tanggal, keterangan: keterangan || null },
             {
                 preserveScroll: true,
                 onSuccess: () => setTarget(null),
+                onError: (errors) => setGalat(Object.values(errors)[0] ?? 'Gagal memproses pengembalian.'),
             },
         );
     };
 
-    const buatSurat = (item: Riwayat) => {
-        router.post(`/pencatatan-bm/dokumen/surat-pengembalian/${item.inventaris_unit_id}`, {
-            tanggal: item.tanggal.slice(0, 10),
-        });
-    };
-
-    // Riwayat sudah urut terbaru dulu; surat membaca pengembalian terbaru per
-    // unit, jadi tombolnya hanya untuk baris pertama tiap unit.
-    const barisTerbaru = new Set(
-        riwayat
-            .filter((item, index) => riwayat.findIndex((lain) => lain.inventaris_unit_id === item.inventaris_unit_id) === index)
-            .map((item) => item.id),
-    );
-
     return (
         <AppLayout>
-            <Head title="Pengembalian Inventaris" />
+            <Head title="Pengembalian Barang" />
 
             <div className="space-y-5">
                 <header>
-                    <h1 className="text-xl font-bold text-slate-800">Pengembalian</h1>
-                    <p className="text-sm text-slate-500">
-                        Unit yang sedang disalurkan/dipinjam. Pengembalian menutup penyaluran dan mencatat kondisi akhir.
-                    </p>
+                    <h1 className="text-xl font-bold text-slate-800">Pengembalian Barang</h1>
+                    <p className="text-sm text-slate-500">Daftar barang yang sedang disalurkan beserta riwayat pengembalian.</p>
                 </header>
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                    <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-                        <PackageCheck className="w-4 h-4 text-slate-500" />
-                        <h2 className="font-bold text-slate-800">Sedang Disalurkan</h2>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4">
+                        <h2 className="mr-auto font-bold text-slate-800">Barang Sedang Disalurkan</h2>
+                        <input
+                            value={cari}
+                            onChange={(e) => setCari(e.target.value)}
+                            placeholder="Cari barang, merk, pegawai, atau ruang..."
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-80"
+                        />
                     </div>
 
-                    {dipinjam.length === 0 ? (
+                    {daftar.length === 0 ? (
                         <EmptyState
-                            title="Tidak ada unit disalurkan"
-                            description="Semua unit inventaris sedang berada di gudang atau belum disalurkan."
+                            title={baris.length === 0 ? 'Tidak ada data barang yang sedang disalurkan.' : 'Data tidak ditemukan berdasarkan kata kunci tersebut.'}
+                            description="Barang muncul di sini setelah disalurkan lewat Buku Penyaluran."
                         />
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[880px] text-sm">
+                            <table className="w-full min-w-[1000px] text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                                        <th className="px-4 py-3">Register</th>
-                                        <th className="px-4 py-3">Barang</th>
-                                        <th className="px-4 py-3">Ruang</th>
-                                        <th className="px-4 py-3">Penanggung Jawab</th>
+                                        <th className="px-4 py-3">No</th>
+                                        <th className="px-4 py-3">Kode / No. Reg</th>
+                                        <th className="px-4 py-3">Nama Barang</th>
+                                        <th className="px-4 py-3">Merk &amp; Tipe</th>
+                                        <th className="px-4 py-3">Thn Pengadaan</th>
+                                        <th className="px-4 py-3">Penerima &amp; Lokasi</th>
+                                        <th className="px-4 py-3">Vol Salur</th>
+                                        <th className="px-4 py-3 text-right">Harga Satuan</th>
                                         <th className="px-4 py-3 text-right">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {dipinjam.map((unit) => (
-                                        <tr key={unit.id} className="border-b border-slate-50 last:border-0">
-                                            <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-bold text-slate-700">{unit.nomor_register}</td>
-                                            <td className="px-4 py-3 text-slate-700">{unit.nama_barang ?? unit.kode_barang}</td>
-                                            <td className="px-4 py-3 text-slate-600">{unit.ruang?.nama_ruang ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{unit.pegawai?.nama_lengkap ?? '-'}</td>
+                                    {daftar.map((unit, index) => (
+                                        <tr key={`${unit.kode_barang}-${unit.nomor_register}-${unit.pegawai_id ?? 'tanpa'}`} className="border-b border-slate-50 last:border-0">
+                                            <td className="px-4 py-3 text-slate-500">{index + 1}</td>
+                                            <td className="px-4 py-3">
+                                                <p className="font-mono text-xs font-bold text-slate-700">{unit.kode_barang}</p>
+                                                <p className="text-xs text-slate-500">Reg: {unit.nomor_register}</p>
+                                            </td>
+                                            <td className="px-4 py-3 font-semibold text-slate-700">{unit.nama_barang ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{unit.merk_tipe ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{unit.tahun_perolehan}</td>
+                                            <td className="px-4 py-3 text-slate-600">
+                                                <p>{unit.pegawai ?? '-'}</p>
+                                                <p className="text-xs text-slate-500">{unit.ruang ?? '-'}</p>
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-600">{unit.volume} {unit.satuan ?? 'Unit'}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-right text-slate-600">
+                                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(unit.harga_satuan)}
+                                            </td>
                                             <td className="px-4 py-3 text-right">
-                                                {unit.punya_bast ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setTarget(unit)}
-                                                        className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                                    >
-                                                        <Undo2 className="w-3.5 h-3.5" /> Kembalikan
-                                                    </button>
-                                                ) : (
-                                                    <span
-                                                        title="Nomor BAST belum diisi di Rekapan BA"
-                                                        className="inline-flex min-h-9 cursor-not-allowed items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500"
-                                                    >
-                                                        <Lock className="w-3.5 h-3.5" /> Isi Nomor BA
-                                                    </span>
-                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => bukaModal(unit)}
+                                                    className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white"
+                                                >
+                                                    <Undo2 className="h-3.5 w-3.5" /> Kembalikan
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -135,71 +232,204 @@ export default function Index({ dipinjam, riwayat, kondisiList }: Props) {
                 </section>
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                    <div className="border-b border-slate-100 px-5 py-4">
-                        <h2 className="font-bold text-slate-800">Riwayat Pengembalian</h2>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4">
+                        <div className="mr-auto">
+                            <h2 className="font-bold text-slate-800">Riwayat Lengkap Pengembalian Barang</h2>
+                            <p className="text-xs text-slate-500">Daftar seluruh transaksi pengembalian barang ke inventaris.</p>
+                        </div>
+                        <input
+                            value={cariRiwayat}
+                            onChange={(e) => setCariRiwayat(e.target.value)}
+                            placeholder="Cari nomor surat atau barang..."
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-72"
+                        />
                     </div>
-                    {riwayat.length === 0 ? (
-                        <EmptyState title="Belum ada pengembalian" description="Riwayat muncul setelah unit dikembalikan." />
+
+                    {riwayatTampil.length === 0 ? (
+                        <EmptyState title="Tidak ditemukan adanya riwayat data pengembalian barang BMD." description="Riwayat tercatat otomatis saat pengembalian diproses." />
                     ) : (
-                        <ul className="divide-y divide-slate-50">
-                            {riwayat.map((item) => (
-                                <li key={item.id} className="px-5 py-3 text-sm">
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <span className="font-semibold text-slate-700">
-                                            {item.unit?.nomor_register ?? '-'} · {item.unit?.nama_barang ?? '-'}
-                                        </span>
-                                        <span className="text-xs text-slate-500">{item.tanggal.slice(0, 10)}</span>
-                                    </div>
-                                    <p className="mt-1 text-xs text-slate-500">
-                                        Dari {item.asal_ruang?.nama_ruang ?? '-'} / {item.asal_pegawai?.nama_lengkap ?? '-'} · kondisi akhir{' '}
-                                        {kondisiList[item.tujuan_kondisi ?? ''] ?? item.tujuan_kondisi ?? '-'}
-                                    </p>
-                                    {/* Surat pengembalian selalu membaca pengembalian terbaru unit,
-                                        jadi tombolnya hanya untuk baris terbaru per unit. */}
-                                    {barisTerbaru.has(item.id) && (
-                                        <div className="mt-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => buatSurat(item)}
-                                                className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                            >
-                                                <FileText className="w-3.5 h-3.5" /> Buat Surat Pengembalian
-                                            </button>
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[1080px] text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                        <th className="px-4 py-3">No</th>
+                                        <th className="px-4 py-3">Nomor Surat</th>
+                                        <th className="px-4 py-3">Tanggal Kembali</th>
+                                        <th className="px-4 py-3">Kode / No. Reg</th>
+                                        <th className="px-4 py-3">Nama Barang</th>
+                                        <th className="px-4 py-3">Merk &amp; Tipe</th>
+                                        <th className="px-4 py-3">Thn Pengadaan</th>
+                                        <th className="px-4 py-3">Eks Penerima</th>
+                                        <th className="px-4 py-3">Volume</th>
+                                        <th className="px-4 py-3 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {riwayatTampil.map((item, index) => (
+                                        <tr key={item.id} className="border-b border-slate-50 last:border-0">
+                                            <td className="px-4 py-3 text-slate-500">{index + 1}</td>
+                                            <td className="px-4 py-3 font-mono text-xs text-slate-700">{item.nomor ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{tanggalSingkat(item.tanggal)}</td>
+                                            <td className="px-4 py-3">
+                                                <p className="font-mono text-xs text-slate-700">{item.kode_barang ?? '-'}</p>
+                                                <p className="text-xs text-slate-500">Reg: {item.nomor_register ?? '-'}</p>
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-700">{item.nama_barang ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.merk_tipe ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.tahun_perolehan ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.asal_pegawai ?? '-'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.volume}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                {item.dokumen_id ? (
+                                                    <a
+                                                        href={`/pencatatan-bm/dokumen/${item.dokumen_id}/pdf`}
+                                                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700"
+                                                    >
+                                                        <FileText className="h-3.5 w-3.5" /> Cetak BA
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">-</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </section>
             </div>
 
-            <ConfirmDialog
-                isOpen={target !== null}
-                onClose={() => setTarget(null)}
-                onConfirm={kembalikan}
-                isDestructive={false}
-                title="Kembalikan Unit"
-                message={`Unit ${target?.nomor_register ?? ''} akan ditutup penyalurannya dan kondisi akhir dicatat sebagai ${kondisiList[kondisi]}.`}
-                confirmText="Kembalikan"
-            />
-
             {target && (
-                <div className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2">
-                    <label className="text-xs font-semibold text-slate-600">
-                        Kondisi akhir
-                        <select
-                            value={kondisi}
-                            onChange={(e) => setKondisi(e.target.value)}
-                            className="ml-2 min-h-9 rounded-lg border border-slate-200 px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        >
-                            {Object.entries(kondisiList).map(([kode, label]) => (
-                                <option key={kode} value={kode}>
-                                    {label}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+                    <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+                        <h2 className="text-lg font-bold text-slate-800">Generate BA Pengembalian</h2>
+                        <p className="mt-1 text-sm text-slate-500">
+                            Sistem akan memproses berkas PDF serta memperbarui status penyaluran aktif untuk barang:
+                            <strong className="text-slate-700"> {target.nama_barang ?? '-'}</strong>
+                            <span className="block text-xs text-slate-400">
+                                Penerima {target.pegawai ?? '-'} · {target.ruang ?? '-'}
+                            </span>
+                        </p>
+
+                        <div className="mt-4 space-y-3">
+                            <label className="block text-xs font-semibold text-slate-600">
+                                Nomor Surat BA Pengembalian (Otomatis)
+                                <input
+                                    readOnly
+                                    value={nomorBerikutnya ?? '.......'}
+                                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-500"
+                                />
+                            </label>
+
+                            <fieldset className="block text-xs font-semibold text-slate-600">
+                                <legend>Jumlah Unit yang Dikembalikan</legend>
+                                <div className="mt-1 space-y-1.5">
+                                    <label className="flex items-center gap-2 text-sm font-normal text-slate-700">
+                                        <input
+                                            type="radio"
+                                            name="mode"
+                                            checked={mode === 'semua'}
+                                            onChange={() => setMode('semua')}
+                                        />
+                                        Semua unit (rentang {target.nomor_register})
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm font-normal text-slate-700">
+                                        <input
+                                            type="radio"
+                                            name="mode"
+                                            checked={mode === 'sebagian'}
+                                            onChange={() => setMode('sebagian')}
+                                        />
+                                        Sebagian
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            {mode === 'sebagian' && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <label className="block text-xs font-semibold text-slate-600">
+                                        No. Reg awal
+                                        <input
+                                            value={regDari}
+                                            onChange={(e) => setRegDari(e.target.value)}
+                                            inputMode="numeric"
+                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                        />
+                                    </label>
+                                    <label className="block text-xs font-semibold text-slate-600">
+                                        No. Reg akhir
+                                        <input
+                                            value={regSampai}
+                                            onChange={(e) => setRegSampai(e.target.value)}
+                                            inputMode="numeric"
+                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                        />
+                                    </label>
+                                </div>
+                            )}
+
+                            <label className="block text-xs font-semibold text-slate-600">
+                                Kondisi Barang Saat Dikembalikan:
+                                <select
+                                    value={kondisi}
+                                    onChange={(e) => setKondisi(e.target.value)}
+                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                >
+                                    {KONDISI_KEMBALI.map(([kode, label]) => (
+                                        <option key={kode} value={kode}>{label}</option>
+                                    ))}
+                                </select>
+                                <span className="mt-1 block text-[11px] text-slate-400">
+                                    Kondisi di luar pilihan di atas: {Object.values(kondisiList).join(', ')}
+                                </span>
+                            </label>
+
+                            <label className="block text-xs font-semibold text-slate-600">
+                                Tanggal Pengembalian
+                                <input
+                                    type="date"
+                                    value={tanggal}
+                                    onChange={(e) => setTanggal(e.target.value)}
+                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                />
+                            </label>
+
+                            <label className="block text-xs font-semibold text-slate-600">
+                                Keterangan Tambahan:
+                                <textarea
+                                    value={keterangan}
+                                    onChange={(e) => setKeterangan(e.target.value)}
+                                    rows={2}
+                                    placeholder="Tuliskan keterangan (misal: layar pecah, kabel hilang)..."
+                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                />
+                            </label>
+
+                            {galat && (
+                                <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700" role="alert">
+                                    {galat}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setTarget(null)}
+                                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={proses}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white"
+                            >
+                                <FileText className="h-4 w-4" /> Cetak &amp; Proses
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </AppLayout>

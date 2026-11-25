@@ -2,8 +2,10 @@
 
 namespace App\Services\PencatatanBm;
 
+use App\Models\PencatatanBm\Dokumen;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\Mutasi;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +22,8 @@ use Illuminate\Validation\ValidationException;
  */
 class MutasiInventarisService
 {
+    public function __construct(private readonly DokumenInventarisService $dokumen) {}
+
     /**
      * @param  array{ruang_id: string, pegawai_id?: ?string, kondisi?: ?string, tanggal: string, keterangan?: ?string}  $data
      */
@@ -48,40 +52,75 @@ class MutasiInventarisService
     }
 
     /**
+     * Pengembalian banyak unit dalam satu Berita Acara Pengembalian bernomor,
+     * seperti acuan yang mengembalikan satu baris penyaluran (rentang register)
+     * per surat. Satu unit = satu baris histori; satu dokumen untuk semuanya.
+     *
+     * @param  Collection<int, InventarisUnit>  $units
      * @param  array{kondisi: string, tanggal: string, keterangan?: ?string}  $data
+     * @return array{mutasis: Collection<int, Mutasi>, dokumen: Dokumen}
      */
-    public function kembalikan(InventarisUnit $unit, array $data, ?string $userId): Mutasi
+    public function kembalikanBanyak(Collection $units, array $data, ?string $userId): array
     {
-        return DB::transaction(function () use ($unit, $data, $userId): Mutasi {
-            $unit = InventarisUnit::whereKey($unit->id)->lockForUpdate()->firstOrFail();
+        return DB::transaction(function () use ($units, $data, $userId): array {
+            $terkunci = InventarisUnit::query()
+                ->whereIn('id', $units->pluck('id')->all())
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
 
-            $aktif = $unit->status === InventarisUnit::STATUS_AKTIF
-                && ($unit->ruang_id !== null || $unit->pegawai_id !== null);
+            foreach ($terkunci as $unit) {
+                $aktif = $unit->status === InventarisUnit::STATUS_AKTIF
+                    && ($unit->ruang_id !== null || $unit->pegawai_id !== null);
 
-            if (! $aktif) {
+                if (! $aktif) {
+                    throw ValidationException::withMessages([
+                        'unit' => 'Unit ini tidak sedang ditempatkan, jadi tidak bisa dikembalikan.',
+                    ]);
+                }
+            }
+
+            // Satu BA hanya boleh memuat satu jenis barang dan satu penerima,
+            // supaya narasi "PIHAK KEDUA" dan rincian barangnya konsisten.
+            $pertama = $terkunci->first();
+            $seragam = $terkunci->every(fn (InventarisUnit $unit): bool => $unit->kode_barang === $pertama->kode_barang
+                && $unit->pegawai_id === $pertama->pegawai_id);
+
+            if (! $seragam) {
                 throw ValidationException::withMessages([
-                    'unit' => 'Unit ini tidak sedang ditempatkan, jadi tidak bisa dikembalikan.',
+                    'unit' => 'Semua unit dalam satu Berita Acara harus barang dan penerima yang sama.',
                 ]);
             }
 
-            $mutasi = $this->catat($unit, [
-                'jenis' => 'pengembalian',
-                'tujuan_ruang_id' => null,
-                'tujuan_pegawai_id' => null,
-                'tujuan_kondisi' => $data['kondisi'],
-                'tanggal' => $data['tanggal'],
-                'keterangan' => $data['keterangan'] ?? null,
-                'user_id' => $userId,
-            ]);
+            $mutasis = $terkunci->map(function (InventarisUnit $unit) use ($data, $userId): Mutasi {
+                $mutasi = $this->catat($unit, [
+                    'jenis' => 'pengembalian',
+                    'tujuan_ruang_id' => null,
+                    'tujuan_pegawai_id' => null,
+                    'tujuan_kondisi' => $data['kondisi'],
+                    'tanggal' => $data['tanggal'],
+                    'keterangan' => $data['keterangan'] ?? null,
+                    'user_id' => $userId,
+                ]);
 
-            $unit->update([
-                'ruang_id' => null,
-                'pegawai_id' => null,
-                'kondisi' => $data['kondisi'],
-                'status' => InventarisUnit::STATUS_DIKEMBALIKAN,
-            ]);
+                $unit->update([
+                    'ruang_id' => null,
+                    'pegawai_id' => null,
+                    'kondisi' => $data['kondisi'],
+                    'status' => InventarisUnit::STATUS_DIKEMBALIKAN,
+                ]);
 
-            return $mutasi;
+                return $mutasi;
+            })->values();
+
+            $payload = $this->dokumen->payloadPengembalianBanyak(
+                $terkunci->values(),
+                $mutasis,
+                $data['tanggal'],
+            );
+            $dokumen = $this->dokumen->simpanPengembalianBanyak($payload, $data['tanggal'], $userId);
+
+            return ['mutasis' => $mutasis, 'dokumen' => $dokumen];
         });
     }
 
