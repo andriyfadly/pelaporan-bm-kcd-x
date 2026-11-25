@@ -277,6 +277,17 @@ class DokumenInventarisService
     }
 
     /**
+     * Nama jabatan penandatangan dari `master_data_jabatan`, dipakai blok tanda
+     * tangan PDF.
+     *
+     * @return array<string, string>
+     */
+    public function labelPenandatangan(string $sekolahId): array
+    {
+        return $this->penugasan->labelPenandatangan($sekolahId);
+    }
+
+    /**
      * Penandatangan yang sudah dibekukan di payload dokumen. Reprint dokumen
      * lama harus memakai ini, bukan lookup hidup, supaya tidak berubah ketika
      * pejabat berganti.

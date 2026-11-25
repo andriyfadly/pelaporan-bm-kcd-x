@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PencatatanBm\InventarisUnit;
+use App\Services\PencatatanBm\DokumenInventarisService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -21,6 +22,10 @@ use Symfony\Component\HttpFoundation\Response;
 class RekapPenyaluranController extends Controller
 {
     use ResolvesSekolah;
+
+    public function __construct(
+        private readonly DokumenInventarisService $dokumen,
+    ) {}
 
     public function unduh(Request $request): Response
     {
@@ -102,12 +107,15 @@ class RekapPenyaluranController extends Controller
         }
 
         $sekolah = Sekolah::findOrFail($sekolahId);
+        $tanggalCetak = now()->toDateString();
 
         $pdf = Pdf::loadView('pencatatan-bm.rekap-penyaluran', [
             'judul' => 'Rekap Penyaluran Belanja Modal',
             'sekolah' => $sekolah,
             'units' => $units,
             'rincian' => $this->rincian($units),
+            'pejabat' => $this->dokumen->pejabat($sekolahId, $tanggalCetak),
+            'labelJabatan' => $this->dokumen->labelPenandatangan($sekolahId),
         ])->setPaper([0, 0, 935.43, 609.45], 'landscape');
 
         return $pdf->download('Rekap-Penyaluran-'.now()->format('Ymd').'.pdf');

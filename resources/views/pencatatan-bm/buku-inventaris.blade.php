@@ -13,7 +13,7 @@
         .judul .b3 { font-size: 10pt; font-weight: bold; }
         .meta { width: 100%; font-size: 8pt; margin-top: 4px; }
         .meta td { border: 0; }
-        table.main { width: 100%; margin-top: 4px; }
+        table.main { width: 100%; margin-top: 4px; table-layout: fixed; }
         table.main th, table.main td { border: 1px solid #000; padding: 1px 2px; vertical-align: middle; }
         table.main th { text-align: center; font-weight: bold; font-size: 7pt; line-height: 1.15; }
         .mid { text-align: center; }

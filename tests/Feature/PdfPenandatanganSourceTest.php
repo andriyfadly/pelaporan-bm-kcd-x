@@ -126,6 +126,7 @@ class PdfPenandatanganSourceTest extends TestCase
             'pencatatan-bm/surat-pengembalian.blade.php',
             'pencatatan-bm/kir.blade.php',
             'pencatatan-bm/buku-inventaris.blade.php',
+            'pencatatan-bm/rekap-penyaluran.blade.php',
             'distribusi-bhp/bast.blade.php',
             'distribusi-bhp/bap.blade.php',
             'distribusi-bhp/stok-opname.blade.php',

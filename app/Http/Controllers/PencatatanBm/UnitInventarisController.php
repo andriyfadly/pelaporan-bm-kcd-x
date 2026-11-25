@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\PencatatanBm;
 
 use App\Http\Controllers\Concerns\ResolvesSekolah;
+use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Concerns\TenantScope;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
@@ -20,7 +21,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UnitInventarisController extends Controller
 {
-    use ResolvesSekolah, TenantScope;
+    use ResolvesSekolah, SearchesText, TenantScope;
 
     public function __construct(
         private readonly DokumenInventarisService $dokumen,
@@ -91,11 +92,11 @@ class UnitInventarisController extends Controller
             ->where('sekolah_id', $sekolahId)
             ->whereIn('status', [InventarisUnit::STATUS_AKTIF, InventarisUnit::STATUS_DIKEMBALIKAN])
             ->when($tahun > 0, fn ($q) => $q->where('tahun_perolehan', $tahun))
-            ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q
-                ->where('nama_barang', 'like', "%{$search}%")
-                ->orWhere('merk_tipe', 'like', "%{$search}%")
-                ->orWhere('kode_barang', 'like', "%{$search}%")
-                ->orWhere('nomor_register', 'like', "%{$search}%")))
+            ->when($search !== '', fn ($q) => $this->whereAnyLike(
+                $q,
+                ['nama_barang', 'merk_tipe', 'kode_barang', 'nomor_register'],
+                $search,
+            ))
             ->orderBy('kode_barang')
             ->orderBy('nomor_register')
             ->limit(500)

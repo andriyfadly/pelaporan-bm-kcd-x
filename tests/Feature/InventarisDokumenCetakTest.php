@@ -7,9 +7,11 @@ use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\User;
+use App\Services\Master\PenugasanPegawaiService;
 use App\Services\PencatatanBm\PendaftaranInventarisService;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 /**
@@ -191,5 +193,111 @@ class InventarisDokumenCetakTest extends TestCase
 
         $response->assertOk();
         $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_rekap_penyaluran_memuat_kolom_satuan_dan_blok_ttd_wakasek(): void
+    {
+        $service = app(PenugasanPegawaiService::class);
+        $service->simpan($this->sekolah->id, (string) $this->operator->id, [
+            'jabatan' => 'wakasek_sarpras',
+            'nama' => 'Dewi Lestari',
+            'nip' => '197505052000032001',
+            'mulai_menjabat' => '2026-01-01',
+        ]);
+
+        $units = InventarisUnit::with(['ruang', 'pegawai'])->get();
+
+        $html = view('pencatatan-bm.rekap-penyaluran', [
+            'judul' => 'Rekap Penyaluran Belanja Modal',
+            'sekolah' => $this->sekolah,
+            'units' => $units,
+            'rincian' => $this->rincianRekap($units),
+            'pejabat' => $service->pejabatPada($this->sekolah->id, '2026-06-01'),
+            'labelJabatan' => $service->labelPenandatangan($this->sekolah->id),
+        ])->render();
+
+        // Acuan: PENYALURAN punya kolom SATUAN (LOKASI, Vol, SATUAN, PENERIMA).
+        $this->assertStringContainsString('<th colspan="4">PENYALURAN</th>', $html);
+        $this->assertStringContainsString('>SATUAN</th>', $html);
+
+        // Unit disalurkan mencetak satuannya, bukan tanda hubung.
+        $this->assertMatchesRegularExpression('/<td class="mid">Unit<\/td>/', $html);
+
+        // Blok tanda tangan acuan: Wakasek Sarpras + nama + NIP.
+        $this->assertStringContainsString('Wakasek Sarpras', $html);
+        $this->assertStringContainsString('Dewi Lestari', $html);
+        $this->assertStringContainsString('NIP. 197505052000032001', $html);
+    }
+
+    public function test_buku_inventaris_membuang_barang_bertanggal_setelah_tanggal_cetak(): void
+    {
+        $depan = now()->addYear();
+
+        activity()->withoutLogging(fn () => InventarisUnit::create([
+            'sekolah_id' => $this->sekolah->id,
+            'kode_barang' => '1.3.2.10.01.02.999',
+            'nama_barang' => 'Barang Masa Depan',
+            'nomor_register' => '901',
+            'tanggal_perolehan' => $depan->toDateString(),
+            'tahun_perolehan' => (int) $depan->year,
+            'bulan_perolehan' => (int) $depan->month,
+            'satuan' => 'Unit',
+            'status' => InventarisUnit::STATUS_AKTIF,
+            'kondisi' => 'B',
+        ]));
+
+        $teks = fn (string $tanggal): string => $this->teksPdf(
+            $this->actingAs($this->operator)
+                ->get(route('pencatatan-bm.dokumen.buku-inventaris', ['tanggal' => $tanggal]))
+                ->assertOk()
+                ->getContent()
+        );
+
+        $hariIni = $teks(now()->toDateString());
+        $this->assertStringNotContainsString('Barang Masa Depan', $hariIni);
+        // Barang yang sudah ada tetap tercetak.
+        $this->assertStringContainsString('Laptop', $hariIni);
+
+        $this->assertStringContainsString('Barang Masa Depan', $teks($depan->copy()->addDay()->toDateString()));
+    }
+
+    /** Buka stream PDF DomPDF (FlateDecode) jadi teks mentah untuk assertion. */
+    private function teksPdf(string $pdf): string
+    {
+        preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdf, $cocok);
+
+        $teks = '';
+        foreach ($cocok[1] as $stream) {
+            $hasil = @gzuncompress($stream);
+            if ($hasil !== false) {
+                $teks .= $hasil;
+            }
+        }
+
+        return $teks;
+    }
+
+    /**
+     * @param  Collection<int, InventarisUnit>  $units
+     * @return array<int, array<string, mixed>>
+     */
+    private function rincianRekap($units): array
+    {
+        return $units->map(fn (InventarisUnit $unit): array => [
+            'kode_barang' => $unit->kode_barang,
+            'nama_barang' => $unit->nama_barang,
+            'merk_tipe' => $unit->merk_tipe,
+            'tanggal_perolehan' => $unit->tanggal_perolehan?->format('d/m/Y'),
+            'bulan_perolehan' => $unit->bulan_perolehan,
+            'tahun_perolehan' => $unit->tahun_perolehan,
+            'volume' => 1,
+            'satuan' => $unit->satuan,
+            'harga_satuan' => (float) $unit->harga_satuan,
+            'lokasi' => $unit->ruang?->nama_ruang,
+            'penerima' => $unit->pegawai?->nama_lengkap,
+            'nomor_register' => $unit->nomor_register,
+            'keterangan' => '',
+            'disalurkan' => $unit->ruang_id !== null || $unit->pegawai_id !== null,
+        ])->all();
     }
 }

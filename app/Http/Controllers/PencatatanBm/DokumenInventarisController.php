@@ -73,17 +73,24 @@ class DokumenInventarisController extends Controller
             $semester = 0;
         }
 
+        $tanggalCetak = (string) ($request->input('tanggal') ?: now()->toDateString());
+
         return $this->dokumen->bukuInventaris(
             $this->sekolah($sekolahId),
             $this->unitScope($sekolahId)
                 ->when($tahun > 0, fn (Builder $q) => $q->where('tahun_perolehan', $tahun))
                 ->when($semester === 1, fn (Builder $q) => $q->whereBetween('bulan_perolehan', [1, 6]))
                 ->when($semester === 2, fn (Builder $q) => $q->whereBetween('bulan_perolehan', [7, 12]))
+                // Acuan (buku_inventaris_pdf.php) membuang barang bertanggal
+                // setelah tanggal cetak; barang tanpa tanggal tetap tercetak.
+                ->where(fn (Builder $q) => $q
+                    ->whereNull('tanggal_perolehan')
+                    ->orWhereDate('tanggal_perolehan', '<=', $tanggalCetak))
                 ->orderBy('tahun_perolehan')
                 ->orderBy('bulan_perolehan')
                 ->get(),
             $tahun,
-            (string) ($request->input('tanggal') ?: now()->toDateString()),
+            $tanggalCetak,
         );
     }
 

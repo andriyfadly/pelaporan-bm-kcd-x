@@ -12,6 +12,9 @@
         th { text-align: center; font-weight: bold; font-size: 6.5pt; }
         .mid { text-align: center; }
         .kosong { text-align: center; padding: 6px; }
+        table.ttd { width: 100%; border: 0; border-collapse: collapse; margin-top: 8mm; page-break-inside: avoid; }
+        table.ttd td { border: 0; padding: 0; vertical-align: top; text-align: center; font-size: 9pt; line-height: 1.4; }
+        .ttd-ruang { height: 18mm; }
     </style>
 </head>
 <body>
@@ -29,7 +32,7 @@
         <th rowspan="2" style="width: 25mm;">MERK/TIPE</th>
         <th rowspan="2" style="width: 28mm;">KODE BARANG</th>
         <th colspan="5">PENGADAAN</th>
-        <th colspan="3">PENYALURAN</th>
+        <th colspan="4">PENYALURAN</th>
         <th rowspan="2" style="width: 15mm;">NO. REG</th>
         <th rowspan="2" style="width: 45mm;">KETERANGAN</th>
     </tr>
@@ -41,6 +44,7 @@
         <th style="width: 15mm;">HARGA SATUAN</th>
         <th style="width: 27mm;">LOKASI</th>
         <th style="width: 8mm;">Vol</th>
+        <th style="width: 10mm;">SATUAN</th>
         <th style="width: 27mm;">NAMA PENERIMA</th>
     </tr>
     </thead>
@@ -58,14 +62,30 @@
             <td style="text-align: right;">Rp. {{ number_format($item['harga_satuan'], 0, ',', '.') }}</td>
             <td class="mid">{{ $item['disalurkan'] ? ($item['lokasi'] ?: '-') : '-' }}</td>
             <td class="mid">{{ $item['volume'] }}</td>
+            <td class="mid">{{ $item['satuan'] ?: '-' }}</td>
             <td>{{ $item['disalurkan'] ? ($item['penerima'] ?: '-') : '-' }}</td>
             <td class="mid">{{ $item['nomor_register'] }}</td>
             <td>{{ $item['disalurkan'] ? ($item['keterangan'] ?: '') : 'Belum Disalurkan / Dikembalikan' }}</td>
         </tr>
     @empty
-        <tr><td colspan="14" class="kosong">Data barang tidak ditemukan.</td></tr>
+        <tr><td colspan="15" class="kosong">Data barang tidak ditemukan.</td></tr>
     @endforelse
     </tbody>
+</table>
+
+@php
+    $wakasek = $pejabat['wakasek_sarpras'] ?? null;
+@endphp
+<table class="ttd">
+    <tr>
+        <td style="width: 68%;"></td>
+        <td style="width: 32%;">
+            {{ $wakasek['jabatan'] ?? ($labelJabatan['wakasek_sarpras'] ?? '-') }},
+            <div class="ttd-ruang"></div>
+            <b>{{ $wakasek['nama'] ?? '-' }}</b><br>
+            NIP. {{ ($wakasek['nip'] ?? null) ?: '-' }}
+        </td>
+    </tr>
 </table>
 </body>
 </html>
