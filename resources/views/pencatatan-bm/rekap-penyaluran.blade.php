@@ -31,7 +31,7 @@
         <th rowspan="2" style="width: 35mm;">NAMA BARANG</th>
         <th rowspan="2" style="width: 25mm;">MERK/TIPE</th>
         <th rowspan="2" style="width: 28mm;">KODE BARANG</th>
-        <th colspan="5">PENGADAAN</th>
+        <th colspan="6">PENGADAAN</th>
         <th colspan="4">PENYALURAN</th>
         <th rowspan="2" style="width: 15mm;">NO. REG</th>
         <th rowspan="2" style="width: 45mm;">KETERANGAN</th>
@@ -41,6 +41,7 @@
         <th style="width: 8mm;">BLN</th>
         <th style="width: 8mm;">THN</th>
         <th style="width: 8mm;">Vol</th>
+        <th style="width: 10mm;">SATUAN</th>
         <th style="width: 15mm;">HARGA SATUAN</th>
         <th style="width: 27mm;">LOKASI</th>
         <th style="width: 8mm;">Vol</th>
@@ -59,6 +60,7 @@
             <td class="mid">{{ $item['bulan_perolehan'] ?? '-' }}</td>
             <td class="mid">{{ $item['tahun_perolehan'] }}</td>
             <td class="mid">{{ $item['volume'] }}</td>
+            <td class="mid">{{ $item['satuan'] ?: '-' }}</td>
             <td style="text-align: right;">Rp. {{ number_format($item['harga_satuan'], 0, ',', '.') }}</td>
             <td class="mid">{{ $item['disalurkan'] ? ($item['lokasi'] ?: '-') : '-' }}</td>
             <td class="mid">{{ $item['volume'] }}</td>
@@ -68,7 +70,7 @@
             <td>{{ $item['disalurkan'] ? ($item['keterangan'] ?: '') : 'Belum Disalurkan / Dikembalikan' }}</td>
         </tr>
     @empty
-        <tr><td colspan="15" class="kosong">Data barang tidak ditemukan.</td></tr>
+        <tr><td colspan="16" class="kosong">Data barang tidak ditemukan.</td></tr>
     @endforelse
     </tbody>
 </table>

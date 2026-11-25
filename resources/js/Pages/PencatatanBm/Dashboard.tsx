@@ -84,7 +84,7 @@ export default function Dashboard({ ringkasan }: Props) {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                     {KARTU.map((kartu) => {
                         const Ikon = kartu.ikon;
-                        const bisaDiklik = kartu.kode !== 'total';
+                        const bisaDiklik = kartu.kode !== 'total' && kartu.kode !== 'H';
 
                         return (
                             <button

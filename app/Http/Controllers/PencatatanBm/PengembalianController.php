@@ -135,7 +135,7 @@ class PengembalianController extends Controller
         return back()->with(
             'success',
             "Unit {$rentang} dikembalikan. Berita Acara Pengembalian {$hasil['dokumen']->nomor} dibuat.",
-        );
+        )->with('dokumen_id', $hasil['dokumen']->id);
     }
 
     /**

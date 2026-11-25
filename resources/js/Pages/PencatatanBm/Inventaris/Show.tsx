@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
 import { formatRupiah } from '@/Utils/format';
+import { bukaPdfDokumen } from '@/Utils/dokumen';
 import { ArrowLeft, FileText, History, QrCode, Tag, Upload } from 'lucide-react';
 
 interface Unit {
@@ -24,6 +25,7 @@ interface Unit {
     ruang_id: string | null;
     pegawai_id: string | null;
     realisasi?: { no_spk: string | null; ba_no: string | null; ba_tgl: string | null } | null;
+    foto_terbaru: { id: string } | null;
 }
 
 interface MutasiItem {
@@ -70,6 +72,7 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
     // Tanggal dokumen menentukan pejabat yang di-snapshot, jadi harus bisa
     // diisi mundur — bukan selalu hari ini.
     const [tanggalDokumen, setTanggalDokumen] = useState(() => new Date().toISOString().slice(0, 10));
+    const [galatDokumen, setGalatDokumen] = useState<string | null>(null);
 
     const kirimFoto = (e: React.FormEvent) => {
         e.preventDefault();
@@ -92,7 +95,11 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
     };
 
     const buatBast = () => {
-        router.post(`/pencatatan-bm/dokumen/bast/${unit.id}`, { tanggal: tanggalDokumen }, { preserveScroll: true });
+        router.post(`/pencatatan-bm/dokumen/bast/${unit.id}`, { tanggal: tanggalDokumen }, {
+            preserveScroll: true,
+            onSuccess: (page) => bukaPdfDokumen(page),
+            onError: (errors) => setGalatDokumen(Object.values(errors)[0] ?? 'BAST gagal dibuat.'),
+        });
     };
 
     const buatFaktaIntegritas = () => {
@@ -103,7 +110,11 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
         router.post(
             `/pencatatan-bm/dokumen/fakta-integritas/${unit.pegawai_id}`,
             { tanggal: tanggalDokumen },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => bukaPdfDokumen(page),
+                onError: (errors) => setGalatDokumen(Object.values(errors)[0] ?? 'Fakta Integritas gagal dibuat.'),
+            },
         );
     };
 
@@ -140,13 +151,21 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
                             <p className="font-mono text-xs text-slate-500">{unit.kode_barang}</p>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setEditing((prev) => !prev)}
-                        className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 sm:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    >
-                        {editing ? 'Batal' : 'Ubah Kondisi / Penempatan'}
-                    </button>
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                        <a
+                            href={`/pencatatan-bm/inventaris/${unit.id}/kartu`}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 min-h-10 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                            <Tag className="w-3.5 h-3.5" /> Cetak Kartu Barang
+                        </a>
+                        <button
+                            type="button"
+                            onClick={() => setEditing((prev) => !prev)}
+                            className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        >
+                            {editing ? 'Batal' : 'Ubah Kondisi / Penempatan'}
+                        </button>
+                    </div>
                 </header>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -296,6 +315,15 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
                         </button>
                     </div>
 
+                    {galatDokumen && <p className="mt-2 text-xs text-rose-600">{galatDokumen}</p>}
+
+                    {unit.foto_terbaru && (
+                        <img
+                            src={`/pencatatan-bm/foto/${unit.foto_terbaru.id}`}
+                            alt="Foto unit"
+                            className="mb-3 h-40 rounded-xl border border-slate-200 object-cover"
+                        />
+                    )}
                     <form onSubmit={kirimFoto} className="mt-4 flex flex-wrap items-center gap-2">
                         <input
                             type="file"

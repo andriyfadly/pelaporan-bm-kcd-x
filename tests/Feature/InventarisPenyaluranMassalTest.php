@@ -98,6 +98,34 @@ class InventarisPenyaluranMassalTest extends TestCase
                 ->where('baris.0.sudah_disalurkan', false));
     }
 
+    public function test_baris_mengirim_volume_pengadaan_dan_nomor_bast(): void
+    {
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.penyaluran.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                // Acuan: Vol pengadaan = total unit satu batch pembelian, berbeda
+                // dari Vol penyaluran yang mengikuti rentang register.
+                ->where('baris.0.volume_pengadaan', 3)
+                ->where('baris.0.volume', 3)
+                ->where('nomorBastBerikutnya', '001'));
+    }
+
+    public function test_volume_pengadaan_tetap_saat_baris_dipecah_menjadi_dua_run(): void
+    {
+        InventarisUnit::query()->where('nomor_register', '003')->update(['nomor_register' => '010']);
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.penyaluran.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('baris', 2)
+                ->where('baris.0.volume', 2)
+                ->where('baris.0.volume_pengadaan', 3)
+                ->where('baris.1.volume', 1)
+                ->where('baris.1.volume_pengadaan', 3));
+    }
+
     public function test_vol_menyalurkan_sebagian_unit_dalam_baris(): void
     {
         $this->actingAs($this->operator)

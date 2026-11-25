@@ -349,36 +349,54 @@ bukan 403, agar UUID sekolah lain tidak membocorkan keberadaan data.
 | Method | Path | Controller::method | Permission |
 |---|---|---|---|
 | GET | `/pencatatan-bm` | `DashboardController::index` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/kondisi/{kode}` | `DashboardController::rincian` | `lihat-pencatatan-bm` |
 | GET | `/pencatatan-bm/inventaris` | `InventarisController::index` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/inventaris/register-berikutnya` | `InventarisController::nextRegister` | `kelola-inventaris-bm` |
 | POST | `/pencatatan-bm/inventaris` | `PendaftaranInventarisController::store` | `kelola-inventaris-bm` |
+| PUT | `/pencatatan-bm/inventaris/{unit}` | `InventarisController::update` | `kelola-inventaris-bm` |
+| DELETE | `/pencatatan-bm/inventaris/{unit}` | `InventarisController::destroy` | `kelola-inventaris-bm` |
+| POST | `/pencatatan-bm/inventaris-hapus-semua` | `InventarisController::destroySemua` | `kelola-inventaris-bm` |
 | POST | `/pencatatan-bm/inventaris-import` | `PendaftaranInventarisController::import` | `kelola-inventaris-bm` |
 | GET | `/pencatatan-bm/inventaris-template` | `PendaftaranInventarisController::template` | `kelola-inventaris-bm` |
 | GET | `/pencatatan-bm/inventaris-export` | `InventarisController::export` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/inventaris/{unit}` | `InventarisController::show` | `lihat-pencatatan-bm` |
+| GET | `/pencatatan-bm/inventaris/{unit}/kartu` | `InventarisController::kartu` | `lihat-pencatatan-bm` |
 | PUT | `/pencatatan-bm/inventaris/{unit}/kondisi` | `InventarisController::updateKondisi` | `kelola-inventaris-bm` |
 | POST | `/pencatatan-bm/inventaris/{unit}/foto` | `UnitInventarisController::storeFoto` | `kelola-inventaris-bm` |
 | GET | `/pencatatan-bm/foto/{foto}` | `UnitInventarisController::foto` | `lihat-pencatatan-bm` |
 | GET | `/pencatatan-bm/penyaluran` | `PenyaluranController::index` | `lihat-pencatatan-bm` |
-| POST | `/pencatatan-bm/penyaluran/{unit}` | `PenyaluranController::store` | `mutasi-inventaris-bm` |
+| POST | `/pencatatan-bm/penyaluran` | `PenyaluranController::storeMassal` | `mutasi-inventaris-bm` |
+| POST | `/pencatatan-bm/penyaluran/{unit}/reset` | `PenyaluranController::reset` | `mutasi-inventaris-bm` |
+| POST | `/pencatatan-bm/penyaluran/{unit}/penerima` | `PenyaluranController::ubahPenerima` | `mutasi-inventaris-bm` |
+| GET | `/pencatatan-bm/rekap-penyaluran` | `RekapPenyaluranController::unduh` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/mutasi` | `MutasiController::index` | `lihat-pencatatan-bm` |
 | POST | `/pencatatan-bm/mutasi/{unit}` | `MutasiController::store` | `mutasi-inventaris-bm` |
 | GET | `/pencatatan-bm/pengembalian` | `PengembalianController::index` | `lihat-pencatatan-bm` |
 | POST | `/pencatatan-bm/pengembalian/{unit}` | `PengembalianController::store` | `proses-pengembalian-bm` |
+| GET | `/pencatatan-bm/pengguna` | `DataPenggunaController::index` | `lihat-pencatatan-bm` |
 | GET | `/pencatatan-bm/berita-acara` | `BeritaAcaraController::index` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/berita-acara/export` | `BeritaAcaraController::export` | `cetak-inventaris-bm` + `throttle:30,1` |
 | PUT | `/pencatatan-bm/berita-acara/{dokumen}` | `BeritaAcaraController::update` | `cetak-inventaris-bm` |
 | DELETE | `/pencatatan-bm/berita-acara/{dokumen}` | `BeritaAcaraController::destroy` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/penomoran/{jenis}` | `PenomoranController::pratinjau` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/dokumen` | `DokumenInventarisController::index` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/dokumen/kir?ruang={id}` | `DokumenInventarisController::kir` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/dokumen/buku-inventaris?tahun=` | `DokumenInventarisController::bukuInventaris` | `cetak-inventaris-bm` |
-| GET | `/pencatatan-bm/dokumen/sensus?tahun=` | `DokumenInventarisController::sensus` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/dokumen/sensus?search=` | `DokumenInventarisController::sensus` | `cetak-inventaris-bm` |
 | POST | `/pencatatan-bm/dokumen/bast/{unit}` | `DokumenInventarisController::bast` | `cetak-inventaris-bm` |
+| POST | `/pencatatan-bm/dokumen/bast-baris` | `DokumenInventarisController::bastBaris` | `cetak-inventaris-bm` |
 | POST | `/pencatatan-bm/dokumen/fakta-integritas/{pegawai}` | `DokumenInventarisController::faktaIntegritas` | `cetak-inventaris-bm` |
-| POST | `/pencatatan-bm/dokumen/surat-pengembalian/{unit}` | `DokumenInventarisController::suratPengembalian` | `cetak-inventaris-bm` |
+| POST | `/pencatatan-bm/dokumen/surat-pengembalian-pegawai/{pegawai}` | `DokumenInventarisController::suratPengembalianPegawai` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/dokumen/{dokumen}/pdf` | `DokumenInventarisController::pdf` | `cetak-inventaris-bm` |
+| GET | `/pencatatan-bm/label-cetak?tahun=&ruang=` | `UnitInventarisController::cetakMassal` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/label/{unit}/qr` | `UnitInventarisController::qr` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/label/{unit}/pdf` | `UnitInventarisController::label` | `cetak-inventaris-bm` |
 | GET | `/pencatatan-bm/sinkronisasi` | `SyncController::index` | `sinkronisasi-inventaris-bm` |
 | POST | `/pencatatan-bm/sinkronisasi` | `SyncController::store` | `sinkronisasi-inventaris-bm` |
+
+Catatan urutan route: `/inventaris/register-berikutnya` **harus** dideklarasikan
+sebelum `/inventaris/{unit}`, dan `/dokumen/{dokumen}/pdf` tetap paling akhir di
+blok dokumen.
 
 Master ruang & pegawai sekolah berada di grup `/master-data` (bukan
 `/pencatatan-bm`) karena dipakai juga oleh modul lain:
@@ -392,7 +410,20 @@ Master ruang & pegawai sekolah berada di grup `/master-data` (bukan
 
 Payload penting:
 
-- `PUT inventaris/{unit}/kondisi`: `kondisi` ∈ {`B`, `RR`, `RB`} (wajib),
+- `POST penyaluran` (massal): `baris[]` — tiap baris berisi `unit_ids[]`,
+  `ruang_id` (wajib), `pegawai_id`, `keterangan`, dan `tanggal`. Satu baris =
+  satu rentang register. Satu unit ditolak → seluruh request rollback.
+- `POST dokumen/bast-baris`: `unit_ids[]` + `nomor`/`tanggal` opsional; semua
+  unit wajib satu sekolah dan sudah disalurkan.
+- `POST dokumen/surat-pengembalian-pegawai/{pegawai}`: `nomor` (wajib) dan
+  `tanggal` (wajib); respons berupa berkas PDF sekaligus menyimpan dokumen.
+- `POST inventaris-hapus-semua`: `konfirmasi` wajib bernilai `HAPUS SEMUA`.
+- `PUT inventaris/{unit}`: atribut barang (`kode_barang`, `nama_barang`,
+  `merk_tipe`, `bahan`, `satuan`, `harga_satuan`, `asal_perolehan`,
+  `no_sertifikat`, `tanggal_perolehan`, `keterangan`, `kondisi`, `foto`).
+  `nomor_register` tidak berubah; perubahan kode/tahun yang membuat register
+  bentrok ditolak dengan error pada `kode_barang`.
+- `PUT inventaris/{unit}/kondisi`: `kondisi` ∈ {`B`, `RR`, `RB`, `H`} (wajib),
   `keterangan`, `ruang_id`, `pegawai_id` (opsional). Ruang/pegawai **wajib**
   milik sekolah unit (validasi `exists ... where sekolah_id`).
 - `POST mutasi/{unit}`: `tanggal` (wajib), `ruang_id`, `pegawai_id`,
@@ -404,7 +435,8 @@ Payload penting:
   `mimes:jpg,jpeg,png,webp`, maks 5120 KB. Nama file dibuat server-side;
   path, MIME, ukuran, dan SHA-256 dicatat di `inventaris_foto`.
 - `DELETE berita-acara/{dokumen}`: `alasan` (wajib, maks 500). Nomor
-  dikosongkan dan alasan disimpan di `payload.pembatalan`; dokumen tidak dihapus.
+  dikosongkan, alasan dan serial aslinya disimpan di `payload.pembatalan`;
+  dokumen tidak dihapus dan serial itu tidak dipakai ulang.
 - `POST sinkronisasi`: `sekolah_id` (uuid), `bulan` (1–12), `tahun`. Aman
   diulang; hanya periode `disetujui` yang menghasilkan unit. Kegagalan
   dicatat di `inventaris_sync_logs`, status persetujuan tidak dibatalkan.

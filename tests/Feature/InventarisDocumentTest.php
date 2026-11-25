@@ -84,9 +84,12 @@ class InventarisDocumentTest extends TestCase
         ]));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $ruang->id,
-                'tanggal' => '2026-03-10',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $ruang->id,
+                    'tanggal' => '2026-03-10',
+                ]],
             ])
             ->assertRedirect();
     }
@@ -146,6 +149,14 @@ class InventarisDocumentTest extends TestCase
     {
         $pegawai = Pegawai::firstOrFail();
 
+        // Barang harus sudah dipegang pegawai, dan serah terimanya (BAST) sudah
+        // terbit — acuan menolak pakta tanpa BAST.
+        $this->unit->update(['pegawai_id' => $pegawai->id]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-03-12'])
+            ->assertRedirect();
+
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.dokumen.fakta-integritas', $pegawai), ['tanggal' => '2026-03-12'])
             ->assertRedirect();
@@ -155,27 +166,63 @@ class InventarisDocumentTest extends TestCase
         $this->assertSame('Budi Santoso', $dokumen->payload['pegawai']['nama_lengkap']);
     }
 
-    public function test_surat_pengembalian_membaca_histori_terbaru(): void
+    public function test_fakta_integritas_menolak_tanpa_bast_terbaru(): void
     {
-        // Pengembalian menunggu nomor BA, sama seperti aplikasi acuan.
+        $pegawai = Pegawai::firstOrFail();
+        $this->unit->update(['pegawai_id' => $pegawai->id]);
+
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-03-12', 'nomor' => 'BAST-01'])
+            ->post(route('pencatatan-bm.dokumen.fakta-integritas', $pegawai), ['tanggal' => '2026-03-12'])
+            ->assertSessionHasErrors(['unit' => 'Kamu harus men-generate BAST terlebih dahulu sebelum bisa Generate FAKTA!']);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-03-12'])
             ->assertRedirect();
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.pengembalian.store', $this->unit), [
-                'kondisi' => 'RR',
-                'tanggal' => '2026-05-01',
-            ])
+            ->post(route('pencatatan-bm.dokumen.fakta-integritas', $pegawai), ['tanggal' => '2026-03-12'])
             ->assertRedirect();
 
+        // Satu BAST hanya boleh mendasari satu Fakta; BAST baru wajib dibuat dulu.
+        $response = $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.fakta-integritas', $pegawai), ['tanggal' => '2026-03-13']);
+
+        $response->assertSessionHasErrors('unit');
+        $this->assertStringContainsString('BAST TERBARU', (string) session('errors')->first('unit'));
+    }
+
+    public function test_bast_menyimpan_pegawai_penerima_dan_memicu_pdf(): void
+    {
+        $pegawai = Pegawai::firstOrFail();
+        $this->unit->update(['pegawai_id' => $pegawai->id]);
+
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.dokumen.surat-pengembalian', $this->unit), ['tanggal' => '2026-05-02'])
-            ->assertRedirect();
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-03-12'])
+            ->assertRedirect()
+            ->assertSessionHas('dokumen_id');
+
+        $dokumen = Dokumen::where('jenis', 'bast')->firstOrFail();
+        $this->assertSame($pegawai->id, $dokumen->inventaris_pegawai_id);
+        $this->assertSame($dokumen->id, session('dokumen_id'));
+    }
+
+    public function test_surat_pengembalian_pegawai_menghasilkan_pdf_bernomor(): void
+    {
+        $pegawai = Pegawai::firstOrFail();
+
+        $response = $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.surat-pengembalian-pegawai', $pegawai), [
+                'nomor' => '002/AR.03.05-CADISDIK.WIL-X',
+                'tanggal' => '2026-05-02',
+            ]);
+
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF', $response->getContent());
 
         $dokumen = Dokumen::where('jenis', 'surat_pengembalian')->firstOrFail();
-        $this->assertSame('RR', $dokumen->payload['mutasi']['tujuan_kondisi']);
-        $this->assertSame('2026-05-01', $dokumen->payload['mutasi']['tanggal']);
+        $this->assertSame('002/AR.03.05-CADISDIK.WIL-X', $dokumen->nomor);
+        $this->assertSame($pegawai->id, $dokumen->inventaris_pegawai_id);
+        $this->assertSame('2026-05-02', $dokumen->tanggal->toDateString());
     }
 
     public function test_cetak_dokumen_tersimpan_bisa_diunduh_sebagai_pdf(): void
@@ -208,6 +255,27 @@ class InventarisDocumentTest extends TestCase
         $lain->assignRole('operator_sekolah');
 
         $this->actingAs($lain)->get(route('pencatatan-bm.dokumen.pdf', $dokumen))->assertNotFound();
+    }
+
+    public function test_daftar_inventaris_mengirim_id_foto_terbaru(): void
+    {
+        Storage::fake('public');
+
+        foreach (['pertama.jpg', 'kedua.jpg'] as $nama) {
+            $this->actingAs($this->operator)
+                ->post(route('pencatatan-bm.inventaris.foto', $this->unit), [
+                    'foto' => UploadedFile::fake()->image($nama, 400, 300),
+                ])
+                ->assertRedirect();
+        }
+
+        $terbaru = Foto::query()->latest('created_at')->latest('id')->firstOrFail();
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.inventaris.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('units.data.0.foto_terbaru.id', $terbaru->id));
     }
 
     public function test_upload_foto_valid_tersimpan_dengan_metadata(): void
@@ -310,12 +378,15 @@ class InventarisDocumentTest extends TestCase
         $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 
-    public function test_payload_qr_hanya_berisi_signed_route_unit(): void
+    public function test_payload_qr_hanya_berisi_url_unit(): void
     {
-        $url = app(QrLabelService::class)->signedUnitUrl($this->unit);
+        $url = app(QrLabelService::class)->unitUrl($this->unit);
 
-        $this->assertStringContainsString('/pencatatan-bm/inventaris/'.$this->unit->id, $url);
-        $this->assertStringContainsString('signature=', $url);
+        // QR dicetak di kertas dan harus tetap terbaca setelah setahun, jadi
+        // tidak memakai URL bertanda tangan.
+        $this->assertSame(route('pencatatan-bm.inventaris.show', ['unit' => $this->unit->id]), $url);
+        $this->assertStringNotContainsString('expires=', $url);
+        $this->assertStringNotContainsString('signature=', $url);
         $this->assertStringNotContainsString('sekolah_id=', $url);
     }
 }

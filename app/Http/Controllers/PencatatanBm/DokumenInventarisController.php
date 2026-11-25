@@ -20,6 +20,7 @@ use App\Support\NamaGelar;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -104,12 +105,11 @@ class DokumenInventarisController extends Controller
             ->where('sekolah_id', $sekolahId)
             ->whereIn('status', [InventarisUnit::STATUS_AKTIF, InventarisUnit::STATUS_DIKEMBALIKAN])
             ->whereNotNull('pegawai_id')
-            ->when($search !== '', fn (Builder $q) => $this->whereAnyLike(
-                $q,
-                ['nama_barang', 'merk_tipe', 'nomor_register'],
-                $search,
-            ))
-            ->orderBy('kode_barang')
+            ->when($search !== '', fn (Builder $q) => $q->where(function (Builder $q) use ($search): void {
+                $this->whereAnyLike($q, ['nama_barang', 'merk_tipe', 'nomor_register'], $search);
+                $q->orWhereHas('pegawai', fn (Builder $p) => $p->whereLike('nama_lengkap', $this->likePattern($search)));
+            }))
+            ->orderBy('nama_barang')
             ->orderBy('nomor_register')
             ->get();
 
@@ -134,6 +134,7 @@ class DokumenInventarisController extends Controller
                 'nomor' => $validated['nomor'] ?? $this->nomor->berikutnya($unit->sekolah_id, 'bast'),
                 'tanggal' => $validated['tanggal'] ?? now()->toDateString(),
                 'inventaris_unit_id' => $unit->id,
+                'inventaris_pegawai_id' => $unit->pegawai_id,
                 'payload' => $this->payloadDasar($unit->fresh(), $request, $validated['tanggal'] ?? null),
                 'user_id' => $request->user()->id,
             ]);
@@ -141,7 +142,7 @@ class DokumenInventarisController extends Controller
             return $this->dokumen->simpan($dokumen, 'pencatatan-bm.bast');
         });
 
-        return back()->with('success', 'BAST dibuat.');
+        return back()->with('success', 'BAST dibuat.')->with('dokumen_id', $dokumen->id);
     }
 
     public function faktaIntegritas(Request $request, Pegawai $pegawai): RedirectResponse
@@ -155,19 +156,36 @@ class DokumenInventarisController extends Controller
             ->get();
         $tanggal = $validated['tanggal'] ?? now()->toDateString();
 
-        // Acuan menolak Fakta Integritas yang belum didahului BAST: pakta tanpa
-        // serah terima tidak punya dasar barang yang dipegang.
-        $punyaBast = $units->isNotEmpty() && Dokumen::query()
+        // Acuan (buku_salur.php) menolak Fakta Integritas bila BAST belum ada,
+        // atau bila seluruh BAST yang ada sudah pernah dipakai Fakta sebelumnya:
+        // satu BAST hanya boleh mendasari satu pakta.
+        $unitIds = $units->pluck('id')->all();
+
+        $jumlahBast = Dokumen::query()
             ->where('sekolah_id', $pegawai->sekolah_id)
             ->where('jenis', 'bast')
-            ->whereIn('inventaris_unit_id', $units->pluck('id'))
             ->whereNotNull('nomor')
             ->whereNull('nomor_dibatalkan_pada')
-            ->exists();
+            ->where(fn (Builder $q) => $q
+                ->where('inventaris_pegawai_id', $pegawai->id)
+                ->orWhereIn('inventaris_unit_id', $unitIds))
+            ->count();
 
-        if (! $punyaBast) {
+        if ($jumlahBast === 0) {
             throw ValidationException::withMessages([
                 'unit' => 'Kamu harus men-generate BAST terlebih dahulu sebelum bisa Generate FAKTA!',
+            ]);
+        }
+
+        $jumlahFakta = Dokumen::query()
+            ->where('sekolah_id', $pegawai->sekolah_id)
+            ->where('jenis', 'fakta_integritas')
+            ->where('inventaris_pegawai_id', $pegawai->id)
+            ->count();
+
+        if ($jumlahBast <= $jumlahFakta) {
+            throw ValidationException::withMessages([
+                'unit' => "Kamu harus men-generate BAST TERBARU untuk '{$pegawai->nama_lengkap}' terlebih dahulu! (BAST sebelumnya sudah pernah digunakan).",
             ]);
         }
 
@@ -193,7 +211,7 @@ class DokumenInventarisController extends Controller
             return $this->dokumen->simpan($dokumen, 'pencatatan-bm.fakta-integritas');
         });
 
-        return back()->with('success', 'Fakta integritas dibuat.');
+        return back()->with('success', 'Fakta integritas dibuat.')->with('dokumen_id', $dokumen->id);
     }
 
     /**
@@ -273,6 +291,7 @@ class DokumenInventarisController extends Controller
             'jenis' => 'bast',
             'nomor' => $validated['nomor'] ?? $this->nomor->berikutnya($sekolahId, 'bast'),
             'tanggal' => $tanggal,
+            'inventaris_pegawai_id' => $penerima?->id,
             'payload' => [
                 'sekolah' => $this->snapshotSekolah(Sekolah::find($sekolahId)),
                 'units' => $units->map(fn (InventarisUnit $unit) => $this->qr->snapshotUnit($unit))->all(),
@@ -286,7 +305,7 @@ class DokumenInventarisController extends Controller
 
         $this->dokumen->simpan($dokumen, 'pencatatan-bm.bast');
 
-        return back()->with('success', 'BAST dibuat.');
+        return back()->with('success', 'BAST dibuat.')->with('dokumen_id', $dokumen->id);
     }
 
     public function pdf(Request $request, Dokumen $dokumen): Response
@@ -307,12 +326,26 @@ class DokumenInventarisController extends Controller
                 ->limit(100)
                 ->get(['id', 'jenis', 'nomor', 'tanggal', 'created_at']),
             // Cetak langsung tidak menyimpan dokumen; butuh daftar ruang untuk KIR
-            // dan daftar pegawai untuk penanggung jawab ruangan.
-            'pegawaiList' => Pegawai::query()
+            // dan daftar penanggung jawab yang benar-benar memegang aset di ruangan
+            // itu (acuan: kartu_inventaris_ruangan.php memfilter penyaluran per lokasi).
+            'pjPerRuang' => InventarisUnit::query()
+                ->with('pegawai:id,nama_lengkap')
                 ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
-                ->whereNull('deleted_at')
-                ->orderBy('nama_lengkap')
-                ->get(['id', 'nama_lengkap']),
+                ->whereNotNull('ruang_id')
+                ->whereNotNull('pegawai_id')
+                ->whereIn('status', [InventarisUnit::STATUS_AKTIF, InventarisUnit::STATUS_DIKEMBALIKAN])
+                ->get(['id', 'ruang_id', 'pegawai_id'])
+                ->groupBy('ruang_id')
+                ->map(fn (Collection $daftar): array => $daftar
+                    ->map(fn (InventarisUnit $unit): array => [
+                        'id' => (string) $unit->pegawai_id,
+                        'nama' => (string) $unit->pegawai?->nama_lengkap,
+                    ])
+                    ->unique('id')
+                    ->sortBy('nama')
+                    ->values()
+                    ->all())
+                ->all(),
             'ruangList' => Ruang::query()
                 ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
                 ->orderBy('nama_ruang')

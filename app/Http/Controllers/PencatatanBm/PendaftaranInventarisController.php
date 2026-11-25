@@ -55,7 +55,7 @@ class PendaftaranInventarisController extends Controller
             return back()->with('error', 'Berkas terlalu besar: maksimal 1000 baris data per impor.');
         }
 
-        $dataRows = $dataRows->filter(fn ($row) => trim((string) ($row[0] ?? '')) !== '');
+        $dataRows = $dataRows->filter(fn ($row) => trim((string) ($row[1] ?? '')) !== '');
 
         if ($dataRows->isEmpty()) {
             return back()->with('error', 'Berkas tidak berisi data untuk diimpor.');
@@ -68,15 +68,17 @@ class PendaftaranInventarisController extends Controller
 
         try {
             foreach ($dataRows as $index => $row) {
+                // Urutan kolom persis template acuan: Sumber Perolehan lebih dulu.
                 $unit = $this->pendaftaran->daftarkan($sekolahId, [
-                    'kode_barang' => trim((string) ($row[0] ?? '')),
-                    'nama_barang' => trim((string) ($row[1] ?? '')),
-                    'merk_tipe' => trim((string) ($row[2] ?? '')) ?: null,
+                    'asal_perolehan' => trim((string) ($row[0] ?? '')) ?: null,
+                    'kode_barang' => trim((string) ($row[1] ?? '')),
+                    'nama_barang' => trim((string) ($row[2] ?? '')),
+                    'merk_tipe' => trim((string) ($row[3] ?? '')) ?: null,
+                    'bahan' => trim((string) ($row[4] ?? '')) ?: null,
                     'tanggal_perolehan' => $this->tanggalPerolehan($row),
-                    'satuan' => trim((string) ($row[6] ?? '')) ?: null,
-                    'volume' => (int) ($row[7] ?? 1),
-                    'harga_satuan' => (float) str_replace([',', ' '], '', (string) ($row[8] ?? 0)),
-                    'asal_perolehan' => trim((string) ($row[9] ?? '')) ?: null,
+                    'satuan' => trim((string) ($row[8] ?? '')) ?: null,
+                    'volume' => (int) ($row[9] ?? 1),
+                    'harga_satuan' => (float) str_replace([',', ' '], '', (string) ($row[10] ?? 0)),
                 ]);
 
                 $jumlahUnit += count($unit);
@@ -98,16 +100,17 @@ class PendaftaranInventarisController extends Controller
             ->limit(2)
             ->get()
             ->map(fn (KodeBarang $kode): array => [
+                '',                          // Sumber Perolehan
                 $kode->kode_barang,
                 $kode->uraian,
-                '',
+                '',                          // Merek / Type
+                '',                          // Bahan
                 now()->day,
                 now()->month,
                 now()->year,
                 $kode->satuan ?: 'Unit',
                 1,
                 (float) ($kode->harga_standar ?? 0),
-                '',
             ]);
 
         return Excel::download(new InventarisTemplateExport($contoh), 'template-import-inventaris.xlsx');
@@ -121,7 +124,7 @@ class PendaftaranInventarisController extends Controller
      */
     private function tanggalPerolehan(Collection $row): string
     {
-        $tanggal = $row[3] ?? null;
+        $tanggal = $row[5] ?? null;
 
         if ($tanggal instanceof \DateTimeInterface) {
             return Carbon::instance($tanggal)->toDateString();
@@ -140,8 +143,8 @@ class PendaftaranInventarisController extends Controller
         }
 
         $hari = (int) $mentah;
-        $bulan = (int) ($row[4] ?? 0);
-        $tahun = (int) ($row[5] ?? 0);
+        $bulan = (int) ($row[6] ?? 0);
+        $tahun = (int) ($row[7] ?? 0);
 
         if ($tahun < 1900) {
             throw new \RuntimeException('Tahun perolehan wajib diisi: nomor register diulang tiap tahun.');

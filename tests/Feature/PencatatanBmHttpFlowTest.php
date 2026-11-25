@@ -103,13 +103,16 @@ class PencatatanBmHttpFlowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('units.data', 2)->where('filter.search', 'Laptop'));
 
-        $unit = InventarisUnit::firstOrFail();
-        $unit->update(['kondisi' => 'RB']);
+        // Filter konsol inventaris: tahun perolehan dan sumber perolehan.
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.inventaris.index', ['tahun' => 2026]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('units.data', 2)->where('filter.tahun', '2026'));
 
         $this->actingAs($this->operator)
-            ->get(route('pencatatan-bm.inventaris.index', ['kondisi' => 'RB']))
+            ->get(route('pencatatan-bm.inventaris.index', ['tahun' => 1999]))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('units.data', 1));
+            ->assertInertia(fn ($page) => $page->has('units.data', 0));
     }
 
     public function test_detail_unit_menampilkan_data_dan_riwayat(): void

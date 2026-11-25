@@ -142,6 +142,32 @@ class InventarisDashboardPenggunaTest extends TestCase
             ->assertJsonPath('0.pegawai', null);
     }
 
+    public function test_dashboard_menghitung_unit_yang_sudah_dikembalikan(): void
+    {
+        $this->unit->update([
+            'status' => InventarisUnit::STATUS_DIKEMBALIKAN,
+            'ruang_id' => null,
+            'pegawai_id' => null,
+        ]);
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('ringkasan.totalUnit', 1));
+    }
+
+    public function test_data_pengguna_mencari_merk_dan_menampilkan_tanggal(): void
+    {
+        $this->unit->update(['pegawai_id' => $this->pegawai->id]);
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.pengguna.index', ['search' => 'lenovo']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('kelompok', 1)
+                ->where('kelompok.0.items.0.tanggal_perolehan', '2026-03-10'));
+    }
+
     public function test_data_pengguna_mengelompokkan_aset_per_pegawai(): void
     {
         $this->unit->update(['pegawai_id' => $this->pegawai->id]);

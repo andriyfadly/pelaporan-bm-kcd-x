@@ -12,6 +12,7 @@ use App\Models\Master\Pegawai;
 use App\Models\Master\Ruang;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Services\PencatatanBm\MutasiInventarisService;
+use App\Services\PencatatanBm\NomorDokumenInventarisService;
 use App\Support\RentangRegister;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -85,6 +86,9 @@ class PenyaluranController extends Controller
                 ->orderBy('asal_perolehan')
                 ->pluck('asal_perolehan'),
             'kondisiList' => InventarisUnit::KONDISI,
+            'nomorBastBerikutnya' => $sekolahId
+                ? app(NomorDokumenInventarisService::class)->pratinjau($sekolahId, 'bast')
+                : null,
         ]);
     }
 
@@ -215,6 +219,8 @@ class PenyaluranController extends Controller
             $unit->merk_tipe,
             $unit->asal_perolehan,
         ])) as $kelompok) {
+            $volumePengadaan = $kelompok->count();
+
             foreach (RentangRegister::potongRun($kelompok->sortBy('nomor_register')->values()) as $run) {
                 $pertama = $run->first();
                 $semuaTersalur = $run->every(fn (InventarisUnit $unit): bool => $unit->ruang_id !== null || $unit->pegawai_id !== null);
@@ -231,6 +237,7 @@ class PenyaluranController extends Controller
                     'bulan_perolehan' => $pertama->bulan_perolehan,
                     'tahun_perolehan' => $pertama->tahun_perolehan,
                     'volume' => $run->count(),
+                    'volume_pengadaan' => $volumePengadaan,
                     'satuan' => $pertama->satuan,
                     'harga_satuan' => (float) $pertama->harga_satuan,
                     'nomor_register' => RentangRegister::dari($run->pluck('nomor_register')->all()),

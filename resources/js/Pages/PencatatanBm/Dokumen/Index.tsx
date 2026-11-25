@@ -20,7 +20,7 @@ interface RuangRingkas {
 interface Props {
     dokumen: DokumenItem[];
     ruangList: RuangRingkas[];
-    pegawaiList: { id: string; nama_lengkap: string }[];
+    pjPerRuang: Record<string, { id: string; nama: string }[]>;
 }
 
 const LABEL_JENIS: Record<string, string> = {
@@ -30,8 +30,9 @@ const LABEL_JENIS: Record<string, string> = {
     surat_pengembalian: 'Surat Permohonan Pengembalian',
 };
 
-export default function Index({ dokumen, ruangList, pegawaiList }: Props) {
+export default function Index({ dokumen, ruangList, pjPerRuang }: Props) {
     const [ruangId, setRuangId] = useState(ruangList[0]?.id ?? '');
+    const opsiPj = pjPerRuang[ruangId] ?? [];
     const [tahun, setTahun] = useState(() => new Date().getFullYear());
     const [cariSensus, setCariSensus] = useState('');
     const [tanggalKir, setTanggalKir] = useState(() => new Date().toISOString().slice(0, 10));
@@ -130,7 +131,10 @@ export default function Index({ dokumen, ruangList, pegawaiList }: Props) {
                                     Ruang
                                     <select
                                         value={ruangId}
-                                        onChange={(e) => setRuangId(e.target.value)}
+                                        onChange={(e) => {
+                                            setRuangId(e.target.value);
+                                            setPenanggungJawab('');
+                                        }}
                                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     >
                                         {ruangList.length === 0 && <option value="">Belum ada ruang</option>}
@@ -193,9 +197,13 @@ export default function Index({ dokumen, ruangList, pegawaiList }: Props) {
                                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     >
                                         <option value="">-- Pilih Penanggung Jawab (Opsional) --</option>
-                                        {pegawaiList.map((pegawai) => (
-                                            <option key={pegawai.id} value={pegawai.id}>{pegawai.nama_lengkap}</option>
-                                        ))}
+                                        {opsiPj.length === 0 ? (
+                                            <option value="" disabled>Data PJ tidak ditemukan di database</option>
+                                        ) : (
+                                            opsiPj.map((pegawai) => (
+                                                <option key={pegawai.id} value={pegawai.id}>{pegawai.nama}</option>
+                                            ))
+                                        )}
                                     </select>
                                 </label>
                                 <button

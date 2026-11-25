@@ -1,8 +1,9 @@
 import { Head, router } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import EmptyState from '@/Components/EmptyState';
+import { bukaPdfDokumen } from '@/Utils/dokumen';
 import { Download, FileText, Pencil, RotateCcw, Save } from 'lucide-react';
 
 interface Baris {
@@ -14,6 +15,7 @@ interface Baris {
     bulan_perolehan: number | null;
     tahun_perolehan: number;
     volume: number;
+    volume_pengadaan: number;
     satuan: string | null;
     harga_satuan: number;
     nomor_register: string;
@@ -40,12 +42,13 @@ interface Props {
     filter: { search: string; bulan: string; tahun: string };
     asalList: string[];
     kondisiList: Record<string, string>;
+    nomorBastBerikutnya: string | null;
 }
 
 const rupiah = (nilai: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(nilai);
 
-export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunList, filter, asalList }: Props) {
+export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunList, filter, asalList, nomorBastBerikutnya }: Props) {
     const [draft, setDraft] = useState<Record<number, { ruang_id: string; pegawai_id: string; keterangan: string }>>({});
     const [vol, setVol] = useState<Record<number, number>>({});
     const [modalRekap, setModalRekap] = useState(false);
@@ -58,7 +61,10 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
         tahun_sampai: '',
         semester_sampai: '2',
         ruang: '',
+        urutRuang: false,
     });
+    const [perHalaman, setPerHalaman] = useState(25);
+    const [halaman, setHalaman] = useState(1);
     const [tanggal, setTanggal] = useState(() => new Date().toISOString().slice(0, 10));
     const [proses, setProses] = useState(false);
     const [peringatan, setPeringatan] = useState<string | null>(null);
@@ -74,6 +80,16 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
     const nilaiVol = (index: number) => vol[index] ?? baris[index].sisa;
 
     const adaPerubahan = useMemo(() => Object.keys(draft).length > 0, [draft]);
+
+    const totalHalaman = perHalaman === 0 ? 1 : Math.max(1, Math.ceil(baris.length / perHalaman));
+    const mulai = perHalaman === 0 ? 0 : (halaman - 1) * perHalaman;
+    const tampil = (perHalaman === 0
+        ? baris.map((b, index) => ({ b, index }))
+        : baris.slice(mulai, mulai + perHalaman).map((b, i) => ({ b, index: mulai + i })));
+
+    useEffect(() => {
+        setHalaman(1);
+    }, [filter.search, filter.bulan, filter.tahun, perHalaman]);
 
     const setBaris = (index: number, patch: Partial<{ ruang_id: string; pegawai_id: string; keterangan: string }>) => {
         setDraft((lama) => ({ ...lama, [index]: { ...nilaiBaris(index), ...patch } }));
@@ -157,7 +173,17 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
         router.post(
             '/pencatatan-bm/dokumen/bast-baris',
             { unit_ids: baris[index].unit_ids, tanggal },
-            { preserveScroll: true, onSuccess: () => setModal(null) },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    bukaPdfDokumen(page);
+                    setModal(null);
+                },
+                onError: (errors) => {
+                    setPeringatan(Object.values(errors)[0] ?? 'BAST gagal dibuat.');
+                    setModal(null);
+                },
+            },
         );
     };
 
@@ -170,7 +196,17 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
         router.post(
             `/pencatatan-bm/dokumen/fakta-integritas/${pegawaiId}`,
             { tanggal },
-            { preserveScroll: true, onSuccess: () => setModal(null) },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    bukaPdfDokumen(page);
+                    setModal(null);
+                },
+                onError: (errors) => {
+                    setPeringatan(Object.values(errors)[0] ?? 'Fakta Integritas gagal dibuat.');
+                    setModal(null);
+                },
+            },
         );
     };
 
@@ -242,7 +278,7 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                     <th className="px-3 py-2">Nama Barang</th>
                                     <th className="px-3 py-2">Merk/Type</th>
                                     <th className="px-3 py-2">Kode Barang</th>
-                                    <th className="px-3 py-2" colSpan={5}>Pengadaan</th>
+                                    <th className="px-3 py-2" colSpan={6}>Pengadaan</th>
                                     <th className="px-3 py-2" colSpan={3}>Penyaluran</th>
                                     <th className="px-3 py-2">No.Reg</th>
                                     <th className="px-3 py-2">Ket</th>
@@ -254,6 +290,7 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                     <th className="px-2 py-1">Bln</th>
                                     <th className="px-2 py-1">Thn</th>
                                     <th className="px-2 py-1">Vol</th>
+                                    <th className="px-2 py-1">Satuan</th>
                                     <th className="px-2 py-1">Harga Satuan</th>
                                     <th className="px-2 py-1">Nama Penerima</th>
                                     <th className="px-2 py-1">Ruang</th>
@@ -262,7 +299,7 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                 </tr>
                             </thead>
                             <tbody>
-                                {baris.map((b, index) => {
+                                {tampil.map(({ b, index }) => {
                                     const nilai = nilaiBaris(index);
                                     return (
                                         <tr key={`${b.kode_barang}-${b.nomor_register}`} className={b.sudah_disalurkan ? 'text-slate-400' : 'text-slate-700'}>
@@ -273,7 +310,8 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                             <td className="px-2 py-2">{b.tanggal_perolehan ?? '-'}</td>
                                             <td className="px-2 py-2">{b.bulan_perolehan ?? '-'}</td>
                                             <td className="px-2 py-2">{b.tahun_perolehan}</td>
-                                            <td className="px-2 py-2">{b.volume}</td>
+                                            <td className="px-2 py-2">{b.volume_pengadaan}</td>
+                                            <td className="px-2 py-2">{b.satuan ?? '-'}</td>
                                             <td className="px-2 py-2 whitespace-nowrap">{rupiah(b.harga_satuan)}</td>
                                             <td className="px-2 py-2">
                                                 <select
@@ -347,6 +385,47 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                             </tbody>
                         </table>
                     )}
+
+                    {baris.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
+                            <label className="flex items-center gap-2">
+                                Tampilkan
+                                <select
+                                    value={perHalaman}
+                                    onChange={(e) => setPerHalaman(Number(e.target.value))}
+                                    className="rounded-lg border border-slate-300 px-2 py-1"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                    <option value={0}>Semua</option>
+                                </select>
+                                data per halaman
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    disabled={halaman <= 1}
+                                    onClick={() => setHalaman((n) => Math.max(1, n - 1))}
+                                    className="rounded-lg border border-slate-300 px-2 py-1 font-bold disabled:opacity-40"
+                                >
+                                    &lsaquo;
+                                </button>
+                                <span>
+                                    Halaman {halaman} / {totalHalaman}
+                                </span>
+                                <button
+                                    type="button"
+                                    disabled={halaman >= totalHalaman}
+                                    onClick={() => setHalaman((n) => Math.min(totalHalaman, n + 1))}
+                                    className="rounded-lg border border-slate-300 px-2 py-1 font-bold disabled:opacity-40"
+                                >
+                                    &rsaquo;
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 <section className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4">
@@ -419,6 +498,15 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                             Berdasarkan Ruangan
                         </label>
                     </div>
+
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                        <input
+                            type="checkbox"
+                            checked={rekap.urutRuang}
+                            onChange={(e) => setRekap((r) => ({ ...r, urutRuang: e.target.checked }))}
+                        />
+                        Urutkan Berdasarkan Ruang (A&ndash;Z)
+                    </label>
 
                     {rekap.filter === 'tahun_sumber' && (
                         <div className="space-y-2 rounded-xl border border-slate-100 p-3">
@@ -518,7 +606,27 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                         <button
                             type="button"
                             onClick={() => {
+                                if (rekap.filter === 'rentang') {
+                                    if (rekap.tahun_dari === '' || rekap.tahun_sampai === '') {
+                                        setPeringatan('Harap pilih Tahun Dari dan Tahun Sampai terlebih dahulu!');
+                                        return;
+                                    }
+                                    if (Number(rekap.tahun_sampai) < Number(rekap.tahun_dari)) {
+                                        setPeringatan('Tahun Akhir tidak boleh lebih kecil dari Tahun Awal!');
+                                        return;
+                                    }
+                                    const skorAwal = Number(rekap.tahun_dari) * 10 + (rekap.semester_dari === '2' ? 2 : 1);
+                                    const skorAkhir = Number(rekap.tahun_sampai) * 10 + (rekap.semester_sampai === '1' ? 1 : 2);
+                                    if (skorAkhir < skorAwal) {
+                                        setPeringatan('Rentang Tahun/Semester Akhir tidak boleh lebih kecil dari Tahun/Semester Awal!');
+                                        return;
+                                    }
+                                }
+
                                 const params = new URLSearchParams({ filter: rekap.filter });
+                                if (rekap.urutRuang) {
+                                    params.set('berdasarkan_ruang', 'ya');
+                                }
                                 if (rekap.filter === 'tahun_sumber') {
                                     params.set('tahun', rekap.tahun);
                                     rekap.asal.forEach((a) => params.append('asal[]', a));
@@ -549,6 +657,14 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                         <p className="text-sm text-slate-500">
                             Nomor surat diisi otomatis oleh sistem berdasarkan kode klasifikasi sekolah.
                         </p>
+                        <label className="block text-xs font-semibold text-slate-600">
+                            Nomor Surat (Otomatis)
+                            <input
+                                readOnly
+                                value={nomorBastBerikutnya ?? '.......'}
+                                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-500"
+                            />
+                        </label>
                         <label className="block text-xs font-semibold text-slate-600">
                             Tanggal
                             <input

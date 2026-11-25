@@ -8,8 +8,9 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Penyaluran = penempatan pertama. Ruang wajib dipilih karena penyaluran
- * tanpa lokasi tidak punya arti; penanggung jawab tetap opsional.
+ * Dipakai aksi Edit Penerima di Buku Penyaluran (penyimpanan massal punya
+ * request sendiri). Ruang wajib dipilih karena penyaluran tanpa lokasi tidak
+ * punya arti; penanggung jawab opsional.
  */
 class PenyaluranRequest extends FormRequest
 {
@@ -46,7 +47,8 @@ class PenyaluranRequest extends FormRequest
                 Rule::exists('master_data_pegawai', 'id')->where('sekolah_id', $sekolahId)->whereNull('deleted_at'),
             ],
             'kondisi' => ['nullable', Rule::in(array_keys(InventarisUnit::KONDISI))],
-            'tanggal' => ['required', 'date'],
+            // Modal Edit Penerima tidak mengumpulkan tanggal: default hari ini.
+            'tanggal' => ['nullable', 'date'],
             'keterangan' => ['nullable', 'string', 'max:1000'],
         ];
     }

@@ -10,8 +10,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
 /**
- * Ekspor unit inventaris satu sekolah (26 kolom ringkas sesuai kebiasaan
- * laporan BM, tanpa kolom legacy yang tidak dipakai target).
+ * Ekspor unit inventaris satu sekolah, satu baris per unit.
  */
 class InventarisExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping
 {
@@ -28,7 +27,7 @@ class InventarisExport implements FromQuery, ShouldAutoSize, WithHeadings, WithM
     public function headings(): array
     {
         return [
-            'No', 'Register', 'Kode Barang', 'Nama Barang', 'Jenis Aset', 'Merk/Tipe',
+            'No', 'Register', 'Kode Barang', 'Nama Barang', 'Jenis Aset', 'Merk/Tipe', 'Bahan',
             'No. Sertifikat', 'Asal Perolehan', 'Ukuran Bangunan', 'Satuan', 'Tanggal Perolehan',
             'Bulan Perolehan', 'Tahun Perolehan', 'Harga Satuan', 'Nilai Perolehan',
             'Kondisi', 'Status', 'Ruang', 'Penanggung Jawab', 'NIP', 'Keterangan',
@@ -52,6 +51,7 @@ class InventarisExport implements FromQuery, ShouldAutoSize, WithHeadings, WithM
             $unit->nama_barang,
             $unit->jenis_aset,
             $unit->merk_tipe,
+            $unit->bahan,
             $unit->no_sertifikat,
             $unit->asal_perolehan,
             $unit->ukuran_bangunan,

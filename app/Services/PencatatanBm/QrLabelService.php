@@ -8,28 +8,24 @@ use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
-use Illuminate\Support\Facades\URL;
 
 /**
- * QR unit hanya memuat signed URL ke detail unit. Endpoint scan tetap
- * melakukan otorisasi tenant, jadi `sekolah_id` tidak pernah ikut di payload.
+ * QR unit memuat URL kartu barang. Yang dipindai adalah kertas label yang bisa
+ * bertahan bertahun-tahun, jadi URL tidak ditandatangani; otorisasi tenant tetap
+ * dilakukan saat halamannya dibuka.
  */
 class QrLabelService
 {
-    public function signedUnitUrl(InventarisUnit $unit): string
+    public function unitUrl(InventarisUnit $unit): string
     {
-        return URL::temporarySignedRoute(
-            'pencatatan-bm.inventaris.show',
-            now()->addYear(),
-            ['unit' => $unit->id],
-        );
+        return route('pencatatan-bm.inventaris.show', ['unit' => $unit->id]);
     }
 
     public function svg(InventarisUnit $unit): string
     {
         $writer = new Writer(new ImageRenderer(new RendererStyle(300, 1), new SvgImageBackEnd));
 
-        return $writer->writeString($this->signedUnitUrl($unit));
+        return $writer->writeString($this->unitUrl($unit));
     }
 
     /**

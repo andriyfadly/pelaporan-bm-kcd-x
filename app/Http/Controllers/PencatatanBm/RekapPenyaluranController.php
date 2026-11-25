@@ -72,6 +72,21 @@ class RekapPenyaluranController extends Controller
                 ]);
             }
 
+            if ((int) $tahunSampai < (int) $tahunDari) {
+                throw ValidationException::withMessages([
+                    'tahun_sampai' => 'Tahun Akhir tidak boleh lebih kecil dari Tahun Awal!',
+                ]);
+            }
+
+            $skorAwal = ((int) $tahunDari * 10) + ($semesterDari === 2 ? 2 : 1);
+            $skorAkhir = ((int) $tahunSampai * 10) + ($semesterSampai === 1 ? 1 : 2);
+
+            if ($skorAkhir < $skorAwal) {
+                throw ValidationException::withMessages([
+                    'semester_sampai' => 'Rentang Tahun/Semester Akhir tidak boleh lebih kecil dari Tahun/Semester Awal!',
+                ]);
+            }
+
             $bulanAwal = $semesterDari === 1 ? 1 : 7;
             $bulanAkhir = $semesterSampai === 1 ? 6 : 12;
             [$tahunAwal, $tahunAkhir] = [(int) $tahunDari, (int) $tahunSampai];
@@ -98,10 +113,10 @@ class RekapPenyaluranController extends Controller
 
         $units = $query->get();
 
-        if ($filter === 'ruang') {
+        if ($filter === 'ruang' || $request->input('berdasarkan_ruang') === 'ya') {
             $units = $units->sortBy(fn (InventarisUnit $unit): string => sprintf(
                 '%s|%s',
-                $unit->ruang_id ? (string) $unit->ruang?->nama_ruang : 'zzz',
+                $unit->ruang_id ? mb_strtolower((string) $unit->ruang?->nama_ruang) : 'zzz',
                 $unit->nomor_register,
             ))->values();
         }

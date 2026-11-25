@@ -44,7 +44,7 @@ class DashboardController extends Controller
     {
         $perKondisi = InventarisUnit::query()
             ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
-            ->where('status', InventarisUnit::STATUS_AKTIF)
+            ->whereIn('status', [InventarisUnit::STATUS_AKTIF, InventarisUnit::STATUS_DIKEMBALIKAN])
             ->toBase()
             ->selectRaw('kondisi, COUNT(*) as jumlah')
             ->groupBy('kondisi')
@@ -73,7 +73,7 @@ class DashboardController extends Controller
         $baris = InventarisUnit::query()
             ->with(['ruang:id,nama_ruang', 'pegawai:id,nama_lengkap'])
             ->where('sekolah_id', $sekolahId)
-            ->where('status', InventarisUnit::STATUS_AKTIF)
+            ->whereIn('status', [InventarisUnit::STATUS_AKTIF, InventarisUnit::STATUS_DIKEMBALIKAN])
             ->where('kondisi', $kode)
             ->orderBy('nama_barang')
             ->orderBy('nomor_register')

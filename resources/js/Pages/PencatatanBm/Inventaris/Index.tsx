@@ -29,6 +29,7 @@ interface UnitItem {
     status: string;
     ruang?: { id: string; nama_ruang: string } | null;
     pegawai?: { id: string; nama_lengkap: string } | null;
+    foto_terbaru: { id: string } | null;
 }
 
 interface Props {
@@ -77,6 +78,17 @@ export default function Index({ units, filter, tahunList, asalList, kondisiList,
     const [modalKondisi, setModalKondisi] = useState(false);
     const [kondisiMassal, setKondisiMassal] = useState<Record<string, string>>({});
     const [kondisiSemua, setKondisiSemua] = useState('');
+
+    const unggahFoto = (unitId: string, berkas: File | null) => {
+        if (!berkas) {
+            return;
+        }
+
+        router.post(`/pencatatan-bm/inventaris/${unitId}/foto`, { foto: berkas }, {
+            forceFormData: true,
+            preserveScroll: true,
+        });
+    };
 
     const form = useForm({ ...KOSONG });
     const edit = useForm({
@@ -395,7 +407,28 @@ export default function Index({ units, filter, tahunList, asalList, kondisiList,
                                             )}
                                             <td className="px-4 py-3 text-slate-500">{index + 1}</td>
                                             <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-bold text-slate-700">{unit.nomor_register}</td>
-                                            <td className="px-4 py-3 text-xs text-slate-400">{unit.foto_path ?? '-'}</td>
+                                            <td className="px-4 py-3">
+                                                {unit.foto_terbaru ? (
+                                                    <img
+                                                        src={`/pencatatan-bm/foto/${unit.foto_terbaru.id}`}
+                                                        alt={`Foto ${unit.nama_barang ?? unit.kode_barang}`}
+                                                        className="h-16 w-20 rounded-lg border border-slate-200 object-cover"
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">Belum ada foto</span>
+                                                )}
+                                                {canKelola && (
+                                                    <label className="mt-1 block cursor-pointer text-[11px] font-bold text-blue-600 hover:underline">
+                                                        Pilih Foto
+                                                        <input
+                                                            type="file"
+                                                            accept="image/jpeg,image/png,image/webp"
+                                                            className="hidden"
+                                                            onChange={(e) => unggahFoto(unit.id, e.target.files?.[0] ?? null)}
+                                                        />
+                                                    </label>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <p className="font-semibold text-slate-700">{unit.nama_barang ?? '-'}</p>
                                                 <p className="text-xs text-slate-500">{unit.merk_tipe ?? '-'}</p>

@@ -157,6 +157,45 @@ class InventarisRekapBastTest extends TestCase
         $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 
+    public function test_export_dan_daftar_mengikuti_pencarian_penerima(): void
+    {
+        $kedua = activity()->withoutLogging(fn () => Pegawai::create([
+            'sekolah_id' => $this->sekolah->id,
+            'nama_lengkap' => 'Siti Aminah',
+            'nip' => '199002022010012002',
+        ]));
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast-baris'), [
+                'unit_ids' => [$this->units[0]->id],
+                'tanggal' => '2026-03-12',
+            ])
+            ->assertRedirect();
+
+        InventarisUnit::query()->whereKey($this->units[1]->id)->update(['pegawai_id' => $kedua->id]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast-baris'), [
+                'unit_ids' => [$this->units[1]->id],
+                'tanggal' => '2026-03-13',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.berita-acara.index', ['search' => 'Siti']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('total', 1)
+                // Snapshot dokumen menyimpan nama dalam huruf kapital.
+                ->where('daftar.0.penerima', 'SITI AMINAH')
+                ->where('search', 'Siti'));
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.berita-acara.export', ['search' => 'Siti']))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+
     public function test_rekap_berita_acara_menampilkan_kolom_tabel(): void
     {
         $this->actingAs($this->operator)

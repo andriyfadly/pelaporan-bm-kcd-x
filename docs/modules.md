@@ -115,30 +115,39 @@ sinkronisasi → unit inventaris**, atau langsung **tambah manual/impor** oleh
 operator sekolah. SPJ/realisasi yang belum disetujui hanya sumber potensial,
 bukan inventaris aktif.
 
-- **Dashboard** (`/pencatatan-bm`): total unit, nilai perolehan, sebaran
-  kondisi (B/RR/RB), jumlah jenis barang, ruang & pegawai, 10 kode barang
-  terbanyak, dan status sinkronisasi terakhir.
-- **Inventaris** (`/pencatatan-bm/inventaris`): daftar unit per register,
-  filter kondisi, pencarian nama/kode/register/merek, ekspor Excel, tambah
-  barang manual, impor Excel/CSV, unduh template, dan halaman detail (ubah
-  kondisi, unggah foto, label PDF, QR, BAST, riwayat mutasi).
-- **Penyaluran** (`/pencatatan-bm/penyaluran`): penempatan **pertama** barang ke
-  ruang/penerima. Hanya unit yang belum punya lokasi yang muncul; ruang wajib,
-  penanggung jawab opsional. Barang yang sudah dikembalikan masuk lagi daftar
-  ini karena sudah kembali ke gudang.
+- **Dashboard** (`/pencatatan-bm`): lima kartu seperti aplikasi acuan — Total
+  Barang (Unit), Kondisi Baik, Rusak Ringan, Rusak Berat, dan Barang Hilang.
+  Klik kartu kondisi membuka modal rincian (nama, merek, no reg, lokasi dan
+  penerima terakhir) yang dimuat lazy lewat `/pencatatan-bm/kondisi/{kode}`.
+- **Data Barang Inventaris** (`/pencatatan-bm/inventaris`): konsol input barang —
+  input manual, impor Excel/CSV 11 kolom, unduh template, edit, hapus per unit,
+  hapus semua data, filter tahun/sumber perolehan, dan pencarian. Nomor register
+  pratinjau diambil dari `/pencatatan-bm/inventaris/register-berikutnya` tanpa
+  menaikkan sequence. Halaman detail unit menyediakan ubah kondisi, unggah foto,
+  label, QR, BAST, kartu barang, dan riwayat mutasi.
+- **Buku Penyaluran** (`/pencatatan-bm/penyaluran`): grid per **rentang register**
+  (satu baris = satu run nomor berurutan). Simpan massal menyalurkan seluruh unit
+  dalam baris; tersedia restart penyaluran dan edit penerima. Aksi per baris:
+  BAST, Pakta Integritas, Edit penerima, Restart. Tombol Rekap Penyaluran PDF
+  membuka `/pencatatan-bm/rekap-penyaluran`.
 - **Mutasi** (`/pencatatan-bm/mutasi`): perpindahan **setelah** barang berada di
   lokasi. Tujuan wajib (minimal ruang atau pegawai); mengosongkan lokasi bukan
   mutasi, melainkan pengembalian. Setiap perubahan state meninggalkan satu baris
   histori; `sekolah_id` tidak berubah.
-- **Pengembalian** (`/pencatatan-bm/pengembalian`): menutup penyaluran aktif,
-  kondisi akhir wajib diisi, histori tetap tersimpan. Unit tanpa BAST bernomor
-  tidak bisa dikembalikan (tombol terkunci, backend menolak).
-- **Berita Acara** (`/pencatatan-bm/berita-acara`): rekap BAST; nomor bisa
-  dikoreksi atau dibatalkan (dengan alasan) tanpa menghapus dokumen. Nomor yang
-  masih aktif tidak boleh duplikat; nomor yang sudah dibatalkan boleh dipakai
-  ulang.
-- **Dokumen** (`/pencatatan-bm/dokumen`): daftar dokumen tersimpan + unduh PDF.
-  Cetak langsung: KIR per ruang, buku inventaris dan sensus per tahun.
+- **Pengembalian Barang** (`/pencatatan-bm/pengembalian`): menutup penyaluran
+  aktif dan **otomatis menerbitkan Berita Acara Pengembalian bernomor** pada
+  transaksi yang sama. Tidak menunggu nomor BAST (mengikuti versi terbaru
+  acuan); kondisi akhir wajib diisi dan histori tetap tersimpan.
+- **Rekapan BA** (`/pencatatan-bm/berita-acara`): rekap BAST dengan kolom nomor
+  urut, nomor surat lengkap, barang, register, kondisi, penerima, dan tanggal;
+  nomor bisa diisi/dikoreksi atau dibatalkan (dengan alasan) tanpa menghapus
+  dokumen, dan seluruh rekap bisa diekspor ke Excel.
+- **Kartu Inventaris Ruangan / Buku Inventaris / Labeling**: cetak langsung dari
+  menu Penyaluran — KIR per ruang (13 kolom, opsi empat penanda tangan), Buku
+  Inventaris 18 kolom (tanpa filter tahun = semua tahun), dan label aset 2-up.
+- **Data Pengguna Barang** (`/pencatatan-bm/pengguna`): aset per pegawai pemegang
+  beserta tanggal BAST terakhir, tombol cetak Sensus PDF, dan permohonan
+  pengembalian per pegawai.
 - **Sinkronisasi** (`/pencatatan-bm/sinkronisasi`, khusus `super_admin`): jalankan
   ulang per periode, lihat log, dan daftar unit yang perlu tinjau manual.
 
@@ -149,9 +158,19 @@ Ada dua jalur masuk yang bermuara ke tabel `inventaris_unit`:
 1. **Sinkronisasi realisasi** — satu baris realisasi dengan volume N melahirkan N
    unit. Hanya periode yang sudah `disetujui` Admin KCD yang diproses.
 2. **Pendaftaran manual/impor** — operator mengisi barang langsung (atau impor
-   Excel/CSV). Kolom mengikuti `template_import_inventaris.xlsx` aplikasi acuan:
-   Kode Barang, Nama, Merek/Tipe, Tanggal, Bulan, Tahun, Satuan, Volume, Harga
-   Satuan, Asal Perolehan. Impor bersifat all-or-nothing.
+   Excel/CSV). Kolom mengikuti `template_import_inventaris.xlsx` aplikasi acuan
+   (11 kolom, Sumber Perolehan lebih dulu): Sumber Perolehan, Kode Barang, Nama
+   Barang, Merek/Type, Bahan, Tanggal, Bulan Perolehan, Tahun Perolehan, Satuan,
+   Volume, Harga Satuan. Impor bersifat all-or-nothing.
+
+### Penomoran & kode klasifikasi surat
+
+Nomor dokumen dibentuk otomatis sebagai `{serial 3 digit}/{kode klasifikasi}`
+per jenis per sekolah (BAST, Pakta Integritas, BA Pengembalian). Kode
+klasifikasi disimpan pada profil sekolah (`kode_bast`, `kode_fakta`,
+`kode_pengembalian`) dan diisi lewat **Profil Sekolah**. Nomor yang sudah
+dibatalkan tidak pernah dipakai ulang; serial aslinya disimpan di
+`payload.pembatalan.nomor_urut`.
 
 ### Nomor register
 

@@ -2,6 +2,7 @@
 
 namespace App\Models\PencatatanBm;
 
+use App\Models\Master\KodeBarang;
 use App\Models\Master\Pegawai;
 use App\Models\Master\Ruang;
 use App\Models\Master\Sekolah;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -26,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $nama_barang
  * @property string|null $jenis_aset
  * @property string|null $merk_tipe
+ * @property string|null $bahan
  * @property string|null $no_sertifikat
  * @property string|null $ukuran_bangunan
  * @property string|null $satuan
@@ -47,6 +50,7 @@ use Illuminate\Support\Carbon;
  * @property-read Realisasi|null $realisasi
  * @property-read Ruang|null $ruang
  * @property-read Pegawai|null $pegawai
+ * @property-read KodeBarang|null $katalog
  * @property-read Collection<int, Mutasi> $mutasi
  * @property-read Collection<int, Foto> $foto
  * @property-read Collection<int, Dokumen> $dokumen
@@ -55,13 +59,15 @@ class InventarisUnit extends Model
 {
     use HasUuids;
 
-    public const KONDISI = ['B' => 'Baik', 'RR' => 'Rusak Ringan', 'RB' => 'Rusak Berat'];
+    public const KONDISI = ['B' => 'Baik', 'RR' => 'Rusak Ringan', 'RB' => 'Rusak Berat', 'H' => 'Hilang'];
 
     public const STATUS_AKTIF = 'aktif';
 
     public const STATUS_DIKEMBALIKAN = 'dikembalikan';
 
     public const STATUS_DIHAPUS_KOREKSI = 'dihapus_koreksi';
+
+    public const STATUS_DIHAPUS_MANUAL = 'dihapus_manual';
 
     protected $table = 'inventaris_unit';
 
@@ -79,6 +85,7 @@ class InventarisUnit extends Model
         'nama_barang',
         'jenis_aset',
         'merk_tipe',
+        'bahan',
         'no_sertifikat',
         'ukuran_bangunan',
         'satuan',
@@ -143,6 +150,17 @@ class InventarisUnit extends Model
         return $this->belongsTo(Pegawai::class, 'pegawai_id');
     }
 
+    /**
+     * Katalog kode barang — sumber uraian resmi aset. Bukan foreign key: kode
+     * barang boleh belum terdaftar di katalog (input manual acuan).
+     *
+     * @return BelongsTo<KodeBarang, $this>
+     */
+    public function katalog(): BelongsTo
+    {
+        return $this->belongsTo(KodeBarang::class, 'kode_barang', 'kode_barang');
+    }
+
     /** @return HasMany<Mutasi, $this> */
     public function mutasi(): HasMany
     {
@@ -153,6 +171,19 @@ class InventarisUnit extends Model
     public function foto(): HasMany
     {
         return $this->hasMany(Foto::class, 'inventaris_unit_id');
+    }
+
+    /**
+     * Foto terakhir unit. Tidak memakai `latestOfMany()` karena agregatnya
+     * `MAX(id)` — PostgreSQL tidak punya `max(uuid)`.
+     *
+     * @return HasOne<Foto, $this>
+     */
+    public function fotoTerbaru(): HasOne
+    {
+        return $this->hasOne(Foto::class, 'inventaris_unit_id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
     }
 
     /** @return HasMany<Dokumen, $this> */

@@ -128,15 +128,35 @@ class InventarisDokumenCetakTest extends TestCase
         $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 
-    public function test_dokumen_index_mengirim_pegawai_untuk_penanggung_jawab_kir(): void
+    public function test_dokumen_index_mengirim_pj_per_ruang_untuk_kir(): void
     {
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.dokumen.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('pegawaiList', 1)
-                ->where('pegawaiList.0.nama_lengkap', 'Budi Santoso')
-                ->has('ruangList', 1));
+                // Acuan (kartu_inventaris_ruangan.php) hanya menawarkan pemegang
+                // aset yang benar-benar ada di ruangan terpilih.
+                ->where('pjPerRuang.'.$this->ruang->id.'.0.nama', 'Budi Santoso')
+                ->has('ruangList', 1)
+                ->missing('pegawaiList'));
+    }
+
+    public function test_sensus_mencari_nama_penerima(): void
+    {
+        $cari = fn (string $kata) => $this->teksPdf(
+            $this->actingAs($this->operator)
+                ->get(route('pencatatan-bm.dokumen.sensus', ['search' => $kata]))
+                ->assertOk()
+                ->getContent()
+        );
+
+        // Acuan (cetak_sensus.php) mencocokkan nama penerima selain kolom barang.
+        $this->assertStringContainsString('Budi Santoso', $cari('Budi'));
+        $this->assertStringContainsString('Laptop', $cari('Budi'));
+
+        // Kata yang tidak ada di kolom mana pun tetap menghasilkan halaman kosong.
+        $this->assertStringNotContainsString('Budi Santoso', $cari('Zzz'));
+        $this->assertStringNotContainsString('Laptop', $cari('Zzz'));
     }
 
     public function test_sensus_mengelompokkan_unit_per_pegawai(): void
@@ -216,9 +236,11 @@ class InventarisDokumenCetakTest extends TestCase
             'labelJabatan' => $service->labelPenandatangan($this->sekolah->id),
         ])->render();
 
-        // Acuan: PENYALURAN punya kolom SATUAN (LOKASI, Vol, SATUAN, PENERIMA).
+        // Acuan: PENGADAAN punya 6 sub-kolom (TGL, BLN, THN, Vol, SATUAN, HARGA)
+        // dan PENYALURAN 4 (LOKASI, Vol, SATUAN, PENERIMA) = 16 kolom total.
+        $this->assertStringContainsString('<th colspan="6">PENGADAAN</th>', $html);
         $this->assertStringContainsString('<th colspan="4">PENYALURAN</th>', $html);
-        $this->assertStringContainsString('>SATUAN</th>', $html);
+        $this->assertSame(2, substr_count($html, '>SATUAN</th>'));
 
         // Unit disalurkan mencetak satuannya, bukan tanda hubung.
         $this->assertMatchesRegularExpression('/<td class="mid">Unit<\/td>/', $html);
@@ -259,6 +281,53 @@ class InventarisDokumenCetakTest extends TestCase
         $this->assertStringContainsString('Laptop', $hariIni);
 
         $this->assertStringContainsString('Barang Masa Depan', $teks($depan->copy()->addDay()->toDateString()));
+    }
+
+    public function test_rekap_penyaluran_tanpa_data_memakai_enam_belas_kolom(): void
+    {
+        InventarisUnit::query()->delete();
+
+        $html = view('pencatatan-bm.rekap-penyaluran', [
+            'judul' => 'Rekap Penyaluran Belanja Modal',
+            'sekolah' => $this->sekolah,
+            'units' => collect(),
+            'rincian' => [],
+            'pejabat' => [],
+            'labelJabatan' => [],
+        ])->render();
+
+        $this->assertStringContainsString('colspan="16"', $html);
+    }
+
+    public function test_rekap_penyaluran_menolak_rentang_terbalik(): void
+    {
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.rekap-penyaluran.unduh', [
+                'filter' => 'rentang',
+                'tahun_dari' => 2026,
+                'semester_dari' => 1,
+                'tahun_sampai' => 2024,
+                'semester_sampai' => 2,
+            ]))
+            ->assertSessionHasErrors(['tahun_sampai' => 'Tahun Akhir tidak boleh lebih kecil dari Tahun Awal!']);
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.rekap-penyaluran.unduh', [
+                'filter' => 'rentang',
+                'tahun_dari' => 2026,
+                'semester_dari' => 2,
+                'tahun_sampai' => 2026,
+                'semester_sampai' => 1,
+            ]))
+            ->assertSessionHasErrors(['semester_sampai' => 'Rentang Tahun/Semester Akhir tidak boleh lebih kecil dari Tahun/Semester Awal!']);
+
+        $this->actingAs($this->operator)
+            ->get(route('pencatatan-bm.rekap-penyaluran.unduh', [
+                'filter' => 'semua',
+                'berdasarkan_ruang' => 'ya',
+            ]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
     }
 
     /** Buka stream PDF DomPDF (FlateDecode) jadi teks mentah untuk assertion. */

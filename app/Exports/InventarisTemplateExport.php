@@ -14,7 +14,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 class InventarisTemplateExport implements FromCollection, ShouldAutoSize, WithHeadings
 {
     /**
-     * @param  Collection<int, array{0: string, 1: string, 2: string, 3: int, 4: int, 5: int, 6: string, 7: int, 8: float, 9: string}>  $contoh
+     * @param  Collection<int, array{0: string, 1: string, 2: string, 3: string, 4: string, 5: int, 6: int, 7: int, 8: string, 9: int, 10: float}>  $contoh
      */
     public function __construct(private readonly Collection $contoh) {}
 
@@ -29,9 +29,8 @@ class InventarisTemplateExport implements FromCollection, ShouldAutoSize, WithHe
     public function headings(): array
     {
         return [
-            'Kode Barang', 'Nama Barang', 'Merek / Type', 'Tanggal',
-            'Bulan Perolehan', 'Tahun Perolehan', 'Satuan', 'Volume', 'Harga Satuan',
-            'Asal Perolehan',
+            'Sumber Perolehan', 'Kode Barang', 'Nama Barang', 'Merek / Type', 'Bahan',
+            'Tanggal', 'Bulan Perolehan', 'Tahun Perolehan', 'Satuan', 'Volume', 'Harga Satuan',
         ];
     }
 }

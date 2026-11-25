@@ -25,6 +25,8 @@ class PendaftaranInventarisRequest extends FormRequest
             'kode_barang' => ['required', 'string', 'max:100'],
             'nama_barang' => ['nullable', 'string', 'max:255'],
             'merk_tipe' => ['nullable', 'string', 'max:255'],
+            'bahan' => ['nullable', 'string', 'max:100'],
+            'no_sertifikat' => ['nullable', 'string', 'max:255'],
             'satuan' => ['nullable', 'string', 'max:50'],
             'tanggal_perolehan' => ['required', 'date'],
             'volume' => ['required', 'integer', 'min:1', 'max:500'],

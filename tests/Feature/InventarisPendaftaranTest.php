@@ -214,9 +214,9 @@ class InventarisPendaftaranTest extends TestCase
 
     public function test_impor_csv_membuat_unit_per_baris(): void
     {
-        $csv = "Kode Barang,Nama Barang,Merek / Type,Tanggal,Bulan,Tahun,Satuan,Volume,Harga Satuan,Asal Perolehan\n"
-            ."1.3.2.10.01.02.002,Laptop,Lenovo,10,2,2026,Unit,2,9000000,BOSP\n"
-            ."1.3.2.10.01.02.002,Laptop,HP,15,3,2026,Unit,1,8000000,APBN\n";
+        $csv = "Sumber Perolehan,Kode Barang,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
+            ."BOSP,1.3.2.10.01.02.002,Laptop,Lenovo,Logam,10,2,2026,Unit,2,9000000\n"
+            ."APBN,1.3.2.10.01.02.002,Laptop,HP,Plastik,15,3,2026,Unit,1,8000000\n";
 
         $file = UploadedFile::fake()->createWithContent('inventaris.csv', $csv);
 
@@ -230,14 +230,17 @@ class InventarisPendaftaranTest extends TestCase
             ['001', '002', '003'],
             InventarisUnit::orderBy('nomor_register')->pluck('nomor_register')->all(),
         );
-        $this->assertSame(2, InventarisUnit::firstOrFail()->bulan_perolehan);
+        $unit = InventarisUnit::orderBy('nomor_register')->firstOrFail();
+        $this->assertSame(2, $unit->bulan_perolehan);
+        $this->assertSame('BOSP', $unit->asal_perolehan);
+        $this->assertSame('Logam', $unit->bahan);
     }
 
     public function test_impor_melewati_baris_tanpa_kode(): void
     {
-        $csv = "Kode Barang,Nama Barang,Merek / Type,Tanggal,Bulan,Tahun,Satuan,Volume,Harga Satuan\n"
-            .",Tanpa Kode,,10,2,2026,Unit,1,0\n"
-            ."1.3.2.10.01.02.002,Laptop,,10,2,2026,Unit,1,0\n";
+        $csv = "Sumber Perolehan,Kode Barang,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
+            .",,Tanpa Kode,,,10,2,2026,Unit,1,0\n"
+            .",1.3.2.10.01.02.002,Laptop,,,10,2,2026,Unit,1,0\n";
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.inventaris.import'), [
@@ -252,9 +255,9 @@ class InventarisPendaftaranTest extends TestCase
     {
         // Baris pertama valid, baris kedua tanggalnya tidak bisa di-parse:
         // seluruh impor harus batal supaya register tidak terbit percuma.
-        $csv = "Kode Barang,Nama Barang,Merek / Type,Tanggal,Bulan,Tahun,Satuan,Volume,Harga Satuan,Asal Perolehan\n"
-            ."1.3.2.10.01.02.002,Laptop,Lenovo,10,2,2026,Unit,1,9000000,BOSP\n"
-            ."1.3.2.10.01.02.002,Kursi,Lokal,bukan-tanggal,2,2026,Unit,1,200000,BOSP\n";
+        $csv = "Sumber Perolehan,Kode Barang,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
+            ."BOSP,1.3.2.10.01.02.002,Laptop,Lenovo,Logam,10,2,2026,Unit,1,9000000\n"
+            ."BOSP,1.3.2.10.01.02.002,Kursi,Lokal,Kayu,bukan-tanggal,2,2026,Unit,1,200000\n";
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.inventaris.import'), [
@@ -267,7 +270,7 @@ class InventarisPendaftaranTest extends TestCase
 
     public function test_impor_berkas_kosong_ditolak(): void
     {
-        $csv = "Kode Barang,Nama Barang,Volume\n";
+        $csv = "Sumber Perolehan,Kode Barang,Nama Barang\n";
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.inventaris.import'), [

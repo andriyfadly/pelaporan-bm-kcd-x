@@ -41,7 +41,8 @@ class ProfilSekolahController extends Controller
 
         return Inertia::render('MasterData/ProfilSekolah/Edit', [
             'sekolah' => $sekolah->only([
-                'id', 'nama_sekolah', 'npsn', 'kota_kab', 'alamat', 'telepon', 'website', 'email',
+                'id', 'nama_sekolah', 'npsn', 'kota_kab', 'kode_pos', 'alamat', 'telepon', 'website', 'email',
+                'kode_bast', 'kode_pengembalian', 'kode_fakta',
             ]),
             'sekolahOptions' => [],
             'sekolahTerpilih' => $sekolah->id,
@@ -63,6 +64,10 @@ class ProfilSekolahController extends Controller
         // Nama/NPSN/kota bagian identitas master (dikelola admin); operator
         // hanya mengisi data profil kontak.
         $validated = $request->validate([
+            'kode_pos' => ['nullable', 'string', 'max:10'],
+            'kode_bast' => ['nullable', 'string', 'max:100'],
+            'kode_pengembalian' => ['nullable', 'string', 'max:100'],
+            'kode_fakta' => ['nullable', 'string', 'max:100'],
             'alamat' => ['nullable', 'string', 'max:500'],
             'telepon' => ['nullable', 'string', 'max:30'],
             'website' => ['nullable', 'string', 'max:255'],

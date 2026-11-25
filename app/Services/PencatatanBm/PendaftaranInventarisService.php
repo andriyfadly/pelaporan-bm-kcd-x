@@ -51,6 +51,7 @@ class PendaftaranInventarisService
                     'nama_barang' => $namaBarang !== '' ? $namaBarang : $katalog?->uraian,
                     'jenis_aset' => $data['jenis_aset'] ?? $katalog?->jenis_aset,
                     'merk_tipe' => $data['merk_tipe'] ?? null,
+                    'bahan' => $data['bahan'] ?? null,
                     'no_sertifikat' => $data['no_sertifikat'] ?? null,
                     'ukuran_bangunan' => $data['ukuran_bangunan'] ?? null,
                     'satuan' => $satuan !== '' ? $satuan : ($katalog?->satuan ?: 'Unit'),

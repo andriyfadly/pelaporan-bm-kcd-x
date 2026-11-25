@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
+import { bukaPdfDokumen } from '@/Utils/dokumen';
 import { FileText, Undo2 } from 'lucide-react';
 
 interface UnitRegister {
@@ -147,7 +148,10 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
             { unit_ids: unitIds, kondisi, tanggal, keterangan: keterangan || null },
             {
                 preserveScroll: true,
-                onSuccess: () => setTarget(null),
+                onSuccess: (page) => {
+                    bukaPdfDokumen(page);
+                    setTarget(null);
+                },
                 onError: (errors) => setGalat(Object.values(errors)[0] ?? 'Gagal memproses pengembalian.'),
             },
         );

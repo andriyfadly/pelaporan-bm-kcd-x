@@ -8,6 +8,10 @@ interface Sekolah {
     nama_sekolah: string;
     npsn: string | null;
     kota_kab: string;
+    kode_pos: string | null;
+    kode_bast: string | null;
+    kode_pengembalian: string | null;
+    kode_fakta: string | null;
     alamat: string | null;
     telepon: string | null;
     website: string | null;
@@ -23,6 +27,10 @@ interface Props {
 export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props) {
     const form = useForm({
         sekolah_id: sekolahTerpilih ?? '',
+        kode_pos: sekolah?.kode_pos ?? '',
+        kode_bast: sekolah?.kode_bast ?? '',
+        kode_pengembalian: sekolah?.kode_pengembalian ?? '',
+        kode_fakta: sekolah?.kode_fakta ?? '',
         alamat: sekolah?.alamat ?? '',
         telepon: sekolah?.telepon ?? '',
         website: sekolah?.website ?? '',
@@ -108,6 +116,19 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                         </div>
                     </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Pos</label>
+                            <input
+                                value={form.data.kode_pos}
+                                onChange={(e) => form.setData('kode_pos', e.target.value)}
+                                placeholder="Contoh: 45511"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                            />
+                            {form.errors.kode_pos && <p className="text-xs text-rose-600 mt-1">{form.errors.kode_pos}</p>}
+                        </div>
+                    </div>
+
                     <div>
                         <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Alamat</label>
                         <textarea
@@ -151,6 +172,45 @@ export default function Edit({ sekolah, sekolahOptions, sekolahTerpilih }: Props
                                 className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
                             />
                             {form.errors.email && <p className="text-xs text-rose-600 mt-1">{form.errors.email}</p>}
+                        </div>
+                    </div>
+
+                    <div className="border-t border-slate-200 pt-5">
+                        <h2 className="text-sm font-bold text-slate-800">Kode Klasifikasi Surat Inventaris</h2>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Dipakai menyusun nomor otomatis dokumen Pencatatan BM: <span className="font-mono">003/&lt;kode&gt;</span>.
+                        </p>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Klasifikasi BAST</label>
+                                <input
+                                    value={form.data.kode_bast}
+                                    onChange={(e) => form.setData('kode_bast', e.target.value)}
+                                    placeholder="Contoh: AR.03.05-CADISDIK.WIL-X"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                                />
+                                {form.errors.kode_bast && <p className="text-xs text-rose-600 mt-1">{form.errors.kode_bast}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Klasifikasi Pengembalian</label>
+                                <input
+                                    value={form.data.kode_pengembalian}
+                                    onChange={(e) => form.setData('kode_pengembalian', e.target.value)}
+                                    placeholder="Contoh: AR.03.05-CADISDIK.WIL-X"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                                />
+                                {form.errors.kode_pengembalian && <p className="text-xs text-rose-600 mt-1">{form.errors.kode_pengembalian}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Klasifikasi Fakta Integritas</label>
+                                <input
+                                    value={form.data.kode_fakta}
+                                    onChange={(e) => form.setData('kode_fakta', e.target.value)}
+                                    placeholder="Contoh: FKI.03.05"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                                />
+                                {form.errors.kode_fakta && <p className="text-xs text-rose-600 mt-1">{form.errors.kode_fakta}</p>}
+                            </div>
                         </div>
                     </div>
 

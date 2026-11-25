@@ -83,10 +83,13 @@ class InventarisReviewFixTest extends TestCase
         ]));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.store', $this->unit), [
-                'ruang_id' => $this->ruang->id,
-                'pegawai_id' => $this->pegawai->id,
-                'tanggal' => '2026-03-10',
+            ->post(route('pencatatan-bm.penyaluran.massal'), [
+                'baris' => [[
+                    'unit_ids' => [$this->unit->id],
+                    'ruang_id' => $this->ruang->id,
+                    'pegawai_id' => $this->pegawai->id,
+                    'tanggal' => '2026-03-10',
+                ]],
             ])
             ->assertRedirect();
     }

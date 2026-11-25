@@ -44,7 +44,7 @@ class InventarisController extends Controller
         $asal = (string) $request->input('asal', '');
 
         $units = InventarisUnit::query()
-            ->with(['ruang:id,nama_ruang', 'pegawai:id,nama_lengkap'])
+            ->with(['ruang:id,nama_ruang', 'pegawai:id,nama_lengkap', 'fotoTerbaru:id,inventaris_unit_id'])
             ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
             ->whereIn('status', $this->statusTampil())
             ->when($search, fn (Builder $q) => $this->whereAnyLike(
@@ -91,6 +91,7 @@ class InventarisController extends Controller
             'realisasi:id,no_spk,ba_no,ba_tgl,sumber_perolehan',
             'ruang:id,nama_ruang',
             'pegawai:id,nama_lengkap,nip',
+            'fotoTerbaru:id,inventaris_unit_id',
         ]);
 
         $mutasi = Mutasi::where('inventaris_unit_id', $unit->id)

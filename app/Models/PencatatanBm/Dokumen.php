@@ -4,7 +4,6 @@ namespace App\Models\PencatatanBm;
 
 use App\Models\Master\Sekolah;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,6 +33,17 @@ use Illuminate\Support\Carbon;
 class Dokumen extends Model
 {
     use HasUuids;
+
+    /** Jenis dokumen yang bisa diterbitkan modul ini. */
+    public const JENIS = ['bast', 'fakta_integritas', 'pengembalian', 'surat_pengembalian'];
+
+    /** Label jenis dokumen pada UI dan judul berkas cetak (satu sumber). */
+    public const LABEL_JENIS = [
+        'bast' => 'Berita Acara Penyaluran',
+        'fakta_integritas' => 'Pakta Integritas',
+        'pengembalian' => 'Berita Acara Pengembalian',
+        'surat_pengembalian' => 'Surat Permohonan Pengembalian',
+    ];
 
     protected $table = 'inventaris_dokumen';
 
@@ -70,20 +80,5 @@ class Dokumen extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
-    }
-
-    /**
-     * Dokumen BAST yang nomornya sudah terisi dan belum dibatalkan. Hanya
-     * baris inilah yang dianggap "BA sudah jadi" saat pengembalian.
-     *
-     * @return Builder<static>
-     */
-    public static function bastBernomor(?string $sekolahId = null): Builder
-    {
-        return static::query()
-            ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
-            ->where('jenis', 'bast')
-            ->whereNotNull('nomor')
-            ->whereNull('nomor_dibatalkan_pada');
     }
 }

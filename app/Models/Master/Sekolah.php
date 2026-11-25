@@ -21,6 +21,10 @@ use Illuminate\Support\Carbon;
  * @property string $nama_sekolah
  * @property string|null $npsn
  * @property string $kota_kab
+ * @property string|null $kode_pos
+ * @property string|null $kode_bast
+ * @property string|null $kode_pengembalian
+ * @property string|null $kode_fakta
  * @property string|null $alamat
  * @property string|null $telepon
  * @property string|null $website
@@ -48,6 +52,10 @@ class Sekolah extends Model
         'nama_sekolah',
         'npsn',
         'kota_kab',
+        'kode_pos',
+        'kode_bast',
+        'kode_pengembalian',
+        'kode_fakta',
         'alamat',
         'telepon',
         'website',

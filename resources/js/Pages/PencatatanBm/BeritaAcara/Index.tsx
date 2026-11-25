@@ -21,15 +21,17 @@ interface Props {
     daftar: BarisBa[];
     kodeBast: string;
     total: number;
+    search: string;
 }
 
-export default function Index({ daftar, kodeBast, total }: Props) {
+export default function Index({ daftar, kodeBast, total, search }: Props) {
     const [editTarget, setEditTarget] = useState<BarisBa | null>(null);
     const [urut, setUrut] = useState('');
     const [batalTarget, setBatalTarget] = useState<BarisBa | null>(null);
     const [alasan, setAlasan] = useState('');
     const [proses, setProses] = useState(false);
-    const [cari, setCari] = useState('');
+    const [cari, setCari] = useState(search);
+    const [errorNomor, setErrorNomor] = useState<string | null>(null);
 
     const daftarTampil = daftar.filter((item) => item.penerima.toLowerCase().includes(cari.toLowerCase()));
 
@@ -51,6 +53,7 @@ export default function Index({ daftar, kodeBast, total }: Props) {
             {
                 preserveScroll: true,
                 onSuccess: () => setEditTarget(null),
+                onError: (errors) => setErrorNomor(errors.nomor ?? 'Nomor urut gagal disimpan.'),
                 onFinish: () => setProses(false),
             },
         );
@@ -90,7 +93,7 @@ export default function Index({ daftar, kodeBast, total }: Props) {
                             className="ml-auto w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-72"
                         />
                         <a
-                            href="/pencatatan-bm/berita-acara/export"
+                            href={cari ? `/pencatatan-bm/berita-acara/export?search=${encodeURIComponent(cari)}` : '/pencatatan-bm/berita-acara/export'}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"
                         >
                             <Download className="h-3.5 w-3.5" /> Export ke Excel (.xlsx)
@@ -179,6 +182,7 @@ export default function Index({ daftar, kodeBast, total }: Props) {
                             required
                             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                         />
+                        {errorNomor && <p className="mt-1 text-xs text-rose-600">{errorNomor}</p>}
                     </label>
 
                     <label className="block text-xs font-semibold text-slate-600">

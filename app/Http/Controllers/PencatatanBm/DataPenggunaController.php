@@ -64,6 +64,7 @@ class DataPenggunaController extends Controller
                         'merk_tipe' => $unit->merk_tipe,
                         'ruang' => $unit->ruang?->nama_ruang,
                         'tahun_perolehan' => $unit->tahun_perolehan,
+                        'tanggal_perolehan' => $unit->tanggal_perolehan?->format('Y-m-d'),
                         'volume' => 1,
                         'satuan' => $unit->satuan,
                         'tanggal_bast' => $tanggalBast->get($unit->id)?->tanggal?->format('Y-m-d'),
@@ -86,6 +87,7 @@ class DataPenggunaController extends Controller
         $kunci = mb_strtolower(implode(' ', array_filter([
             $unit->pegawai?->nama_lengkap,
             $unit->nama_barang,
+            $unit->merk_tipe,
             $unit->nomor_register,
         ])));
 
