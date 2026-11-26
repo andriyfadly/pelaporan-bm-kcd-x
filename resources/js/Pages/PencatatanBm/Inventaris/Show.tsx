@@ -2,7 +2,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
-import { formatRupiah } from '@/Utils/format';
+import { formatRupiah, formatTanggalTabel, tanggalHariIni } from '@/Utils/format';
 import { bukaPdfDokumen } from '@/Utils/dokumen';
 import { ArrowLeft, FileText, History, QrCode, Tag, Upload } from 'lucide-react';
 
@@ -71,7 +71,7 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
     const [errorFoto, setErrorFoto] = useState<string | null>(null);
     // Tanggal dokumen menentukan pejabat yang di-snapshot, jadi harus bisa
     // diisi mundur — bukan selalu hari ini.
-    const [tanggalDokumen, setTanggalDokumen] = useState(() => new Date().toISOString().slice(0, 10));
+    const [tanggalDokumen, setTanggalDokumen] = useState(() => tanggalHariIni());
     const [galatDokumen, setGalatDokumen] = useState<string | null>(null);
 
     const kirimFoto = (e: React.FormEvent) => {
@@ -356,7 +356,7 @@ export default function Show({ unit, mutasi, ruangList, pegawaiList, kondisiList
                                 <li key={item.id} className="px-5 py-3 text-sm">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <span className="font-semibold text-slate-700">{LABEL_JENIS[item.jenis] ?? item.jenis}</span>
-                                        <span className="text-xs text-slate-500">{item.tanggal}</span>
+                                        <span className="text-xs text-slate-500">{formatTanggalTabel(item.tanggal)}</span>
                                     </div>
                                     <p className="mt-1 text-xs text-slate-500">
                                         {item.asal_ruang?.nama_ruang ?? '-'} → {item.tujuan_ruang?.nama_ruang ?? '-'} ·{' '}

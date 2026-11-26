@@ -42,6 +42,7 @@ class DokumenInventarisService
         private readonly QrLabelService $qr,
         private readonly PenugasanPegawaiService $penugasan,
         private readonly NomorDokumenInventarisService $nomor,
+        private readonly NomorDokumenGuard $guard,
     ) {}
 
     /**
@@ -115,13 +116,22 @@ class DokumenInventarisService
      */
     public function simpan(Dokumen $dokumen, ?string $view = null, array $tambahan = []): Dokumen
     {
+        // Label jabatan penanda tangan dibekukan saat dokumen dibuat; koreksi
+        // master jabatan setelahnya tidak boleh mengubah cetak ulang.
+        $payload = $dokumen->payload ?? [];
+
+        if (! isset($payload['labelJabatan'])) {
+            $payload['labelJabatan'] = $this->penugasan->labelPenandatangan((string) $dokumen->sekolah_id);
+            $dokumen->update(['payload' => $payload]);
+        }
+
         $pdf = $this->pdf($view ?? $this->view($dokumen->jenis), array_merge([
             'judul' => $this->judul($dokumen->jenis),
             'dokumen' => $dokumen,
-            'payload' => $dokumen->payload,
+            'payload' => $payload,
             'sekolah' => $dokumen->sekolah,
             'pejabat' => $this->pejabatTersimpan($dokumen),
-            'labelJabatan' => $this->penugasan->labelPenandatangan((string) $dokumen->sekolah_id),
+            'labelJabatan' => $payload['labelJabatan'],
         ], $tambahan), self::F4);
 
         $path = "inventaris/dokumen/{$dokumen->sekolah_id}/{$dokumen->jenis}-{$dokumen->id}.pdf";
@@ -141,7 +151,8 @@ class DokumenInventarisService
             'payload' => $dokumen->payload,
             'sekolah' => $dokumen->sekolah,
             'pejabat' => $this->pejabatTersimpan($dokumen),
-            'labelJabatan' => $this->penugasan->labelPenandatangan((string) $dokumen->sekolah_id),
+            'labelJabatan' => $dokumen->payload['labelJabatan']
+                ?? $this->penugasan->labelPenandatangan((string) $dokumen->sekolah_id),
         ], self::F4);
 
         return $pdf->download($this->namaFile($this->judul($dokumen->jenis), $dokumen->nomor ?? $dokumen->id));
@@ -180,6 +191,108 @@ class DokumenInventarisService
     }
 
     /**
+     * Peta unit => nomor BAST aktif yang snapshot penitipannya masih cocok
+     * dengan penerima/ruang unit saat ini. BAST lama tanpa snapshot custody
+     * hanya bisa dibandingkan lewat `inventaris_pegawai_id`.
+     *
+     * @param  array<int, string>|null  $unitIds  null = seluruh unit sekolah
+     * @return array<string, string>
+     */
+    public function petaBastAktif(string $sekolahId, ?array $unitIds = null): array
+    {
+        $dokumen = Dokumen::query()
+            ->where('sekolah_id', $sekolahId)
+            ->where('jenis', 'bast')
+            ->whereNotNull('nomor')
+            ->whereNull('nomor_dibatalkan_pada')
+            ->orderByDesc('tanggal')
+            ->orderByDesc('created_at')
+            ->get(['id', 'nomor', 'inventaris_unit_id', 'inventaris_pegawai_id', 'payload']);
+
+        if ($dokumen->isEmpty()) {
+            return [];
+        }
+
+        $kandidatIds = $unitIds ?? $dokumen->flatMap(function (Dokumen $bast): array {
+            $ids = [];
+
+            if ($bast->inventaris_unit_id !== null) {
+                $ids[] = $bast->inventaris_unit_id;
+            }
+
+            foreach (($bast->payload['units'] ?? []) as $snapshot) {
+                if (is_array($snapshot) && is_string($snapshot['id'] ?? null)) {
+                    $ids[] = $snapshot['id'];
+                }
+            }
+
+            return $ids;
+        })->unique()->values()->all();
+
+        if ($kandidatIds === []) {
+            return [];
+        }
+
+        $custody = InventarisUnit::query()
+            ->where('sekolah_id', $sekolahId)
+            ->whereIn('id', $kandidatIds)
+            ->get(['id', 'pegawai_id', 'ruang_id'])
+            ->keyBy('id');
+
+        $peta = [];
+
+        foreach ($dokumen as $bast) {
+            foreach (($bast->payload['units'] ?? []) as $snapshot) {
+                $id = is_array($snapshot) ? ($snapshot['id'] ?? null) : null;
+
+                if (! is_string($id) || isset($peta[$id])) {
+                    continue;
+                }
+
+                $unit = $custody->get($id);
+
+                if ($unit === null) {
+                    continue;
+                }
+
+                $punyaCustody = array_key_exists('pegawai_id', $snapshot) || array_key_exists('ruang_id', $snapshot);
+
+                if (! $punyaCustody) {
+                    continue;
+                }
+
+                if ((string) ($snapshot['pegawai_id'] ?? '') === (string) $unit->pegawai_id
+                    && (string) ($snapshot['ruang_id'] ?? '') === (string) $unit->ruang_id) {
+                    $peta[$id] = (string) $bast->nomor;
+                }
+            }
+
+            // Dokumen lama satu unit tidak menyimpan ruang, jadi hanya pegawai
+            // yang bisa dibandingkan. Jangan menebak ruang yang tidak disnapshot.
+            $id = $bast->inventaris_unit_id;
+
+            if ($id === null || isset($peta[$id])) {
+                continue;
+            }
+
+            $punyaCustody = collect($bast->payload['units'] ?? [])->contains(
+                fn (mixed $snapshot): bool => is_array($snapshot)
+                    && ($snapshot['id'] ?? null) === $id
+                    && (array_key_exists('pegawai_id', $snapshot) || array_key_exists('ruang_id', $snapshot)),
+            );
+
+            $unit = $custody->get($id);
+
+            if (! $punyaCustody && $unit !== null
+                && (string) $bast->inventaris_pegawai_id === (string) $unit->pegawai_id) {
+                $peta[$id] = (string) $bast->nomor;
+            }
+        }
+
+        return $peta;
+    }
+
+    /**
      * Payload Berita Acara Pengembalian untuk satu baris register: banyak unit +
      * mutasi pengembalian + nomor BAST terakhir, semuanya dibekukan ke dokumen.
      *
@@ -194,15 +307,8 @@ class DokumenInventarisService
         $mutasiPertama = $mutasis->first();
         $mutasiPertama->loadMissing('asalPegawai');
 
-        $nomorBast = Dokumen::query()
-            ->where('sekolah_id', $pertama->sekolah_id)
-            ->where('jenis', 'bast')
-            ->whereIn('inventaris_unit_id', $unitIds)
-            ->whereNotNull('nomor')
-            ->whereNull('nomor_dibatalkan_pada')
-            ->latest('tanggal')
-            ->latest('created_at')
-            ->value('nomor');
+        $bastPerUnit = $this->petaBastAktif((string) $pertama->sekolah_id, $unitIds);
+        $nomorUnik = collect($bastPerUnit)->unique()->values();
 
         $penerima = $mutasiPertama->asalPegawai;
 
@@ -230,7 +336,9 @@ class DokumenInventarisService
             ],
             'penerima_id' => $penerima?->id,
             'nama_format' => NamaGelar::format($penerima?->nama_lengkap),
-            'nomor_bast' => $nomorBast,
+            // Satu nomor hanya bila seluruh unit merujuk BAST yang sama.
+            'nomor_bast' => $nomorUnik->count() === 1 ? $nomorUnik->first() : null,
+            'bast_per_unit' => $bastPerUnit,
             'mutasi_ids' => $mutasis->pluck('id')->values()->all(),
             'mutasi' => $this->qr->snapshotMutasi($mutasiPertama),
             'pejabat' => $this->pejabat($pertama->sekolah_id, $tanggal),
@@ -245,10 +353,13 @@ class DokumenInventarisService
      */
     public function simpanPengembalianBanyak(array $payload, string $tanggal, ?string $userId): Dokumen
     {
+        $nomor = $this->nomor->berikutnya($payload['sekolah_id'], 'pengembalian');
+        $this->guard->pastikanTersedia($payload['sekolah_id'], 'pengembalian', $nomor);
+
         $dokumen = Dokumen::create([
             'sekolah_id' => $payload['sekolah_id'],
             'jenis' => 'pengembalian',
-            'nomor' => $this->nomor->berikutnya($payload['sekolah_id'], 'pengembalian'),
+            'nomor' => $nomor,
             'tanggal' => $tanggal,
             'inventaris_unit_id' => null,
             'inventaris_pegawai_id' => $payload['penerima_id'] ?? null,

@@ -50,10 +50,17 @@ class DashboardController extends Controller
             ->groupBy('kondisi')
             ->pluck('jumlah', 'kondisi');
 
-        $kondisi = array_merge(
-            array_fill_keys(array_keys(InventarisUnit::KONDISI), 0),
-            $perKondisi->map(fn ($jumlah): int => (int) $jumlah)->all(),
-        );
+        $kondisi = array_fill_keys(array_keys(InventarisUnit::KONDISI), 0);
+
+        // Acuan menghitung sisa volume yang belum punya rincian kondisi sebagai
+        // "Baik" (`index.php:54`), jadi sentinel '-' ikut masuk keranjang B.
+        foreach ($perKondisi as $kode => $jumlah) {
+            $kunci = $kode === InventarisUnit::KONDISI_BELUM_DISET ? 'B' : $kode;
+
+            if (array_key_exists($kunci, $kondisi)) {
+                $kondisi[$kunci] += (int) $jumlah;
+            }
+        }
 
         return [
             'totalUnit' => array_sum($kondisi),
@@ -74,7 +81,11 @@ class DashboardController extends Controller
             ->with(['ruang:id,nama_ruang', 'pegawai:id,nama_lengkap'])
             ->where('sekolah_id', $sekolahId)
             ->whereIn('status', [InventarisUnit::STATUS_AKTIF, InventarisUnit::STATUS_DIKEMBALIKAN])
-            ->where('kondisi', $kode)
+            ->when(
+                $kode === 'B',
+                fn (Builder $q) => $q->whereIn('kondisi', [InventarisUnit::KONDISI_BELUM_DISET, 'B']),
+                fn (Builder $q) => $q->where('kondisi', $kode),
+            )
             ->orderBy('nama_barang')
             ->orderBy('nomor_register')
             ->get()

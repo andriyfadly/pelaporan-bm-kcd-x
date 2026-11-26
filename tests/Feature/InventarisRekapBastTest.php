@@ -213,7 +213,9 @@ class InventarisRekapBastTest extends TestCase
                 ->where('daftar.0.no_urut', '001')
                 ->where('daftar.0.nama_barang', 'Laptop')
                 ->where('daftar.0.no_reg', '001')
-                ->where('daftar.0.kondisi', 'Baik')
+                // Unit hasil impor tanpa rincian kondisi tampil '-' di rekap,
+                // sama seperti `rekapan_ba.php` acuan.
+                ->where('daftar.0.kondisi', '-')
                 ->where('kodeBast', 'AR.03.05-CADISDIK.WIL-X')
                 ->where('total', 1));
     }

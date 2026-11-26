@@ -349,10 +349,10 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/penyaluran', [PencatatanPenyaluranController::class, 'index'])->name('penyaluran.index');
             Route::post('/penyaluran', [PencatatanPenyaluranController::class, 'storeMassal'])
                 ->middleware('permission:mutasi-inventaris-bm')->name('penyaluran.massal');
-            Route::post('/penyaluran/{unit}/reset', [PencatatanPenyaluranController::class, 'reset'])
-                ->middleware('permission:mutasi-inventaris-bm')->name('penyaluran.reset');
-            Route::post('/penyaluran/{unit}/penerima', [PencatatanPenyaluranController::class, 'ubahPenerima'])
-                ->middleware('permission:mutasi-inventaris-bm')->name('penyaluran.penerima');
+            Route::post('/penyaluran/reset-massal', [PencatatanPenyaluranController::class, 'resetMassal'])
+                ->middleware('permission:mutasi-inventaris-bm')->name('penyaluran.reset-massal');
+            Route::post('/penyaluran/penerima-massal', [PencatatanPenyaluranController::class, 'ubahPenerimaMassal'])
+                ->middleware('permission:mutasi-inventaris-bm')->name('penyaluran.penerima-massal');
 
             Route::get('/mutasi', [PencatatanMutasiController::class, 'index'])->name('mutasi.index');
             Route::get('/pengembalian', [PencatatanPengembalianController::class, 'index'])->name('pengembalian.index');

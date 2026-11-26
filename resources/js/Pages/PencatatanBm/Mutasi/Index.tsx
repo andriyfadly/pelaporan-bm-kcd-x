@@ -45,6 +45,7 @@ interface Props {
     ruangList: { id: string; nama_ruang: string }[];
     pegawaiList: { id: string; nama_lengkap: string }[];
     kondisiList: Record<string, string>;
+    canMutasi: boolean;
 }
 
 const LABEL_JENIS: Record<string, string> = {
@@ -60,7 +61,7 @@ const LABEL_STATUS: Record<string, string> = {
     dihapus_koreksi: 'Dihapus (koreksi)',
 };
 
-export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiList }: Props) {
+export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiList, canMutasi }: Props) {
     const [open, setOpen] = useState(false);
     const [proses, setProses] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -271,7 +272,8 @@ export default function Index({ riwayat, units, ruangList, pegawaiList, kondisiL
 
                         <button
                             type="submit"
-                            disabled={proses}
+                            disabled={proses || !canMutasi}
+                            title={canMutasi ? undefined : 'Butuh izin mutasi inventaris'}
                             className="rounded-xl bg-blue-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             Simpan

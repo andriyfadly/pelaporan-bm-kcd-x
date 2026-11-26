@@ -175,7 +175,7 @@ class InventarisPenyaluranMassalTest extends TestCase
         $unit->update(['ruang_id' => $this->ruang->id]);
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.reset', $unit))
+            ->post(route('pencatatan-bm.penyaluran.reset-massal'), ['unit_ids' => [$unit->id]])
             ->assertRedirect()
             ->assertSessionHas('success');
 
@@ -198,7 +198,7 @@ class InventarisPenyaluranMassalTest extends TestCase
         $unit->update(['status' => InventarisUnit::STATUS_DIKEMBALIKAN]);
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.reset', $unit))
+            ->post(route('pencatatan-bm.penyaluran.reset-massal'), ['unit_ids' => [$unit->id]])
             ->assertSessionHasErrors('unit');
 
         $this->assertSame(InventarisUnit::STATUS_DIKEMBALIKAN, $unit->fresh()->status);
@@ -215,10 +215,60 @@ class InventarisPenyaluranMassalTest extends TestCase
         ]));
 
         $this->actingAs($this->operator)
-            ->post(route('pencatatan-bm.penyaluran.penerima', $unit), ['ruang_id' => $tujuan->id])
+            ->post(route('pencatatan-bm.penyaluran.penerima-massal'), ['unit_ids' => [$unit->id], 'ruang_id' => $tujuan->id])
             ->assertRedirect()
             ->assertSessionHas('success');
 
         $this->assertSame($tujuan->id, $unit->fresh()->ruang_id);
+    }
+
+    public function test_reset_massal_menyentuh_semua_unit_dalam_baris(): void
+    {
+        $ids = array_map(fn (InventarisUnit $unit): string => $unit->id, $this->units);
+        InventarisUnit::whereIn('id', $ids)->update([
+            'ruang_id' => $this->ruang->id,
+            'status' => InventarisUnit::STATUS_AKTIF,
+        ]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.reset-massal'), ['unit_ids' => $ids])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(0, InventarisUnit::whereIn('id', $ids)->whereNotNull('ruang_id')->count());
+        $this->assertSame(3, Mutasi::where('keterangan', 'Penyaluran direset')->count());
+    }
+
+    public function test_ubah_penerima_massal_memindahkan_semua_unit_dalam_baris(): void
+    {
+        $ids = array_map(fn (InventarisUnit $unit): string => $unit->id, $this->units);
+        InventarisUnit::whereIn('id', $ids)->update(['ruang_id' => $this->ruang->id]);
+
+        $tujuan = activity()->withoutLogging(fn () => Ruang::create([
+            'sekolah_id' => $this->sekolah->id,
+            'nama_ruang' => 'Ruang Tata Usaha',
+        ]));
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.penerima-massal'), [
+                'unit_ids' => $ids,
+                'ruang_id' => $tujuan->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(3, InventarisUnit::whereIn('id', $ids)->where('ruang_id', $tujuan->id)->count());
+    }
+
+    public function test_aksi_massal_menolak_unit_duplikat(): void
+    {
+        $unit = $this->units[0];
+        $unit->update(['ruang_id' => $this->ruang->id]);
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.penyaluran.reset-massal'), [
+                'unit_ids' => [$unit->id, $unit->id],
+            ])
+            ->assertSessionHasErrors('unit_ids.1');
     }
 }

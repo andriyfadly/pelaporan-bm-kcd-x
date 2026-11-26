@@ -61,6 +61,12 @@ class InventarisUnit extends Model
 
     public const KONDISI = ['B' => 'Baik', 'RR' => 'Rusak Ringan', 'RB' => 'Rusak Berat', 'H' => 'Hilang'];
 
+    /**
+     * Nilai mentah hasil impor/sinkronisasi acuan: barang belum punya rincian
+     * kondisi. Bukan pilihan form; dashboad menghitungnya sebagai "Baik".
+     */
+    public const KONDISI_BELUM_DISET = '-';
+
     public const STATUS_AKTIF = 'aktif';
 
     public const STATUS_DIKEMBALIKAN = 'dikembalikan';

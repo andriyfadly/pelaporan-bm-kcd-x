@@ -5,6 +5,7 @@ namespace App\Services\PencatatanBm;
 use App\Models\PencatatanBm\Dokumen;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Models\PencatatanBm\Mutasi;
+use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -58,16 +59,27 @@ class MutasiInventarisService
      *
      * @param  Collection<int, InventarisUnit>  $units
      * @param  array{kondisi: string, tanggal: string, keterangan?: ?string}  $data
+     * @param  (Closure(Collection<int, InventarisUnit>): array<string, string>)|null  $petaBastAktif
      * @return array{mutasis: Collection<int, Mutasi>, dokumen: Dokumen}
      */
-    public function kembalikanBanyak(Collection $units, array $data, ?string $userId): array
+    public function kembalikanBanyak(Collection $units, array $data, ?string $userId, ?Closure $petaBastAktif = null): array
     {
-        return DB::transaction(function () use ($units, $data, $userId): array {
+        return DB::transaction(function () use ($units, $data, $userId, $petaBastAktif): array {
+            $ids = $units->pluck('id')->unique()->values()->all();
+
             $terkunci = InventarisUnit::query()
-                ->whereIn('id', $units->pluck('id')->all())
+                ->whereIn('id', $ids)
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
+
+            // Himpunan yang terkunci harus tepat sama dengan permintaan, bukan
+            // hanya jumlahnya: ID sekolah lain tidak boleh ikut terproses.
+            if (collect($ids)->sort()->values()->all() !== $terkunci->keys()->sort()->values()->all()) {
+                throw ValidationException::withMessages([
+                    'unit' => 'Sebagian unit tidak ditemukan atau bukan milik sekolah ini.',
+                ]);
+            }
 
             foreach ($terkunci as $unit) {
                 $aktif = $unit->status === InventarisUnit::STATUS_AKTIF
@@ -80,15 +92,30 @@ class MutasiInventarisService
                 }
             }
 
-            // Satu BA hanya boleh memuat satu jenis barang dan satu penerima,
+            // Kelayakan BAST dinilai di dalam transaksi, setelah unit dikunci,
+            // supaya perubahan penerima tidak lolos di antara cek dan mutasi.
+            if ($petaBastAktif !== null) {
+                $peta = $petaBastAktif($terkunci->values());
+                $tanpaBast = $terkunci->first(fn (InventarisUnit $unit): bool => ! isset($peta[$unit->id]));
+
+                if ($tanpaBast !== null) {
+                    throw ValidationException::withMessages([
+                        'unit' => "Unit {$tanpaBast->nomor_register} tidak punya BAST aktif yang cocok dengan penerima dan ruang saat ini.",
+                    ]);
+                }
+            }
+
+            // Satu BA hanya boleh memuat satu barang, tahun, penerima, dan ruang,
             // supaya narasi "PIHAK KEDUA" dan rincian barangnya konsisten.
             $pertama = $terkunci->first();
             $seragam = $terkunci->every(fn (InventarisUnit $unit): bool => $unit->kode_barang === $pertama->kode_barang
-                && $unit->pegawai_id === $pertama->pegawai_id);
+                && (int) $unit->tahun_perolehan === (int) $pertama->tahun_perolehan
+                && $unit->pegawai_id === $pertama->pegawai_id
+                && $unit->ruang_id === $pertama->ruang_id);
 
             if (! $seragam) {
                 throw ValidationException::withMessages([
-                    'unit' => 'Semua unit dalam satu Berita Acara harus barang dan penerima yang sama.',
+                    'unit' => 'Semua unit dalam satu Berita Acara harus barang, tahun perolehan, penerima, dan ruang yang sama.',
                 ]);
             }
 

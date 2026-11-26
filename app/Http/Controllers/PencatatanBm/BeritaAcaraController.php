@@ -4,14 +4,16 @@ namespace App\Http\Controllers\PencatatanBm;
 
 use App\Exports\RekapanBastExport;
 use App\Http\Controllers\Concerns\ResolvesSekolah;
+use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Concerns\TenantScope;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Sekolah;
 use App\Models\PencatatanBm\Dokumen;
+use App\Services\PencatatanBm\NomorDokumenGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -23,7 +25,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class BeritaAcaraController extends Controller
 {
-    use ResolvesSekolah, TenantScope;
+    use ResolvesSekolah, SearchesText, TenantScope;
+
+    public function __construct(private readonly NomorDokumenGuard $guard) {}
 
     public function index(Request $request): Response
     {
@@ -37,6 +41,7 @@ class BeritaAcaraController extends Controller
             'kodeBast' => $sekolahId ? (string) Sekolah::whereKey($sekolahId)->value('kode_bast') : '',
             'total' => count($daftar),
             'search' => $search,
+            'canCetak' => $request->user()->can('cetak-inventaris-bm'),
         ]);
     }
 
@@ -70,6 +75,13 @@ class BeritaAcaraController extends Controller
         return Dokumen::query()
             ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
             ->where('jenis', 'bast')
+            // Pencarian harus di query, bukan setelah limit: BAST yang cocok
+            // bisa berada di luar 100 dokumen terbaru.
+            ->when($search !== '', fn (Builder $q) => $this->whereAnyLike(
+                $q,
+                ['payload->nama_format', 'payload->penerima->nama'],
+                $search,
+            ))
             ->latest('created_at')
             ->limit(100)
             ->get(['id', 'nomor', 'tanggal', 'nomor_dibatalkan_pada', 'payload', 'created_at'])
@@ -91,7 +103,6 @@ class BeritaAcaraController extends Controller
                     'kondisi' => $labelPenerima[$unit['kondisi'] ?? ''] ?? '-',
                 ];
             })
-            ->filter(fn (array $item): bool => $search === '' || mb_stripos((string) $item['penerima'], $search) !== false)
             ->values()
             ->all();
     }
@@ -99,29 +110,20 @@ class BeritaAcaraController extends Controller
     public function update(Request $request, Dokumen $dokumen): RedirectResponse
     {
         $this->pastikanSekolahSendiri($request, $dokumen->sekolah_id);
+        abort_unless($dokumen->jenis === 'bast', 404);
 
         $validated = $request->validate([
             'nomor' => ['required', 'string', 'max:150'],
         ]);
 
-        // Acuan menolak nomor BA yang sudah dipakai dokumen lain di sekolah
-        // yang sama (rekapan_ba.php: cek duplikat no_urut_surat).
-        $duplikat = Dokumen::query()
-            ->where('sekolah_id', $dokumen->sekolah_id)
-            ->where('jenis', 'bast')
-            ->whereNotNull('nomor')
-            ->whereNull('nomor_dibatalkan_pada')
-            ->where('nomor', $validated['nomor'])
-            ->whereKeyNot($dokumen->id)
-            ->exists();
+        // Lock sekolah + guard di transaksi yang sama: nomor yang sudah pernah
+        // terbit (termasuk yang dibatalkan) tidak boleh dipakai dokumen lain.
+        DB::transaction(function () use ($dokumen, $validated): void {
+            Sekolah::whereKey($dokumen->sekolah_id)->lockForUpdate()->firstOrFail();
+            $this->guard->pastikanTersedia($dokumen->sekolah_id, 'bast', $validated['nomor'], $dokumen->id);
 
-        if ($duplikat) {
-            throw ValidationException::withMessages([
-                'nomor' => "Peringatan: Nomor urut {$validated['nomor']} sudah pernah di-inputkan sebelumnya pada dokumen lain!",
-            ]);
-        }
-
-        $dokumen->update(['nomor' => $validated['nomor'], 'nomor_dibatalkan_pada' => null]);
+            $dokumen->update(['nomor' => $validated['nomor'], 'nomor_dibatalkan_pada' => null]);
+        });
 
         return back()->with('success', 'Nomor urut surat berhasil diperbarui!');
     }
@@ -129,6 +131,7 @@ class BeritaAcaraController extends Controller
     public function destroy(Request $request, Dokumen $dokumen): RedirectResponse
     {
         $this->pastikanSekolahSendiri($request, $dokumen->sekolah_id);
+        abort_unless($dokumen->jenis === 'bast', 404);
 
         $validated = $request->validate([
             'alasan' => ['required', 'string', 'max:500'],

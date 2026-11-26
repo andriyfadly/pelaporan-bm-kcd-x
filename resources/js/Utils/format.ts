@@ -34,6 +34,38 @@ export function formatTanggalTabel(value: string | null | undefined, kosong = '-
 }
 
 /**
+ * Tanggal + jam untuk timestamp (`created_at` dan sejenisnya) dalam WIB.
+ * Jangan memakai `toISOString()`/`toLocaleString()` tanpa `timeZone`: server
+ * mengirim UTC, browser operator bisa berada di zona lain.
+ */
+export function formatTanggalWaktu(value: string | null | undefined, kosong = '-'): string {
+    if (!value) {
+        return kosong;
+    }
+
+    const waktu = new Date(value);
+
+    if (Number.isNaN(waktu.getTime())) {
+        return kosong;
+    }
+
+    const tanggal = new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta',
+    }).format(waktu);
+    const jam = new Intl.DateTimeFormat('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Jakarta',
+    }).format(waktu);
+
+    return `${tanggal} - ${jam} WIB`;
+}
+
+/**
  * Tanggal hari ini menurut zona waktu lokal, bukan UTC. `toISOString()` di
  * WIB sebelum pukul 07:00 masih tanggal kemarin.
  */

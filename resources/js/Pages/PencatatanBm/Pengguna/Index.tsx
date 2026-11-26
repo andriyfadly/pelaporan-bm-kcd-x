@@ -2,7 +2,9 @@ import { Head, router } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
+import Modal from '@/Components/Modal';
 import { FileText, Users } from 'lucide-react';
+import { tanggalHariIni } from '@/Utils/format';
 
 interface Item {
     id: string;
@@ -29,6 +31,7 @@ interface Kelompok {
 interface Props {
     kelompok: Kelompok[];
     filter: { search: string };
+    canCetak: boolean;
 }
 
 const BULAN_SINGKAT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -41,7 +44,7 @@ const tanggalIndonesia = (nilai: string | null): string => {
     return `${Number(hari)} ${BULAN_SINGKAT[Number(bulan) - 1]} ${tahun}`;
 };
 
-export default function Index({ kelompok, filter }: Props) {
+export default function Index({ kelompok, filter, canCetak }: Props) {
     const [cari, setCari] = useState(filter.search);
     const [surat, setSurat] = useState<{ pegawai: Kelompok['pegawai'] } | null>(null);
     // Form dikirim native ke window baru (respons berupa berkas PDF, bukan redirect Inertia).
@@ -89,7 +92,7 @@ export default function Index({ kelompok, filter }: Props) {
                             <section key={grup.pegawai.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                                 <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4">
                                     <div className="mr-auto">
-                                        <span className="inline-block rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase text-blue-700">
+                                        <span className="inline-block rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold uppercase text-blue-700">
                                             Memegang {grup.jumlah_unit} Item Aset
                                         </span>
                                         <h2 className="mt-1 font-bold text-slate-800">{grup.pegawai.nama ?? '-'}</h2>
@@ -97,13 +100,15 @@ export default function Index({ kelompok, filter }: Props) {
                                             Pegawai / Pengguna Aset Sekolah{grup.pegawai.nip ? ` · NIP ${grup.pegawai.nip}` : ''}
                                         </p>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSurat({ pegawai: grup.pegawai })}
-                                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700"
-                                    >
-                                        <FileText className="h-3.5 w-3.5" /> Permohonan Pengembalian
-                                    </button>
+                                    {canCetak && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSurat({ pegawai: grup.pegawai })}
+                                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700"
+                                        >
+                                            <FileText className="h-3.5 w-3.5" /> Permohonan Pengembalian
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="overflow-x-auto">
@@ -148,10 +153,9 @@ export default function Index({ kelompok, filter }: Props) {
             </div>
 
             {surat && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-                        <h2 className="text-lg font-bold text-slate-800">Pilih Dokumen &amp; Tanggal Surat</h2>
-                        <p className="mt-1 text-sm text-slate-500">
+                <Modal isOpen onClose={() => setSurat(null)} title="Pilih Dokumen & Tanggal Surat">
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-500">
                             Permohonan pengembalian untuk <strong>{surat.pegawai.nama ?? '-'}</strong>.
                         </p>
 
@@ -159,7 +163,7 @@ export default function Index({ kelompok, filter }: Props) {
                             method="post"
                             target="_blank"
                             action={`/pencatatan-bm/dokumen/surat-pengembalian-pegawai/${surat.pegawai.id}`}
-                            className="mt-4 space-y-3"
+                            className="space-y-3"
                         >
                             <input type="hidden" name="_token" value={token.current} />
 
@@ -169,7 +173,7 @@ export default function Index({ kelompok, filter }: Props) {
                                     name="nomor"
                                     required
                                     placeholder="Contoh: 002/AR.03.05-CADISDIK.WIL-X"
-                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    className="mt-1 min-h-10 w-full rounded-xl border border-slate-300 px-3 text-sm"
                                 />
                             </label>
 
@@ -178,8 +182,8 @@ export default function Index({ kelompok, filter }: Props) {
                                 <input
                                     type="date"
                                     name="tanggal"
-                                    defaultValue={new Date().toISOString().slice(0, 10)}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    defaultValue={tanggalHariIni()}
+                                    className="mt-1 min-h-10 w-full rounded-xl border border-slate-300 px-3 text-sm"
                                 />
                             </label>
 
@@ -187,17 +191,17 @@ export default function Index({ kelompok, filter }: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setSurat(null)}
-                                    className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600"
+                                    className="min-h-10 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-600"
                                 >
                                     Batal
                                 </button>
-                                <button type="submit" className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">
+                                <button type="submit" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white">
                                     <FileText className="h-4 w-4" /> Cetak Dokumen
                                 </button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </Modal>
             )}
         </AppLayout>
     );

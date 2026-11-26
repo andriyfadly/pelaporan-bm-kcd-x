@@ -29,7 +29,7 @@ class InventarisTemplateExport implements FromCollection, ShouldAutoSize, WithHe
     public function headings(): array
     {
         return [
-            'Sumber Perolehan', 'Kode Barang', 'Nama Barang', 'Merek / Type', 'Bahan',
+            'Kode Barang', 'Sumber Perolehan', 'Nama Barang', 'Merek / Type', 'Bahan',
             'Tanggal', 'Bulan Perolehan', 'Tahun Perolehan', 'Satuan', 'Volume', 'Harga Satuan',
         ];
     }

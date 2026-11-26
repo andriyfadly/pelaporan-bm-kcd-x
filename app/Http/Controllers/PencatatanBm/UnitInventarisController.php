@@ -118,6 +118,7 @@ class UnitInventarisController extends Controller
                 ->orderByDesc('tahun_perolehan')
                 ->pluck('tahun_perolehan'),
             'filter' => ['search' => $search, 'tahun' => (string) ($tahun ?: '')],
+            'canCetak' => $request->user()->can('cetak-inventaris-bm'),
         ]);
     }
 
@@ -130,7 +131,7 @@ class UnitInventarisController extends Controller
 
         $validated = $request->validate([
             'unit_ids' => ['array'],
-            'unit_ids.*' => ['uuid', 'exists:inventaris_unit,id'],
+            'unit_ids.*' => ['uuid', 'distinct', 'exists:inventaris_unit,id'],
         ]);
 
         $unitIds = $validated['unit_ids'] ?? [];

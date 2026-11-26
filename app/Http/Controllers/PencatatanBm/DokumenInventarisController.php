@@ -14,6 +14,7 @@ use App\Models\PencatatanBm\Dokumen;
 use App\Models\PencatatanBm\InventarisUnit;
 use App\Services\Master\PenugasanPegawaiService;
 use App\Services\PencatatanBm\DokumenInventarisService;
+use App\Services\PencatatanBm\NomorDokumenGuard;
 use App\Services\PencatatanBm\NomorDokumenInventarisService;
 use App\Services\PencatatanBm\QrLabelService;
 use App\Support\NamaGelar;
@@ -22,7 +23,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -36,6 +36,7 @@ class DokumenInventarisController extends Controller
         private readonly DokumenInventarisService $dokumen,
         private readonly QrLabelService $qr,
         private readonly NomorDokumenInventarisService $nomor,
+        private readonly NomorDokumenGuard $guard,
     ) {}
 
     public function kir(Request $request): Response
@@ -120,18 +121,20 @@ class DokumenInventarisController extends Controller
     {
         $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
         $validated = $request->validate([
-            'nomor' => ['nullable', 'string', 'max:150', Rule::unique('inventaris_dokumen', 'nomor')
-                ->where('sekolah_id', $unit->sekolah_id)
-                ->where('jenis', 'bast')
-                ->whereNull('nomor_dibatalkan_pada')],
+            'nomor' => ['nullable', 'string', 'max:150'],
             'tanggal' => ['nullable', 'date'],
         ]);
 
         $dokumen = DB::transaction(function () use ($request, $unit, $validated): Dokumen {
+            // Kunci sekolah = mutex penomoran; guard dijalankan setelah kunci.
+            Sekolah::whereKey($unit->sekolah_id)->lockForUpdate()->firstOrFail();
+            $nomor = $validated['nomor'] ?? $this->nomor->berikutnya($unit->sekolah_id, 'bast');
+            $this->guard->pastikanTersedia($unit->sekolah_id, 'bast', $nomor);
+
             $dokumen = Dokumen::create([
                 'sekolah_id' => $unit->sekolah_id,
                 'jenis' => 'bast',
-                'nomor' => $validated['nomor'] ?? $this->nomor->berikutnya($unit->sekolah_id, 'bast'),
+                'nomor' => $nomor,
                 'tanggal' => $validated['tanggal'] ?? now()->toDateString(),
                 'inventaris_unit_id' => $unit->id,
                 'inventaris_pegawai_id' => $unit->pegawai_id,
@@ -155,45 +158,66 @@ class DokumenInventarisController extends Controller
             ->whereIn('status', [InventarisUnit::STATUS_AKTIF, InventarisUnit::STATUS_DIKEMBALIKAN])
             ->get();
         $tanggal = $validated['tanggal'] ?? now()->toDateString();
-
-        // Acuan (buku_salur.php) menolak Fakta Integritas bila BAST belum ada,
-        // atau bila seluruh BAST yang ada sudah pernah dipakai Fakta sebelumnya:
-        // satu BAST hanya boleh mendasari satu pakta.
         $unitIds = $units->pluck('id')->all();
 
-        $jumlahBast = Dokumen::query()
-            ->where('sekolah_id', $pegawai->sekolah_id)
-            ->where('jenis', 'bast')
-            ->whereNotNull('nomor')
-            ->whereNull('nomor_dibatalkan_pada')
-            ->where(fn (Builder $q) => $q
+        // Semua cek + create di dalam satu transaksi ber-mutex sekolah: dua
+        // request bersamaan dengan satu BAST eligible harus menghasilkan satu sukses.
+        $dokumen = DB::transaction(function () use ($request, $pegawai, $units, $unitIds, $tanggal): Dokumen {
+            Sekolah::whereKey($pegawai->sekolah_id)->lockForUpdate()->firstOrFail();
+
+            $bast = Dokumen::query()
+                ->where('sekolah_id', $pegawai->sekolah_id)
+                ->where('jenis', 'bast')
+                ->whereNotNull('nomor')
+                ->whereNull('nomor_dibatalkan_pada')
+                ->where(fn (Builder $q) => $q
+                    ->where('inventaris_pegawai_id', $pegawai->id)
+                    ->orWhereIn('inventaris_unit_id', $unitIds))
+                ->orderBy('created_at')
+                ->get(['id', 'payload']);
+
+            if ($bast->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'unit' => 'Kamu harus men-generate BAST terlebih dahulu sebelum bisa Generate FAKTA!',
+                ]);
+            }
+
+            $fakta = Dokumen::query()
+                ->where('sekolah_id', $pegawai->sekolah_id)
+                ->where('jenis', 'fakta_integritas')
                 ->where('inventaris_pegawai_id', $pegawai->id)
-                ->orWhereIn('inventaris_unit_id', $unitIds))
-            ->count();
+                ->get(['id', 'payload']);
 
-        if ($jumlahBast === 0) {
-            throw ValidationException::withMessages([
-                'unit' => 'Kamu harus men-generate BAST terlebih dahulu sebelum bisa Generate FAKTA!',
-            ]);
-        }
+            $idTerpakai = $fakta->flatMap(function (Dokumen $lama): array {
+                $ids = $lama->payload['bast_ids'] ?? null;
 
-        $jumlahFakta = Dokumen::query()
-            ->where('sekolah_id', $pegawai->sekolah_id)
-            ->where('jenis', 'fakta_integritas')
-            ->where('inventaris_pegawai_id', $pegawai->id)
-            ->count();
+                return is_array($ids) ? array_values(array_filter($ids, 'is_string')) : [];
+            })->unique();
 
-        if ($jumlahBast <= $jumlahFakta) {
-            throw ValidationException::withMessages([
-                'unit' => "Kamu harus men-generate BAST TERBARU untuk '{$pegawai->nama_lengkap}' terlebih dahulu! (BAST sebelumnya sudah pernah digunakan).",
-            ]);
-        }
+            // Dokumen lama tanpa `bast_ids` dihitung sebagai satu BAST terpakai
+            // (aturan jumlah: satu BAST hanya mendasari satu pakta).
+            $terpakaiLama = $fakta
+                ->filter(fn (Dokumen $lama): bool => ! isset($lama->payload['bast_ids']))
+                ->count();
 
-        $dokumen = DB::transaction(function () use ($request, $pegawai, $units, $tanggal): Dokumen {
+            $kandidat = $bast
+                ->reject(fn (Dokumen $d): bool => $idTerpakai->contains($d->id))
+                ->values();
+
+            if ($terpakaiLama >= $kandidat->count()) {
+                throw ValidationException::withMessages([
+                    'unit' => "Kamu harus men-generate BAST TERBARU untuk '{$pegawai->nama_lengkap}' terlebih dahulu! (BAST sebelumnya sudah pernah digunakan).",
+                ]);
+            }
+
+            $dipilih = $kandidat->last();
+            $nomor = $this->nomor->berikutnya($pegawai->sekolah_id, 'fakta_integritas');
+            $this->guard->pastikanTersedia($pegawai->sekolah_id, 'fakta_integritas', $nomor);
+
             $dokumen = Dokumen::create([
                 'sekolah_id' => $pegawai->sekolah_id,
                 'jenis' => 'fakta_integritas',
-                'nomor' => $this->nomor->berikutnya($pegawai->sekolah_id, 'fakta_integritas'),
+                'nomor' => $nomor,
                 'tanggal' => $tanggal,
                 'inventaris_pegawai_id' => $pegawai->id,
                 'payload' => [
@@ -204,6 +228,7 @@ class DokumenInventarisController extends Controller
                     'nama_format' => NamaGelar::format($pegawai->nama_lengkap),
                     'pejabat' => $this->dokumen->pejabat($pegawai->sekolah_id, $tanggal),
                     'dicetak_oleh' => $request->user()->name,
+                    'bast_ids' => [$dipilih->id],
                 ],
                 'user_id' => $request->user()->id,
             ]);
@@ -232,25 +257,30 @@ class DokumenInventarisController extends Controller
             ->whereIn('status', [InventarisUnit::STATUS_AKTIF, InventarisUnit::STATUS_DIKEMBALIKAN])
             ->get();
 
-        $dokumen = DB::transaction(fn (): Dokumen => Dokumen::create([
-            'sekolah_id' => $pegawai->sekolah_id,
-            'jenis' => 'surat_pengembalian',
-            'nomor' => $validated['nomor'],
-            'tanggal' => $validated['tanggal'],
-            'inventaris_pegawai_id' => $pegawai->id,
-            'payload' => [
-                'sekolah' => $this->snapshotSekolah($pegawai->sekolah),
-                'pegawai' => $this->snapshotPegawai($pegawai, $validated['tanggal']),
-                'penerima' => $this->snapshotPenerima($pegawai),
-                'nama_format' => NamaGelar::format($pegawai->nama_lengkap),
-                'units' => $units->map(fn (InventarisUnit $unit) => $this->qr->snapshotUnit($unit))->all(),
-                'pejabat' => $this->dokumen->pejabat($pegawai->sekolah_id, $validated['tanggal']),
-                'dicetak_oleh' => $request->user()->name,
-            ],
-            'user_id' => $request->user()->id,
-        ]));
+        $dokumen = DB::transaction(function () use ($request, $pegawai, $validated, $units): Dokumen {
+            Sekolah::whereKey($pegawai->sekolah_id)->lockForUpdate()->firstOrFail();
+            $this->guard->pastikanTersedia($pegawai->sekolah_id, 'surat_pengembalian', $validated['nomor']);
 
-        $this->dokumen->simpan($dokumen, 'pencatatan-bm.surat-pengembalian');
+            $dokumen = Dokumen::create([
+                'sekolah_id' => $pegawai->sekolah_id,
+                'jenis' => 'surat_pengembalian',
+                'nomor' => $validated['nomor'],
+                'tanggal' => $validated['tanggal'],
+                'inventaris_pegawai_id' => $pegawai->id,
+                'payload' => [
+                    'sekolah' => $this->snapshotSekolah($pegawai->sekolah),
+                    'pegawai' => $this->snapshotPegawai($pegawai, $validated['tanggal']),
+                    'penerima' => $this->snapshotPenerima($pegawai),
+                    'nama_format' => NamaGelar::format($pegawai->nama_lengkap),
+                    'units' => $units->map(fn (InventarisUnit $unit) => $this->qr->snapshotUnit($unit))->all(),
+                    'pejabat' => $this->dokumen->pejabat($pegawai->sekolah_id, $validated['tanggal']),
+                    'dicetak_oleh' => $request->user()->name,
+                ],
+                'user_id' => $request->user()->id,
+            ]);
+
+            return $this->dokumen->simpan($dokumen, 'pencatatan-bm.surat-pengembalian');
+        });
 
         return $this->dokumen->unduh($dokumen->fresh());
     }
@@ -284,26 +314,49 @@ class DokumenInventarisController extends Controller
             ]);
         }
 
-        $penerima = $units->first()->pegawai;
+        $pertama = $units->first();
+        $seragam = $units->every(fn (InventarisUnit $unit): bool => $unit->pegawai_id === $pertama->pegawai_id
+            && $unit->ruang_id === $pertama->ruang_id);
 
-        $dokumen = DB::transaction(fn (): Dokumen => Dokumen::create([
-            'sekolah_id' => $sekolahId,
-            'jenis' => 'bast',
-            'nomor' => $validated['nomor'] ?? $this->nomor->berikutnya($sekolahId, 'bast'),
-            'tanggal' => $tanggal,
-            'inventaris_pegawai_id' => $penerima?->id,
-            'payload' => [
-                'sekolah' => $this->snapshotSekolah(Sekolah::find($sekolahId)),
-                'units' => $units->map(fn (InventarisUnit $unit) => $this->qr->snapshotUnit($unit))->all(),
-                'penerima' => $this->snapshotPenerima($penerima),
-                'nama_format' => NamaGelar::format($penerima?->nama_lengkap),
-                'pejabat' => $this->dokumen->pejabat($sekolahId, $tanggal),
-                'dicetak_oleh' => $request->user()->name,
-            ],
-            'user_id' => $request->user()->id,
-        ]));
+        if (! $seragam) {
+            throw ValidationException::withMessages([
+                'unit_ids' => 'Semua unit dalam satu BAST harus memiliki penerima dan ruang yang sama.',
+            ]);
+        }
 
-        $this->dokumen->simpan($dokumen, 'pencatatan-bm.bast');
+        $penerima = $pertama->pegawai;
+
+        // Snapshot custody per unit: dipakai `petaBastAktif()` untuk memastikan
+        // BAST masih mewakili penitipan saat ini, bukan sekadar unit pernah masuk.
+        $snapshotUnits = $this->snapshotUnits($units, $tanggal);
+
+        $dokumen = DB::transaction(function () use ($request, $sekolahId, $tanggal, $validated, $penerima, $snapshotUnits): Dokumen {
+            Sekolah::whereKey($sekolahId)->lockForUpdate()->firstOrFail();
+            $nomor = $validated['nomor'] ?? $this->nomor->berikutnya($sekolahId, 'bast');
+            $this->guard->pastikanTersedia($sekolahId, 'bast', $nomor);
+
+            $dokumen = Dokumen::create([
+                'sekolah_id' => $sekolahId,
+                'jenis' => 'bast',
+                'nomor' => $nomor,
+                'tanggal' => $tanggal,
+                'inventaris_pegawai_id' => $penerima?->id,
+                'payload' => [
+                    'sekolah' => $this->snapshotSekolah(Sekolah::find($sekolahId)),
+                    'units' => $snapshotUnits,
+                    'penerima' => $this->snapshotPenerima($penerima),
+                    'nama_format' => NamaGelar::format($penerima?->nama_lengkap),
+                    'pejabat' => $this->dokumen->pejabat($sekolahId, $tanggal),
+                    'dicetak_oleh' => $request->user()->name,
+                ],
+                'user_id' => $request->user()->id,
+            ]);
+
+            // PDF ditulis di dalam transaksi: gagal simpan berkas = rollback dokumen.
+            $this->dokumen->simpan($dokumen, 'pencatatan-bm.bast');
+
+            return $dokumen;
+        });
 
         return back()->with('success', 'BAST dibuat.')->with('dokumen_id', $dokumen->id);
     }
@@ -350,6 +403,7 @@ class DokumenInventarisController extends Controller
                 ->when($sekolahId, fn (Builder $q) => $q->where('sekolah_id', $sekolahId))
                 ->orderBy('nama_ruang')
                 ->get(['id', 'nama_ruang']),
+            'canCetak' => $request->user()->can('cetak-inventaris-bm'),
         ]);
     }
 
@@ -376,16 +430,42 @@ class DokumenInventarisController extends Controller
     private function payloadDasar(InventarisUnit $unit, Request $request, ?string $tanggal = null): array
     {
         $unit = $unit->loadMissing('pegawai');
+        $snapshot = $this->snapshotUnits(collect([$unit]), $tanggal ?? now()->toDateString());
 
         return [
             'sekolah' => $this->snapshotSekolah($unit->sekolah),
-            'unit' => $this->qr->snapshotUnit($unit),
-            'units' => [$this->qr->snapshotUnit($unit)],
+            'unit' => $snapshot[0],
+            'units' => $snapshot,
             'penerima' => $this->snapshotPenerima($unit->pegawai),
             'nama_format' => NamaGelar::format($unit->pegawai?->nama_lengkap),
             'pejabat' => $this->dokumen->pejabat($unit->sekolah_id, $tanggal),
             'dicetak_oleh' => $request->user()->name,
         ];
+    }
+
+    /**
+     * Snapshot unit + penitipan saat dokumen dibuat. `pegawai_id`/`ruang_id`
+     * dipakai untuk menilai apakah BAST masih berlaku pada kondisi sekarang.
+     *
+     * @param  Collection<int, InventarisUnit>  $units
+     * @return array<int, array<string, mixed>>
+     */
+    private function snapshotUnits(Collection $units, string $tanggal): array
+    {
+        return $units->map(function (InventarisUnit $unit) use ($tanggal): array {
+            $labelJabatan = $unit->pegawai_id !== null
+                ? app(PenugasanPegawaiService::class)
+                    ->penugasanPegawaiPada((string) $unit->sekolah_id, (string) $unit->pegawai_id, $tanggal)
+                    ?->jabatan
+                    ?->nama
+                : null;
+
+            return $this->qr->snapshotUnit($unit) + [
+                'pegawai_id' => $unit->pegawai_id,
+                'ruang_id' => $unit->ruang_id,
+                'labelJabatan' => $labelJabatan,
+            ];
+        })->values()->all();
     }
 
     /**

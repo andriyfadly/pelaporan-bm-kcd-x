@@ -47,6 +47,7 @@ class SyncController extends Controller
                 ? Sekolah::orderBy('nama_sekolah')->get(['id', 'nama_sekolah'])
                 : [],
             'filter' => ['sekolah_id' => $sekolahId],
+            'canSinkronisasi' => $request->user()->can('sinkronisasi-inventaris-bm'),
         ]);
     }
 

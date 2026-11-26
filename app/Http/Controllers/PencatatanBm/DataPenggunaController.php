@@ -79,6 +79,7 @@ class DataPenggunaController extends Controller
         return Inertia::render('PencatatanBm/Pengguna/Index', [
             'kelompok' => $kelompok,
             'filter' => ['search' => $search],
+            'canCetak' => $request->user()->can('cetak-inventaris-bm'),
         ]);
     }
 

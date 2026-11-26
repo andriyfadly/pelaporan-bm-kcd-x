@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import React from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
+import { formatTanggalWaktu } from '@/Utils/format';
 import { RefreshCw } from 'lucide-react';
 
 interface SyncLog {
@@ -27,6 +28,7 @@ interface Props {
     perluReview: PerluReview[];
     sekolahList: { id: string; nama_sekolah: string }[];
     filter: { sekolah_id: string | null };
+    canSinkronisasi: boolean;
 }
 
 const BADGE: Record<string, string> = {
@@ -35,7 +37,7 @@ const BADGE: Record<string, string> = {
     gagal: 'bg-rose-50 text-rose-700 border-rose-100',
 };
 
-export default function Index({ logs, perluReview, sekolahList, filter }: Props) {
+export default function Index({ logs, perluReview, sekolahList, filter, canSinkronisasi }: Props) {
     const form = useForm({
         sekolah_id: filter.sekolah_id ?? '',
         bulan: String(new Date().getMonth() + 1),
@@ -101,7 +103,8 @@ export default function Index({ logs, perluReview, sekolahList, filter }: Props)
                     </label>
                     <button
                         type="submit"
-                        disabled={form.processing}
+                        disabled={form.processing || !canSinkronisasi}
+                        title={canSinkronisasi ? undefined : 'Butuh izin sinkronisasi inventaris'}
                         className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 min-h-10 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                         <RefreshCw className="w-4 h-4" /> Jalankan
@@ -131,7 +134,32 @@ export default function Index({ logs, perluReview, sekolahList, filter }: Props)
                     {logs.length === 0 ? (
                         <EmptyState title="Belum ada log sinkronisasi" description="Log muncul setelah sinkronisasi pertama dijalankan." />
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        <ul className="divide-y divide-slate-100 md:hidden">
+                            {logs.map((log) => (
+                                <li key={log.id} className="space-y-2 p-4">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${BADGE[log.status] ?? ''}`}>
+                                            {log.status}
+                                        </span>
+                                        <span className="text-right text-xs text-slate-500">{formatTanggalWaktu(log.created_at)}</span>
+                                    </div>
+                                    <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                        <dt className="text-slate-500">Dibuat</dt>
+                                        <dd className="text-right text-slate-700">{log.dibuat}</dd>
+                                        <dt className="text-slate-500">Tetap</dt>
+                                        <dd className="text-right text-slate-700">{log.tetap}</dd>
+                                        <dt className="text-slate-500">Surplus</dt>
+                                        <dd className="text-right text-slate-700">{log.surplus}</dd>
+                                        <dt className="text-slate-500">Perlu review</dt>
+                                        <dd className="text-right text-slate-700">{log.perlu_review}</dd>
+                                    </dl>
+                                    {log.error && <p className="text-xs text-rose-600">{log.error}</p>}
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full min-w-[880px] text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -146,7 +174,7 @@ export default function Index({ logs, perluReview, sekolahList, filter }: Props)
                                 <tbody>
                                     {logs.map((log) => (
                                         <tr key={log.id} className="border-b border-slate-50 last:border-0">
-                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{log.created_at}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatTanggalWaktu(log.created_at)}</td>
                                             <td className="px-4 py-3">
                                                 <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${BADGE[log.status] ?? ''}`}>
                                                     {log.status}
@@ -162,6 +190,7 @@ export default function Index({ logs, perluReview, sekolahList, filter }: Props)
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
             </div>

@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
 import { AlertCircle, Boxes, CheckCircle2, PackageX, Wrench } from 'lucide-react';
@@ -34,17 +34,36 @@ export default function Dashboard({ ringkasan }: Props) {
     const [kode, setKode] = useState<string | null>(null);
     const [rincian, setRincian] = useState<Rincian[] | null>(null);
     const [memuat, setMemuat] = useState(false);
+    const [galat, setGalat] = useState<string | null>(null);
+    const permintaan = useRef(0);
 
     const buka = (next: string) => {
         setKode(next);
         setRincian(null);
         setMemuat(true);
+        setGalat(null);
+
+        const token = ++permintaan.current;
 
         fetch(`/pencatatan-bm/kondisi/${next}`, { headers: { Accept: 'application/json' } })
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('gagal'))))
-            .then((data: Rincian[]) => setRincian(data))
-            .catch(() => setRincian([]))
-            .finally(() => setMemuat(false));
+            .then((data: Rincian[]) => {
+                // Abaikan respons lama bila pengguna sudah membuka kartu lain.
+                if (token === permintaan.current) {
+                    setRincian(data);
+                }
+            })
+            .catch(() => {
+                if (token === permintaan.current) {
+                    setRincian([]);
+                    setGalat('Gagal memuat rincian. Periksa koneksi lalu coba lagi.');
+                }
+            })
+            .finally(() => {
+                if (token === permintaan.current) {
+                    setMemuat(false);
+                }
+            });
     };
 
     useEffect(() => {
@@ -111,8 +130,19 @@ export default function Dashboard({ ringkasan }: Props) {
                 <p className="text-sm text-slate-500">Daftar barang beserta no register dan lokasi penyalurannya.</p>
 
                 <div className="mt-3 overflow-x-auto">
-                    {memuat ? (
-                        <p className="py-8 text-center text-sm text-slate-400">Memuat rincian...</p>
+                    {galat ? (
+                        <div className="py-8 text-center">
+                            <p className="text-sm font-semibold text-rose-600">{galat}</p>
+                            <button
+                                type="button"
+                                onClick={() => { if (kode) { buka(kode); } }}
+                                className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700"
+                            >
+                                Coba lagi
+                            </button>
+                        </div>
+                    ) : memuat ? (
+                        <p className="py-8 text-center text-sm text-slate-500">Memuat rincian...</p>
                     ) : rincian && rincian.length > 0 ? (
                         <table className="w-full text-sm">
                             <thead>
@@ -133,10 +163,10 @@ export default function Dashboard({ ringkasan }: Props) {
                                         <td className="px-3 py-2 text-slate-600">{item.merk_tipe ?? '-'}</td>
                                         <td className="px-3 py-2 font-mono text-xs text-slate-700">{item.nomor_register}</td>
                                         <td className="px-3 py-2 text-slate-600">
-                                            {item.ruang ?? <span className="italic text-slate-400">Belum disalurkan</span>}
+                                            {item.ruang ?? <span className="italic text-slate-500">Belum disalurkan</span>}
                                         </td>
                                         <td className="px-3 py-2 text-slate-600">
-                                            {item.pegawai ?? <span className="italic text-slate-400">Belum disalurkan</span>}
+                                            {item.pegawai ?? <span className="italic text-slate-500">Belum disalurkan</span>}
                                         </td>
                                     </tr>
                                 ))}

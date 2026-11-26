@@ -79,6 +79,7 @@ class InventarisController extends Controller
                 ->pluck('asal_perolehan'),
             'kondisiList' => InventarisUnit::KONDISI,
             'canKelola' => $request->user()->can('kelola-inventaris-bm'),
+            'canCetak' => $request->user()->can('cetak-inventaris-bm'),
         ]);
     }
 
@@ -128,6 +129,7 @@ class InventarisController extends Controller
     {
         $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
         Gate::authorize('update', $unit);
+        $this->pastikanBisaDiubah($unit);
 
         // Lewat service supaya koreksi kondisi/penempatan juga meninggalkan
         // histori; jenisnya (koreksi/penyaluran/mutasi) ditentukan dari state unit.
@@ -180,6 +182,7 @@ class InventarisController extends Controller
             foreach ($units as $unit) {
                 $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
                 Gate::authorize('update', $unit);
+                $this->pastikanBisaDiubah($unit);
 
                 $kondisi = $validated['kondisi'][$unit->id];
 
@@ -210,8 +213,6 @@ class InventarisController extends Controller
         $validated = $request->validated();
         $tanggal = Carbon::parse($validated['tanggal_perolehan']);
 
-        $this->pastikanRegisterTersedia($unit, $validated['kode_barang'], (int) $tanggal->year);
-
         $kondisiBaru = $validated['kondisi'] ?? null;
         unset($validated['kondisi'], $validated['foto']);
 
@@ -222,12 +223,25 @@ class InventarisController extends Controller
             'nilai_perolehan_unit' => (float) ($validated['nilai_perolehan_unit'] ?? $validated['harga_satuan'] ?? 0),
         ];
 
-        DB::transaction(function () use ($unit, $atribut, $kondisiBaru, $request): void {
-            $unit->update($atribut);
+        DB::transaction(function () use ($unit, $atribut, $kondisiBaru, $validated, $tanggal, $request): void {
+            $terkunci = InventarisUnit::query()
+                ->whereKey($unit->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            if ($kondisiBaru !== null && $kondisiBaru !== $unit->kondisi) {
+            $this->pastikanBisaDiubah($terkunci);
+            $this->pastikanRegisterTersedia(
+                $terkunci,
+                $validated['kode_barang'],
+                (int) $tanggal->year,
+            );
+
+            $kondisiLama = $terkunci->kondisi;
+            $terkunci->update($atribut);
+
+            if ($kondisiBaru !== null && $kondisiBaru !== $kondisiLama) {
                 $this->mutasi->koreksi(
-                    $unit,
+                    $terkunci,
                     ['kondisi' => $kondisiBaru, 'tanggal' => now()->toDateString()],
                     (string) $request->user()->id,
                 );
@@ -246,6 +260,7 @@ class InventarisController extends Controller
     {
         $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
         Gate::authorize('update', $unit);
+        $this->pastikanBisaDiubah($unit);
 
         DB::transaction(function () use ($unit, $request): void {
             if ($unit->mutasi()->exists()) {
@@ -313,6 +328,18 @@ class InventarisController extends Controller
         ]);
     }
 
+    private function pastikanBisaDiubah(InventarisUnit $unit): void
+    {
+        if (in_array($unit->status, [
+            InventarisUnit::STATUS_DIHAPUS_MANUAL,
+            InventarisUnit::STATUS_DIHAPUS_KOREKSI,
+        ], true)) {
+            throw ValidationException::withMessages([
+                'unit' => 'Unit yang sudah dihapus tidak bisa diubah.',
+            ]);
+        }
+    }
+
     /**
      * Register tidak boleh bertabrakan saat kode barang atau tahun perolehan
      * diubah — unique index-nya (sekolah, kode, tahun, register).
@@ -323,13 +350,23 @@ class InventarisController extends Controller
             return;
         }
 
-        $bentrok = InventarisUnit::query()
+        $rentangTahun = [$unit->tahun_perolehan, $tahunBaru];
+        sort($rentangTahun, SORT_NUMERIC);
+
+        $rentangRegister = range($unit->nomor_register, $unit->nomor_register);
+
+        $kandidat = InventarisUnit::query()
             ->where('sekolah_id', $unit->sekolah_id)
-            ->where('kode_barang', $kodeBaru)
-            ->where('tahun_perolehan', $tahunBaru)
+            ->whereIn('kode_barang', [$unit->kode_barang, $kodeBaru])
+            ->whereBetween('tahun_perolehan', $rentangTahun)
             ->where('nomor_register', $unit->nomor_register)
             ->whereKeyNot($unit->id)
-            ->exists();
+            ->lockForUpdate()
+            ->get();
+
+        $bentrok = $kandidat->contains(function (InventarisUnit $lain) use ($kodeBaru, $tahunBaru): bool {
+            return $lain->kode_barang === $kodeBaru && (int) $lain->tahun_perolehan === $tahunBaru;
+        });
 
         if ($bentrok) {
             throw ValidationException::withMessages([
@@ -351,6 +388,7 @@ class InventarisController extends Controller
 
         $query = InventarisUnit::query()
             ->where('sekolah_id', $sekolahId)
+            ->whereIn('status', $this->statusTampil())
             ->when(in_array($kondisi, array_keys(InventarisUnit::KONDISI), true),
                 fn (Builder $q) => $q->where('kondisi', $kondisi))
             ->orderBy('kode_barang')

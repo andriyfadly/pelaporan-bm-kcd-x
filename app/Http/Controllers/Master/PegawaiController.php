@@ -8,6 +8,7 @@ use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Concerns\TenantScope;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Pegawai;
+use App\Support\NormalisasiTeks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -58,8 +59,8 @@ class PegawaiController extends Controller
 
         $baris = collect($validated['baris'])
             ->map(fn (array $row): array => [
-                'nama_lengkap' => trim($row['nama_lengkap']),
-                'nip' => filled($row['nip'] ?? null) ? trim((string) $row['nip']) : null,
+                'nama_lengkap' => NormalisasiTeks::namaPegawai($row['nama_lengkap']),
+                'nip' => NormalisasiTeks::nip($row['nip'] ?? null),
                 'pangkat_golongan' => filled($row['pangkat_golongan'] ?? null) ? trim((string) $row['pangkat_golongan']) : null,
             ]);
 
@@ -84,8 +85,8 @@ class PegawaiController extends Controller
 
         $baris = $rows
             ->map(fn (Collection $row): array => [
-                'nama_lengkap' => trim((string) ($row[0] ?? '')),
-                'nip' => trim((string) ($row[1] ?? '')) ?: null,
+                'nama_lengkap' => NormalisasiTeks::namaPegawai((string) ($row[0] ?? '')),
+                'nip' => NormalisasiTeks::nip((string) ($row[1] ?? '')),
                 'pangkat_golongan' => trim((string) ($row[2] ?? '')) ?: null,
             ])
             ->filter(fn (array $row): bool => $row['nama_lengkap'] !== '')
@@ -188,6 +189,9 @@ class PegawaiController extends Controller
 
     private function sudahAda(string $sekolahId, string $nama, ?string $nip): bool
     {
+        $nama = NormalisasiTeks::namaPegawai($nama);
+        $nip = NormalisasiTeks::nip($nip);
+
         return Pegawai::where('sekolah_id', $sekolahId)
             ->where(fn ($q) => $q
                 ->whereRaw('lower(nama_lengkap) = ?', [mb_strtolower(trim($nama))])
@@ -200,10 +204,15 @@ class PegawaiController extends Controller
      */
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'nama_lengkap' => ['required', 'string', 'max:150'],
             'nip' => ['nullable', 'string', 'max:30'],
             'pangkat_golongan' => ['nullable', 'string', 'max:50'],
         ]);
+
+        $validated['nama_lengkap'] = NormalisasiTeks::namaPegawai($validated['nama_lengkap']);
+        $validated['nip'] = NormalisasiTeks::nip($validated['nip'] ?? null);
+
+        return $validated;
     }
 }

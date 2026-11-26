@@ -2,7 +2,9 @@ import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
+import Modal from '@/Components/Modal';
 import { bukaPdfDokumen } from '@/Utils/dokumen';
+import { tanggalHariIni, formatTanggalWaktu } from '@/Utils/format';
 import { FileText, Undo2 } from 'lucide-react';
 
 interface UnitRegister {
@@ -30,6 +32,7 @@ interface Baris {
 interface Riwayat {
     id: string;
     tanggal: string | null;
+    waktu: string | null;
     kode_barang: string | null;
     nomor_register: string | null;
     nama_barang: string | null;
@@ -45,9 +48,11 @@ interface Riwayat {
 
 interface Props {
     baris: Baris[];
+    riwayatRingkas: Riwayat[];
     riwayat: Riwayat[];
     kondisiList: Record<string, string>;
     nomorBerikutnya: string | null;
+    canProsesPengembalian: boolean;
 }
 
 const KONDISI_KEMBALI: [string, string][] = [
@@ -66,20 +71,29 @@ const tanggalSingkat = (nilai: string | null): string => {
     return `${Number(hari)} ${BULAN_SINGKAT[Number(bulan) - 1]} ${tahun}`;
 };
 
+/** Format acuan riwayat: `25 Nov 2026 - 09:15 WIB` (zona Asia/Jakarta). */
+const waktuWib = (nilai: string | null): string => formatTanggalWaktu(nilai);
+
 const nomorTerkecil = (baris: Baris): number => Math.min(...baris.unit_registers.map((u) => Number(u.nomor_register)));
 
 const nomorTerbesar = (baris: Baris): number => Math.max(...baris.unit_registers.map((u) => Number(u.nomor_register)));
 
-export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: Props) {
+const rupiah = (nilai: number): string =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(nilai);
+
+export default function Index({ baris, riwayatRingkas, riwayat, kondisiList, nomorBerikutnya, canProsesPengembalian }: Props) {
     const [target, setTarget] = useState<Baris | null>(null);
     const [mode, setMode] = useState<'semua' | 'sebagian'>('semua');
     const [regDari, setRegDari] = useState('');
     const [regSampai, setRegSampai] = useState('');
     const [kondisi, setKondisi] = useState('B');
-    const [tanggal, setTanggal] = useState(() => new Date().toISOString().slice(0, 10));
+    const [tanggal, setTanggal] = useState(() => tanggalHariIni());
     const [keterangan, setKeterangan] = useState('');
     const [galat, setGalat] = useState<string | null>(null);
+    const [prosesModal, setProsesModal] = useState(false);
     const [cari, setCari] = useState('');
+    const [riwayatTerbuka, setRiwayatTerbuka] = useState(false);
+    const [riwayatPenuh, setRiwayatPenuh] = useState(false);
     const [cariRiwayat, setCariRiwayat] = useState('');
 
     const daftar = baris.filter((unit) => {
@@ -87,16 +101,31 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
         return kunci.includes(cari.toLowerCase());
     });
 
-    const riwayatTampil = riwayat.filter((item) => {
+    const riwayatTampil = (riwayatPenuh ? riwayat : riwayatRingkas).filter((item) => {
         const kunci = `${item.nama_barang ?? ''} ${item.merk_tipe ?? ''} ${item.nomor ?? ''} ${item.asal_pegawai ?? ''}`.toLowerCase();
         return kunci.includes(cariRiwayat.toLowerCase());
     });
+
+    const bukaRiwayat = (penuh: boolean) => {
+        setRiwayatTerbuka(true);
+        setRiwayatPenuh(penuh);
+        setCariRiwayat('');
+    };
+
+    const tutupRiwayat = () => {
+        setRiwayatTerbuka(false);
+        setRiwayatPenuh(false);
+        setCariRiwayat('');
+    };
 
     const bukaModal = (unit: Baris) => {
         setTarget(unit);
         setMode('semua');
         setRegDari(String(nomorTerkecil(unit)));
         setRegSampai(String(nomorTerbesar(unit)));
+        setKondisi('B');
+        setTanggal(tanggalHariIni());
+        setKeterangan('');
         setGalat(null);
     };
 
@@ -143,6 +172,7 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
         }
 
         setGalat(null);
+        setProsesModal(true);
         router.post(
             '/pencatatan-bm/pengembalian',
             { unit_ids: unitIds, kondisi, tanggal, keterangan: keterangan || null },
@@ -151,8 +181,12 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
                 onSuccess: (page) => {
                     bukaPdfDokumen(page);
                     setTarget(null);
+                    setKondisi('B');
+                    setTanggal(tanggalHariIni());
+                    setKeterangan('');
                 },
                 onError: (errors) => setGalat(Object.values(errors)[0] ?? 'Gagal memproses pengembalian.'),
+                onFinish: () => setProsesModal(false),
             },
         );
     };
@@ -162,9 +196,18 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
             <Head title="Pengembalian Barang" />
 
             <div className="space-y-5">
-                <header>
-                    <h1 className="text-xl font-bold text-slate-800">Pengembalian Barang</h1>
-                    <p className="text-sm text-slate-500">Daftar barang yang sedang disalurkan beserta riwayat pengembalian.</p>
+                <header className="flex flex-wrap items-start gap-3">
+                    <div className="mr-auto">
+                        <h1 className="text-xl font-bold text-slate-800">Pengembalian Barang</h1>
+                        <p className="text-sm text-slate-500">Daftar barang yang sedang disalurkan beserta riwayat pengembalian.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => bukaRiwayat(false)}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                    >
+                        <FileText className="h-4 w-4" /> History Pengembalian
+                    </button>
                 </header>
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -174,144 +217,233 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
                             value={cari}
                             onChange={(e) => setCari(e.target.value)}
                             placeholder="Cari barang, merk, pegawai, atau ruang..."
-                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-80"
+                            className="min-h-10 w-full rounded-xl border border-slate-300 px-3 text-sm sm:w-80"
                         />
                     </div>
 
                     {daftar.length === 0 ? (
                         <EmptyState
                             title={baris.length === 0 ? 'Tidak ada data barang yang sedang disalurkan.' : 'Data tidak ditemukan berdasarkan kata kunci tersebut.'}
-                            description="Barang muncul di sini setelah disalurkan lewat Buku Penyaluran."
+                            description="Barang muncul di sini setelah disalurkan lewat Buku Penyaluran dan BAST-nya terbit."
                         />
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1000px] text-sm">
-                                <thead>
-                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                                        <th className="px-4 py-3">No</th>
-                                        <th className="px-4 py-3">Kode / No. Reg</th>
-                                        <th className="px-4 py-3">Nama Barang</th>
-                                        <th className="px-4 py-3">Merk &amp; Tipe</th>
-                                        <th className="px-4 py-3">Thn Pengadaan</th>
-                                        <th className="px-4 py-3">Penerima &amp; Lokasi</th>
-                                        <th className="px-4 py-3">Vol Salur</th>
-                                        <th className="px-4 py-3 text-right">Harga Satuan</th>
-                                        <th className="px-4 py-3 text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {daftar.map((unit, index) => (
-                                        <tr key={`${unit.kode_barang}-${unit.nomor_register}-${unit.pegawai_id ?? 'tanpa'}`} className="border-b border-slate-50 last:border-0">
-                                            <td className="px-4 py-3 text-slate-500">{index + 1}</td>
-                                            <td className="px-4 py-3">
-                                                <p className="font-mono text-xs font-bold text-slate-700">{unit.kode_barang}</p>
-                                                <p className="text-xs text-slate-500">Reg: {unit.nomor_register}</p>
-                                            </td>
-                                            <td className="px-4 py-3 font-semibold text-slate-700">{unit.nama_barang ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{unit.merk_tipe ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{unit.tahun_perolehan}</td>
-                                            <td className="px-4 py-3 text-slate-600">
-                                                <p>{unit.pegawai ?? '-'}</p>
-                                                <p className="text-xs text-slate-500">{unit.ruang ?? '-'}</p>
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-600">{unit.volume} {unit.satuan ?? 'Unit'}</td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-right text-slate-600">
-                                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(unit.harga_satuan)}
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => bukaModal(unit)}
-                                                    className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white"
-                                                >
-                                                    <Undo2 className="h-3.5 w-3.5" /> Kembalikan
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </section>
+                        <>
+                            <ul className="divide-y divide-slate-100 md:hidden">
+                                {daftar.map((unit, index) => (
+                                    <li key={`${unit.kode_barang}-${unit.nomor_register}-${unit.pegawai_id ?? 'tanpa'}`} className="p-4">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p className="font-semibold text-slate-800">{unit.nama_barang ?? '-'}</p>
+                                                <p className="font-mono text-xs text-slate-500">{unit.kode_barang} · Reg: {unit.nomor_register}</p>
+                                            </div>
+                                            <span className="text-xs text-slate-500">#{index + 1}</span>
+                                        </div>
+                                        <dl className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-600">
+                                            <dt className="text-slate-500">Merk &amp; Tipe</dt>
+                                            <dd>{unit.merk_tipe ?? '-'}</dd>
+                                            <dt className="text-slate-500">Thn Pengadaan</dt>
+                                            <dd>{unit.tahun_perolehan}</dd>
+                                            <dt className="text-slate-500">Penerima</dt>
+                                            <dd>{unit.pegawai ?? '-'}</dd>
+                                            <dt className="text-slate-500">Lokasi</dt>
+                                            <dd>{unit.ruang ?? '-'}</dd>
+                                            <dt className="text-slate-500">Vol Salur</dt>
+                                            <dd>{unit.volume} {unit.satuan ?? 'Unit'}</dd>
+                                            <dt className="text-slate-500">Harga Satuan</dt>
+                                            <dd>{rupiah(unit.harga_satuan)}</dd>
+                                            <dt className="text-slate-500">BAST</dt>
+                                            <dd>{unit.nomor_bast_terakhir ?? '-'}</dd>
+                                        </dl>
+                                        {canProsesPengembalian && (
+                                            <button
+                                                type="button"
+                                                onClick={() => bukaModal(unit)}
+                                                className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-1 rounded-lg bg-blue-600 px-3 text-xs font-bold text-white"
+                                            >
+                                                <Undo2 className="h-3.5 w-3.5" /> Kembalikan
+                                            </button>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
 
-                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4">
-                        <div className="mr-auto">
-                            <h2 className="font-bold text-slate-800">Riwayat Lengkap Pengembalian Barang</h2>
-                            <p className="text-xs text-slate-500">Daftar seluruh transaksi pengembalian barang ke inventaris.</p>
-                        </div>
-                        <input
-                            value={cariRiwayat}
-                            onChange={(e) => setCariRiwayat(e.target.value)}
-                            placeholder="Cari nomor surat atau barang..."
-                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-72"
-                        />
-                    </div>
-
-                    {riwayatTampil.length === 0 ? (
-                        <EmptyState title="Tidak ditemukan adanya riwayat data pengembalian barang BMD." description="Riwayat tercatat otomatis saat pengembalian diproses." />
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1080px] text-sm">
-                                <thead>
-                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                                        <th className="px-4 py-3">No</th>
-                                        <th className="px-4 py-3">Nomor Surat</th>
-                                        <th className="px-4 py-3">Tanggal Kembali</th>
-                                        <th className="px-4 py-3">Kode / No. Reg</th>
-                                        <th className="px-4 py-3">Nama Barang</th>
-                                        <th className="px-4 py-3">Merk &amp; Tipe</th>
-                                        <th className="px-4 py-3">Thn Pengadaan</th>
-                                        <th className="px-4 py-3">Eks Penerima</th>
-                                        <th className="px-4 py-3">Volume</th>
-                                        <th className="px-4 py-3 text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {riwayatTampil.map((item, index) => (
-                                        <tr key={item.id} className="border-b border-slate-50 last:border-0">
-                                            <td className="px-4 py-3 text-slate-500">{index + 1}</td>
-                                            <td className="px-4 py-3 font-mono text-xs text-slate-700">{item.nomor ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{tanggalSingkat(item.tanggal)}</td>
-                                            <td className="px-4 py-3">
-                                                <p className="font-mono text-xs text-slate-700">{item.kode_barang ?? '-'}</p>
-                                                <p className="text-xs text-slate-500">Reg: {item.nomor_register ?? '-'}</p>
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-700">{item.nama_barang ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{item.merk_tipe ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{item.tahun_perolehan ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{item.asal_pegawai ?? '-'}</td>
-                                            <td className="px-4 py-3 text-slate-600">{item.volume}</td>
-                                            <td className="px-4 py-3 text-right">
-                                                {item.dokumen_id ? (
-                                                    <a
-                                                        href={`/pencatatan-bm/dokumen/${item.dokumen_id}/pdf`}
-                                                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700"
-                                                    >
-                                                        <FileText className="h-3.5 w-3.5" /> Cetak BA
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-xs text-slate-400">-</span>
-                                                )}
-                                            </td>
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full min-w-[1000px] text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                            <th className="px-4 py-3">No</th>
+                                            <th className="px-4 py-3">Kode / No. Reg</th>
+                                            <th className="px-4 py-3">Nama Barang</th>
+                                            <th className="px-4 py-3">Merk &amp; Tipe</th>
+                                            <th className="px-4 py-3">Thn Pengadaan</th>
+                                            <th className="px-4 py-3">Penerima &amp; Lokasi</th>
+                                            <th className="px-4 py-3">Vol Salur</th>
+                                            <th className="px-4 py-3 text-right">Harga Satuan</th>
+                                            <th className="px-4 py-3 text-right">Aksi</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {daftar.map((unit, index) => (
+                                            <tr key={`${unit.kode_barang}-${unit.nomor_register}-${unit.pegawai_id ?? 'tanpa'}`} className="border-b border-slate-50 last:border-0">
+                                                <td className="px-4 py-3 text-slate-500">{index + 1}</td>
+                                                <td className="px-4 py-3">
+                                                    <p className="font-mono text-xs font-bold text-slate-700">{unit.kode_barang}</p>
+                                                    <p className="text-xs text-slate-500">Reg: {unit.nomor_register}</p>
+                                                </td>
+                                                <td className="px-4 py-3 font-semibold text-slate-700">{unit.nama_barang ?? '-'}</td>
+                                                <td className="px-4 py-3 text-slate-600">{unit.merk_tipe ?? '-'}</td>
+                                                <td className="px-4 py-3 text-slate-600">{unit.tahun_perolehan}</td>
+                                                <td className="px-4 py-3 text-slate-600">
+                                                    <p>{unit.pegawai ?? '-'}</p>
+                                                    <p className="text-xs text-slate-500">{unit.ruang ?? '-'}</p>
+                                                </td>
+                                                <td className="px-4 py-3 text-slate-600">{unit.volume} {unit.satuan ?? 'Unit'}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-slate-600">{rupiah(unit.harga_satuan)}</td>
+                                                <td className="px-4 py-3 text-right">
+                                                    {canProsesPengembalian ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => bukaModal(unit)}
+                                                            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white"
+                                                        >
+                                                            <Undo2 className="h-3.5 w-3.5" /> Kembalikan
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-500">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
                 </section>
             </div>
 
+            <Modal
+                isOpen={riwayatTerbuka}
+                onClose={tutupRiwayat}
+                title={riwayatPenuh ? 'Riwayat Lengkap Pengembalian Barang' : 'History Pengembalian (Terbaru)'}
+                maxWidth={riwayatPenuh ? '3xl' : 'lg'}
+            >
+                <div className="space-y-4">
+                    {riwayatPenuh && (
+                        <input
+                            value={cariRiwayat}
+                            onChange={(e) => setCariRiwayat(e.target.value)}
+                            placeholder="Cari nomor surat, barang, atau penerima..."
+                            className="min-h-10 w-full rounded-xl border border-slate-300 px-3 text-sm"
+                        />
+                    )}
+
+                    {riwayatTampil.length === 0 ? (
+                        <EmptyState
+                            title="Tidak ditemukan adanya riwayat data pengembalian barang BMD."
+                            description="Riwayat tercatat otomatis saat pengembalian diproses."
+                        />
+                    ) : (
+                        <>
+                            <ul className="divide-y divide-slate-100 md:hidden">
+                                {riwayatTampil.map((item) => (
+                                    <li key={item.id} className="py-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <span className="font-mono text-xs font-bold text-blue-700">{item.nomor ?? item.kode_barang ?? '-'}</span>
+                                            <span className="text-xs text-slate-500">{riwayatPenuh ? waktuWib(item.waktu) : tanggalSingkat(item.tanggal)}</span>
+                                        </div>
+                                        <p className="mt-1 font-semibold text-slate-800">
+                                            {item.nama_barang ?? '-'} <span className="font-normal text-slate-500">(Reg: {item.nomor_register ?? '-'})</span>
+                                        </p>
+                                        <p className="text-xs text-slate-500">Thn Pengadaan: {item.tahun_perolehan ?? '-'}</p>
+                                        <p className="text-xs text-slate-500">Penerima: {item.asal_pegawai ?? '-'}</p>
+                                        <p className="text-xs text-slate-500">Lokasi: {item.asal_ruang ?? '-'}</p>
+                                        {riwayatPenuh && item.dokumen_id && (
+                                            <a
+                                                href={`/pencatatan-bm/dokumen/${item.dokumen_id}/pdf`}
+                                                className="mt-2 inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-700"
+                                            >
+                                                <FileText className="h-3.5 w-3.5" /> Cetak BA
+                                            </a>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full min-w-[720px] text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                            <th className="px-3 py-2">Nomor Surat</th>
+                                            <th className="px-3 py-2">{riwayatPenuh ? 'Tanggal Kembali' : 'Tanggal'}</th>
+                                            <th className="px-3 py-2">Kode / No. Reg</th>
+                                            <th className="px-3 py-2">Nama Barang</th>
+                                            <th className="px-3 py-2">Thn Pengadaan</th>
+                                            <th className="px-3 py-2">Eks Penerima</th>
+                                            <th className="px-3 py-2">Volume</th>
+                                            {riwayatPenuh && <th className="px-3 py-2 text-right">Aksi</th>}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {riwayatTampil.map((item) => (
+                                            <tr key={item.id} className="border-b border-slate-50 last:border-0">
+                                                <td className="px-3 py-2 font-mono text-xs text-slate-700">{item.nomor ?? '-'}</td>
+                                                <td className="whitespace-nowrap px-3 py-2 text-slate-600">
+                                                    {riwayatPenuh ? waktuWib(item.waktu) : tanggalSingkat(item.tanggal)}
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <p className="font-mono text-xs text-slate-700">{item.kode_barang ?? '-'}</p>
+                                                    <p className="text-xs text-slate-500">Reg: {item.nomor_register ?? '-'}</p>
+                                                </td>
+                                                <td className="px-3 py-2 text-slate-700">{item.nama_barang ?? '-'}</td>
+                                                <td className="px-3 py-2 text-slate-600">{item.tahun_perolehan ?? '-'}</td>
+                                                <td className="px-3 py-2 text-slate-600">{item.asal_pegawai ?? '-'}</td>
+                                                <td className="px-3 py-2 text-slate-600">{item.volume}</td>
+                                                {riwayatPenuh && (
+                                                    <td className="px-3 py-2 text-right">
+                                                        {item.dokumen_id ? (
+                                                            <a
+                                                                href={`/pencatatan-bm/dokumen/${item.dokumen_id}/pdf`}
+                                                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700"
+                                                            >
+                                                                <FileText className="h-3.5 w-3.5" /> Cetak BA
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-500">-</span>
+                                                        )}
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {!riwayatPenuh && (
+                                <button
+                                    type="button"
+                                    onClick={() => setRiwayatPenuh(true)}
+                                    className="min-h-10 w-full rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                >
+                                    Lihat Riwayat Lengkap
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
+            </Modal>
+
             {target && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-                    <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-                        <h2 className="text-lg font-bold text-slate-800">Generate BA Pengembalian</h2>
-                        <p className="mt-1 text-sm text-slate-500">
+                <Modal
+                    isOpen
+                    onClose={() => { if (!prosesModal) { setTarget(null); } }}
+                    title="Generate BA Pengembalian"
+                >
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-500">
                             Sistem akan memproses berkas PDF serta memperbarui status penyaluran aktif untuk barang:
                             <strong className="text-slate-700"> {target.nama_barang ?? '-'}</strong>
-                            <span className="block text-xs text-slate-400">
+                            <span className="block text-xs text-slate-500">
                                 Penerima {target.pegawai ?? '-'} · {target.ruang ?? '-'}
                             </span>
                         </p>
@@ -378,13 +510,13 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
                                 <select
                                     value={kondisi}
                                     onChange={(e) => setKondisi(e.target.value)}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    className="mt-1 min-h-10 w-full rounded-xl border border-slate-300 px-3 text-sm"
                                 >
                                     {KONDISI_KEMBALI.map(([kode, label]) => (
                                         <option key={kode} value={kode}>{label}</option>
                                     ))}
                                 </select>
-                                <span className="mt-1 block text-[11px] text-slate-400">
+                                <span className="mt-1 block text-xs text-slate-500">
                                     Kondisi di luar pilihan di atas: {Object.values(kondisiList).join(', ')}
                                 </span>
                             </label>
@@ -395,7 +527,7 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
                                     type="date"
                                     value={tanggal}
                                     onChange={(e) => setTanggal(e.target.value)}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    className="mt-1 min-h-10 w-full rounded-xl border border-slate-300 px-3 text-sm"
                                 />
                             </label>
 
@@ -421,20 +553,22 @@ export default function Index({ baris, riwayat, kondisiList, nomorBerikutnya }: 
                             <button
                                 type="button"
                                 onClick={() => setTarget(null)}
-                                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600"
+                                disabled={prosesModal}
+                                className="min-h-10 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-600 disabled:opacity-50"
                             >
                                 Batal
                             </button>
                             <button
                                 type="button"
                                 onClick={proses}
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white"
+                                disabled={prosesModal}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-60"
                             >
-                                <FileText className="h-4 w-4" /> Cetak &amp; Proses
+                                <FileText className="h-4 w-4" /> {prosesModal ? 'Memproses...' : 'Cetak & Proses'}
                             </button>
                         </div>
                     </div>
-                </div>
+                </Modal>
             )}
         </AppLayout>
     );

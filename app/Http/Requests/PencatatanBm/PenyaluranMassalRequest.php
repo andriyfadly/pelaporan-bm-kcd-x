@@ -30,7 +30,7 @@ class PenyaluranMassalRequest extends FormRequest
         return [
             'baris' => ['required', 'array', 'min:1'],
             'baris.*.unit_ids' => ['required', 'array', 'min:1'],
-            'baris.*.unit_ids.*' => ['required', 'uuid', 'exists:inventaris_unit,id'],
+            'baris.*.unit_ids.*' => ['required', 'uuid', 'distinct', 'exists:inventaris_unit,id'],
             'baris.*.ruang_id' => [
                 'required', 'uuid',
                 Rule::exists('master_data_ruang', 'id')->where('sekolah_id', $sekolahId)->whereNull('deleted_at'),

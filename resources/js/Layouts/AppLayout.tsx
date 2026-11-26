@@ -289,6 +289,9 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
     const canJabatan = permissions.includes('kelola-jabatan-bm');
     const canPenugasan = permissions.includes('kelola-penugasan-pegawai-bm');
     const canSyncInventaris = permissions.includes('sinkronisasi-inventaris-bm');
+    const canCetakInventaris = permissions.includes('cetak-inventaris-bm');
+    const canMutasiInventaris = permissions.includes('mutasi-inventaris-bm');
+    const canPengembalianInventaris = permissions.includes('proses-pengembalian-bm');
     const [openBhp, setOpenBhp] = useState(true);
 
     const isMasterActive =
@@ -572,6 +575,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Data Barang Inventaris
                                             </Link>
+                                            {canCetakInventaris && (
                                             <Link
                                                 href="/pencatatan-bm/dokumen/buku-inventaris"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/dokumen/buku-inventaris')
@@ -581,6 +585,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Buku Inventaris
                                             </Link>
+                                            )}
                                             <Link
                                                 href="/pencatatan-bm/penyaluran"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/penyaluran')
@@ -590,6 +595,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Buku Penyaluran
                                             </Link>
+                                            {canCetakInventaris && (
                                             <Link
                                                 href="/pencatatan-bm/dokumen"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath === '/pencatatan-bm/dokumen'
@@ -599,6 +605,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Kartu Inventaris Ruangan
                                             </Link>
+                                            )}
+                                            {canCetakInventaris && (
                                             <Link
                                                 href="/pencatatan-bm/label"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/label')
@@ -608,6 +616,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Labeling
                                             </Link>
+                                            )}
                                             <Link
                                                 href="/pencatatan-bm/pengguna"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengguna')
@@ -635,7 +644,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Pengembalian Barang
                                             </Link>
-<Link
+                                            {canMutasiInventaris && (
+                                            <Link
                                                 href="/pencatatan-bm/mutasi"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/mutasi')
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
@@ -644,7 +654,9 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Mutasi
                                             </Link>
-                                                                                                                                                                                <Link
+                                            )}
+                                            {canSyncInventaris && (
+                                            <Link
                                                 href="/pencatatan-bm/sinkronisasi"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/sinkronisasi')
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
@@ -653,6 +665,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Sinkronisasi
                                             </Link>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -773,6 +786,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Data Barang Inventaris
                                             </Link>
+                                            {canCetakInventaris && (
                                             <Link
                                                 href="/pencatatan-bm/dokumen/buku-inventaris"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/dokumen/buku-inventaris')
@@ -782,6 +796,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Buku Inventaris
                                             </Link>
+                                            )}
                                             <Link
                                                 href="/pencatatan-bm/penyaluran"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/penyaluran')
@@ -791,6 +806,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Buku Penyaluran
                                             </Link>
+                                            {canCetakInventaris && (
                                             <Link
                                                 href="/pencatatan-bm/dokumen"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath === '/pencatatan-bm/dokumen'
@@ -800,6 +816,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Kartu Inventaris Ruangan
                                             </Link>
+                                            )}
+                                            {canCetakInventaris && (
                                             <Link
                                                 href="/pencatatan-bm/label"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/label')
@@ -809,6 +827,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Labeling
                                             </Link>
+                                            )}
                                             <Link
                                                 href="/pencatatan-bm/pengguna"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengguna')
@@ -818,7 +837,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Data Pengguna Barang
                                             </Link>
-                                                                                        <Link
+                                                                                        {canCetakInventaris && (
+                                            <Link
                                                 href="/pencatatan-bm/berita-acara"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/berita-acara')
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
@@ -827,6 +847,8 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Rekapan BA
                                             </Link>
+                                            )}
+                                            {canPengembalianInventaris && (
                                             <Link
                                                 href="/pencatatan-bm/pengembalian"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/pengembalian')
@@ -836,7 +858,9 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Pengembalian Barang
                                             </Link>
-<Link
+                                            )}
+                                            {canMutasiInventaris && (
+                                            <Link
                                                 href="/pencatatan-bm/mutasi"
                                                 className={`block px-3 py-2 text-[13.5px] rounded-lg transition ${currentPath.startsWith('/pencatatan-bm/mutasi')
                                                         ? 'text-[#2563eb] font-bold bg-blue-50/50'
@@ -845,6 +869,7 @@ export default function AppLayout({ title = 'Dashboard', children }: Props) {
                                             >
                                                 Mutasi
                                             </Link>
+                                            )}
                                         </div>
                                     )}
                                 </div>

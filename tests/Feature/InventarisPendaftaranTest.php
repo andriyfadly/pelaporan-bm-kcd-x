@@ -10,6 +10,9 @@ use App\Models\User;
 use Database\Seeders\PeranDanHakAksesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\TestCase;
 
 /**
@@ -212,11 +215,11 @@ class InventarisPendaftaranTest extends TestCase
         $this->assertSame(0, InventarisUnit::count());
     }
 
-    public function test_impor_csv_membuat_unit_per_baris(): void
+    public function test_impor_memakai_urutan_kolom_acuan(): void
     {
-        $csv = "Sumber Perolehan,Kode Barang,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
-            ."BOSP,1.3.2.10.01.02.002,Laptop,Lenovo,Logam,10,2,2026,Unit,2,9000000\n"
-            ."APBN,1.3.2.10.01.02.002,Laptop,HP,Plastik,15,3,2026,Unit,1,8000000\n";
+        $csv = "Kode Barang,Sumber Perolehan,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
+            ."1.3.2.10.01.02.002,BOSP,Laptop,Lenovo,Logam,10,2,2026,Unit,2,9000000\n"
+            ."1.3.2.10.01.02.002,APBN,Laptop,HP,Plastik,15,3,2026,Unit,1,8000000\n";
 
         $file = UploadedFile::fake()->createWithContent('inventaris.csv', $csv);
 
@@ -231,16 +234,53 @@ class InventarisPendaftaranTest extends TestCase
             InventarisUnit::orderBy('nomor_register')->pluck('nomor_register')->all(),
         );
         $unit = InventarisUnit::orderBy('nomor_register')->firstOrFail();
+        $this->assertSame('1.3.2.10.01.02.002', $unit->kode_barang);
         $this->assertSame(2, $unit->bulan_perolehan);
         $this->assertSame('BOSP', $unit->asal_perolehan);
         $this->assertSame('Logam', $unit->bahan);
     }
 
+    public function test_impor_tanpa_kondisi_menyimpan_strip_dan_masuk_agregat_baik(): void
+    {
+        // Acuan menyimpan keadaan_barang '-' untuk hasil impor, tetapi
+        // dashboard menghitungnya sebagai sisa volume "Baik".
+        $csv = "Kode Barang,Sumber Perolehan,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
+            ."1.3.2.10.01.02.002,BOSP,Laptop,Lenovo,Logam,10,2,2026,Unit,1,9000000\n";
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.inventaris.import'), [
+                'file' => UploadedFile::fake()->createWithContent('inventaris.csv', $csv),
+            ])
+            ->assertRedirect();
+
+        $unit = InventarisUnit::firstOrFail();
+        $this->assertSame(InventarisUnit::KONDISI_BELUM_DISET, $unit->kondisi);
+
+        $this->actingAs($this->operator)
+            ->getJson(route('pencatatan-bm.statistik'))
+            ->assertOk()
+            ->assertJsonPath('ringkasan.kondisi.B', 1)
+            ->assertJsonPath('ringkasan.totalUnit', 1);
+    }
+
+    public function test_input_manual_tetap_memilih_kondisi_baik(): void
+    {
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.inventaris.store'), [
+                'kode_barang' => '1.3.2.10.01.02.002',
+                'volume' => 1,
+                'tanggal_perolehan' => '2026-02-10',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('B', InventarisUnit::firstOrFail()->kondisi);
+    }
+
     public function test_impor_melewati_baris_tanpa_kode(): void
     {
-        $csv = "Sumber Perolehan,Kode Barang,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
-            .",,Tanpa Kode,,,10,2,2026,Unit,1,0\n"
-            .",1.3.2.10.01.02.002,Laptop,,,10,2,2026,Unit,1,0\n";
+        $csv = "Kode Barang,Sumber Perolehan,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
+            .",BOSP,Tanpa Kode,,,10,2,2026,Unit,1,0\n"
+            ."1.3.2.10.01.02.002,BOSP,Laptop,,,10,2,2026,Unit,1,0\n";
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.inventaris.import'), [
@@ -255,22 +295,55 @@ class InventarisPendaftaranTest extends TestCase
     {
         // Baris pertama valid, baris kedua tanggalnya tidak bisa di-parse:
         // seluruh impor harus batal supaya register tidak terbit percuma.
-        $csv = "Sumber Perolehan,Kode Barang,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
-            ."BOSP,1.3.2.10.01.02.002,Laptop,Lenovo,Logam,10,2,2026,Unit,1,9000000\n"
-            ."BOSP,1.3.2.10.01.02.002,Kursi,Lokal,Kayu,bukan-tanggal,2,2026,Unit,1,200000\n";
+        $csv = "Kode Barang,Sumber Perolehan,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
+            ."1.3.2.10.01.02.002,BOSP,Laptop,Lenovo,Logam,10,2,2026,Unit,1,9000000\n"
+            ."1.3.2.10.01.02.002,BOSP,Kursi,Lokal,Kayu,bukan-tanggal,2,2026,Unit,1,200000\n";
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.inventaris.import'), [
                 'file' => UploadedFile::fake()->createWithContent('gagal.csv', $csv),
             ])
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors('baris.3.tanggal_perolehan');
+
+        $this->assertSame(0, InventarisUnit::count());
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function nilaiImporTidakValid(): array
+    {
+        // header + satu baris data; kolom J (volume) dan K (harga) diuji.
+        return [
+            'volume nol' => ['1.3.2.10.01.02.002,BOSP,Laptop,,,10,2,2026,Unit,0,0', 'baris.2.volume'],
+            'volume negatif' => ['1.3.2.10.01.02.002,BOSP,Laptop,,,10,2,2026,Unit,-2,0', 'baris.2.volume'],
+            'volume teks' => ['1.3.2.10.01.02.002,BOSP,Laptop,,,10,2,2026,Unit,abc,0', 'baris.2.volume'],
+            'harga negatif' => ['1.3.2.10.01.02.002,BOSP,Laptop,,,10,2,2026,Unit,1,-100', 'baris.2.harga_satuan'],
+            'tanggal mustahil' => ['1.3.2.10.01.02.002,BOSP,Laptop,,,31,2,2026,Unit,1,0', 'baris.2.tanggal_perolehan'],
+        ];
+    }
+
+    /**
+     * @dataProvider nilaiImporTidakValid
+     */
+    #[DataProvider('nilaiImporTidakValid')]
+    public function test_impor_menolak_nilai_tidak_valid(string $baris, string $kunci): void
+    {
+        $csv = "Kode Barang,Sumber Perolehan,Nama Barang,Merek / Type,Bahan,Tanggal,Bulan Perolehan,Tahun Perolehan,Satuan,Volume,Harga Satuan\n"
+            .$baris."\n";
+
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.inventaris.import'), [
+                'file' => UploadedFile::fake()->createWithContent('invalid.csv', $csv),
+            ])
+            ->assertSessionHasErrors($kunci);
 
         $this->assertSame(0, InventarisUnit::count());
     }
 
     public function test_impor_berkas_kosong_ditolak(): void
     {
-        $csv = "Sumber Perolehan,Kode Barang,Nama Barang\n";
+        $csv = "Kode Barang,Sumber Perolehan,Nama Barang\n";
 
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.inventaris.import'), [
@@ -287,6 +360,22 @@ class InventarisPendaftaranTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        // Header harus sama dengan urutan yang dibaca parser impor, kalau tidak
+        // berkas yang diunduh operator akan masuk ke kolom yang salah.
+        $base = $response->baseResponse;
+
+        if (! $base instanceof BinaryFileResponse) {
+            $this->fail('Template impor harus dikirim sebagai unduhan berkas.');
+        }
+
+        $spreadsheet = IOFactory::load($base->getFile()->getPathname());
+        $header = $spreadsheet->getActiveSheet()->rangeToArray('A1:K1')[0];
+
+        $this->assertSame([
+            'Kode Barang', 'Sumber Perolehan', 'Nama Barang', 'Merek / Type', 'Bahan',
+            'Tanggal', 'Bulan Perolehan', 'Tahun Perolehan', 'Satuan', 'Volume', 'Harga Satuan',
+        ], $header);
     }
 
     public function test_sekolah_id_dari_request_diabaikan(): void

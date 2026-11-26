@@ -60,6 +60,7 @@ class MutasiController extends Controller
                 ->orderBy('nama_lengkap')
                 ->get(['id', 'nama_lengkap']),
             'kondisiList' => InventarisUnit::KONDISI,
+            'canMutasi' => $request->user()->can('mutasi-inventaris-bm'),
         ]);
     }
 

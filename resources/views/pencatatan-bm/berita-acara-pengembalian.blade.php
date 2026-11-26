@@ -12,6 +12,11 @@
     $namaPenerima = \App\Support\NamaGelar::format($penerima['nama'] ?? null);
     $labelPenerima = ['B' => 'Baik', 'RR' => 'Rusak Ringan', 'RB' => 'Rusak Berat', 'H' => 'Hilang'];
     $nomorBast = $payload['nomor_bast'] ?? null;
+    $daftarBast = collect($payload['bast_per_unit'] ?? [])
+        ->filter(fn ($nomor) => is_string($nomor) && $nomor !== '')
+        ->unique()
+        ->values();
+    $nomorBastTampil = $nomorBast ?: ($daftarBast->isNotEmpty() ? $daftarBast->implode(', ') : null);
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -75,7 +80,7 @@
 <p>
     Dengan ini menerangkan bahwa <b>PIHAK KESATU</b> telah menerima pengembalian Barang Milik Daerah (BMD) dari
     <b>PIHAK KEDUA</b> sesuai Berita Acara Penyaluran nomor:
-    {{ $nomorBast ?: '........./07/'.\Illuminate\Support\Carbon::parse($dokumen->tanggal)->year.'/AR.03.05-CADISDIK.WIL-X' }}
+    {{ $nomorBastTampil ?: '........./07/'.\Illuminate\Support\Carbon::parse($dokumen->tanggal)->year.'/AR.03.05-CADISDIK.WIL-X' }}
     dikarenakan telah berakhirnya masa kerja, masa jabatan, atau berakhirnya waktu penggunaan <b>PIHAK KEDUA</b>
     yang selanjutnya akan dilakukan pencatatan kembali ke dalam administrasi dengan rincian hasil pemeriksaan
     <b>PIHAK KESATU</b> sebagai berikut:

@@ -25,7 +25,7 @@ class PengembalianRequest extends FormRequest
     {
         return [
             'unit_ids' => ['required', 'array', 'min:1', 'max:100'],
-            'unit_ids.*' => ['required', 'uuid', 'exists:inventaris_unit,id'],
+            'unit_ids.*' => ['required', 'uuid', 'distinct', 'exists:inventaris_unit,id'],
             'kondisi' => ['required', Rule::in(array_keys(InventarisUnit::KONDISI))],
             'tanggal' => ['required', 'date'],
             'keterangan' => ['nullable', 'string', 'max:1000'],

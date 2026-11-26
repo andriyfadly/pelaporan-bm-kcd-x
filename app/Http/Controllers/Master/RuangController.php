@@ -8,6 +8,7 @@ use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Concerns\TenantScope;
 use App\Http\Controllers\Controller;
 use App\Models\Master\Ruang;
+use App\Support\NormalisasiTeks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -59,7 +60,7 @@ class RuangController extends Controller
             $namaTerpakai = [];
 
             foreach ($validated['baris'] as $row) {
-                $nama = trim($row['nama_ruang']);
+                $nama = NormalisasiTeks::namaRuang($row['nama_ruang']);
                 $kunci = mb_strtolower($nama);
 
                 if (in_array($kunci, $namaTerpakai, true) || $this->namaTerpakai($sekolahId, $nama)) {
@@ -98,7 +99,7 @@ class RuangController extends Controller
 
         $baris = $rows
             ->map(fn (Collection $row): array => [
-                'nama_ruang' => trim((string) ($row[0] ?? '')),
+                'nama_ruang' => NormalisasiTeks::namaRuang((string) ($row[0] ?? '')),
                 'kode' => trim((string) ($row[1] ?? '')) ?: null,
             ])
             ->filter(fn (array $row): bool => $row['nama_ruang'] !== '')
@@ -187,6 +188,8 @@ class RuangController extends Controller
             'kode' => ['nullable', 'string', 'max:50'],
         ]);
 
+        $validated['nama_ruang'] = NormalisasiTeks::namaRuang($validated['nama_ruang']);
+
         if ($this->namaTerpakai($sekolahId, $validated['nama_ruang'], $ignoreId)) {
             throw ValidationException::withMessages([
                 'nama_ruang' => 'Nama ruang sudah dipakai di sekolah ini.',
@@ -198,6 +201,8 @@ class RuangController extends Controller
 
     private function namaTerpakai(string $sekolahId, string $nama, ?string $ignoreId = null): bool
     {
+        $nama = NormalisasiTeks::namaRuang($nama);
+
         return Ruang::where('sekolah_id', $sekolahId)
             ->whereRaw('lower(nama_ruang) = ?', [mb_strtolower(trim($nama))])
             ->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))

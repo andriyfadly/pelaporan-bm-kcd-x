@@ -55,7 +55,8 @@ class PencatatanBmHttpFlowTest extends TestCase
             ->put(route('master-data.ruang.update', $ruang), ['nama_ruang' => 'Lab TIK', 'kode' => 'TIK'])
             ->assertRedirect();
 
-        $this->assertSame('Lab TIK', $ruang->fresh()->nama_ruang);
+        // Acuan memaksa ucwords(strtolower(...)): "Lab TIK" tersimpan "Lab Tik".
+        $this->assertSame('Lab Tik', $ruang->fresh()->nama_ruang);
 
         $this->actingAs($this->operator)
             ->delete(route('master-data.ruang.destroy', $ruang))

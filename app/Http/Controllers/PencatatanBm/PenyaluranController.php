@@ -6,8 +6,8 @@ use App\Http\Controllers\Concerns\ResolvesSekolah;
 use App\Http\Controllers\Concerns\SearchesText;
 use App\Http\Controllers\Concerns\TenantScope;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PencatatanBm\PenyaluranAksiMassalRequest;
 use App\Http\Requests\PencatatanBm\PenyaluranMassalRequest;
-use App\Http\Requests\PencatatanBm\PenyaluranRequest;
 use App\Models\Master\Pegawai;
 use App\Models\Master\Ruang;
 use App\Models\PencatatanBm\InventarisUnit;
@@ -86,6 +86,8 @@ class PenyaluranController extends Controller
                 ->orderBy('asal_perolehan')
                 ->pluck('asal_perolehan'),
             'kondisiList' => InventarisUnit::KONDISI,
+            'canMutasi' => $request->user()->can('mutasi-inventaris-bm'),
+            'canCetak' => $request->user()->can('cetak-inventaris-bm'),
             'nomorBastBerikutnya' => $sekolahId
                 ? app(NomorDokumenInventarisService::class)->pratinjau($sekolahId, 'bast')
                 : null,
@@ -154,48 +156,102 @@ class PenyaluranController extends Controller
         return back()->with('success', "{$jumlah} unit disalurkan.");
     }
 
-    /** Restart penyaluran: unit kembali ke gudang tanpa menerbitkan BA. */
-    public function reset(Request $request, InventarisUnit $unit): RedirectResponse
+    /** Restart penyaluran satu baris: seluruh unit kembali ke gudang. */
+    public function resetMassal(PenyaluranAksiMassalRequest $request): RedirectResponse
     {
-        $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
-        Gate::authorize('mutasi', $unit);
+        $sekolahId = $this->resolveSekolahIdWajib($request);
+        $unitIds = $request->validated()['unit_ids'];
+        $jumlah = 0;
 
-        if ($unit->status === InventarisUnit::STATUS_DIKEMBALIKAN) {
-            throw ValidationException::withMessages([
-                'unit' => 'Unit sudah dikembalikan, penyaluran tidak bisa direstart.',
-            ]);
-        }
+        DB::transaction(function () use ($request, $sekolahId, $unitIds, &$jumlah): void {
+            $units = $this->kunciUnits($sekolahId, $unitIds);
 
-        DB::transaction(function () use ($request, $unit): void {
-            $this->service->koreksi(
-                $unit,
-                ['keterangan' => 'Penyaluran direset', 'tanggal' => now()->toDateString()],
-                (string) $request->user()->id,
-            );
+            foreach ($units as $unit) {
+                Gate::authorize('mutasi', $unit);
 
-            $unit->update([
-                'ruang_id' => null,
-                'pegawai_id' => null,
-                'status' => InventarisUnit::STATUS_AKTIF,
-            ]);
+                if ($unit->status === InventarisUnit::STATUS_DIKEMBALIKAN) {
+                    throw ValidationException::withMessages([
+                        'unit' => "Unit {$unit->nomor_register} sudah dikembalikan, penyaluran tidak bisa direstart.",
+                    ]);
+                }
+
+                // Unit yang belum ditempatkan memang sudah di gudang.
+                if ($unit->ruang_id === null && $unit->pegawai_id === null) {
+                    continue;
+                }
+
+                $this->service->koreksi(
+                    $unit,
+                    ['keterangan' => 'Penyaluran direset', 'tanggal' => now()->toDateString()],
+                    (string) $request->user()->id,
+                );
+
+                $unit->update([
+                    'ruang_id' => null,
+                    'pegawai_id' => null,
+                    'status' => InventarisUnit::STATUS_AKTIF,
+                ]);
+
+                $jumlah++;
+            }
         });
 
-        return back()->with('success', 'Penyaluran berhasil direstart.');
+        return back()->with(
+            'success',
+            $jumlah > 0 ? "{$jumlah} unit penyalurannya direstart." : 'Tidak ada unit yang perlu direstart.',
+        );
     }
 
-    /** Edit penerima/lokasi setelah barang disalurkan (acuan: update_penerima). */
-    public function ubahPenerima(PenyaluranRequest $request, InventarisUnit $unit): RedirectResponse
+    /** Edit penerima/lokasi satu baris setelah barang disalurkan. */
+    public function ubahPenerimaMassal(PenyaluranAksiMassalRequest $request): RedirectResponse
     {
-        $this->pastikanSekolahSendiri($request, $unit->sekolah_id);
-        Gate::authorize('mutasi', $unit);
+        $sekolahId = $this->resolveSekolahIdWajib($request);
+        $data = $request->validated();
+        $jumlah = 0;
 
-        $this->service->mutasikan(
-            $unit,
-            $request->validated() + ['tanggal' => now()->toDateString()],
-            (string) $request->user()->id,
-        );
+        DB::transaction(function () use ($request, $sekolahId, $data, &$jumlah): void {
+            $units = $this->kunciUnits($sekolahId, $data['unit_ids']);
 
-        return back()->with('success', 'Berhasil diupdate!');
+            foreach ($units as $unit) {
+                Gate::authorize('mutasi', $unit);
+
+                $this->service->mutasikan($unit, [
+                    'ruang_id' => $data['ruang_id'],
+                    'pegawai_id' => $data['pegawai_id'] ?? null,
+                    'tanggal' => now()->toDateString(),
+                ], (string) $request->user()->id);
+
+                $jumlah++;
+            }
+        });
+
+        return back()->with('success', "{$jumlah} unit penerimanya diperbarui.");
+    }
+
+    /**
+     * Kunci unit yang diminta dan pastikan himpunannya tepat sama dengan
+     * permintaan (bukan hanya jumlahnya).
+     *
+     * @param  array<int, string>  $unitIds
+     * @return Collection<int, InventarisUnit>
+     */
+    private function kunciUnits(string $sekolahId, array $unitIds): Collection
+    {
+        $units = InventarisUnit::query()
+            ->where('sekolah_id', $sekolahId)
+            ->whereIn('id', $unitIds)
+            ->orderBy('nomor_register')
+            ->lockForUpdate()
+            ->get();
+
+        $diminta = collect($unitIds)->unique()->sort()->values()->all();
+        $ditemukan = $units->pluck('id')->sort()->values()->all();
+
+        if ($diminta !== $ditemukan) {
+            abort(404);
+        }
+
+        return $units;
     }
 
     /**
@@ -229,6 +285,9 @@ class PenyaluranController extends Controller
                 )->values();
 
                 $baris[] = [
+                    // Identitas deterministik untuk React key & state draft; indeks
+                    // array bergeser saat filter/halaman berubah.
+                    'id' => implode('-', $run->pluck('id')->all()),
                     'unit_ids' => $run->pluck('id')->all(),
                     'kode_barang' => $pertama->kode_barang,
                     'nama_barang' => $pertama->nama_barang,

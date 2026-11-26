@@ -14,8 +14,9 @@ class PendaftaranInventarisRequest extends FormRequest
     }
 
     /**
-     * Kolom mengikuti template impor aplikasi acuan (Kode, Nama, Merek/Tipe,
-     * Tanggal, Bulan, Tahun, Satuan, Volume, Harga Satuan).
+     * Kontrak impor 11 kolom (parser acuan `proses_import_langsung.php`):
+     * A Kode Barang, B Asal Perolehan, C Nama Barang, D Merek/Tipe, E Bahan,
+     * F Tanggal, G Bulan, H Tahun, I Satuan, J Volume, K Harga Satuan.
      *
      * @return array<string, mixed>
      */

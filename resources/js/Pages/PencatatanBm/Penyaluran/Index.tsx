@@ -2,11 +2,14 @@ import { Head, router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import Modal from '@/Components/Modal';
+import ConfirmDialog from '@/Components/ConfirmDialog';
 import EmptyState from '@/Components/EmptyState';
 import { bukaPdfDokumen } from '@/Utils/dokumen';
+import { tanggalHariIni } from '@/Utils/format';
 import { Download, FileText, Pencil, RotateCcw, Save } from 'lucide-react';
 
 interface Baris {
+    id: string;
     unit_ids: string[];
     kode_barang: string;
     nama_barang: string | null;
@@ -43,14 +46,16 @@ interface Props {
     asalList: string[];
     kondisiList: Record<string, string>;
     nomorBastBerikutnya: string | null;
+    canMutasi: boolean;
+    canCetak: boolean;
 }
 
 const rupiah = (nilai: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(nilai);
 
-export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunList, filter, asalList, nomorBastBerikutnya }: Props) {
-    const [draft, setDraft] = useState<Record<number, { ruang_id: string; pegawai_id: string; keterangan: string }>>({});
-    const [vol, setVol] = useState<Record<number, number>>({});
+export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunList, filter, asalList, nomorBastBerikutnya, canMutasi, canCetak }: Props) {
+    const [draft, setDraft] = useState<Record<string, { ruang_id: string; pegawai_id: string; keterangan: string }>>({});
+    const [vol, setVol] = useState<Record<string, number>>({});
     const [modalRekap, setModalRekap] = useState(false);
     const [rekap, setRekap] = useState({
         filter: 'semua',
@@ -65,19 +70,23 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
     });
     const [perHalaman, setPerHalaman] = useState(25);
     const [halaman, setHalaman] = useState(1);
-    const [tanggal, setTanggal] = useState(() => new Date().toISOString().slice(0, 10));
+    const [tanggal, setTanggal] = useState(() => tanggalHariIni());
     const [proses, setProses] = useState(false);
     const [peringatan, setPeringatan] = useState<string | null>(null);
-    const [modal, setModal] = useState<{ jenis: 'bast' | 'fakta' | 'edit'; index: number } | null>(null);
+    const [modal, setModal] = useState<{ jenis: 'bast' | 'fakta' | 'edit'; id: string } | null>(null);
+    const [modalReset, setModalReset] = useState<Baris | null>(null);
+    const [prosesModal, setProsesModal] = useState(false);
     const [editPenerima, setEditPenerima] = useState({ ruang_id: '', pegawai_id: '' });
 
-    const nilaiBaris = (index: number) => ({
-        ruang_id: draft[index]?.ruang_id ?? baris[index].ruang_id ?? '',
-        pegawai_id: draft[index]?.pegawai_id ?? baris[index].pegawai_id ?? '',
-        keterangan: draft[index]?.keterangan ?? baris[index].keterangan ?? '',
+    const nilaiBaris = (b: Baris) => ({
+        ruang_id: draft[b.id]?.ruang_id ?? b.ruang_id ?? '',
+        pegawai_id: draft[b.id]?.pegawai_id ?? b.pegawai_id ?? '',
+        keterangan: draft[b.id]?.keterangan ?? b.keterangan ?? '',
     });
 
-    const nilaiVol = (index: number) => vol[index] ?? baris[index].sisa;
+    const nilaiVol = (b: Baris) => vol[b.id] ?? b.sisa;
+
+    const barisAktif = (id: string) => baris.find((b) => b.id === id) ?? null;
 
     const adaPerubahan = useMemo(() => Object.keys(draft).length > 0, [draft]);
 
@@ -91,8 +100,15 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
         setHalaman(1);
     }, [filter.search, filter.bulan, filter.tahun, perHalaman]);
 
-    const setBaris = (index: number, patch: Partial<{ ruang_id: string; pegawai_id: string; keterangan: string }>) => {
-        setDraft((lama) => ({ ...lama, [index]: { ...nilaiBaris(index), ...patch } }));
+    // Filter/reload bisa menghapus baris; buang draft milik ID yang sudah tidak ada.
+    useEffect(() => {
+        const ids = new Set(baris.map((b) => b.id));
+        setDraft((lama) => Object.fromEntries(Object.entries(lama).filter(([id]) => ids.has(id))));
+        setVol((lama) => Object.fromEntries(Object.entries(lama).filter(([id]) => ids.has(id))));
+    }, [baris]);
+
+    const setBaris = (b: Baris, patch: Partial<{ ruang_id: string; pegawai_id: string; keterangan: string }>) => {
+        setDraft((lama) => ({ ...lama, [b.id]: { ...nilaiBaris(b), ...patch } }));
     };
 
     const cari = (patch: Record<string, string>) => {
@@ -101,8 +117,8 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
 
     const simpan = () => {
         const terisi = Object.keys(draft)
-            .map(Number)
-            .filter((index) => nilaiBaris(index).ruang_id !== '');
+            .map((id) => barisAktif(id))
+            .filter((b): b is Baris => b !== null && nilaiBaris(b).ruang_id !== '');
 
         if (terisi.length === 0) {
             setPeringatan('Belum ada baris yang diisi lokasi/ruang.');
@@ -113,12 +129,12 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
         router.post(
             '/pencatatan-bm/penyaluran',
             {
-                baris: terisi.map((index) => ({
-                    unit_ids: baris[index].sisa_unit_ids,
-                    vol: nilaiVol(index),
-                    ruang_id: nilaiBaris(index).ruang_id,
-                    pegawai_id: nilaiBaris(index).pegawai_id || null,
-                    keterangan: nilaiBaris(index).keterangan || null,
+                baris: terisi.map((b) => ({
+                    unit_ids: b.sisa_unit_ids,
+                    vol: nilaiVol(b),
+                    ruang_id: nilaiBaris(b).ruang_id,
+                    pegawai_id: nilaiBaris(b).pegawai_id || null,
+                    keterangan: nilaiBaris(b).keterangan || null,
                     tanggal,
                 })),
             },
@@ -135,21 +151,26 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
         );
     };
 
-    const bukaAksi = (jenis: 'bast' | 'fakta' | 'edit', index: number) => {
-        if (!baris[index].sudah_disalurkan) {
+    const bukaAksi = (jenis: 'bast' | 'fakta' | 'edit', b: Baris) => {
+        if (!b.sudah_disalurkan) {
             setPeringatan('Belum Disalurkan! Silahkan lakukan penyaluran dan "SIMPAN DATA" terlebih dahulu.');
             return;
         }
 
         if (jenis === 'edit') {
-            setEditPenerima({ ruang_id: baris[index].ruang_id ?? '', pegawai_id: baris[index].pegawai_id ?? '' });
+            setEditPenerima({ ruang_id: b.ruang_id ?? '', pegawai_id: b.pegawai_id ?? '' });
         }
 
-        setModal({ jenis, index });
+        setModal({ jenis, id: b.id });
     };
 
     const simpanPenerima = () => {
         if (!modal) {
+            return;
+        }
+
+        const b = barisAktif(modal.id);
+        if (!b) {
             return;
         }
 
@@ -158,21 +179,63 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
             return;
         }
 
+        setProsesModal(true);
         router.post(
-            `/pencatatan-bm/penyaluran/${baris[modal.index].unit_ids[0]}/penerima`,
-            { ruang_id: editPenerima.ruang_id, pegawai_id: editPenerima.pegawai_id || null },
-            { preserveScroll: true, onSuccess: () => setModal(null) },
+            '/pencatatan-bm/penyaluran/penerima-massal',
+            {
+                unit_ids: b.unit_ids,
+                ruang_id: editPenerima.ruang_id,
+                pegawai_id: editPenerima.pegawai_id || null,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setModal(null),
+                onError: (errors) => setPeringatan(Object.values(errors)[0] ?? 'Gagal memperbarui penerima.'),
+                onFinish: () => setProsesModal(false),
+            },
         );
     };
 
-    const restart = (index: number) => {
-        router.post(`/pencatatan-bm/penyaluran/${baris[index].unit_ids[0]}/reset`, {}, { preserveScroll: true });
+    const mintaReset = (b: Baris) => {
+        if (b.sisa === b.unit_ids.length) {
+            setPeringatan('Belum ada unit yang disalurkan pada baris ini.');
+            return;
+        }
+
+        setModalReset(b);
     };
 
-    const cetakBast = (index: number) => {
+    const konfirmasiReset = () => {
+        if (!modalReset) {
+            return;
+        }
+
+        setProsesModal(true);
+        router.post(
+            '/pencatatan-bm/penyaluran/reset-massal',
+            { unit_ids: modalReset.unit_ids },
+            {
+                preserveScroll: true,
+                onSuccess: () => setModalReset(null),
+                onError: (errors) => setPeringatan(Object.values(errors)[0] ?? 'Gagal merestart penyaluran.'),
+                onFinish: () => setProsesModal(false),
+            },
+        );
+    };
+
+    const cetakBast = (id: string) => {
+        const b = barisAktif(id);
+        if (!b) {
+            return;
+        }
+
+        // Sisa unit diutamakan: setelah pengembalian sebagian, unit yang sudah
+        // kembali tidak boleh ikut tercetak di BAST baru.
+        const unitBast = b.sisa_unit_ids.length > 0 ? b.sisa_unit_ids : b.unit_ids;
+
         router.post(
             '/pencatatan-bm/dokumen/bast-baris',
-            { unit_ids: baris[index].unit_ids, tanggal },
+            { unit_ids: unitBast, tanggal },
             {
                 preserveScroll: true,
                 onSuccess: (page) => {
@@ -187,8 +250,9 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
         );
     };
 
-    const cetakFakta = (index: number) => {
-        const pegawaiId = baris[index].pegawai_id;
+    const cetakFakta = (id: string) => {
+        const b = barisAktif(id);
+        const pegawaiId = b?.pegawai_id;
         if (!pegawaiId) {
             setPeringatan('Baris ini belum punya penerima, Pakta Integritas tidak bisa dibuat.');
             return;
@@ -267,12 +331,127 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                     </div>
                 )}
 
-                <section className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <section className="rounded-2xl border border-slate-200 bg-white">
                     {baris.length === 0 ? (
                         <EmptyState title="Belum ada data barang" description="Tambahkan barang lewat menu Inventaris terlebih dahulu." />
                     ) : (
+                        <>
+                        <ul className="divide-y divide-slate-100 md:hidden">
+                            {tampil.map(({ b, index }) => {
+                                const nilai = nilaiBaris(b);
+                                return (
+                                    <li key={b.id} className="space-y-3 p-4">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-slate-800">{b.nama_barang ?? '-'}</p>
+                                                <p className="text-xs text-slate-500">{b.merk_tipe ?? '-'} · {b.kode_barang}</p>
+                                            </div>
+                                            <span className="shrink-0 rounded-full border border-slate-200 px-2 py-0.5 font-mono text-xs text-slate-600">
+                                                {b.nomor_register}
+                                            </span>
+                                        </div>
+
+                                        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                            <dt className="text-slate-500">Tanggal</dt>
+                                            <dd className="text-right text-slate-700">{b.tanggal_perolehan ?? '-'}</dd>
+                                            <dt className="text-slate-500">Pengadaan</dt>
+                                            <dd className="text-right text-slate-700">{b.volume_pengadaan} {b.satuan ?? 'Unit'}</dd>
+                                            <dt className="text-slate-500">Harga satuan</dt>
+                                            <dd className="text-right text-slate-700">{rupiah(b.harga_satuan)}</dd>
+                                            <dt className="text-slate-500">Sisa</dt>
+                                            <dd className="text-right text-slate-700">{b.sisa} dari {b.volume}</dd>
+                                        </dl>
+
+                                        <div className="grid grid-cols-1 gap-2">
+                                            <label className="block text-xs font-semibold text-slate-600">
+                                                Penerima
+                                                <select
+                                                    value={nilai.pegawai_id}
+                                                    disabled={b.sudah_disalurkan}
+                                                    onChange={(e) => setBaris(b, { pegawai_id: e.target.value })}
+                                                    aria-label={`Penerima baris ${index + 1}`}
+                                                    className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                                                >
+                                                    <option value="">-- Pilih Penerima --</option>
+                                                    {pegawaiList.map((p) => (
+                                                        <option key={p.id} value={p.id}>{p.nama_lengkap}</option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                            <label className="block text-xs font-semibold text-slate-600">
+                                                Ruang
+                                                <select
+                                                    value={nilai.ruang_id}
+                                                    disabled={b.sudah_disalurkan}
+                                                    onChange={(e) => setBaris(b, { ruang_id: e.target.value })}
+                                                    aria-label={`Ruang baris ${index + 1}`}
+                                                    className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                                                >
+                                                    <option value="">-- Pilih Lokasi --</option>
+                                                    {ruangList.map((r) => (
+                                                        <option key={r.id} value={r.id}>{r.nama_ruang}</option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <label className="block text-xs font-semibold text-slate-600">
+                                                    Jumlah Disalurkan
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={b.sisa}
+                                                        value={nilaiVol(b)}
+                                                        disabled={b.sisa === 0}
+                                                        onChange={(e) => setVol((lama) => ({ ...lama, [b.id]: Number(e.target.value) }))}
+                                                        aria-label={`Jumlah disalurkan baris ${index + 1}`}
+                                                        className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                                                    />
+                                                </label>
+                                                <label className="block text-xs font-semibold text-slate-600">
+                                                    Keterangan
+                                                    <input
+                                                        value={nilai.keterangan}
+                                                        disabled={b.sudah_disalurkan}
+                                                        onChange={(e) => setBaris(b, { keterangan: e.target.value })}
+                                                        aria-label={`Keterangan baris ${index + 1}`}
+                                                        className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        {(canCetak || canMutasi) && (
+                                        <div className="flex flex-wrap items-center gap-1">
+                                            {canCetak && (
+                                                <>
+                                            <button type="button" onClick={() => bukaAksi('bast', b)} aria-label={`BAST baris ${index + 1}`} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-700">
+                                                <FileText className="h-4 w-4" /> BAST
+                                            </button>
+                                            <button type="button" onClick={() => bukaAksi('fakta', b)} aria-label={`Fakta Integritas baris ${index + 1}`} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-700">
+                                                <Download className="h-4 w-4" /> Fakta
+                                            </button>
+                                                </>
+                                            )}
+                                            {canMutasi && (
+                                                <>
+                                            <button type="button" onClick={() => bukaAksi('edit', b)} aria-label={`Edit penerima baris ${index + 1}`} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-700">
+                                                <Pencil className="h-4 w-4" /> Edit
+                                            </button>
+                                            <button type="button" onClick={() => mintaReset(b)} aria-label={`Restart penyaluran baris ${index + 1}`} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-rose-200 px-2 text-xs font-bold text-rose-600">
+                                                <RotateCcw className="h-4 w-4" /> Restart
+                                            </button>
+                                                </>
+                                            )}
+                                        </div>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+
+                        <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left text-xs">
-                            <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+                            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                                 <tr>
                                     <th className="px-3 py-2">No</th>
                                     <th className="px-3 py-2">Nama Barang</th>
@@ -284,7 +463,7 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                     <th className="px-3 py-2">Ket</th>
                                     <th className="px-3 py-2">Aksi</th>
                                 </tr>
-                                <tr className="bg-slate-50 text-[10px] uppercase text-slate-400">
+                                <tr className="bg-slate-50 text-xs uppercase text-slate-500">
                                     <th colSpan={4}></th>
                                     <th className="px-2 py-1">Tgl</th>
                                     <th className="px-2 py-1">Bln</th>
@@ -300,9 +479,9 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                             </thead>
                             <tbody>
                                 {tampil.map(({ b, index }) => {
-                                    const nilai = nilaiBaris(index);
+                                    const nilai = nilaiBaris(b);
                                     return (
-                                        <tr key={`${b.kode_barang}-${b.nomor_register}`} className={b.sudah_disalurkan ? 'text-slate-400' : 'text-slate-700'}>
+                                        <tr key={b.id} className={b.sudah_disalurkan ? 'text-slate-500' : 'text-slate-700'}>
                                             <td className="px-3 py-2">{index + 1}</td>
                                             <td className="px-3 py-2">{b.nama_barang ?? '-'}</td>
                                             <td className="px-3 py-2">{b.merk_tipe ?? '-'}</td>
@@ -317,8 +496,9 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                                 <select
                                                     value={nilai.pegawai_id}
                                                     disabled={b.sudah_disalurkan}
-                                                    onChange={(e) => setBaris(index, { pegawai_id: e.target.value })}
-                                                    className="w-40 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                                                    onChange={(e) => setBaris(b, { pegawai_id: e.target.value })}
+                                                    aria-label={`Penerima baris ${index + 1}`}
+                                                    className="min-h-9 w-40 rounded-lg border border-slate-300 px-2 py-1 text-xs"
                                                 >
                                                     <option value="">-- Pilih Penerima --</option>
                                                     {pegawaiList.map((p) => (
@@ -330,8 +510,9 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                                 <select
                                                     value={nilai.ruang_id}
                                                     disabled={b.sudah_disalurkan}
-                                                    onChange={(e) => setBaris(index, { ruang_id: e.target.value })}
-                                                    className="w-32 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                                                    onChange={(e) => setBaris(b, { ruang_id: e.target.value })}
+                                                    aria-label={`Ruang baris ${index + 1}`}
+                                                    className="min-h-9 w-32 rounded-lg border border-slate-300 px-2 py-1 text-xs"
                                                 >
                                                     <option value="">-- Pilih Lokasi --</option>
                                                     {ruangList.map((r) => (
@@ -344,13 +525,13 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                                     type="number"
                                                     min={1}
                                                     max={b.sisa}
-                                                    value={nilaiVol(index)}
+                                                    value={nilaiVol(b)}
                                                     disabled={b.sisa === 0}
-                                                    onChange={(e) => setVol((lama) => ({ ...lama, [index]: Number(e.target.value) }))}
+                                                    onChange={(e) => setVol((lama) => ({ ...lama, [b.id]: Number(e.target.value) }))}
                                                     aria-label={`Jumlah disalurkan baris ${index + 1}`}
-                                                    className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                                                    className="min-h-9 w-16 rounded-lg border border-slate-300 px-2 py-1 text-xs"
                                                 />
-                                                <span className="mt-0.5 block text-[10px] text-slate-400">
+                                                <span className="mt-0.5 block text-xs text-slate-500">
                                                     Sisa {b.sisa} dari {b.volume}
                                                 </span>
                                             </td>
@@ -359,31 +540,44 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                                 <input
                                                     value={nilai.keterangan}
                                                     disabled={b.sudah_disalurkan}
-                                                    onChange={(e) => setBaris(index, { keterangan: e.target.value })}
-                                                    className="w-32 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                                                    onChange={(e) => setBaris(b, { keterangan: e.target.value })}
+                                                    aria-label={`Keterangan baris ${index + 1}`}
+                                                    className="min-h-9 w-32 rounded-lg border border-slate-300 px-2 py-1 text-xs"
                                                 />
                                             </td>
                                             <td className="px-2 py-2">
+                                                {(canCetak || canMutasi) && (
                                                 <div className="flex items-center gap-1">
-                                                    <button type="button" title="BAST" onClick={() => bukaAksi('bast', index)} className="rounded p-1 hover:bg-slate-100">
+                                                    {canCetak && (
+                                                        <>
+                                                    <button type="button" title="BAST" aria-label={`BAST baris ${index + 1}`} onClick={() => bukaAksi('bast', b)} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1.5 hover:bg-slate-100">
                                                         <FileText className="h-4 w-4" />
                                                     </button>
-                                                    <button type="button" title="FAKTA" onClick={() => bukaAksi('fakta', index)} className="rounded p-1 hover:bg-slate-100">
+                                                    <button type="button" title="FAKTA" aria-label={`Fakta Integritas baris ${index + 1}`} onClick={() => bukaAksi('fakta', b)} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1.5 hover:bg-slate-100">
                                                         <Download className="h-4 w-4" />
                                                     </button>
-                                                    <button type="button" title="Edit" onClick={() => bukaAksi('edit', index)} className="rounded p-1 hover:bg-slate-100">
+                                                        </>
+                                                    )}
+                                                    {canMutasi && (
+                                                        <>
+                                                    <button type="button" title="Edit" aria-label={`Edit penerima baris ${index + 1}`} onClick={() => bukaAksi('edit', b)} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1.5 hover:bg-slate-100">
                                                         <Pencil className="h-4 w-4" />
                                                     </button>
-                                                    <button type="button" title="Restart" onClick={() => restart(index)} className="rounded p-1 hover:bg-slate-100">
+                                                    <button type="button" title="Restart" aria-label={`Restart penyaluran baris ${index + 1}`} onClick={() => mintaReset(b)} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1.5 text-rose-600 hover:bg-rose-50">
                                                         <RotateCcw className="h-4 w-4" />
                                                     </button>
+                                                        </>
+                                                    )}
                                                 </div>
+                                                )}
                                             </td>
                                         </tr>
                                     );
                                 })}
                             </tbody>
                         </table>
+                        </div>
+                        </>
                     )}
 
                     {baris.length > 0 && (
@@ -408,7 +602,8 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                     type="button"
                                     disabled={halaman <= 1}
                                     onClick={() => setHalaman((n) => Math.max(1, n - 1))}
-                                    className="rounded-lg border border-slate-300 px-2 py-1 font-bold disabled:opacity-40"
+                                    aria-label="Halaman sebelumnya"
+                                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-slate-300 font-bold disabled:opacity-40"
                                 >
                                     &lsaquo;
                                 </button>
@@ -419,7 +614,8 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                                     type="button"
                                     disabled={halaman >= totalHalaman}
                                     onClick={() => setHalaman((n) => Math.min(totalHalaman, n + 1))}
-                                    className="rounded-lg border border-slate-300 px-2 py-1 font-bold disabled:opacity-40"
+                                    aria-label="Halaman berikutnya"
+                                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-slate-300 font-bold disabled:opacity-40"
                                 >
                                     &rsaquo;
                                 </button>
@@ -441,7 +637,8 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                     <button
                         type="button"
                         onClick={simpan}
-                        disabled={proses || !adaPerubahan}
+                        disabled={proses || !adaPerubahan || !canMutasi}
+                        title={canMutasi ? undefined : 'Butuh izin mutasi inventaris'}
                         className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                     >
                         <Save className="h-4 w-4" /> SIMPAN DATA
@@ -678,7 +875,7 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                             <button type="button" onClick={() => setModal(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">
                                 Tutup
                             </button>
-                            <button type="button" onClick={() => cetakBast(modal.index)} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">
+                            <button type="button" onClick={() => cetakBast(modal.id)} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">
                                 Generate PDF
                             </button>
                         </div>
@@ -693,7 +890,7 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                             <button type="button" onClick={() => setModal(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">
                                 Tutup
                             </button>
-                            <button type="button" onClick={() => cetakFakta(modal.index)} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">
+                            <button type="button" onClick={() => cetakFakta(modal.id)} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">
                                 Generate PDF
                             </button>
                         </div>
@@ -733,13 +930,22 @@ export default function Index({ baris, ruangList, pegawaiList, bulanList, tahunL
                             <button type="button" onClick={() => setModal(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">
                                 Batal
                             </button>
-                            <button type="button" onClick={simpanPenerima} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">
-                                Simpan
+                            <button type="button" onClick={simpanPenerima} disabled={prosesModal} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+                                {prosesModal ? 'Menyimpan...' : 'Simpan'}
                             </button>
                         </div>
                     </div>
                 )}
             </Modal>
+
+            <ConfirmDialog
+                isOpen={modalReset !== null}
+                title="Restart Penyaluran?"
+                message={`Penyaluran ${modalReset?.nama_barang ?? ''} (Reg ${modalReset?.nomor_register ?? ''}) akan dikosongkan dan dicatat sebagai koreksi.`}
+                confirmText="Ya, Restart"
+                onConfirm={konfirmasiReset}
+                onClose={() => { if (!prosesModal) { setModalReset(null); } }}
+            />
         </AppLayout>
     );
 }

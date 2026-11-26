@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
 import SearchInput from '@/Components/SearchInput';
@@ -19,9 +19,10 @@ interface Props {
     units: UnitLabel[];
     tahunList: number[];
     filter: { search: string; tahun: string };
+    canCetak: boolean;
 }
 
-export default function Index({ units, tahunList, filter }: Props) {
+export default function Index({ units, tahunList, filter, canCetak }: Props) {
     const [terpilih, setTerpilih] = useState<string[]>([]);
     const [mengirim, setMengirim] = useState(false);
     const [galat, setGalat] = useState<string | null>(null);
@@ -35,6 +36,11 @@ export default function Index({ units, tahunList, filter }: Props) {
     };
 
     const semuaTerpilih = units.length > 0 && units.every((u) => terpilih.includes(u.id));
+
+    // Filter/pagination bisa menyembunyikan unit; jangan mencetak yang tidak tampil.
+    useEffect(() => {
+        setTerpilih((sebelum) => sebelum.filter((id) => units.some((u) => u.id === id)));
+    }, [units]);
 
     const toggle = (id: string) => {
         setTerpilih((sebelum) => (sebelum.includes(id) ? sebelum.filter((x) => x !== id) : [...sebelum, id]));
@@ -135,7 +141,7 @@ export default function Index({ units, tahunList, filter }: Props) {
                         <EmptyState title="Tidak ada barang untuk dicetak." description="Ubah kata kunci atau tambahkan barang lewat Inventaris." />
                     ) : (
                         <div className="divide-y divide-slate-50">
-                            <div className="flex items-center gap-3 bg-slate-50/60 px-4 py-2">
+                            <label className="flex min-h-9 cursor-pointer items-center gap-3 bg-slate-50/60 px-4 py-2">
                                 <input
                                     type="checkbox"
                                     checked={semuaTerpilih}
@@ -143,7 +149,7 @@ export default function Index({ units, tahunList, filter }: Props) {
                                     aria-label="Pilih Semua yang Tampil"
                                 />
                                 <span className="text-xs font-bold text-slate-600">Pilih Semua yang Tampil</span>
-                            </div>
+                            </label>
 
                             {units.map((unit) => (
                                 <label
@@ -182,7 +188,8 @@ export default function Index({ units, tahunList, filter }: Props) {
                     <button
                         type="button"
                         onClick={cetak}
-                        disabled={terpilih.length === 0 || mengirim}
+                        disabled={terpilih.length === 0 || mengirim || !canCetak}
+                        title={canCetak ? undefined : 'Butuh izin cetak inventaris'}
                         className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                     >
                         <Printer className="h-4 w-4" /> {mengirim ? 'Menyiapkan...' : `Cetak Label Terpilih (${terpilih.length})`}

@@ -61,7 +61,7 @@ class PendaftaranInventarisService
                     'harga_satuan' => $harga,
                     'nilai_perolehan_unit' => $harga,
                     'asal_perolehan' => $data['asal_perolehan'] ?? null,
-                    'kondisi' => $data['kondisi'] ?? 'B',
+                    'kondisi' => $data['kondisi'] ?? InventarisUnit::KONDISI_BELUM_DISET,
                     'keterangan' => $data['keterangan'] ?? null,
                 ]);
             }

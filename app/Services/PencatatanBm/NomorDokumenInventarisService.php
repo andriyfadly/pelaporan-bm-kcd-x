@@ -96,6 +96,15 @@ class NomorDokumenInventarisService
             return '';
         }
 
-        return trim((string) $sekolah->{$kolom});
+        $kode = trim((string) $sekolah->{$kolom});
+
+        // Acuan `pengembalian.php:14-26` jatuh ke kode BA/BAST bila kode
+        // pengembalian kosong. Skema baru tidak punya kolom `kode_ba`, jadi
+        // `kode_bast` adalah padanan terdekat yang tersedia.
+        if ($kode === '' && $jenis === 'pengembalian') {
+            $kode = trim((string) $sekolah->kode_bast);
+        }
+
+        return $kode;
     }
 }

@@ -1,8 +1,9 @@
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import React, { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
 import EmptyState from '@/Components/EmptyState';
 import { Download, FileText, Printer } from 'lucide-react';
+import { formatTanggalTabel, formatTanggalWaktu, tanggalHariIni } from '@/Utils/format';
 
 interface DokumenItem {
     id: string;
@@ -21,6 +22,7 @@ interface Props {
     dokumen: DokumenItem[];
     ruangList: RuangRingkas[];
     pjPerRuang: Record<string, { id: string; nama: string }[]>;
+    canCetak: boolean;
 }
 
 const LABEL_JENIS: Record<string, string> = {
@@ -30,12 +32,12 @@ const LABEL_JENIS: Record<string, string> = {
     surat_pengembalian: 'Surat Permohonan Pengembalian',
 };
 
-export default function Index({ dokumen, ruangList, pjPerRuang }: Props) {
+export default function Index({ dokumen, ruangList, pjPerRuang, canCetak }: Props) {
     const [ruangId, setRuangId] = useState(ruangList[0]?.id ?? '');
     const opsiPj = pjPerRuang[ruangId] ?? [];
     const [tahun, setTahun] = useState(() => new Date().getFullYear());
     const [cariSensus, setCariSensus] = useState('');
-    const [tanggalKir, setTanggalKir] = useState(() => new Date().toISOString().slice(0, 10));
+    const [tanggalKir, setTanggalKir] = useState(() => tanggalHariIni());
     const [penandaTangan, setPenandaTangan] = useState<Record<'show_ks' | 'show_wks' | 'show_pb', boolean>>({
         show_ks: true,
         show_wks: true,
@@ -44,7 +46,7 @@ export default function Index({ dokumen, ruangList, pjPerRuang }: Props) {
     const [showPj, setShowPj] = useState(false);
     const [penanggungJawab, setPenanggungJawab] = useState('');
     const [galatKir, setGalatKir] = useState<string | null>(null);
-    const [tanggalBuku, setTanggalBuku] = useState(() => new Date().toISOString().slice(0, 10));
+    const [tanggalBuku, setTanggalBuku] = useState(() => tanggalHariIni());
     const [semester, setSemester] = useState('');
 
     const jumlahPenandaTangan = (['show_ks', 'show_wks', 'show_pb'] as const).filter((k) => penandaTangan[k]).length
@@ -155,7 +157,7 @@ export default function Index({ dokumen, ruangList, pjPerRuang }: Props) {
                                     />
                                 </label>
                                 <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600">
-                                    <label className="flex items-center gap-1.5">
+                                    <label className="flex min-h-9 items-center gap-1.5">
                                         <input
                                             type="checkbox"
                                             checked={penandaTangan.show_ks}
@@ -163,7 +165,7 @@ export default function Index({ dokumen, ruangList, pjPerRuang }: Props) {
                                         />
                                         Kepala Sekolah
                                     </label>
-                                    <label className="flex items-center gap-1.5">
+                                    <label className="flex min-h-9 items-center gap-1.5">
                                         <input
                                             type="checkbox"
                                             checked={penandaTangan.show_wks}
@@ -171,7 +173,7 @@ export default function Index({ dokumen, ruangList, pjPerRuang }: Props) {
                                         />
                                         Wakasek Sarpras
                                     </label>
-                                    <label className="flex items-center gap-1.5">
+                                    <label className="flex min-h-9 items-center gap-1.5">
                                         <input
                                             type="checkbox"
                                             checked={penandaTangan.show_pb}
@@ -179,7 +181,7 @@ export default function Index({ dokumen, ruangList, pjPerRuang }: Props) {
                                         />
                                         Pengurus Barang
                                     </label>
-                                    <label className="flex items-center gap-1.5">
+                                    <label className="flex min-h-9 items-center gap-1.5">
                                         <input
                                             type="checkbox"
                                             checked={showPj}
@@ -320,15 +322,20 @@ export default function Index({ dokumen, ruangList, pjPerRuang }: Props) {
                                                 {LABEL_JENIS[item.jenis] ?? item.jenis}
                                             </td>
                                             <td className="whitespace-nowrap px-4 py-3 text-slate-600">{item.nomor ?? '-'}</td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{item.tanggal?.slice(0, 10) ?? item.created_at}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{item.tanggal ? formatTanggalTabel(item.tanggal) : formatTanggalWaktu(item.created_at)}</td>
                                             <td className="px-4 py-3 text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => router.get(`/pencatatan-bm/dokumen/${item.id}/pdf`)}
-                                                    className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                                >
-                                                    <Download className="w-3.5 h-3.5" /> Unduh
-                                                </button>
+                                                {canCetak ? (
+                                                    <a
+                                                        href={`/pencatatan-bm/dokumen/${item.id}/pdf`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 rounded-lg min-h-9 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" /> Unduh
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-xs text-slate-500">-</span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}

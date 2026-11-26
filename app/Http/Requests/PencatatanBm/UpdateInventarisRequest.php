@@ -33,6 +33,17 @@ class UpdateInventarisRequest extends FormRequest
     }
 
     /**
+     * Sentinel `-` bukan pilihan form; frontend mengirim string kosong untuk
+     * "belum ditentukan" dan nilai itu berarti "jangan ubah kondisi".
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('kondisi') === '') {
+            $this->merge(['kondisi' => null]);
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array

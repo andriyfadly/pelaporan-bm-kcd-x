@@ -213,6 +213,41 @@ class MasterDataBulkTest extends TestCase
         $this->assertSame(2, Ruang::count());
     }
 
+    public function test_normalisasi_nama_ruang_dan_pegawai_serta_nip_dash(): void
+    {
+        $this->actingAs($this->operator)
+            ->post(route('master-data.ruang.massal'), [
+                'baris' => [['nama_ruang' => '  ruang guru  ']],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('Ruang Guru', Ruang::firstOrFail()->nama_ruang);
+
+        // Duplikat dideteksi setelah normalisasi, bukan pada string mentah.
+        $this->actingAs($this->operator)
+            ->post(route('master-data.ruang.massal'), [
+                'baris' => [['nama_ruang' => 'RUANG GURU']],
+            ])
+            ->assertSessionHasErrors('baris');
+
+        $this->actingAs($this->operator)
+            ->post(route('master-data.pegawai.massal'), [
+                'baris' => [['nama_lengkap' => 'budi santoso, s.pd', 'nip' => '-']],
+            ])
+            ->assertRedirect();
+
+        $pegawai = Pegawai::firstOrFail();
+        $this->assertSame('Budi Santoso, S.Pd', $pegawai->nama_lengkap);
+        $this->assertNull($pegawai->nip);
+
+        // NIP '-' yang dikirim lagi setelah normalisasi tetap terdeteksi duplikat.
+        $this->actingAs($this->operator)
+            ->post(route('master-data.pegawai.massal'), [
+                'baris' => [['nama_lengkap' => 'BUDI SANTOSO, S.PD', 'nip' => '–']],
+            ])
+            ->assertSessionHasErrors('baris');
+    }
+
     public function test_hapus_semua_hanya_menyentuh_sekolah_sendiri(): void
     {
         $lain = activity()->withoutLogging(fn () => Sekolah::create([

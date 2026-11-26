@@ -25,7 +25,7 @@ class BastBarisRequest extends FormRequest
     {
         return [
             'unit_ids' => ['required', 'array', 'min:1'],
-            'unit_ids.*' => ['required', 'uuid', 'exists:inventaris_unit,id'],
+            'unit_ids.*' => ['required', 'uuid', 'distinct', 'exists:inventaris_unit,id'],
             'nomor' => ['nullable', 'string', 'max:150'],
             'tanggal' => ['nullable', 'date'],
         ];

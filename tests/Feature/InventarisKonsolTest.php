@@ -191,7 +191,7 @@ class InventarisKonsolTest extends TestCase
             ])
             ->assertNotFound();
 
-        $this->assertSame('B', $this->unit->fresh()->kondisi);
+        $this->assertSame(InventarisUnit::KONDISI_BELUM_DISET, $this->unit->fresh()->kondisi);
     }
 
     public function test_pratinjau_register_tidak_menaikkan_sequence(): void

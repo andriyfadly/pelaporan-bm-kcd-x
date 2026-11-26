@@ -123,6 +123,10 @@ class InventarisNomorDokumenTest extends TestCase
         $this->unit->update(['ruang_id' => $ruang->id]);
 
         $this->actingAs($operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-05-01'])
+            ->assertRedirect();
+
+        $this->actingAs($operator)
             ->post(route('pencatatan-bm.pengembalian.store'), ['unit_ids' => [$this->unit->id],
                 'kondisi' => 'RR',
                 'tanggal' => '2026-05-01',
@@ -133,5 +137,35 @@ class InventarisNomorDokumenTest extends TestCase
 
         $this->assertSame('001/KEM-Z', $dokumen->nomor);
         $this->assertSame('2026-05-01', $dokumen->tanggal->toDateString());
+    }
+
+    public function test_pengembalian_fallback_ke_kode_bast(): void
+    {
+        $this->sekolah->update(['kode_pengembalian' => null]);
+
+        $operator = $this->operator();
+        $ruang = activity()->withoutLogging(fn () => Ruang::create([
+            'sekolah_id' => $this->sekolah->id,
+            'nama_ruang' => 'Ruang Guru',
+        ]));
+
+        $this->unit->update(['ruang_id' => $ruang->id]);
+
+        $this->actingAs($operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-05-01'])
+            ->assertRedirect();
+
+        $this->actingAs($operator)
+            ->post(route('pencatatan-bm.pengembalian.store'), [
+                'unit_ids' => [$this->unit->id],
+                'kondisi' => 'B',
+                'tanggal' => '2026-05-02',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            '001/BAST-X',
+            Dokumen::where('jenis', 'pengembalian')->firstOrFail()->nomor,
+        );
     }
 }

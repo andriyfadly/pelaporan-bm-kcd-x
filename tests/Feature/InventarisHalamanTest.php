@@ -129,6 +129,11 @@ class InventarisHalamanTest extends TestCase
             ])
             ->assertRedirect();
 
+        // Daftar pengembalian hanya memuat unit yang BAST-nya sudah terbit.
+        $this->actingAs($this->operator)
+            ->post(route('pencatatan-bm.dokumen.bast', $this->unit), ['tanggal' => '2026-03-12'])
+            ->assertRedirect();
+
         $this->actingAs($this->operator)
             ->get(route('pencatatan-bm.pengembalian.index'))
             ->assertOk()

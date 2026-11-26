@@ -173,7 +173,7 @@ class InventarisBeritaAcaraTest extends TestCase
         $this->assertSame(1, Dokumen::where('jenis', 'bast')->count());
     }
 
-    public function test_no_ba_boleh_dipakai_lagi_setelah_dibatalkan(): void
+    public function test_nomor_ba_yang_dibatalkan_tetap_terpakai(): void
     {
         $dokumen = Dokumen::firstOrFail();
 
@@ -190,11 +190,13 @@ class InventarisBeritaAcaraTest extends TestCase
             'nomor_register' => '002',
         ]);
 
+        // Nomor surat dinas yang pernah terbit tidak boleh menunjuk dokumen lain,
+        // walau dokumen aslinya sudah dibatalkan.
         $this->actingAs($this->operator)
             ->post(route('pencatatan-bm.dokumen.bast', $unitLain), ['tanggal' => '2026-03-12', 'nomor' => 'BAST-01'])
-            ->assertRedirect();
+            ->assertSessionHasErrors('nomor');
 
-        $this->assertSame(1, Dokumen::where('nomor', 'BAST-01')->whereNull('nomor_dibatalkan_pada')->count());
+        $this->assertSame(0, Dokumen::where('nomor', 'BAST-01')->whereNull('nomor_dibatalkan_pada')->count());
     }
 
     public function test_relasi_model_histori_dan_foto(): void
